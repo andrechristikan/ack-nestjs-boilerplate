@@ -12,7 +12,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { UserAgent } from '@generated/prisma-client/client';
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { AnalyticDashboardDomain } from '@modules/analytic/domains/analytic.dashboard.domain';
@@ -99,8 +99,6 @@ describe('AnalyticDashboardDomain', () => {
     let domain: AnalyticDashboardDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         analyticDateUtil.cacheToken.mockImplementation((date?: Date) =>
             date ? date.toISOString() : '_'
         );
@@ -524,7 +522,7 @@ describe('AnalyticDashboardDomain', () => {
 
     describe('authSessionsUserAgent', () => {
         it('buckets sessions by browser, os, unknown, and increments repeats', async () => {
-            const chrome: UserAgent = {
+            const chrome: IRequestUserAgent = {
                 ua: null,
                 browser: {
                     name: 'Chrome',
@@ -537,7 +535,7 @@ describe('AnalyticDashboardDomain', () => {
                 engine: { name: null, version: null },
                 os: { name: null, version: null },
             };
-            const ios: UserAgent = {
+            const ios: IRequestUserAgent = {
                 ua: null,
                 browser: null,
                 cpu: { architecture: null },
@@ -545,7 +543,7 @@ describe('AnalyticDashboardDomain', () => {
                 engine: { name: null, version: null },
                 os: { name: 'iOS', version: null },
             };
-            const unknown: UserAgent = {
+            const unknown: IRequestUserAgent = {
                 ua: null,
                 browser: null,
                 cpu: { architecture: null },

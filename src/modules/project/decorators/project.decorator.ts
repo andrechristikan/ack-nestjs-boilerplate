@@ -1,16 +1,17 @@
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
-import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
+import { EnumPolicyProjectSubject } from '@modules/policy/enums/policy.enum';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
 import {
     DocProjectErrorResponses,
     DocProjectMemberErrorResponses,
-    DocProjectRoleErrorResponses,
+    ProjectMemberRequiredMetaKey,
     ProjectMemberStoreKey,
-    ProjectRoleMetaKey,
     ProjectStoreKey,
 } from '@modules/project/constants/project.constant';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
-import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
+import type { IProjectMemberWithRole } from '@modules/project/interfaces/project.interface';
 import {
     SetMetadata,
     UseGuards,
@@ -73,47 +74,55 @@ export const ProjectCurrent = createParamDecorator<
 );
 
 /**
- * Requires the caller to be a member of the project resolved by `@ProjectProtected()`. Stack above
- * it. Pass `roles` to instead require the caller's project membership role to be one of them, which
- * a workspace owner satisfies without holding a `ProjectMember` row at all; omit `roles` to demand a
- * `ProjectMember` row of the caller with no bypass.
+ * Loads the caller's project membership and stores it with its role. Stack above
+ * `@ProjectProtected()` and `@WorkspaceMemberProtected()`. The default is strict: a caller with no
+ * `ProjectMember` row is rejected with `memberForbidden`. Pass `{ required: false }` only on a
+ * policy-gated route that a workspace-scoped role must reach without a project row (project
+ * read, update, slug update, delete, and the member list, assign, role update and remove
+ * routes): a caller with no row passes through, no member is stored, and the policy checks decide.
  * @public
  */
-export function ProjectMemberProtected(
-    ...roles: EnumProjectMemberRole[]
-): MethodDecorator {
-    if (roles.length === 0) {
+export function ProjectMemberProtected(options?: {
+    required?: boolean;
+}): MethodDecorator {
+    const required = options?.required ?? true;
+    if (!required) {
         return applyDecorators(
             UseGuards(ProjectMemberGuard),
-            DocProjectMemberErrorResponses.notFound,
-            DocProjectMemberErrorResponses.forbidden
+            SetMetadata(ProjectMemberRequiredMetaKey, false)
         );
     }
 
     return applyDecorators(
-        UseGuards(ProjectRoleGuard),
-        SetMetadata(ProjectRoleMetaKey, roles),
-        DocProjectRoleErrorResponses.notFound,
-        DocProjectRoleErrorResponses.forbidden
+        UseGuards(ProjectMemberGuard),
+        SetMetadata(ProjectMemberRequiredMetaKey, true),
+        DocProjectMemberErrorResponses.forbidden
     );
 }
 
 /**
- * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `RequestContextMissingException`.
+ * Reads the caller's project member row with its role, or one of its fields, that the strict `@ProjectMemberProtected()` stored. Valid only under the strict form: a `{ required: false }` route may hold no row, and the read then throws `RequestContextMissingException`.
  * @public
  */
 export const ProjectMemberCurrent = createParamDecorator<
-    Extract<keyof ProjectMember, string> | undefined,
-    | ProjectMember
-    | NonNullable<ProjectMember[Extract<keyof ProjectMember, string>]>
+    Extract<keyof IProjectMemberWithRole, string> | undefined,
+    | IProjectMemberWithRole
+    | NonNullable<
+          IProjectMemberWithRole[Extract<keyof IProjectMemberWithRole, string>]
+      >
 >(
     (
-        field: Extract<keyof ProjectMember, string> | undefined
+        field: Extract<keyof IProjectMemberWithRole, string> | undefined
     ):
-        | ProjectMember
-        | NonNullable<ProjectMember[Extract<keyof ProjectMember, string>]> => {
+        | IProjectMemberWithRole
+        | NonNullable<
+              IProjectMemberWithRole[Extract<
+                  keyof IProjectMemberWithRole,
+                  string
+              >]
+          > => {
         const projectMember = ClsServiceManager.getClsService().get<
-            ProjectMember | undefined
+            IProjectMemberWithRole | undefined
         >(ProjectMemberStoreKey);
         if (projectMember === undefined || projectMember === null) {
             throw new RequestContextMissingException(ProjectMemberStoreKey);
@@ -133,3 +142,14 @@ export const ProjectMemberCurrent = createParamDecorator<
         return value;
     }
 );
+
+/**
+ * Requires the caller to hold the given project policy subject/action pairs.
+ * Sits above `@ProjectMemberProtected(...)` and `@ProjectProtected()`.
+ * @public
+ */
+export function ProjectPolicyProtected(
+    ...requiredPolicies: IPolicyRequired<EnumPolicyProjectSubject>[]
+): MethodDecorator {
+    return PolicyProtected(...requiredPolicies);
+}

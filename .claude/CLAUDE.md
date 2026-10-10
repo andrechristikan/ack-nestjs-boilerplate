@@ -10,14 +10,14 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 
 ## Stack
 
-- NestJS 12 · TypeScript 6 strict · Node >= 24.15 · PNPM >= 10.25, pinned to `pnpm@11.25.0` ·
+- NestJS 12 · TypeScript 6 strict · Node >= 24.15 · PNPM >= 10.25, pinned to `pnpm@12.5.1` ·
   **PNPM only** — `npm` and `yarn` are blocked by `engines` and by a `npx only-allow pnpm`
   preinstall guard
 - **Native ESM** (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`). Imports use
   the `tsconfig.json` `paths` aliases (`rules/code-style.md`). SWC builds `src/`; Vitest runs
   `test/`
-- Prisma 6 + **MongoDB 8 replica set** — a replica set is required, transactions do not work
-  without one. There are NO migration files: schema shape is applied by `prisma db push`
+- Prisma 6 + **PostgreSQL 18**. Schema migrations are tracked files under `prisma/migrations/`,
+  generated and applied together by `prisma migrate dev`
 - Redis: cache on `db:0` through `CACHE_REDIS_URL`, BullMQ on `db:1` through
   `QUEUE_REDIS_URL`. BullMQ registers two connections of its own under separate config keys,
   a producer and a processor
@@ -26,7 +26,7 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
   in and `ResponseInterceptor` on the way out; i18n through `nestjs-i18n` reading `src/languages/`
 - Pino logging, Sentry (`src/instrument.ts` init, `src/common/sentry` reporting),
   nest-commander seeding CLI, Vault for secrets
-- Ports: API 3000 · MongoDB 27017 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
+- Ports: API 3000 · PostgreSQL 5432 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
 
 ## Layout
 
@@ -56,7 +56,7 @@ src/
 └── router/             # http/ mounts controllers under /public /system /admin /user /shared;
                         #   processor/ aggregates every <feature>.processor.module.ts
 
-prisma/schema.prisma    # editable; applying it to MongoDB is the owner's — see "How work happens here"
+prisma/schema.prisma    # editable; applying it to PostgreSQL is the owner's — see "How work happens here"
 generated/              # swagger, vault init, agent reports (gitignored)
 docs/                   # durable project documentation
 test/                   # specs mirroring src/, collected by vitest.config.ts
@@ -88,7 +88,7 @@ the most specific catch runs first.
   `pull_request`.
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` · `pnpm spell`
 - `pnpm db:studio` · `pnpm vault:pull`
-- `docker-compose up -d` — MongoDB replica set, Redis, BullBoard, JWKS server, Vault
+- `docker-compose up -d` — PostgreSQL, Redis, BullBoard, JWKS server, Vault
 - `pre-commit` runs lint-staged → typecheck → deadcode → spell → `NODE_ENV=test pnpm test`.
   `commit-msg` runs commitlint. Both are BLOCKING.
 
@@ -218,21 +218,23 @@ installs them once:
 
 ## How work happens here
 
-- **`prisma/schema.prisma` is editable; APPLYING it to MongoDB is not.** The split is what
+- **`prisma/schema.prisma` is editable; APPLYING it to PostgreSQL is not.** The split is what
   the command touches. Files only — `db:generate` (`prisma generate`), `db:format`
   (`prisma format`), `prisma validate` — are yours. Anything that opens a connection is the
   owner's and sits in the `deny` list of `.claude/settings.json`: `db:migrate`
-  (`prisma db push`), `prisma db execute`, `prisma db seed`, `prisma migrate`, `migration`,
+  (`prisma migrate dev`), `prisma db execute`, `prisma db seed`, `prisma migrate`, `migration`,
   `migration:seed`, `migration:remove`, `migration:fresh`, `node dist/migration.js`,
-  `db:studio` (`prisma studio`), and the `mongosh` / `redis-cli` shells. Edit the schema, then
-  hand back the two commands the owner must run.
+  `db:studio` (`prisma studio`), and the `psql` / `redis-cli` shells. `db:migrate` both writes
+  the new file under `prisma/migrations/` and applies it, one step, not two — because
+  generating that file requires diffing against a live database. Edit the schema, then hand
+  back that command as the owner's step.
 - **The deny list matches the command as it is written.** A permission pattern is a prefix
   glob, so it sees `pnpm db:migrate` and not `PORT=1 pnpm db:migrate`, `env PORT=1 pnpm
   db:migrate` or `pnpm -s run db:migrate`. The list is the statement of what belongs to the
   owner, not a fence that holds on its own — never reach for a spelling it misses.
 - **This project starts in `bypassPermissions`.** The daily `allow` map and the `deny` /
-  `ask` lists live in `.claude/settings.json`. `deny` wins for migrate / studio / `mongosh`
-  / `redis-cli`. An `ask` rule prompts even under `bypassPermissions`. The VS Code and
+  `ask` lists live in `.claude/settings.json`. `deny` wins for migrate / studio / `psql` /
+  `redis-cli`. An `ask` rule prompts even under `bypassPermissions`. The VS Code and
   Cursor extensions ignore a project's `defaultMode`.
 - Coding rules live in `.claude/rules/` and are not loaded into this session.
   **`rules/orientation.md` is the map.** Whoever needs a rule reads that file, then the

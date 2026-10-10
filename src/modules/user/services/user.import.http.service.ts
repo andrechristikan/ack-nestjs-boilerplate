@@ -10,9 +10,11 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumTermPolicyType,
+    EnumPolicyAction,
+    EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
@@ -30,6 +32,7 @@ export class UserImportHttpService {
         private readonly userOnboardingDomain: UserOnboardingDomain,
         private readonly workspaceDomain: WorkspaceDomain,
         private readonly fileService: FileService,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -66,6 +69,10 @@ export class UserImportHttpService {
     async exportByAdmin(
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.User
+        );
         const status = this.paginationQueryUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,
             query.status,
@@ -90,7 +97,8 @@ export class UserImportHttpService {
         const data = await this.userImportDomain.exportByAdmin(
             status?.where as Record<string, IPaginationIn> | undefined,
             roleId?.where as Record<string, IPaginationEqual> | undefined,
-            countryId?.where as Record<string, IPaginationEqual> | undefined
+            countryId?.where as Record<string, IPaginationEqual> | undefined,
+            accessibleWhere
         );
 
         const users: UserExportResponseDto[] = data.map(user => ({
@@ -110,11 +118,10 @@ export class UserImportHttpService {
             status: user.status,
             countryId: user.countryId,
             photo: user.photo?.completedUrl ?? null,
-            termPolicyTermsOfService:
-                user.termPolicy[EnumTermPolicyType.termsOfService],
-            termPolicyPrivacy: user.termPolicy[EnumTermPolicyType.privacy],
-            termPolicyCookies: user.termPolicy[EnumTermPolicyType.cookies],
-            termPolicyMarketing: user.termPolicy[EnumTermPolicyType.marketing],
+            termPolicyTermsOfService: user.termsOfServiceAccepted,
+            termPolicyPrivacy: user.privacyAccepted,
+            termPolicyCookies: user.cookiesAccepted,
+            termPolicyMarketing: user.marketingAccepted,
             role: user.role.name,
         }));
 

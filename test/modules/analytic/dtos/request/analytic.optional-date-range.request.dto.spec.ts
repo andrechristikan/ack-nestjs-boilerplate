@@ -1,28 +1,29 @@
 import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
 
 describe('AnalyticOptionalDateRangeRequestSchema', () => {
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
-    const payload = { startDate, endDate };
-
-    it('parses a payload into exactly the declared fields', () => {
-        const result = AnalyticOptionalDateRangeRequestSchema.parse(payload);
-
-        expect(result).toEqual(payload);
+    it('parses an empty object', () => {
+        expect(AnalyticOptionalDateRangeRequestSchema.parse({})).toEqual({});
     });
 
-    it('parses an empty object when both dates are omitted', () => {
-        const result = AnalyticOptionalDateRangeRequestSchema.parse({});
+    it('coerces provided dates', () => {
+        const result = AnalyticOptionalDateRangeRequestSchema.parse({
+            startDate: '2026-01-01T00:00:00.000Z',
+            endDate: '2026-02-01T00:00:00.000Z',
+        });
 
-        expect(result).toEqual({});
+        expect(result.startDate).toEqual(new Date(Date.UTC(2026, 0, 1)));
+        expect(result.endDate).toEqual(new Date(Date.UTC(2026, 1, 1)));
+    });
+
+    it('rejects an invalid date', () => {
+        expect(() =>
+            AnalyticOptionalDateRangeRequestSchema.parse({ startDate: 'nope' })
+        ).toThrow();
     });
 
     it('rejects an undeclared key', () => {
         expect(() =>
-            AnalyticOptionalDateRangeRequestSchema.parse({
-                ...payload,
-                windowMs: 3600000,
-            })
+            AnalyticOptionalDateRangeRequestSchema.parse({ extra: 1 })
         ).toThrow();
     });
 });

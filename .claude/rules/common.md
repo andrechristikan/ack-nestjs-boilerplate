@@ -47,7 +47,7 @@ Reach for the `Helper*Service` family (`HelperDateService`, `HelperStringService
 `PaginationService`, `MessageService`, `ResponseMetadataService`, `DatabaseService`,
 `FileService`, `AwsS3Service`, `AwsSESService`, `FirebaseService` and `SentryService` before
 writing your own. The reusable request field schemas are
-`src/common/request/validations/request.<name>.validation.ts` (`RequestMongoIdSchema`,
+`src/common/request/validations/request.<name>.validation.ts` (`RequestUuidSchema`,
 `RequestRequiredStringSchema`, `RequestBooleanStringSchema`, `RequestEncryptionSecretSchema`,
 …) — a feature schema composes them rather than restating the check (`rules/dto.md`). A hand-rolled second copy of one of these is a defect regardless of how well
 it works.

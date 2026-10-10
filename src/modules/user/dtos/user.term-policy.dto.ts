@@ -1,31 +1,30 @@
 import { z } from 'zod';
-import { EnumTermPolicyType } from '@generated/prisma-client/client';
 
 /**
- * Shapes the acceptance flag of each term policy type for a user.
+ * Shapes the acceptance flag column of each term policy type on a user row.
  * @public
  */
 export const UserTermPolicySchema = z.object({
-    [EnumTermPolicyType.termsOfService]: z.boolean().meta({
+    termsOfServiceAccepted: z.boolean().meta({
         description: 'Terms of Service acceptance',
         example: true,
     }),
-    [EnumTermPolicyType.privacy]: z.boolean().meta({
+    privacyAccepted: z.boolean().meta({
         description: 'Privacy Policy acceptance',
         example: true,
     }),
-    [EnumTermPolicyType.cookies]: z.boolean().meta({
+    cookiesAccepted: z.boolean().meta({
         description: 'Cookie Policy acceptance',
         example: true,
     }),
-    [EnumTermPolicyType.marketing]: z.boolean().meta({
+    marketingAccepted: z.boolean().meta({
         description: 'Marketing Policy acceptance',
         example: false,
     }),
 });
 
 /**
- * Acceptance flag per term policy type for a user.
+ * Acceptance flag columns of a user row.
  * @public
  */
 export type UserTermPolicyDto = z.infer<typeof UserTermPolicySchema>;

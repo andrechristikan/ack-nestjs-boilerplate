@@ -2,7 +2,7 @@ import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/de
 import { DeviceSharedListRequestSchema } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -92,7 +92,7 @@ export class DeviceSharedController {
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') userId: string,
-        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
+        @Param('deviceOwnershipId', { schema: RequestUuidSchema })
         deviceOwnershipId: string
     ): Promise<void> {
         await this.deviceHttpService.remove(userId, deviceOwnershipId);

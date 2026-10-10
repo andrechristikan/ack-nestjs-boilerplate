@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -12,7 +13,13 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
 import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -35,6 +42,7 @@ export class UserHttpService {
         private readonly userDomain: UserDomain,
         private readonly userOnboardingDomain: UserOnboardingDomain,
         private readonly workspaceDomain: WorkspaceDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -42,6 +50,10 @@ export class UserHttpService {
     async getListOffsetByAdmin(
         query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.User
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
                 availableSearch: UserDefaultAvailableSearch,
@@ -74,12 +86,17 @@ export class UserHttpService {
             params,
             status?.where,
             roleId?.where,
-            countryId?.where
+            countryId?.where,
+            accessibleWhere
         );
     }
 
-    async getOne(id: string): Promise<IResponseReturn<IUserProfile>> {
-        const user = await this.userDomain.getOne(id);
+    async getOne(userId: string): Promise<IResponseReturn<IUserProfile>> {
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.User, user)
+        );
 
         return { data: user };
     }
@@ -119,6 +136,11 @@ export class UserHttpService {
         { status }: UserUpdateStatusRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.User, user)
+        );
         await this.userDomain.updateStatusByAdmin(userId, status, updatedBy);
 
         return {};

@@ -38,6 +38,9 @@
             "@migration/*": ["./src/migration/*.ts"],
             "@queues/*": ["./src/queues/*.ts"],
             "@test/*": ["./test/*.ts"],
+            "@generated/prisma-client": [
+                "./src/generated/prisma-client/client.ts"
+            ],
             "@generated/*": ["./src/generated/*.ts"],
             "@instrument": ["./src/instrument.ts"],
             "@swagger": ["./src/swagger.ts"],
@@ -45,7 +48,13 @@
             "@migration": ["./src/migration.ts"]
         }
     },
-    "include": ["src/**/*", "test/**/*", "scripts/**/*", "vitest.config.ts"],
+    "include": [
+        "src/**/*",
+        "test/**/*",
+        "scripts/**/*",
+        "vitest.config.ts",
+        "vitest.e2e.config.ts"
+    ],
     "exclude": [
         "node_modules",
         "dist",

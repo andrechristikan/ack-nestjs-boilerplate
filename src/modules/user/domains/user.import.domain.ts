@@ -5,8 +5,9 @@ import type {
     IPaginationEqual,
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { Prisma } from '@generated/prisma-client/client';
 import {
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
@@ -16,6 +17,7 @@ import { CountryDomain } from '@modules/country/domains/country.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
@@ -25,6 +27,7 @@ import { UserUsernameContainBadWordException } from '@modules/user/exceptions/us
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserExport,
     IUserImport,
     IUserImportPrepared,
 } from '@modules/user/interfaces/user.interface';
@@ -36,7 +39,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserImportDomain {
-    private readonly userRoleName: string;
+    private readonly userRoleKey: string;
     private readonly userCountryName: string;
     private readonly maxDataExport: number;
 
@@ -52,8 +55,7 @@ export class UserImportDomain {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.userRoleName =
-            this.configService.get<string>('user.default.role')!;
+        this.userRoleKey = this.configService.get<string>('user.default.role')!;
         this.userCountryName = this.configService.get<string>(
             'user.default.country'
         )!;
@@ -75,7 +77,10 @@ export class UserImportDomain {
             existingUsersByUsername,
             badWordChecks,
         ] = await Promise.all([
-            this.roleDomain.getByName(this.userRoleName),
+            this.roleDomain.getByScopeAndKey(
+                EnumRoleScope.platform,
+                this.userRoleKey
+            ),
             this.countryDomain.getIdByAlpha2Code(this.userCountryName),
             this.userRepository.findByEmails(emails),
             this.userRepository.findByUsernames(usernames),
@@ -120,7 +125,7 @@ export class UserImportDomain {
         );
         const workspaceContexts =
             this.userOnboardingDomain.buildPersonalWorkspaceContexts(usernames);
-        const isVerified = checkRole.type !== EnumRoleType.user;
+        const isVerified = checkRole.key !== EnumRolePlatformKey.user;
         const inputs: IUserCreateWithWorkspaceInput[] = data.map(
             ({ email, name }, index) => ({
                 userId: userIds[index],
@@ -180,13 +185,15 @@ export class UserImportDomain {
     async exportByAdmin(
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
-    ): Promise<IUser[]> {
+        countryId?: Record<string, IPaginationEqual>,
+        where?: Prisma.UserWhereInput
+    ): Promise<IUserExport[]> {
         const users = await this.userRepository.findExport(
             status ?? null,
             roleId ?? null,
             countryId ?? null,
-            this.maxDataExport + 1
+            this.maxDataExport + 1,
+            where
         );
 
         if (users.length > this.maxDataExport) {

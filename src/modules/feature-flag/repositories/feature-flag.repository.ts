@@ -7,6 +7,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import type { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
@@ -20,12 +21,21 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     ) {}
 
     async findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        {
+            where,
+            ...others
+        }: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
+        additionalWhere?: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.offset<
             FeatureFlag,
             Prisma.FeatureFlagWhereInput
-        >(this.databaseService.client.featureFlag, pagination);
+        >(this.databaseService.client.featureFlag, {
+            ...others,
+            where: {
+                AND: [where ?? {}, additionalWhere ?? {}],
+            },
+        });
     }
 
     async findWithPaginationCursor(
@@ -37,10 +47,15 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         >(this.databaseService.client.featureFlag, pagination);
     }
 
-    async findOneByKey(key: string): Promise<FeatureFlag | null> {
+    async findOneByKey(
+        key: string
+    ): Promise<IFeatureFlagWithTargetUsers | null> {
         return this.databaseService.client.featureFlag.findUnique({
             where: {
                 key,
+            },
+            include: {
+                targetUsers: true,
             },
         });
     }
@@ -55,11 +70,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
 
     async updateStatus(
         id: string,
-        {
-            isEnable,
-            rolloutPercent,
-            targetUserIds,
-        }: FeatureFlagUpdateStatusRequestDto
+        { isEnable, rolloutPercent }: FeatureFlagUpdateStatusRequestDto
     ): Promise<FeatureFlag> {
         return this.databaseService.client.featureFlag.update({
             where: {
@@ -68,7 +79,6 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
             data: {
                 isEnable,
                 rolloutPercent,
-                targetUserIds,
             },
         });
     }

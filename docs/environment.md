@@ -4,13 +4,13 @@ Environment variables are listed in `.env.example`.
 
 ## Overview
 
-Runtime config is environment variables. `AppEnvSchema` validates them at startup. Docker Compose is the recommended way to run MongoDB and Redis locally; see [Installation][ref-doc-installation].
+Runtime config is environment variables. `AppEnvSchema` validates them at startup. Docker Compose is the recommended way to run PostgreSQL and Redis locally; see [Installation][ref-doc-installation].
 
 ## Related Documents
 
 - [Configuration Documentation][ref-doc-configuration] - How env vars map into `registerAs` configs
 - [Installation Documentation][ref-doc-installation] - Creating `.env` (Docker recommended)
-- [Database Documentation][ref-doc-database] - MongoDB connection and replica set
+- [Database Documentation][ref-doc-database] - PostgreSQL connection and Prisma migrations
 - [Authentication Documentation][ref-doc-authentication] - JWT and OAuth
 - [Vault Documentation][ref-doc-vault] - Optional secret sync into `.env`
 - [Email Documentation][ref-doc-email] - SES templates
@@ -100,8 +100,8 @@ CORS_ALLOWED_ORIGIN=*
 URL_VERSIONING_ENABLE=true
 URL_VERSION=1
 
-# Database (Compose replica set locally; Atlas without Docker)
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+# Database (Compose locally; managed PostgreSQL without Docker)
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 DATABASE_DEBUG=true
 
 # JWT Authentication
@@ -354,13 +354,13 @@ URL_VERSION=1
 ### Database Settings
 
 **`DATABASE_URL`** *(required)*  
-MongoDB connection string. Must target a **replica set** (Prisma transactions need one). Docker Compose is the recommended local path; without Docker use [MongoDB Atlas][ref-mongodb-atlas] (or any MongoDB 8+ replica set). Setup: [Installation][ref-doc-installation].
+PostgreSQL connection string. Docker Compose is the recommended local path; without Docker point it at a managed PostgreSQL instance. Setup: [Installation][ref-doc-installation].
 ```bash
-# Local Compose replica set (recommended)
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+# Local Compose (recommended)
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 
-# MongoDB Atlas (replica set via mongodb+srv)
-# DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/ACKNestJs
+# Managed PostgreSQL instance
+# DATABASE_URL=postgresql://username:password@host:5432/ACKNestJs?schema=public
 ```
 
 **`DATABASE_DEBUG`** *(required)*  
@@ -660,5 +660,4 @@ SENTRY_DSN=
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-vault]: vault.md
 [ref-doc-email]: email.md
-[ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/

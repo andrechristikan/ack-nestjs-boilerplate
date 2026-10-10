@@ -19,7 +19,7 @@ Status codes for this module live in the `52100` block. Catalog: [Status Codes](
 
 ## Related Documents
 
-- [Authorization](authorization.md): `EnumPolicySubject.analytic` on admin routes
+- [Authorization](authorization.md): `EnumPolicySubject.Analytic` on admin routes, `EnumPolicySubject.WorkspaceAnalytic` on workspace routes
 - [Cache](cache.md): `CacheMainProvider` and feature cache classes
 - [Configuration](configuration.md): `analytic.config.ts`
 - [Activity Log](activity-log.md): actions Analytic counts, including `userLoginFailed` and `userReachMaxPasswordAttempt`
@@ -69,8 +69,7 @@ flowchart LR
 - `@ApiKeyProtected`
 - `@AuthJwtAccessProtected`
 - `@UserProtected`
-- `@RoleProtected(EnumRoleType.admin)`
-- `@PolicyProtected({ subject: EnumPolicySubject.analytic, action: [EnumPolicyAction.read] })`
+- `@PlatformPolicyProtected({ subject: EnumPolicySubject.Analytic, action: [EnumPolicyAction.read] })`
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
@@ -83,11 +82,12 @@ Admin scope carries no workspace header.
 - `@FeatureFlagProtected('workspace')`
 - `@UserProtected`
 - `@WorkspaceProtected`
-- `@WorkspaceMemberProtected` (with role where noted)
+- `@WorkspaceMemberProtected`
+- `@WorkspacePolicyProtected({ subject: EnumPolicySubject.WorkspaceAnalytic, action: [EnumPolicyAction.read] })` on every route
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
-The workspace comes from `x-workspace-id` only. These routes do not use `PolicyProtected` or `EnumPolicySubject.analytic`.
+The workspace comes from `x-workspace-id`. The policy is evaluated against the caller's workspace role: the seeded `owner` and `admin` hold `workspaceAnalytic:[read]`, the `member` does not.
 
 ### Admin dashboard
 
@@ -202,7 +202,7 @@ Fraud routes live under `/admin/analytic/fraud`. Each signal exposes a summary a
 | `GET` | `/admin/analytic/fraud/backup-code-new-device/list` | Offset-paginated backup-code-new-device rows |
 | `GET` | `/admin/analytic/fraud/api-key-burst` | API-key burst summary (`windowMs`) |
 | `GET` | `/admin/analytic/fraud/api-key-burst/list` | Offset-paginated API-key burst rows |
-| `GET` | `/admin/analytic/fraud/risk-score/:userId` | Fraud risk score for one user (Mongo id path param) |
+| `GET` | `/admin/analytic/fraud/risk-score/:userId` | Fraud risk score for one user (UUID path param) |
 | `GET` | `/admin/analytic/fraud/risk-scores` | Offset-paginated fraud risk scores |
 
 ### Admin anomaly
@@ -228,11 +228,11 @@ Mounted at `/user/analytic`. One controller: `AnalyticUserController` (`analytic
 
 | Method | Path | Who | Returns |
 |---|---|---|---|
-| `GET` | `/user/analytic/workspace/summary` | Any workspace member | Workspace summary (optional date range) |
-| `GET` | `/user/analytic/workspace/invite-funnel` | Workspace `admin` (owner satisfies every role check) | Invite status counts for a required date range (`{ statuses: [...] }`) |
-| `GET` | `/user/analytic/workspace/join-outcomes` | Workspace `admin` (owner satisfies every role check) | Join-request status counts for a required date range (`{ statuses: [...] }`) |
-| `GET` | `/user/analytic/workspace/member-roles` | Workspace `admin` (owner satisfies every role check) | Member role counts (`{ roles: [...] }`) |
-| `GET` | `/user/analytic/workspace/activity` | Workspace `admin` (owner satisfies every role check) | Activity count for a required date range |
+| `GET` | `/user/analytic/workspace/summary` | `analytic:[read]` in the workspace role | Workspace summary (optional date range) |
+| `GET` | `/user/analytic/workspace/invite-funnel` | `analytic:[read]` in the workspace role | Invite status counts for a required date range (`{ statuses: [...] }`) |
+| `GET` | `/user/analytic/workspace/join-outcomes` | `analytic:[read]` in the workspace role | Join-request status counts for a required date range (`{ statuses: [...] }`) |
+| `GET` | `/user/analytic/workspace/member-roles` | `analytic:[read]` in the workspace role | Member counts per workspace role key (`{ roles: [...] }`) |
+| `GET` | `/user/analytic/workspace/activity` | `analytic:[read]` in the workspace role | Activity count for a required date range |
 
 ### Query shapes and pagination
 
@@ -245,7 +245,7 @@ A signal that the database cannot group and page in one query computes its rows,
 
 Every route declares its payload on `@Response` or `@ResponsePagination`. Schemas live in `src/modules/analytic/dtos/response/`. Handlers return `IResponseReturn<T>` or `IResponsePaginationReturn<T>`; the response interceptors serialize `data` against the declared schema. Flow: [Response](response.md).
 
-Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePagination`. Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`. Published OpenAPI errors are kit-only; domain exceptions such as `AnalyticInvalidDateRangeException` appear in OpenAPI only when an endpoint opts in with `@DocErrors`. Flow: [Doc](doc.md).
+Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePagination`. Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`. Published OpenAPI errors are kit-only; domain exceptions such as `AnalyticInvalidDateRangeException` do not appear in OpenAPI. Flow: [Doc](doc.md).
 
 ## Caching and config
 
@@ -271,7 +271,7 @@ Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRa
 
 ## Authorization
 
-Admin analytic routes require `EnumPolicySubject.analytic` with `EnumPolicyAction.read`, plus `EnumRoleType.admin`. The subject is seeded with the other policy subjects for roles that receive every subject. User workspace analytic routes authorize through workspace membership, not CASL. Details: [Authorization](authorization.md).
+Admin analytic routes require `EnumPolicySubject.analytic` with `EnumPolicyAction.read` from the caller's platform role (`admin` and `superAdmin` hold it). User workspace analytic routes other than the summary require the same policy from the caller's workspace role (`owner` and `admin` hold it); the summary needs workspace membership only. Details: [Authorization](authorization.md).
 
 ## Status codes
 

@@ -1,46 +1,35 @@
-import {
-    SetMetadata,
-    UseGuards,
-    applyDecorators,
-    createParamDecorator,
-} from '@nestjs/common';
-import { ClsServiceManager } from 'nestjs-cls';
+import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 import {
     DocPolicyErrorResponses,
     PolicyRequiredMetaKey,
-    PolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
+import { EnumPolicyPlatformSubject } from '@modules/policy/enums/policy.enum';
+import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import type { Policy } from '@generated/prisma-client/client';
+import type {
+    IPolicyRequired,
+    PolicySubject,
+} from '@modules/policy/interfaces/policy.interface';
 
-/**
- * Protects a route, requiring the caller to hold the given policies, and documents policy kits.
- * @public
- */
-export function PolicyProtected(
-    ...requiredPolicies: PolicyRequestDto[]
+/** Builds the request ability and enforces the declared subject/action policies. */
+export function PolicyProtected<TSubject extends PolicySubject>(
+    ...requirements: IPolicyRequired<TSubject>[]
 ): MethodDecorator {
     return applyDecorators(
-        UseGuards(PolicyGuard),
-        SetMetadata(PolicyRequiredMetaKey, requiredPolicies),
+        UseGuards(PolicyAbilityGuard, PolicyGuard),
+        SetMetadata(PolicyRequiredMetaKey, requirements),
         DocPolicyErrorResponses.forbidden,
         DocPolicyErrorResponses.predefinedNotFound
     );
 }
 
-/**
- * Reads the caller's role policies that `RoleGuard` stored; an empty list is a valid value, and a missing store entry throws.
- * @public
- */
-export const PolicyCurrent = createParamDecorator((): Policy[] => {
-    const policies = ClsServiceManager.getClsService().get<
-        Policy[] | undefined
-    >(PolicyStoreKey);
-    if (policies === undefined || policies === null) {
-        throw new RequestContextMissingException(PolicyStoreKey);
-    }
+/** Builds the request ability without declaring a policy requirement. */
+export function PolicyAbilityProtected(): MethodDecorator {
+    return applyDecorators(UseGuards(PolicyAbilityGuard));
+}
 
-    return policies;
-});
+export function PlatformPolicyProtected(
+    ...requirements: IPolicyRequired<EnumPolicyPlatformSubject>[]
+): MethodDecorator {
+    return PolicyProtected(...requirements);
+}

@@ -14,7 +14,8 @@ import { TermPolicyContentNotFoundException } from '@modules/term-policy/excepti
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
-    ITermPolicyContent,
+    ITermPolicy,
+    ITermPolicyContentCreate,
     ITermPolicyContentPresign,
     ITermPolicyContentUpload,
 } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -53,7 +54,7 @@ export class TermPolicyContentDomain {
         });
     }
 
-    private async findOneDraftById(termPolicyId: string): Promise<TermPolicy> {
+    private async findOneDraftById(termPolicyId: string): Promise<ITermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -118,11 +119,9 @@ export class TermPolicyContentDomain {
         try {
             const presign = this.awsS3Service.mapPresign(
                 { key, size },
-                {
-                    access: EnumAwsS3Accessibility.private,
-                }
+                { access: EnumAwsS3Accessibility.private }
             );
-            const mappedContent: ITermPolicyContent = {
+            const mappedContent: ITermPolicyContentCreate = {
                 language,
                 ...presign,
             };
@@ -136,7 +135,6 @@ export class TermPolicyContentDomain {
             ];
             await this.termPolicyRepository.updateContent(
                 termPolicyId,
-                termPolicy.contents as unknown as ITermPolicyContent[],
                 mappedContent
             );
 
@@ -159,7 +157,7 @@ export class TermPolicyContentDomain {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            termPolicy.contents,
             language
         );
         if (existingContent) {
@@ -169,11 +167,9 @@ export class TermPolicyContentDomain {
         try {
             const presign = this.awsS3Service.mapPresign(
                 { key, size },
-                {
-                    access: EnumAwsS3Accessibility.private,
-                }
+                { access: EnumAwsS3Accessibility.private }
             );
-            const mappedContent: ITermPolicyContent = {
+            const mappedContent: ITermPolicyContentCreate = {
                 language,
                 ...presign,
             };
@@ -209,7 +205,7 @@ export class TermPolicyContentDomain {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            termPolicy.contents,
             language
         );
         if (!existingContent) {
@@ -225,11 +221,9 @@ export class TermPolicyContentDomain {
                     timestamp
                 ),
             ];
-            await this.termPolicyRepository.removeContent(
-                termPolicyId,
-                termPolicy.contents as unknown as ITermPolicyContent[],
-                { language }
-            );
+            await this.termPolicyRepository.removeContent(termPolicyId, {
+                language,
+            });
 
             this.activityLogDomain.stagePrepared(events);
 
@@ -254,7 +248,7 @@ export class TermPolicyContentDomain {
         }
 
         const existContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            termPolicy.contents,
             language
         );
         if (!existContent) {
@@ -263,7 +257,7 @@ export class TermPolicyContentDomain {
 
         const awsPresign: IAwsS3Presign | null =
             await this.awsS3Service.presignGetItem(existContent.key, {
-                access: existContent.access,
+                access: existContent.access as EnumAwsS3Accessibility,
             });
 
         if (!awsPresign) {

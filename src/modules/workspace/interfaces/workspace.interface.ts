@@ -1,20 +1,28 @@
-import {
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
 import type {
     Prisma,
     Workspace,
-    WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import type { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
+import type { IRole } from '@modules/role/interfaces/role.interface';
+import type {
+    WorkspaceInviteRoleInclude,
+    WorkspaceInviteUserListSelect,
+} from '@modules/workspace/constants/workspace.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
 export interface IWorkspaceMember extends WorkspaceMember {
     user: IUserRef;
+    role: IRole;
 }
+
+export interface IWorkspaceMemberWithRole extends WorkspaceMember {
+    role: IRole;
+}
+
+export type IWorkspaceInviteWithRole = Prisma.WorkspaceInviteGetPayload<{
+    include: typeof WorkspaceInviteRoleInclude;
+}>;
 
 export type IWorkspaceInviteList = Prisma.WorkspaceInviteGetPayload<{
     select: typeof WorkspaceInviteUserListSelect;
@@ -54,9 +62,9 @@ export interface IWorkspaceUpdate {
 
 export interface IWorkspaceInviteCreate {
     email: Lowercase<string>;
-    workspaceRole: EnumWorkspaceMemberRole;
+    workspaceRoleId: string;
     projectId?: string;
-    projectRole?: EnumProjectMemberRole;
+    projectRoleId?: string;
     expiryDuration?: EnumWorkspaceInviteExpiry;
 }
 
@@ -64,9 +72,9 @@ export interface IWorkspaceInviteCreateData {
     workspaceInviteId: string;
     workspaceId: string;
     email: string;
-    workspaceRole: EnumWorkspaceMemberRole;
+    workspaceRoleId: string;
     projectId?: string;
-    projectRole?: EnumProjectMemberRole;
+    projectRoleId?: string;
     hashedToken: string;
     reference: string;
     expiredAt: Date;
@@ -75,14 +83,14 @@ export interface IWorkspaceInviteCreateData {
 
 export interface IWorkspaceInvitePreview {
     workspace: Workspace;
-    invite: WorkspaceInvite;
+    invite: IWorkspaceInviteWithRole;
     inviter: IWorkspaceInviteInviter | null;
 }
 
 export interface IWorkspaceInvitePreviewSummary {
     workspaceName: string;
     inviterName: string;
-    workspaceRole: EnumWorkspaceMemberRole;
+    workspaceRole: IRole;
     expiredAt: Date;
 }
 

@@ -138,7 +138,7 @@ export class NotificationPushQueue {
             workspaceId,
             workspaceName,
             inviterName,
-            workspaceMemberRole,
+            workspaceRoleName,
             reference,
             expiredAt,
         }: INotificationWorkspaceInvitePushPayload
@@ -150,7 +150,7 @@ export class NotificationPushQueue {
                     workspaceId,
                     workspaceName,
                     inviterName,
-                    workspaceMemberRole,
+                    workspaceRoleName,
                     reference,
                     expiredAt,
                 },

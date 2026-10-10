@@ -4,7 +4,7 @@ import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/reque
 import { WorkspaceAdminListRequestSchema } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -18,14 +18,13 @@ import type {
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { EnumPolicyPlatformSubject } from '@modules/policy/enums/policy.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 
@@ -54,11 +53,10 @@ export class WorkspaceAdminController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -79,21 +77,20 @@ export class WorkspaceAdminController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Get('/get/:workspaceId')
     async get(
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.getByIdForAdmin(workspaceId);
+        return this.workspaceHttpService.getForAdmin(workspaceId);
     }
 
     @Doc({ summary: 'admin list members of a workspace (read-only)' })
@@ -101,11 +98,10 @@ export class WorkspaceAdminController {
         schema: WorkspaceMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+    @PlatformPolicyProtected({
+        subject: EnumPolicyPlatformSubject.WorkspaceMember,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -114,7 +110,7 @@ export class WorkspaceAdminController {
     async membersList(
         @Query({ schema: WorkspaceAdminMemberListRequestSchema })
         query: WorkspaceAdminMemberListRequestDto,
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberHttpService.getMembersListForAdmin(

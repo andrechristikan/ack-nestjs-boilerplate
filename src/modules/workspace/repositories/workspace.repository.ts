@@ -27,7 +27,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
-                OR: WorkspaceActiveFilter,
+                ...WorkspaceActiveFilter,
             },
         });
     }
@@ -37,7 +37,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 slug,
                 isPublic: true,
-                OR: WorkspaceActiveFilter,
+                ...WorkspaceActiveFilter,
             },
         });
     }
@@ -80,7 +80,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 AND: [
                     where ?? {},
-                    { OR: WorkspaceActiveFilter },
+                    WorkspaceActiveFilter,
                     { members: { some: { userId } } },
                 ],
             },
@@ -89,10 +89,11 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async findWithPaginationOffsetForAdmin(
         {
-            where,
+            where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+        isPublic?: Record<string, IPaginationEqual>,
+        where?: Prisma.WorkspaceWhereInput
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.paginationService.offset<
             Workspace,
@@ -100,8 +101,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         >(this.databaseService.client.workspace, {
             ...others,
             where: {
-                ...where,
-                ...isPublic,
+                AND: [filters ?? {}, { ...isPublic }, where ?? {}],
             },
         });
     }

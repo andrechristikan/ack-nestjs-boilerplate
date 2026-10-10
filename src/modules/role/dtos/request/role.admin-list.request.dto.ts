@@ -4,6 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import {
     RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
+    RoleDefaultScope,
 } from '@modules/role/constants/role.list.constant';
 
 /**
@@ -25,10 +26,13 @@ export const RoleAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
             description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${RoleDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
             example: `${RoleDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
-    type: z.string().optional().meta({
-        description: 'Filter by type, comma-delimited',
-        example: '',
-    }),
+    scope: z
+        .string()
+        .optional()
+        .meta({
+            description: `Filter by scope, comma-delimited. Available scopes: ${RoleDefaultScope.join(', ')}`,
+            example: '',
+        }),
 });
 
 /**

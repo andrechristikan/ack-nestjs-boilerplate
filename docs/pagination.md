@@ -286,8 +286,8 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
         example: `${UserDefaultAvailableOrderBy[0]}:desc`,
     }),
     status: z.string().optional().meta({ … }),
-    roleId: RequestMongoIdSchema.optional().meta({ … }),
-    countryId: RequestMongoIdSchema.optional().meta({ … }),
+    roleId: RequestUuidSchema.optional().meta({ … }),
+    countryId: RequestUuidSchema.optional().meta({ … }),
 });
 ```
 
@@ -385,7 +385,7 @@ The route prefix decides the strategy, not the endpoint:
 | `/admin/**` | offset |
 | `/user`, `/shared`, `/system`, `/public` | cursor |
 
-There is no per-endpoint exception list. The policy lists (`/admin/role/:roleId/policy/list` and `/system/role/:roleId/policy/list`) return the whole set under `@Response`, so they take no pagination at all.
+`GET /shared/role/list` is offset: it returns `count`, `page`, and `totalPage`, and takes `page`, `perPage`, `search`, and `orderBy` (`createdAt`, `name`). The policy lists (`/admin/role/:roleId/policy/list` and `/system/role/:roleId/policy/list`) return the whole set under `@Response`, so they take no pagination at all.
 
 Two consequences a client has to plan around:
 
@@ -613,11 +613,10 @@ A list route travels `Controller → HTTP Service → Domain → Repository`. Th
 @Doc({ summary: 'get all users' })
 @ResponsePagination('user.list', { schema: UserListResponseSchema })
 @TermPolicyAcceptanceProtected()
-@PolicyProtected({
-    subject: EnumPolicySubject.user,
+@PlatformPolicyProtected({
+    subject: EnumPolicySubject.User,
     action: [EnumPolicyAction.read],
 })
-@RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
 @ApiKeyProtected()

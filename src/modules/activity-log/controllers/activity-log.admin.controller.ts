@@ -2,7 +2,7 @@ import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/
 import { ActivityLogAdminListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 
@@ -11,8 +11,7 @@ import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param, Query } from '@nestjs/common';
@@ -20,7 +19,6 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.activityLog')
@@ -38,17 +36,16 @@ export class ActivityLogAdminController {
         schema: ActivityLogResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.activityLog,
+            subject: EnumPolicySubject.ActivityLog,
             action: [EnumPolicyAction.read],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -57,10 +54,10 @@ export class ActivityLogAdminController {
     async listByUser(
         @Query({ schema: ActivityLogAdminListRequestSchema })
         query: ActivityLogAdminListRequestDto,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByUser(userId, query);
+        return this.activityLogHttpService.getListOffset({ userId }, query);
     }
 
     @Doc({ summary: 'get all activity logs of a workspace' })
@@ -68,17 +65,16 @@ export class ActivityLogAdminController {
         schema: ActivityLogResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
-            subject: EnumPolicySubject.workspace,
+            subject: EnumPolicySubject.Workspace,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.activityLog,
+            subject: EnumPolicySubject.ActivityLog,
             action: [EnumPolicyAction.read],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -87,14 +83,13 @@ export class ActivityLogAdminController {
     async listByWorkspace(
         @Query({ schema: ActivityLogAdminListRequestSchema })
         query: ActivityLogAdminListRequestDto,
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string,
-        @Query('userId', { schema: RequestMongoIdSchema.optional() })
+        @Query('userId', { schema: RequestUuidSchema.optional() })
         userId?: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByWorkspace(
-            workspaceId,
-            userId ?? null,
+        return this.activityLogHttpService.getListOffset(
+            { workspaceId, ...(userId ? { userId } : {}) },
             query
         );
     }

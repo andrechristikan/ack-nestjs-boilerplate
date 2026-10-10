@@ -40,7 +40,6 @@ describe('AnalyticAnomalyHttpService', () => {
     let service: AnalyticAnomalyHttpService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         paginationQueryUtil.offset.mockReturnValue({
             params: pagination,
             storePatch: {},

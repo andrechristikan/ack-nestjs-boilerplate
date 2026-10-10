@@ -1,4 +1,7 @@
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
@@ -6,9 +9,14 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumRoleScope,
+    Prisma,
+} from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import { ProjectSlugInvalidException } from '@modules/project/exceptions/project.slug-invalid.exception';
@@ -17,7 +25,9 @@ import type {
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
-import { ProjectUtil } from '@modules/project/utils/project.util';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -31,11 +41,14 @@ export class ProjectDomain {
 
     constructor(
         private readonly projectRepository: ProjectRepository,
-        private readonly projectUtil: ProjectUtil,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly projectMemberDomain: ProjectMemberDomain,
+        private readonly roleDomain: RoleDomain
     ) {
         this.slugRegex = this.configService.get<RegExp>('project.slugRegex')!;
         this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
@@ -61,6 +74,39 @@ export class ProjectDomain {
         if (slug.length > this.slugMaxLength || !isSlugPatternValid) {
             throw new ProjectSlugInvalidException();
         }
+    }
+
+    private async createWithAdminMemberInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        actorId: string,
+        create: IProjectCreate,
+        slug: string
+    ): Promise<Project> {
+        const adminRole = await this.roleDomain.getByScopeAndKeyInTx(
+            tx,
+            EnumRoleScope.project,
+            EnumRoleProjectKey.admin
+        );
+        if (!adminRole) {
+            throw new RoleNotFoundException();
+        }
+
+        const project = await this.projectRepository.createInTx(
+            tx,
+            workspaceId,
+            create,
+            slug
+        );
+        await this.projectMemberDomain.createInTx(
+            tx,
+            project.id,
+            actorId,
+            adminRole.id,
+            actorId
+        );
+
+        return project;
     }
 
     async validateProjectGuard(
@@ -94,23 +140,20 @@ export class ProjectDomain {
         );
     }
 
-    /** Lists projects in the workspace: a workspace `owner` sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
+    /** Lists projects in the workspace narrowed by the policy predicate from the HTTP layer; which projects a member sees is the policy's call. */
     async getListForMember(
         workspaceId: string,
-        workspaceMember: WorkspaceMember,
-        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
-        const isWorkspaceOwner =
-            this.projectUtil.isWorkspaceOwner(workspaceMember);
-        const memberUserId = isWorkspaceOwner ? null : workspaceMember.userId;
-
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
-            memberUserId,
-            pagination
+            pagination,
+            where
         );
     }
 
+    /** Creates the project and adds the creator as its project `admin` member in one transaction, so a new project is never left without a member able to manage it. */
     async createProject(
         workspaceId: string,
         actorId: string,
@@ -123,22 +166,46 @@ export class ProjectDomain {
                 createdBy: actorId,
                 workspaceId: workspaceId,
             }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberAssigned,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: workspaceId,
+                metadata: { targetUserId: actorId },
+            }),
         ];
 
         const slugCandidates = this.drawSlugCandidates();
-        const project = await this.projectRepository.create(
-            workspaceId,
-            create,
-            slugCandidates
-        );
+        for (const slug of slugCandidates) {
+            let project: Project;
+            try {
+                project = await this.databaseService.withTransaction(tx =>
+                    this.createWithAdminMemberInTx(
+                        tx,
+                        workspaceId,
+                        actorId,
+                        create,
+                        slug
+                    )
+                );
+            } catch (error: unknown) {
+                const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                    error,
+                    'slug'
+                );
+                if (!isSlugCollision) {
+                    throw error;
+                }
 
-        this.activityLogDomain.stagePrepared(events);
+                continue;
+            }
 
-        return project;
-    }
+            this.activityLogDomain.stagePrepared(events);
 
-    getProject(project: Project): Project {
-        return project;
+            return project;
+        }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 
     async updateProject(
@@ -229,11 +296,13 @@ export class ProjectDomain {
 
     async getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId?: string,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationOffsetForAdmin(
             pagination,
-            workspaceId
+            workspaceId,
+            where
         );
     }
 

@@ -1,9 +1,15 @@
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { subject } from '@casl/ability';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
@@ -12,7 +18,10 @@ import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos
 import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceMember,
+    IWorkspaceMemberWithRole,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -20,17 +29,22 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceMemberHttpService {
     constructor(
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async transferOwnership(
-        workspaceId: string,
-        actorMember: WorkspaceMember,
+        workspace: Workspace,
+        actorMember: IWorkspaceMemberWithRole,
         { targetUserId }: WorkspaceTransferOwnershipRequestDto
     ): Promise<void> {
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Workspace, workspace)
+        );
         await this.workspaceMemberDomain.transferOwnership(
-            workspaceId,
+            workspace.id,
             actorMember,
             targetUserId
         );
@@ -38,7 +52,7 @@ export class WorkspaceMemberHttpService {
 
     async leaveWorkspace(
         workspaceId: string,
-        member: WorkspaceMember
+        member: IWorkspaceMemberWithRole
     ): Promise<void> {
         await this.workspaceMemberDomain.leaveWorkspace(workspaceId, member);
     }
@@ -47,6 +61,11 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceMember
+        );
+
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceMemberWhereInput>(
                 query,
@@ -55,7 +74,7 @@ export class WorkspaceMemberHttpService {
                 }
             );
         const role = this.paginationQueryUtil.inEnum(
-            Prisma.WorkspaceMemberScalarFieldEnum.role,
+            'role',
             query.role,
             WorkspaceMemberDefaultRole
         );
@@ -71,7 +90,8 @@ export class WorkspaceMemberHttpService {
             await this.workspaceMemberDomain.getMembersList(
                 workspaceId,
                 params,
-                role?.where
+                role?.where,
+                accessibleWhere
             );
 
         return {
@@ -82,27 +102,45 @@ export class WorkspaceMemberHttpService {
 
     async updateMemberRole(
         workspaceId: string,
-        actorMember: WorkspaceMember,
+        actorMember: IWorkspaceMemberWithRole,
         targetMemberId: string,
-        { role }: WorkspaceMemberUpdateRoleRequestDto
+        { roleId }: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<void> {
+        const targetMember =
+            await this.workspaceMemberDomain.getOneByIdAndWorkspace(
+                workspaceId,
+                targetMemberId
+            );
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.WorkspaceMember, targetMember)
+        );
         await this.workspaceMemberDomain.updateMemberRole(
             workspaceId,
             actorMember,
-            targetMemberId,
-            role
+            targetMember,
+            roleId
         );
     }
 
     async removeMember(
         workspaceId: string,
-        actorMember: WorkspaceMember,
+        actorMember: IWorkspaceMemberWithRole,
         targetMemberId: string
     ): Promise<void> {
+        const targetMember =
+            await this.workspaceMemberDomain.getOneByIdAndWorkspace(
+                workspaceId,
+                targetMemberId
+            );
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.WorkspaceMember, targetMember)
+        );
         await this.workspaceMemberDomain.removeMember(
             workspaceId,
             actorMember,
-            targetMemberId
+            targetMember
         );
     }
 
@@ -110,6 +148,11 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceMember
+        );
+
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(
                 query,
@@ -122,7 +165,8 @@ export class WorkspaceMemberHttpService {
         const { data, ...others } =
             await this.workspaceMemberDomain.getMembersListForAdmin(
                 workspaceId,
-                params
+                params,
+                accessibleWhere
             );
 
         return {

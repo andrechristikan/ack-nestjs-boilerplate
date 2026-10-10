@@ -3,7 +3,7 @@ import { RoleDomain } from '@modules/role/domains/role.domain';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import { Global, Module } from '@nestjs/common';
 
-/** Global so the role guard reaches the role domain service and the role mapping app-wide. */
+/** Global so every module reaches the role domain service and the role mapping app-wide. */
 @Global()
 @Module({
     controllers: [],

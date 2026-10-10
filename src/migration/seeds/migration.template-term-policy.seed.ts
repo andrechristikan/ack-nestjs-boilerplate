@@ -1,6 +1,5 @@
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
@@ -35,7 +34,6 @@ export class MigrationTemplateTermPolicySeed
         private readonly termPolicyTemplateDomain: TermPolicyTemplateDomain,
         private readonly databaseService: DatabaseService,
         private readonly awsS3Service: AwsS3Service,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
         super();
@@ -92,13 +90,20 @@ export class MigrationTemplateTermPolicySeed
             await this.databaseService.withTransaction(
                 async tx => {
                     for (const { type, asset } of policies) {
-                        const contents: Prisma.TermPolicyContentCreateInput[] =
-                            this.databaseUtil.toPlainArray([
+                        if (!asset) {
+                            throw new Error(
+                                `Template asset for ${type} could not be imported`
+                            );
+                        }
+
+                        const { data: _data, ...content } = asset;
+                        const contents: Prisma.TermPolicyContentCreateManyTermPolicyInput[] =
+                            [
                                 {
                                     language: EnumMessageLanguage.en,
-                                    ...asset,
+                                    ...content,
                                 },
-                            ]);
+                            ];
 
                         await tx.termPolicy.upsert({
                             where: {
@@ -111,12 +116,15 @@ export class MigrationTemplateTermPolicySeed
                                 type,
                                 version: 1,
                                 status: EnumTermPolicyStatus.published,
-                                contents,
+                                contents: { createMany: { data: contents } },
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },
                             update: {
-                                contents,
+                                contents: {
+                                    deleteMany: {},
+                                    createMany: { data: contents },
+                                },
                                 updatedBy: MigrationUserSuperAdminId,
                             },
                         });

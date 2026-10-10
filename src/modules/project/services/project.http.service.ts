@@ -1,12 +1,19 @@
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { subject } from '@casl/ability';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
 import {
     ProjectCursorAvailableOrderBy,
     ProjectDefaultAvailableOrderBy,
@@ -24,15 +31,19 @@ import { Injectable } from '@nestjs/common';
 export class ProjectHttpService {
     constructor(
         private readonly projectDomain: ProjectDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListForMember(
         workspaceId: string,
-        workspaceMember: WorkspaceMember,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Project
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectWhereInput>(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
@@ -42,8 +53,8 @@ export class ProjectHttpService {
 
         const { data, ...others } = await this.projectDomain.getListForMember(
             workspaceId,
-            workspaceMember,
-            params
+            params,
+            accessibleWhere
         );
 
         return {
@@ -57,6 +68,10 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.create,
+            subject(EnumPolicySubject.Project, { workspaceId })
+        );
         const project = await this.projectDomain.createProject(
             workspaceId,
             actorId,
@@ -67,9 +82,11 @@ export class ProjectHttpService {
     }
 
     getProject(project: Project): IResponseReturn<Project> {
-        const current = this.projectDomain.getProject(project);
-
-        return { data: current };
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Project, project)
+        );
+        return { data: project };
     }
 
     async updateProject(
@@ -77,6 +94,10 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Project, project)
+        );
         const updated = await this.projectDomain.updateProject(
             project,
             actorId,
@@ -91,6 +112,10 @@ export class ProjectHttpService {
         actorId: string,
         { slug }: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Project, project)
+        );
         const updated = await this.projectDomain.updateProjectSlug(
             project,
             actorId,
@@ -101,12 +126,20 @@ export class ProjectHttpService {
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.Project, project)
+        );
         await this.projectDomain.softDeleteProject(project, actorId);
     }
 
     async getListForAdmin(
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Project
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ProjectWhereInput>(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
@@ -124,7 +157,8 @@ export class ProjectHttpService {
 
         const { data, ...others } = await this.projectDomain.getListForAdmin(
             params,
-            query.workspaceId as string | undefined
+            query.workspaceId as string | undefined,
+            accessibleWhere
         );
 
         return {
@@ -133,11 +167,26 @@ export class ProjectHttpService {
         };
     }
 
-    async getByIdForAdmin(
-        projectId: string
-    ): Promise<IResponseReturn<Project>> {
+    async getForAdmin(projectId: string): Promise<IResponseReturn<Project>> {
         const project = await this.projectDomain.getByIdForAdmin(projectId);
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Project, project)
+        );
 
         return { data: project };
+    }
+
+    getEffectivePermissions(project: Project): IResponseReturn<{
+        permissions: IEffectivePermission[];
+    }> {
+        const permissions = this.policyAbilityDomain.getEffectivePermissions([
+            subject(EnumPolicySubject.Project, project),
+            subject(EnumPolicySubject.ProjectMember, {
+                projectId: project.id,
+            }),
+        ]);
+
+        return { data: { permissions } };
     }
 }

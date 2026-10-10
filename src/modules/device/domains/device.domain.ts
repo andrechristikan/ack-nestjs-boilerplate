@@ -14,6 +14,7 @@ import {
     EnumDeviceNotificationProvider,
     Prisma,
 } from '@generated/prisma-client/client';
+import type { DeviceOwnership } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
@@ -45,12 +46,14 @@ export class DeviceDomain {
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked?: Record<string, IPaginationEqual>,
+        where?: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked
+            isRevoked,
+            where
         );
     }
 
@@ -294,6 +297,23 @@ export class DeviceDomain {
 
             throw new AppUnknownException(err);
         }
+    }
+
+    /** Returns the active ownership of the user; callers judge it, this method does not. */
+    async getOneActive(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<DeviceOwnership> {
+        const deviceOwnership =
+            await this.deviceOwnershipRepository.findOneActive(
+                userId,
+                deviceOwnershipId
+            );
+        if (!deviceOwnership) {
+            throw new DeviceNotFoundException();
+        }
+
+        return deviceOwnership;
     }
 
     async removeByAdmin(

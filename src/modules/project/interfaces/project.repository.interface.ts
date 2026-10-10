@@ -22,23 +22,19 @@ export interface IProjectRepository {
     ): Promise<boolean>;
     findWithPaginationCursorForWorkspace(
         workspaceId: string,
-        memberUserId: string | null,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        params: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>>;
     findWithPaginationOffsetForAdmin(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        params: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
+        workspaceId?: string,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>>;
-    create(
+    createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: ProjectCreateRequestDto,
-        slugCandidates: string[]
+        slug: string
     ): Promise<Project>;
     updateDetails(
         projectId: string,

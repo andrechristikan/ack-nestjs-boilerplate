@@ -6,6 +6,8 @@ import { NotificationSharedController } from '@modules/notification/controllers/
 import { NotificationHttpModule } from '@modules/notification/notification.http.module';
 import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
 import { PasswordHistoryHttpModule } from '@modules/password-history/password-history.http.module';
+import { RoleHttpModule } from '@modules/role/role.http.module';
+import { RoleSharedController } from '@modules/role/controllers/role.shared.controller';
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
 import { SessionHttpModule } from '@modules/session/session.http.module';
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
@@ -17,7 +19,7 @@ import { Module } from '@nestjs/common';
 
 /**
  * Mounts controllers shared across access levels: user, password history,
- * activity log, session, term policy, device, and notification.
+ * activity log, session, term policy, device, notification, and role catalog.
  */
 @Module({
     controllers: [
@@ -28,6 +30,7 @@ import { Module } from '@nestjs/common';
         TermPolicySharedController,
         DeviceSharedController,
         NotificationSharedController,
+        RoleSharedController,
     ],
     providers: [],
     exports: [],
@@ -40,6 +43,7 @@ import { Module } from '@nestjs/common';
         TermPolicyHttpModule,
         NotificationHttpModule,
         WorkspaceHttpModule,
+        RoleHttpModule,
     ],
 })
 export class RouterHttpSharedModule {}

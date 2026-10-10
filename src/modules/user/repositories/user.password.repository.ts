@@ -2,6 +2,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { TwoFactorActiveBackupCodesFilter } from '@modules/user/constants/user.constant';
 import { EnumUserStatus } from '@generated/prisma-client/client';
 import type { ForgotPassword } from '@generated/prisma-client/client';
 import type {
@@ -38,8 +39,14 @@ export class UserPasswordRepository implements IUserPasswordRepository {
             include: {
                 user: {
                     include: {
-                        role: { include: { policies: true } },
-                        twoFactor: true,
+                        role: true,
+                        twoFactor: {
+                            include: {
+                                backupCodes: {
+                                    where: TwoFactorActiveBackupCodesFilter,
+                                },
+                            },
+                        },
                     },
                 },
             },

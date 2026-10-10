@@ -4,7 +4,7 @@ Auth lives in `src/modules/auth`. Sessions live in `src/modules/session`. API ke
 
 ## Overview
 
-Credential login, JWT access/refresh (ES256/ES512), Redis plus Mongo sessions, Google/Apple social login, and API keys.
+Credential login, JWT access/refresh (ES256/ES512), Redis plus PostgreSQL sessions, Google/Apple social login, and API keys.
 
 - **Password:** bcrypt hash, expiration, rotation, attempt limits, history, and reset/change/temporary-password flows that invalidate sessions.
 - **JWT:** access and refresh tokens, `jti` checked against the session on each request.
@@ -262,7 +262,7 @@ sequenceDiagram
     Redis-->>API: Session cached
     
     API-->>Client: Response with tokens
-    Note over Client: data.isTwoFactorEnable: false<br/>data.lastWorkspaceId, data.lastWorkspaceChangedAt<br/>data.tokens: { tokenType: Bearer,<br/>roleType: user/admin/superAdmin,<br/>expiresIn: 3600,<br/>accessToken, refreshToken }
+    Note over Client: data.isTwoFactorEnable: false<br/>data.lastWorkspaceId, data.lastWorkspaceChangedAt<br/>data.tokens: { tokenType: Bearer,<br/>roleKey: user/admin/superAdmin,<br/>roleScope: platform,<br/>expiresIn: 3600,<br/>accessToken, refreshToken }
     
     Client->>Client: Store tokens securely
     
@@ -311,7 +311,7 @@ Both rows are written on every lockout, including one where the user had no acti
 The transaction runs once:
 
 - A domain exception raised inside it travels out as it is.
-- Every other failure, a MongoDB write conflict (`P2034`) included, answers 500 (`AppUnknownException`). On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
+- Every other failure, a transaction write conflict (`P2034`) included, answers 500 (`AppUnknownException`). On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
 
 ```mermaid
 sequenceDiagram
@@ -1135,7 +1135,7 @@ Global prefix `/api` and version `v1` apply as elsewhere.
 | `DELETE` | `/admin/user/:userId/session/revoke/:sessionId` | Revoke one session of a user |
 | `DELETE` | `/admin/user/:userId/session/revoke-all` | Revoke every active session of a user |
 
-The admin routes carry `@RoleProtected(EnumRoleType.admin)` and `@PolicyProtected` on `user: [read]` plus `session: [read]` (list) or `session: [read, delete]` (both revoke routes), and no workspace guard. Every session route is throttled with `@RequestThrottle({ user: true })`.
+The admin routes carry `@PlatformPolicyProtected` on `User: [read]` plus `Session: [read]` (list) or `Session: [read, delete]` (both revoke routes), and no workspace guard. Every session route is throttled with `@RequestThrottle({ user: true })`.
 
 **Revoke one.** `DELETE /shared/user/session/revoke/:sessionId` and the admin `DELETE /admin/user/:userId/session/revoke/:sessionId`:
 

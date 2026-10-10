@@ -40,7 +40,6 @@ describe('AnalyticFraudHttpService', () => {
     let service: AnalyticFraudHttpService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         paginationQueryUtil.offset.mockReturnValue({
             params: pagination,
             storePatch: {},

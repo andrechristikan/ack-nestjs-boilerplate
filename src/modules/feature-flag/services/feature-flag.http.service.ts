@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -5,7 +6,12 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import {
     FeatureFlagDefaultAvailableOrderBy,
@@ -22,6 +28,7 @@ import { Injectable } from '@nestjs/common';
 export class FeatureFlagHttpService {
     constructor(
         private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -29,6 +36,10 @@ export class FeatureFlagHttpService {
     async getListByAdmin(
         query: FeatureFlagAdminListRequestDto
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.FeatureFlag
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.FeatureFlagWhereInput>(
                 query,
@@ -39,8 +50,10 @@ export class FeatureFlagHttpService {
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        const { data, ...others } =
-            await this.featureFlagDomain.getListByAdmin(params);
+        const { data, ...others } = await this.featureFlagDomain.getListByAdmin(
+            params,
+            accessibleWhere
+        );
 
         return {
             data,
@@ -74,6 +87,11 @@ export class FeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
+        const stored = await this.featureFlagDomain.getOne(id);
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.FeatureFlag, stored)
+        );
         const updated = await this.featureFlagDomain.updateStatusByAdmin(
             id,
             body
@@ -88,6 +106,11 @@ export class FeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
+        const stored = await this.featureFlagDomain.getOne(id);
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.FeatureFlag, stored)
+        );
         const updated = await this.featureFlagDomain.updateMetadataByAdmin(
             id,
             body

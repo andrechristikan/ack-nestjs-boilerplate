@@ -5,7 +5,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type {
-    IAnalyticRoleCount,
+    IAnalyticCountBucket,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
 import type { IWorkspaceMemberAnalyticRepository } from '@modules/workspace/interfaces/workspace.member-analytic-repository.interface';
@@ -20,13 +20,13 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
 
     async groupByRole(
         workspaceId: string | null
-    ): Promise<IAnalyticRoleCount[]> {
+    ): Promise<IAnalyticCountBucket[]> {
         const rows = await this.databaseService.client.workspaceMember.groupBy({
-            by: ['role'],
+            by: ['roleId'],
             where: workspaceId ? { workspaceId } : {},
             _count: { _all: true },
         });
-        return rows.map(r => ({ role: r.role, count: r._count._all }));
+        return rows.map(r => ({ key: r.roleId, count: r._count._all }));
     }
 
     async countByWorkspace(workspaceId: string): Promise<number> {

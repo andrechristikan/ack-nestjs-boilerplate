@@ -6,7 +6,6 @@ import { RoleSchema } from '@modules/role/dtos/role.dto';
  * @public
  */
 export const RoleListResponseSchema = RoleSchema.omit({
-    description: true,
     policies: true,
 }).extend({
     policies: z.number().meta({

@@ -1,7 +1,5 @@
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -20,8 +18,7 @@ import { Injectable } from '@nestjs/common';
 export class ProjectRepository implements IProjectRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly paginationService: PaginationService
     ) {}
 
     async findActiveByIdAndWorkspace(
@@ -32,7 +29,7 @@ export class ProjectRepository implements IProjectRepository {
             where: {
                 id: projectId,
                 workspaceId,
-                OR: ProjectActiveFilter,
+                ...ProjectActiveFilter,
             },
         });
     }
@@ -62,11 +59,11 @@ export class ProjectRepository implements IProjectRepository {
 
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
-        memberUserId: string | null,
         {
-            where,
+            where: filters,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
@@ -74,12 +71,10 @@ export class ProjectRepository implements IProjectRepository {
                 ...others,
                 where: {
                     AND: [
-                        where ?? {},
+                        filters ?? {},
                         { workspaceId },
-                        { OR: ProjectActiveFilter },
-                        ...(memberUserId
-                            ? [{ members: { some: { userId: memberUserId } } }]
-                            : []),
+                        ProjectActiveFilter,
+                        where ?? {},
                     ],
                 },
             }
@@ -88,51 +83,42 @@ export class ProjectRepository implements IProjectRepository {
 
     async findWithPaginationOffsetForAdmin(
         {
-            where,
+            where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId?: string,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
             {
                 ...others,
                 where: {
-                    ...where,
-                    ...(workspaceId ? { workspaceId } : {}),
+                    AND: [
+                        filters ?? {},
+                        ...(workspaceId ? [{ workspaceId }] : []),
+                        where ?? {},
+                    ],
                 },
             }
         );
     }
 
-    async create(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: ProjectCreateRequestDto,
-        slugCandidates: string[]
+        slug: string
     ): Promise<Project> {
-        for (const slug of slugCandidates) {
-            try {
-                return await this.databaseService.client.project.create({
-                    data: {
-                        workspaceId,
-                        name,
-                        slug,
-                        description,
-                        deletedAt: null,
-                    },
-                });
-            } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (!isSlugCollision) {
-                    throw error;
-                }
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
+        return tx.project.create({
+            data: {
+                workspaceId,
+                name,
+                slug,
+                description,
+                deletedAt: null,
+            },
+        });
     }
 
     async updateDetails(
@@ -175,7 +161,7 @@ export class ProjectRepository implements IProjectRepository {
         await tx.project.updateMany({
             where: {
                 workspaceId,
-                OR: ProjectActiveFilter,
+                ...ProjectActiveFilter,
             },
             data: {
                 deletedAt,

@@ -12,7 +12,7 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
+    EnumRoleScope,
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -30,8 +30,8 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -139,6 +139,8 @@ export class UserDomain {
             throw new UserEmailNotVerifiedException();
         }
 
+        this.roleDomain.assertScope(user.role, EnumRoleScope.platform);
+
         return user;
     }
 
@@ -146,13 +148,15 @@ export class UserDomain {
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        countryId?: Record<string, IPaginationEqual>,
+        where?: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
             status,
             roleId,
-            countryId
+            countryId,
+            where
         );
     }
 
@@ -269,15 +273,13 @@ export class UserDomain {
         { countryId, email, name, roleId, username }: IUserCreateByAdmin,
         createdBy: string
     ): Promise<IUserCreateByAdminPrepared> {
-        const [checkRole, emailExist, checkCountry] = await Promise.all([
-            this.roleDomain.getById(roleId),
+        const [role, emailExist, checkCountry] = await Promise.all([
+            this.roleDomain.resolve(roleId, EnumRoleScope.platform),
             this.userRepository.existsByEmail(email),
             this.countryDomain.existsById(countryId),
         ]);
 
-        if (!checkRole) {
-            throw new RoleNotFoundException();
-        } else if (!checkCountry) {
+        if (!checkCountry) {
             throw new CountryNotFoundException();
         } else if (emailExist) {
             throw new UserEmailExistException();
@@ -309,7 +311,7 @@ export class UserDomain {
             this.userOnboardingDomain.buildPersonalWorkspaceContexts([
                 username,
             ]);
-        const isVerified = checkRole.type !== EnumRoleType.user;
+        const isVerified = role.key !== EnumRolePlatformKey.user;
         let verification: IUserOnboardingVerification | null;
         if (isVerified) {
             verification = this.buildVerifiedVerification(email);
@@ -324,7 +326,7 @@ export class UserDomain {
                 name: name ?? null,
                 username,
                 countryId,
-                roleId: checkRole.id,
+                roleId: role.id,
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,

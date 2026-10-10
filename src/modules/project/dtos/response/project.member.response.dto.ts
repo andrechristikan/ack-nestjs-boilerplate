@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { RoleRefResponseSchema } from '@modules/role/dtos/response/role.ref.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
@@ -15,22 +17,22 @@ export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     projectId: z.string().meta({
         description: 'Identifier of the project the member belongs to',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     userId: z.string().meta({
         description: 'Identifier of the member user',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     user: UserRefResponseSchema.meta({
         description: 'Embedded user of this project member',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
+            deletedBy: faker.string.uuid(),
             name: faker.person.fullName(),
             username: faker.internet.username().toLowerCase(),
             photo: {
@@ -45,9 +47,14 @@ export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
             },
         },
     }),
-    role: z.enum(EnumProjectMemberRole).meta({
+    role: RoleRefResponseSchema.meta({
         description: 'Project role of the member',
-        example: EnumProjectMemberRole.member,
+        example: {
+            id: faker.string.uuid(),
+            scope: EnumRoleScope.project,
+            key: EnumRoleProjectKey.member,
+            name: 'Member',
+        },
     }),
     joinedAt: z.date().meta({
         description: 'When the user joined the project',

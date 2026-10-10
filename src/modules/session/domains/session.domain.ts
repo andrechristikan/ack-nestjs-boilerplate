@@ -39,12 +39,14 @@ export class SessionDomain {
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked?: Record<string, IPaginationEqual>,
+        where?: Prisma.SessionWhereInput
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.sessionRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked
+            isRevoked,
+            where
         );
     }
 

@@ -37,7 +37,8 @@ export class SessionRepository implements ISessionRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked?: Record<string, IPaginationEqual>,
+        additionalWhere?: Prisma.SessionWhereInput
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.paginationService.offset<
             ISessionList,
@@ -45,9 +46,14 @@ export class SessionRepository implements ISessionRepository {
         >(this.databaseService.client.session, {
             ...others,
             where: {
-                ...where,
-                ...isRevoked,
-                userId,
+                AND: [
+                    {
+                        ...where,
+                        ...isRevoked,
+                        userId,
+                    },
+                    additionalWhere ?? {},
+                ],
             },
             select: SessionListSelect,
         });

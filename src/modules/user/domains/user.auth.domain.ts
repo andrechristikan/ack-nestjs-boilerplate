@@ -3,6 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
+    EnumRoleScope,
     EnumTermPolicyType,
     EnumUserLoginWith,
     EnumUserSignUpWith,
@@ -50,7 +51,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserAuthDomain {
-    private readonly userRoleName: string;
+    private readonly userRoleKey: string;
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -67,8 +68,7 @@ export class UserAuthDomain {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.userRoleName =
-            this.configService.get<string>('user.default.role')!;
+        this.userRoleKey = this.configService.get<string>('user.default.role')!;
     }
 
     async assertWorkspaceInvitationAllowed(): Promise<void> {
@@ -153,7 +153,10 @@ export class UserAuthDomain {
             return null;
         }
 
-        const role = await this.roleDomain.getByName(this.userRoleName);
+        const role = await this.roleDomain.getByScopeAndKey(
+            EnumRoleScope.platform,
+            this.userRoleKey
+        );
         if (!role) {
             throw new RoleNotFoundException();
         }
@@ -256,7 +259,10 @@ export class UserAuthDomain {
         emailVerification: IUserVerificationEmailCreate;
     }> {
         const [role, emailExist, checkCountry] = await Promise.all([
-            this.roleDomain.getByName(this.userRoleName),
+            this.roleDomain.getByScopeAndKey(
+                EnumRoleScope.platform,
+                this.userRoleKey
+            ),
             this.userRepository.existsByEmail(email),
             this.countryDomain.existsById(countryId),
         ]);

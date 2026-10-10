@@ -1,47 +1,38 @@
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
+import { Test, type TestingModule } from '@nestjs/testing';
+import type { Cache } from 'cache-manager';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Cache } from 'cache-manager';
+
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { ConfigService } from '@nestjs/config';
 
 describe('AnalyticCache', () => {
     const cacheManager: MockProxy<Cache> = mock<Cache>();
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperStringService = new HelperStringService();
+    const config = new Map<string, string | number>([
+        [
+            'analytic.cache.keyPatterns.dashboard',
+            'dashboard:{metric}:{start}:{end}',
+        ],
+        ['analytic.cache.keyPatterns.anomaly', 'anomaly:{signal}:{window}'],
+        ['analytic.cache.keyPatterns.fraud', 'fraud:{signal}:{window}'],
+        ['analytic.cache.keyPatterns.riskScore', 'risk:{userId}'],
+        ['analytic.cache.dashboardTtlInMs', 1000],
+        ['analytic.cache.anomalySummaryTtlInMs', 2000],
+        ['analytic.cache.fraudSummaryTtlInMs', 3000],
+        ['analytic.cache.riskScoreTtlInMs', 4000],
+    ]);
 
     let cache: AnalyticCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | number> = {
-                'analytic.cache.keyPatterns.dashboard':
-                    'Dashboard:{metric}:{start}:{end}',
-                'analytic.cache.keyPatterns.anomaly':
-                    'Anomaly:{signal}:{window}',
-                'analytic.cache.keyPatterns.fraud': 'Fraud:{signal}:{window}',
-                'analytic.cache.keyPatterns.riskScore': 'RiskScore:{userId}',
-                'analytic.cache.dashboardTtlInMs': 1000,
-                'analytic.cache.anomalySummaryTtlInMs': 2000,
-                'analytic.cache.fraudSummaryTtlInMs': 3000,
-                'analytic.cache.riskScoreTtlInMs': 4000,
-            };
-            return values[key];
-        });
-        helperStringService.fillPattern.mockImplementation((_pattern, tokens) =>
-            Object.values(tokens).join(':')
+        vi.mocked(configService.get).mockImplementation(key =>
+            config.get(key as string)
         );
-
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticCache,
                 { provide: CacheMainProvider, useValue: cacheManager },
@@ -49,200 +40,68 @@ describe('AnalyticCache', () => {
                 { provide: HelperStringService, useValue: helperStringService },
             ],
         }).compile();
-
-        cache = module.get(AnalyticCache);
+        cache = moduleRef.get(AnalyticCache);
     });
 
-    describe('getDashboard', () => {
-        it('returns the cached dashboard value', async () => {
-            cacheManager.get.mockResolvedValue({ count: 4 });
-
-            const result = await cache.getDashboard<{ count: number }>(
-                'users.registrations',
-                'start',
-                'end'
-            );
-
-            expect(result).toEqual({ count: 4 });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'Dashboard:{metric}:{start}:{end}',
-                {
-                    metric: 'users.registrations',
-                    start: 'start',
-                    end: 'end',
-                }
-            );
-        });
+    it.each([
+        [
+            'dashboard',
+            () => cache.getDashboard('users', 'a', 'b'),
+            'dashboard:users:a:b',
+        ],
+        [
+            'anomaly',
+            () => cache.getAnomalySummary('travel', '60'),
+            'anomaly:travel:60',
+        ],
+        ['fraud', () => cache.getFraudSummary('burst', '30'), 'fraud:burst:30'],
+        ['risk', () => cache.getRiskScore('user-id'), 'risk:user-id'],
+    ])('reads the %s cache key', async (_name, read, key) => {
+        cacheManager.get.mockResolvedValue({ value: 1 });
+        await expect(read()).resolves.toEqual({ value: 1 });
+        expect(cacheManager.get).toHaveBeenCalledWith(key);
     });
 
-    describe('setDashboard', () => {
-        it('writes the dashboard value with the dashboard ttl', async () => {
-            await cache.setDashboard('users.registrations', 'start', 'end', {
-                count: 4,
-            });
+    it.each([
+        [
+            'dashboard',
+            () => cache.setDashboard('users', 'a', 'b', 1),
+            'dashboard:users:a:b',
+            1000,
+        ],
+        [
+            'anomaly',
+            () => cache.setAnomalySummary('travel', '60', 1),
+            'anomaly:travel:60',
+            2000,
+        ],
+        [
+            'fraud',
+            () => cache.setFraudSummary('burst', '30', 1),
+            'fraud:burst:30',
+            3000,
+        ],
+        ['risk', () => cache.setRiskScore('user-id', 1), 'risk:user-id', 4000],
+    ])(
+        'writes the %s cache key with its ttl',
+        async (_name, write, key, ttl) => {
+            await write();
+            expect(cacheManager.set).toHaveBeenCalledWith(key, 1, ttl);
+        }
+    );
 
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'users.registrations:start:end',
-                { count: 4 },
-                1000
-            );
-        });
+    it('normalizes a missing cache value to null', async () => {
+        cacheManager.get.mockResolvedValue(undefined);
+        await expect(cache.getRiskScore('user-id')).resolves.toBeNull();
     });
 
-    describe('getAnomalySummary', () => {
-        it('returns the cached anomaly summary', async () => {
-            cacheManager.get.mockResolvedValue({ count: 2 });
-
-            const result = await cache.getAnomalySummary<{ count: number }>(
-                'impossible-travel',
-                '3600000'
-            );
-
-            expect(result).toEqual({ count: 2 });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'Anomaly:{signal}:{window}',
-                { signal: 'impossible-travel', window: '3600000' }
-            );
-        });
+    it('fails open when a cache read fails', async () => {
+        cacheManager.get.mockRejectedValue(new Error('cache unavailable'));
+        await expect(cache.getRiskScore('user-id')).resolves.toBeNull();
     });
 
-    describe('setAnomalySummary', () => {
-        it('writes the anomaly summary with the anomaly ttl', async () => {
-            await cache.setAnomalySummary('impossible-travel', '3600000', {
-                count: 2,
-            });
-
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'impossible-travel:3600000',
-                { count: 2 },
-                2000
-            );
-        });
-    });
-
-    describe('getFraudSummary', () => {
-        it('returns the cached fraud summary', async () => {
-            cacheManager.get.mockResolvedValue({ count: 6 });
-
-            const result = await cache.getFraudSummary<{ count: number }>(
-                'credential-stuffing',
-                '86400000'
-            );
-
-            expect(result).toEqual({ count: 6 });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'Fraud:{signal}:{window}',
-                { signal: 'credential-stuffing', window: '86400000' }
-            );
-        });
-    });
-
-    describe('setFraudSummary', () => {
-        it('writes the fraud summary with the fraud ttl', async () => {
-            await cache.setFraudSummary('credential-stuffing', '86400000', {
-                count: 6,
-            });
-
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'credential-stuffing:86400000',
-                { count: 6 },
-                3000
-            );
-        });
-    });
-
-    describe('getRiskScore', () => {
-        it('returns the cached risk score', async () => {
-            cacheManager.get.mockResolvedValue({ score: 42 });
-
-            const result = await cache.getRiskScore<{ score: number }>(
-                'user-1'
-            );
-
-            expect(result).toEqual({ score: 42 });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'RiskScore:{userId}',
-                { userId: 'user-1' }
-            );
-        });
-    });
-
-    describe('setRiskScore', () => {
-        it('writes the risk score with the risk-score ttl', async () => {
-            await cache.setRiskScore('user-1', { score: 42 });
-
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'user-1',
-                { score: 42 },
-                4000
-            );
-        });
-    });
-
-    describe('buildKey', () => {
-        it('fills the given pattern with the token record', () => {
-            helperStringService.fillPattern.mockReturnValue('built-key');
-
-            const result = cache['buildKey']('Pattern:{a}:{b}', {
-                a: 'one',
-                b: 'two',
-            });
-
-            expect(result).toBe('built-key');
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'Pattern:{a}:{b}',
-                { a: 'one', b: 'two' }
-            );
-        });
-    });
-
-    describe('get', () => {
-        it('returns the store value when the key is present', async () => {
-            cacheManager.get.mockResolvedValue({ count: 1 });
-
-            const result = await cache['get']<{ count: number }>('cache-key');
-
-            expect(result).toEqual({ count: 1 });
-        });
-
-        it('returns null when the store value is undefined', async () => {
-            cacheManager.get.mockResolvedValue(undefined);
-
-            const result = await cache['get']<{ count: number }>('cache-key');
-
-            expect(result).toBeNull();
-        });
-
-        it('returns null when the store read throws', async () => {
-            cacheManager.get.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            const result = await cache['get']<{ count: number }>('cache-key');
-
-            expect(result).toBeNull();
-        });
-    });
-
-    describe('set', () => {
-        it('writes the value with the given ttl', async () => {
-            await cache['set']('cache-key', { count: 1 }, 500);
-
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'cache-key',
-                { count: 1 },
-                500
-            );
-        });
-
-        it('swallows a thrown store write', async () => {
-            cacheManager.set.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(
-                cache['set']('cache-key', { count: 1 }, 500)
-            ).resolves.toBeUndefined();
-        });
+    it('swallows a cache write failure', async () => {
+        cacheManager.set.mockRejectedValue(new Error('cache unavailable'));
+        await expect(cache.setRiskScore('user-id', 1)).resolves.toBeUndefined();
     });
 });

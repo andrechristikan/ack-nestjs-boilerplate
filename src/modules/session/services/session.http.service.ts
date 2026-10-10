@@ -1,4 +1,10 @@
-import { Prisma } from '@generated/prisma-client/client';
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -14,12 +20,15 @@ import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/s
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class SessionHttpService {
     constructor(
         private readonly sessionDomain: SessionDomain,
+        private readonly userDomain: UserDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -28,6 +37,10 @@ export class SessionHttpService {
         userId: string,
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Session
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
                 availableOrderBy: SessionDefaultAvailableOrderBy,
@@ -48,7 +61,8 @@ export class SessionHttpService {
             await this.sessionDomain.getListOffsetByAdmin(
                 userId,
                 params,
-                isRevoked?.where
+                isRevoked?.where,
+                accessibleWhere
             );
         return {
             data,
@@ -87,6 +101,14 @@ export class SessionHttpService {
         sessionId: string,
         revokedBy: string
     ): Promise<IResponseReturn<void>> {
+        const stored = await this.sessionDomain.validateActive(
+            userId,
+            sessionId
+        );
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.Session, stored)
+        );
         await this.sessionDomain.revokeByAdmin(userId, sessionId, revokedBy);
 
         return {};
@@ -96,6 +118,11 @@ export class SessionHttpService {
         userId: string,
         revokedBy: string
     ): Promise<IResponseReturn<void>> {
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.User, user)
+        );
         await this.sessionDomain.revokeAllByAdmin(userId, revokedBy);
 
         return {};

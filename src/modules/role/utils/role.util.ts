@@ -8,7 +8,8 @@ export class RoleUtil {
         return {
             roleId: role.id,
             roleName: role.name,
-            roleType: role.type,
+            roleKey: role.key,
+            roleScope: role.scope,
             timestamp,
         };
     }

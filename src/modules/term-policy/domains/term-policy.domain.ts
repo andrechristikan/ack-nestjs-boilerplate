@@ -23,7 +23,8 @@ import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/excep
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
-    ITermPolicyContent,
+    ITermPolicy,
+    ITermPolicyContentCreate,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
 } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -36,7 +37,10 @@ import {
     EnumTermPolicyStatus,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import type {
+    TermPolicy,
+    TermPolicyContent,
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyDomain {
@@ -71,8 +75,8 @@ export class TermPolicyDomain {
 
     mapPublicContent(
         newItems: IAwsS3[],
-        contents: ITermPolicyContent[]
-    ): ITermPolicyContent[] {
+        contents: Pick<TermPolicyContent, 'key' | 'language'>[]
+    ): ITermPolicyContentCreate[] {
         return newItems.map(item => {
             const language = contents.find(c => {
                 const contentFilename =
@@ -91,9 +95,10 @@ export class TermPolicyDomain {
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        where?: Prisma.TermPolicyWhereInput
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyRepository.find(pagination, type, status);
+        return this.termPolicyRepository.find(pagination, type, status, where);
     }
 
     async getListPublished(
@@ -123,7 +128,7 @@ export class TermPolicyDomain {
         }
 
         try {
-            const mappedContents: ITermPolicyContent[] = contents.map(
+            const mappedContents: ITermPolicyContentCreate[] = contents.map(
                 ({ language, key, size }: ITermPolicyContentUpload) => {
                     const presign = this.awsS3Service.mapPresign(
                         {
@@ -163,6 +168,17 @@ export class TermPolicyDomain {
 
             throw new AppUnknownException(err);
         }
+    }
+
+    /** Returns the stored policy with its contents; callers judge it, this method does not. */
+    async getOne(termPolicyId: string): Promise<ITermPolicy> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new TermPolicyNotFoundException();
+        }
+
+        return termPolicy;
     }
 
     async deleteByAdmin(termPolicyId: string): Promise<TermPolicy> {
@@ -213,10 +229,7 @@ export class TermPolicyDomain {
             throw new TermPolicyNotFoundException();
         } else if (termPolicy.status === EnumTermPolicyStatus.published) {
             throw new TermPolicyStatusInvalidException();
-        } else if (
-            (termPolicy.contents as unknown as ITermPolicyContent[]).length ===
-            0
-        ) {
+        } else if (termPolicy.contents.length === 0) {
             throw new TermPolicyContentEmptyException();
         }
 
@@ -225,11 +238,13 @@ export class TermPolicyDomain {
                 termPolicy.type,
                 termPolicy.version
             );
-            const contents =
-                termPolicy.contents as unknown as ITermPolicyContent[];
+            const contents = termPolicy.contents;
 
             const newItems = await this.awsS3Service.copyItems(
-                contents,
+                contents.map(content => ({
+                    ...content,
+                    access: content.access as EnumAwsS3Accessibility,
+                })),
                 contentPublicPath,
                 { access: EnumAwsS3Accessibility.public }
             );

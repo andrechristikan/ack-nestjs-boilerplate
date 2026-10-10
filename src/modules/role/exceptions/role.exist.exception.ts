@@ -3,7 +3,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 
 /**
- * Raised when a role with the same name already exists.
+ * Raised when a role with the same scope and key already exists.
  * @public
  */
 export class RoleExistException extends AppBaseException {

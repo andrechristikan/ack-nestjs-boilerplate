@@ -177,8 +177,7 @@ fi
 ```
 
 **If infrastructure is down, start NOTHING** — no `docker-compose up -d`, no container, no
-database. Record the boot as NOT RUN, name which service is down, and hand back. MongoDB must
-be a replica set; a standalone boots the app and then fails every transaction.
+database. Record the boot as NOT RUN, name which service is down, and hand back.
 
 **Cap the whole check at ~30 seconds.** The marker is the `NestApplication` bootstrap block
 that `src/main.ts` logs after `app.listen` — `App Environment:`, `App Name:`, `App Global

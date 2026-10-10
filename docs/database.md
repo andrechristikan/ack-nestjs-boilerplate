@@ -4,7 +4,7 @@ The Database Module lives in `src/common/database`.
 
 ## Overview
 
-Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
+Prisma + PostgreSQL, transactions, seeds, and the Database Module.
 
 ## Related Documents
 
@@ -31,16 +31,15 @@ Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
 	- [Feature Flags](#feature-flags)
 	- [Term Policies](#term-policies)
 - [Models](#models)
-- [Composite Types](#composite-types)
+- [JSON Columns](#json-columns)
 	- [GeoLocation](#geolocation)
 	- [UserAgent](#useragent)
-	- [UserTermPolicy](#usertermpolicy)
-	- [UserPhoto](#userphoto)
-	- [TermPolicyContent](#termpolicycontent)
+- [Related Tables and Flattened Columns](#related-tables-and-flattened-columns)
 - [Audit Fields and Soft Delete](#audit-fields-and-soft-delete)
 	- [Client Access Surface](#client-access-surface)
 	- [Automatic Actor Stamping](#automatic-actor-stamping)
 	- [Soft Delete and Restore](#soft-delete-and-restore)
+	- [Delete Behaviour of Foreign Keys](#delete-behaviour-of-foreign-keys)
 - [Generated Unique Values](#generated-unique-values)
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
@@ -49,15 +48,15 @@ Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
 
 ## Prerequisites
 
-**Docker is the recommended way to run MongoDB locally.** Compose starts a replica set for you. Step-by-step: [Installation Documentation][ref-doc-installation].
+**Docker is the recommended way to run PostgreSQL locally.** Step-by-step: [Installation Documentation][ref-doc-installation].
 
-Without Docker, use a [MongoDB Atlas][ref-mongodb-atlas] cluster (or any MongoDB 8+ **replica set**). Prisma transactions need a replica set; a standalone local MongoDB will not work.
+Without Docker, use a managed PostgreSQL instance. Redis for cache and queues is covered in the same installation guide (Compose or [Amazon ElastiCache][ref-elasticache]).
 
-Local Compose uses `mongo:latest`. Redis for cache and queues is covered in the same installation guide (Compose or [Amazon ElastiCache][ref-elasticache]).
+Local Compose uses `postgres:18`.
 
 ## Migration
 
-Prisma has no migration history for MongoDB. Schema sync is `prisma db push`.
+Schema changes are tracked as Prisma migration files under `prisma/migrations/`, applied with `prisma migrate dev`. `prisma/migrations/migration_lock.toml` locks the provider to `postgresql`.
 
 In this project that is:
 
@@ -65,7 +64,7 @@ In this project that is:
 pnpm db:migrate
 ```
 
-Official reference: [Prisma for MongoDB][ref-prisma-mongodb]
+Official reference: [Prisma Migrate][ref-prisma-migrate]
 
 
 ## Generate Database Client
@@ -94,7 +93,7 @@ Commands that are **not** database seeds (run separately; not in `migration:seed
 **Run all database seeds:**
 - `pnpm migration:seed` runs every database seed command
 - `pnpm migration:remove` runs every seed's removal (deletes more than the seeded rows; see the warning under [Users](#users))
-- `pnpm migration:fresh` force-resets the schema (`prisma db push --force-reset`) then re-seeds. Handy for a clean local slate
+- `pnpm migration:fresh` resets the schema (`prisma migrate reset --force`) then re-seeds. Handy for a clean local slate
 
 **Order in `package.json`:**
 
@@ -104,11 +103,11 @@ Commands that are **not** database seeds (run separately; not in `migration:seed
 
 **Seed transactions.** A seed that writes several rows:
 
-1. opens one `DatabaseService.withTransaction` in callback form
+1. opens one `DatabaseService.withTransaction` in callback form (the `workspace` seed opens one per user)
 2. issues every statement on `tx` one after another
 3. passes `{ timeout }` from `database.seedTransactionTimeoutInMs` (60 seconds)
 
-The same timeout applies to the transactions the `user` and `workspace` seeds open in `remove()`.
+The same timeout applies to the transaction the `user` seed opens in `remove()`.
 
 Work that does not touch the database runs before the transaction:
 
@@ -117,9 +116,9 @@ Work that does not touch the database runs before the transaction:
 
 Every other `remove()` that deletes rows runs its delete on `client` with no transaction.
 
-**The seed actor.** `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts`) is a fixed ObjectId. The `user` seed creates the superadmin with that `_id`, and every seed that writes rows uses it as the actor:
+**The seed actor.** `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts`) is a fixed id. The `user` seed creates the superadmin with that `id`, and every seed that writes rows uses it as the actor:
 
-- An upsert's `create` branch writes `createdBy` and `updatedBy` as `MigrationUserSuperAdminId`; its `update` branch writes `updatedBy`. A re-run therefore updates `updatedBy` / `updatedAt` on seeded rows that have those columns, and leaves `createdBy` and `_id` untouched.
+- An upsert's `create` branch writes `createdBy` and `updatedBy` as `MigrationUserSuperAdminId`; its `update` branch writes `updatedBy`. A re-run therefore updates `updatedBy` / `updatedAt` on seeded rows that have those columns, and leaves `createdBy` and `id` untouched.
 - The `workspace` seed writes the same actor on each workspace and passes it to `WorkspaceMemberRepository.createInTx` for the owner membership (`createdBy` and `updatedBy`).
 - `createdBy` does not mark a row as seeded. A row the superadmin later creates through the admin API carries the same id, so no `remove()` filters on it. The `workspace` seed's `remove()` finds its rows by the name `<username>'s Workspace` together with an owner membership of that user.
 
@@ -134,7 +133,7 @@ Every other `remove()` that deletes rows runs its delete on `client` with no tra
 - `apiKey`: Default and system API keys
 - `country`: Country data (name, codes, phone code, continent, timezone)
 - `featureFlag`: Feature flags (login methods, sign up, change password, and similar)
-- `role`: Roles (superadmin, admin, user)
+- `role`: The nine fixed roles, three per scope (platform, workspace, project)
 - `policy`: Policy rows attached to each seeded role
 - `termPolicy`: Term policy documents (cookies, marketing, privacy, terms of service)
 - `user`: Initial accounts (Super Admin, Admin, User) with country, role, and credentials
@@ -177,15 +176,37 @@ This prefix is added from `APP_ENV` when a new API key is created, so a key from
 
 ### Roles
 
-Three user roles are created with different permission levels:
+Roles are rows of one `Role` table. `scope` (`platform`, `workspace`, `project`) plus an immutable `key` identify a role, with `@@unique([scope, key])`. The `role` seed creates a fixed catalog of nine rows, each an upsert on `(scope, key)`:
 
-| Role | Type | Description | Seeded policies |
-|------|------|-------------|-----------------|
-| superadmin | `superAdmin` | Super Admin Role | None: `superAdmin` bypasses the policy check entirely |
-| admin | `admin` | Admin Role | Every policy action on every policy subject |
-| user | `user` | User Role | None |
+| Scope | Key | Name |
+|---|---|---|
+| `platform` | `superAdmin` | Super Admin |
+| `platform` | `admin` | Admin |
+| `platform` | `user` | User |
+| `workspace` | `owner` | Owner |
+| `workspace` | `admin` | Admin |
+| `workspace` | `member` | Member |
+| `project` | `admin` | Admin |
+| `project` | `member` | Member |
+| `project` | `viewer` | Viewer |
 
-**Admin role policies**: the `policy` seed writes one row per `EnumPolicySubject`, each carrying every member of `EnumPolicyAction` (`manage`, `read`, `create`, `update`, `delete`). It reads the roles by name first and aborts without writing when one is missing, and each row is an upsert on `(roleId, subject)`, so re-running it is safe.
+The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRoleProjectKey`. A role listed under these keys is a catalog role: the role admin API updates its `name` and `description` and never deletes it. `POST /admin/role/create` adds a role whose key is a key supplied in the request, and `DELETE /admin/role/delete/:roleId` removes a non-catalog role that nothing references (see [Authorization](authorization.md)).
+
+**Seeded policies.** The `policy` seed writes each role's rules. A rule carries `subject`, `action[]`, `conditions`, `inverted`, and `reason`. It reads the roles by `(scope, key)` first and aborts without writing when one is missing. In one transaction it deletes every policy row of the seeded roles and recreates them from the declarative catalog, so re-running it is safe. Workspace and project rules on a scoped subject carry the scope condition (for example `workspaceId: ${workspaceId}` or `projectId: ${projectId}`), so a rule reaches the active workspace or project only.
+
+| Role | Seeded policies |
+|---|---|
+| platform `superAdmin` | `manage` on `all` |
+| platform `admin` | every action on `ActivityLog`, `ApiKey`, `Device`, `FeatureFlag`, `PasswordHistory`, `Role`, `Session`, `TermPolicy`, `User`; `read` on `analytic`, `Workspace`, and `Project` |
+| platform `user` | none |
+| workspace `owner` | `manage` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `update` on `WorkspaceJoinRequest`; `create`, then `read`, `update`, and `delete` on `Project`; `create`, `update`, and `delete` on `ProjectMember`; `read` on `analytic` |
+| workspace `admin` | `read` and `update` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `update` on `WorkspaceJoinRequest`; `create`, then `delete` on `Project`; `read` on `analytic` |
+| workspace `member` | `read` on `Workspace`; `read` on `WorkspaceMember` |
+| project `admin` | `read` and `update` on `Project`; `create`, `update`, and `delete` on `ProjectMember` |
+| project `member` | `read` on `Project` |
+| project `viewer` | `read` on `Project` |
+
+The `superAdmin` policy set is immutable through the API. Full authorization flow: [Authorization](authorization.md).
 
 ### Users
 
@@ -209,17 +230,15 @@ The seeded users differ per environment. This is controlled by `MigrationUserDat
 | admin@mail.com | admin | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
 | user@mail.com | user | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
 
-The superadmin row carries the fixed id `MigrationUserSuperAdminId`; the other rows get an id drawn before the transaction. Every created user row, and its nested two-factor, notification-setting, password-history, verification, and term-policy acceptance rows, name the superadmin as `createdBy` (and as `updatedBy` where the model has the column).
+The superadmin row carries the fixed id `MigrationUserSuperAdminId`; the other rows get a UUID v7 drawn through `DatabaseUtil.createId()`. Every created user row, and its nested two-factor, notification-setting, password-history, verification, and term-policy acceptance rows, name the superadmin as `createdBy` (and as `updatedBy` where the model has the column). Each user is created with the `privacyAccepted` and `termsOfServiceAccepted` flags set.
 
 Each created user also gets its activity rows in the same transaction:
 
 | Row | Belongs to | `createdBy` | Metadata |
 |---|---|---|---|
-| `userCreated` | The superadmin | The superadmin | Empty |
-| `userCreatedByAdmin` | The admin and the user | The superadmin | `actorUserId`, `timestamp` |
-| `adminUserCreate`, one per admin or user row the run creates | The superadmin | The superadmin | `targetUserId`, `targetUsername`, `timestamp` |
+| `userCreated` | Each created user | The superadmin | Empty |
 | `userVerifiedEmail` | Each created user | The superadmin | Empty |
-| `userAcceptTermPolicy`, one per accepted policy (terms of service, privacy) | Each created user | The user itself, as for every `user = payload` action | Empty |
+| `userAcceptTermPolicy`, one per accepted policy (terms of service, privacy) | Each created user | The superadmin | `termPolicyType`, `termPolicyId` |
 
 A user whose email already exists is left as it is apart from `updatedBy`, and gets no new nested or activity row.
 
@@ -252,227 +271,79 @@ Four term policy documents are created:
 | `privacy` | 1 | EN | Privacy policy document |
 | `termsOfService` | 1 | EN | Terms of Service document |
 
-The `termPolicy` seed creates each record with an empty `contents` array and `status: published`. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. Linking them onto S3 is `templateTermPolicy`: [Term Policy][ref-doc-term-policy].
+The `termPolicy` seed creates each record with no `TermPolicyContent` rows and `status: published`. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. Linking them onto S3 is `templateTermPolicy`: [Term Policy][ref-doc-term-policy].
 
 
 ## Models
 
-Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@map`. The Prisma name is what repositories address on `databaseService.client.<model>`; the collection name is what you see in MongoDB.
+Every model in `prisma/schema.prisma` maps to a PostgreSQL table through `@@map`. The Prisma name is what repositories address on `databaseService.client.<model>`; the table name is what you see in PostgreSQL.
 
-| Model | Collection | Purpose |
+| Model | Table | Purpose |
 |---|---|---|
-| `ApiKey` | `ApiKeys` | API key credentials for machine access |
-| `Role` | `Roles` | Roles |
-| `Policy` | `Policies` | The `(subject, action[])` rows a role grants, evaluated through CASL |
-| `Country` | `Countries` | Country reference data |
-| `UserMobileNumber` | `UserMobiles` | A user's mobile numbers and their verification state |
-| `User` | `Users` | User accounts |
-| `Verification` | `Verifications` | Email and mobile verification tokens |
-| `PasswordHistory` | `PasswordHistories` | Previous password hashes for reuse checks |
-| `ActivityLog` | `ActivityLogs` | Audit trail of user actions |
-| `Session` | `Sessions` | Issued refresh sessions per device |
-| `Device` | `Devices` | Devices identified by fingerprint |
-| `DeviceOwnership` | `DeviceOwnerships` | Link between a user and a device |
-| `TwoFactor` | `TwoFactors` | Two-factor secret, attempt counter, and backup codes |
-| `TermPolicy` | `TermPolicies` | Term policy documents and versions |
-| `TermPolicyUserAcceptance` | `TermPolicyUserAcceptances` | A user's acceptance of one policy version |
-| `FeatureFlag` | `FeatureFlags` | Feature toggles with rollout percent and metadata |
-| `ForgotPassword` | `ForgotPasswords` | Password reset tokens |
-| `Notification` | `Notifications` | Notification records |
-| `NotificationDelivery` | `NotificationDeliveries` | Per-channel delivery outcome of a notification |
-| `NotificationUserSetting` | `NotificationUserSettings` | Per-user channel and type preferences |
-| `Workspace` | `Workspaces` | Workspaces |
-| `WorkspaceMember` | `WorkspaceMembers` | Workspace membership and role |
-| `WorkspaceInvite` | `WorkspaceInvites` | Outstanding workspace invitations |
-| `WorkspaceJoinRequest` | `WorkspaceJoinRequests` | Requests to join a public workspace |
-| `Project` | `Projects` | Projects inside a workspace |
-| `ProjectMember` | `ProjectMembers` | Project membership and role |
+| `ApiKey` | `api_keys` | API key credentials for machine access |
+| `Role` | `roles` | Roles |
+| `Policy` | `policies` | The rules a role holds (`subject`, `action[]`, `conditions`, `inverted`, `reason`), indexed on `(roleId, subject)`, evaluated through CASL |
+| `Country` | `countries` | Country reference data |
+| `UserMobileNumber` | `user_mobile_numbers` | A user's mobile numbers and their verification state |
+| `User` | `users` | User accounts |
+| `UserPhoto` | `user_photos` | A user's profile photo, one row per user |
+| `Verification` | `verifications` | Email and mobile verification tokens |
+| `PasswordHistory` | `password_histories` | Previous password hashes for reuse checks |
+| `ActivityLog` | `activity_logs` | Audit trail of user actions |
+| `Session` | `sessions` | Issued refresh sessions per device |
+| `Device` | `devices` | Devices identified by fingerprint |
+| `DeviceOwnership` | `device_ownerships` | Link between a user and a device |
+| `TwoFactor` | `two_factors` | Two-factor secret, attempt counter, and backup codes |
+| `TermPolicy` | `term_policies` | Term policy documents and versions |
+| `TermPolicyContent` | `term_policy_contents` | A localized content file for one term policy document |
+| `TermPolicyUserAcceptance` | `term_policy_user_acceptances` | A user's acceptance of one policy version |
+| `FeatureFlag` | `feature_flags` | Feature toggles with rollout percent and metadata |
+| `ForgotPassword` | `forgot_passwords` | Password reset tokens |
+| `Notification` | `notifications` | Notification records |
+| `NotificationDelivery` | `notification_deliveries` | Per-channel delivery outcome of a notification |
+| `NotificationUserSetting` | `notification_user_settings` | Per-user channel and type preferences |
+| `Workspace` | `workspaces` | Workspaces |
+| `WorkspaceMember` | `workspace_members` | Workspace membership and role |
+| `WorkspaceInvite` | `workspace_invites` | Outstanding workspace invitations |
+| `WorkspaceJoinRequest` | `workspace_join_requests` | Requests to join a public workspace |
+| `Project` | `projects` | Projects inside a workspace |
+| `ProjectMember` | `project_members` | Project membership and role |
 
-## Composite Types
+## JSON Columns
 
-Prisma composite types are embedded sub-documents in MongoDB (not separate collections). They are defined with the `type` keyword in `prisma/schema.prisma` and stored inline within the parent document rather than in separate collections.
+Two shapes travel as `Json` / `Json?` columns rather than as related tables:
 
 ### GeoLocation
 
-Represents the geographic location derived from a client's IP address using `geoip-lite`.
-
-```prisma
-type GeoLocation {
-  latitude  Float
-  longitude Float
-  country   String
-  region    String
-  city      String
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `latitude` | `Float` | Latitude coordinate |
-| `longitude` | `Float` | Longitude coordinate |
-| `country` | `String` | ISO country code (e.g. `"ID"`) |
-| `region` | `String` | Region/state code (e.g. `"JK"`) |
-| `city` | `String` | City name (e.g. `"Jakarta"`) |
+The geographic location derived from a client's IP address using `geoip-lite`, held as an object with `latitude`, `longitude`, `country`, `region`, and `city`.
 
 **Used in:**
-- `Session.geoLocation`: location at login time
-- `ActivityLog.geoLocation`: location when the action was performed
+- `Session.geoLocation` (`Json?`): location at login time
+- `ActivityLog.geoLocation` (`Json?`): location when the action was performed
 
-Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature domains read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature domains read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the column. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 
 ### UserAgent
 
-Represents parsed user-agent information from the client's `User-Agent` HTTP header using `ua-parser-js`. `UserAgent` is the top-level type that embeds four sub-types.
-
-```prisma
-type UserAgent {
-  ua      String?
-  browser UserAgentBrowser?
-  cpu     UserAgentCpu?
-  device  UserAgentDevice?
-  engine  UserAgentEngine?
-  os      UserAgentOs?
-}
-
-type UserAgentBrowser {
-  name    String?
-  version String?
-  major   String?
-  type    String?
-}
-
-type UserAgentCpu {
-  architecture String?
-}
-
-type UserAgentDevice {
-  type   String?
-  vendor String?
-  model  String?
-}
-
-type UserAgentEngine {
-  name    String?
-  version String?
-}
-
-type UserAgentOs {
-  name    String?
-  version String?
-}
-```
-
-**`UserAgent` fields:**
-
-| Field | Type | Description |
-|---|---|---|
-| `ua` | `String?` | Raw user-agent string |
-| `browser` | `UserAgentBrowser?` | Browser details |
-| `cpu` | `UserAgentCpu?` | CPU architecture |
-| `device` | `UserAgentDevice?` | Device details |
-| `engine` | `UserAgentEngine?` | Rendering engine details |
-| `os` | `UserAgentOs?` | Operating system details |
+Parsed user-agent information from the client's `User-Agent` HTTP header using `ua-parser-js`: `ua`, and nested `browser`, `cpu`, `device`, `engine`, and `os` objects.
 
 **Used in:**
-- `Session.userAgent`: client info at login time
-- `ActivityLog.userAgent`: client info when the action was performed
+- `Session.userAgent` (`Json`): client info at login time
+- `ActivityLog.userAgent` (`Json`): client info when the action was performed
 
-`RequestUtil.parseUserAgent(raw)` builds the composite from the `ua-parser-js` result: each field falls back to `null`, and a sub-type whose every field came back `null` is stored as `null` rather than as an object of nulls.
+`RequestUtil.parseUserAgent(raw)` builds the object from the `ua-parser-js` result: each field falls back to `null`, and a nested object whose every field came back `null` is stored as `null` rather than as an object of nulls.
 
-Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature domains read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature domains read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the column. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
----
+## Related Tables and Flattened Columns
 
-### UserTermPolicy
+Two shapes that would be composite types on a document database are, on PostgreSQL, a related table or a set of flattened columns:
 
-Represents the user's acceptance flags for each term policy type. Stored inline on the `User` document.
-
-```prisma
-type UserTermPolicy {
-  termsOfService Boolean
-  privacy        Boolean
-  marketing      Boolean
-  cookies        Boolean
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `termsOfService` | `Boolean` | Has accepted Terms of Service |
-| `privacy` | `Boolean` | Has accepted Privacy Policy |
-| `marketing` | `Boolean` | Has accepted Marketing terms |
-| `cookies` | `Boolean` | Has accepted Cookie policy |
-
-**Used in:**
-- `User.termPolicy`
-
----
-
-### UserPhoto
-
-Represents the user's profile photo stored in AWS S3.
-
-```prisma
-type UserPhoto {
-  bucket       String
-  key          String
-  cdnUrl       String?
-  completedUrl String
-  mime         String
-  extension    String
-  access       String
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `bucket` | `String` | S3 bucket name |
-| `key` | `String` | S3 object key |
-| `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
-| `completedUrl` | `String` | Full S3 URL of the object |
-| `mime` | `String` | MIME type (e.g. `image/jpeg`) |
-| `extension` | `String` | File extension (e.g. `jpg`) |
-| `access` | `String` | Access level (`public` or `private`) |
-
-**Used in:**
-- `User.photo`
-
----
-
-### TermPolicyContent
-
-Represents a localized content file for a term policy document, stored in AWS S3.
-
-```prisma
-type TermPolicyContent {
-  language     String
-  bucket       String
-  key          String
-  cdnUrl       String?
-  completedUrl String
-  mime         String
-  extension    String
-  access       String
-  size         Int
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `language` | `String` | Language code (e.g. `"en"`) |
-| `bucket` | `String` | S3 bucket name |
-| `key` | `String` | S3 object key |
-| `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
-| `completedUrl` | `String` | Full S3 URL of the object |
-| `mime` | `String` | MIME type (e.g. `application/pdf`) |
-| `extension` | `String` | File extension (e.g. `pdf`) |
-| `access` | `String` | Access level (`public` or `private`) |
-| `size` | `Int` | File size in bytes |
-
-**Used in:**
-- `TermPolicy.contents`
+- **Term policy acceptance flags** live directly on `User` as `termsOfServiceAccepted`, `privacyAccepted`, `cookiesAccepted`, and `marketingAccepted` (each `Boolean`), rather than as a nested object.
+- **`UserPhoto`** is its own table (`user_photos`), related to `User` one-to-one through `userId`. It carries `bucket`, `key`, `cdnUrl`, `completedUrl`, `mime`, `extension`, and `access` for the user's profile photo in AWS S3.
+- **`TermPolicyContent`** is its own table (`term_policy_contents`), related to `TermPolicy` through `termPolicyId`. It carries `language`, `bucket`, `key`, `cdnUrl`, `completedUrl`, `mime`, `extension`, `access`, and `size` for a localized content file on AWS S3.
 
 
 ## Audit Fields and Soft Delete
@@ -510,22 +381,22 @@ The same interface file exports `IDatabaseTransactionClient`, the `tx` type for 
 What that means for callers:
 
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
-- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, and `$runCommandRaw` all work on `client`.
+- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, and `$queryRaw` all work on `client`.
 - In `src/modules`, every transaction opens through `DatabaseService.withTransaction`, which is Prisma's callback form of `$transaction` on `client`, so audit stamping still fires inside it. Every statement in the callback uses the `tx` client; a call back to `databaseService.client` escapes the transaction.
 - A repository issues statements only against the model it owns, plus satellite models that have no repository of their own (`NotificationRepository` writes `NotificationDelivery` rows through a nested `createMany`). `DeviceRepository` owns `Device` and `DeviceOwnershipRepository` owns `DeviceOwnership`; `DeviceDomain` composes the two. Another model's row is reached through that model's repository, composed by a domain. `ActivityLog` is written only by `ActivityLogRepository.createMany`: feature domains prepare events with `ActivityLogDomain.prepare`, stage them with `ActivityLogDomain.stagePrepared` after the audited write, and `ActivityLogInterceptor` flushes them after the handler settles. See [Activity Log][ref-doc-activity-log].
 - Who opens the transaction depends on how many statements and repositories the write spans:
-  - A single-statement write against one document runs on `databaseService.client` with no transaction. MongoDB applies a single-document write atomically.
+  - A single-statement write runs on `databaseService.client` with no transaction. PostgreSQL applies a single statement atomically.
   - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`. `SessionRepository.revokeActiveByUser`, `ActivityLogRepository.createMany`, and `NotificationRepository.createMany` are examples.
   - A write that spans more than one repository: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.touchInTx` and `DeviceRepository.refreshInTx`. `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction` (`UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not).
 - `withTransaction(fn, options?)` takes `IDatabaseTransactionOptions` (`interfaces/database.client.interface.ts`), Prisma's `transactionOptions` shape. Omitted options keep Prisma's defaults (`maxWait` 2 s, `timeout` 5 s). A caller passes options only from its own `*TimeoutInMs` config key: `WorkspaceDomain.commitOnboarding` receives `user.onboarding.createTimeoutInMs` or `createBulkTimeoutInMs`, and the seeds read `database.seedTransactionTimeoutInMs`.
-- The MongoDB ping lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$runCommandRaw({ ping: 1 })`. `DatabaseService` carries no health method.
+- The database health check lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$queryRaw\`SELECT 1\``. `DatabaseService` carries no health method.
 
 ### Automatic Actor Stamping
 
 - On `create`, `createMany`, `update`, `updateMany`, and `upsert`, the extension fills `createdBy` and `updatedBy` from the current request actor.
 - The actor is the authenticated `request.user.userId`, written into the request store under `RequestActorStoreKey` by the global `RequestActorInterceptor` after JWT authentication. A request with no authenticated user, a queue processor, and a seed carry no actor, and nothing is stamped.
 - A field is filled only when the model has that column and the caller left it null. An explicit value the caller passes always wins.
-- `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.ObjectId`; they store the actor's user id.
+- `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.Uuid`; they store the actor's user id.
 
 **Stamping recurses into nested writes.** `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields, and `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`. Each nested write is stamped against the **related** model, resolved through `DatabaseModelRelations`, and the recursion continues to any deeper level.
 
@@ -540,6 +411,18 @@ The extension adds two methods to every model. They are meaningful only on model
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
 **Reads are not filtered.** The extension only writes audit fields; it never rewrites a `where`. Excluding soft-deleted rows stays explicit, so a read against a soft-deletable model carries `deletedAt: null` itself. An automatic read filter is deliberately not applied: `PaginationService` counts through `repository.count()`, which such a filter would leave unfiltered, making a page and its total disagree.
+
+### Delete Behaviour of Foreign Keys
+
+A physical delete follows the `onDelete` action declared on each relation in `prisma/schema.prisma`. Soft delete (`deletedAt`) fires no foreign-key action.
+
+| Action | Relations |
+|---|---|
+| `Cascade` | Every required foreign key under `User` (`UserMobileNumber`, `UserPhoto`, `Verification`, `PasswordHistory`, `ActivityLog`, `Session`, `DeviceOwnership`, `TwoFactor`, `TermPolicyUserAcceptance`, `ForgotPassword`, `Notification`, `NotificationUserSetting`, `FeatureFlagUser`, `WorkspaceMember`, `WorkspaceJoinRequest`, `ProjectMember`); `Policy.role`; `Session.deviceOwnership`; `DeviceOwnership.device`; `NotificationDelivery.notification`; `Verification.mobileNumber`; `TwoFactorBackupCode.twoFactor`; `TermPolicyContent.termPolicy`; `FeatureFlagUser.featureFlag`; `ActivityLog.workspace`; `WorkspaceMember`, `WorkspaceJoinRequest`, `WorkspaceInvite` and `Project` to `Workspace`; `WorkspaceInvite.project`; `ProjectMember` to `Project` |
+| `SetNull` | `Session.revokedBy`, `DeviceOwnership.revokedBy`, `WorkspaceInvite.invitedBy` (nullable), `WorkspaceInvite.acceptedBy`, `WorkspaceJoinRequest.reviewedBy`, `User.lastWorkspace` |
+| `Restrict` | `User.role`, `WorkspaceMember.role`, `ProjectMember.role`, `WorkspaceInvite.workspaceRole`, `WorkspaceInvite.projectRole`, `User.country`, `UserMobileNumber.country`, `TermPolicyUserAcceptance.termPolicy` |
+
+Deleting a `Role` row that any user, member, or invite still references is rejected, and a `Role` delete removes its `Policy` rows. Deleting a `User` row therefore removes its photo, sessions, device ownerships, two-factor rows, verifications, password history, notifications, term policy acceptances, workspace and project memberships, and activity log rows, and nulls the actor references other rows hold to it. Deleting a `Workspace` row removes its members, join requests, invites, projects (and their members), and workspace-scoped activity log rows. `migration:remove` for `user` and `workspace` is one `deleteMany` each and relies on this.
 
 ## Generated Unique Values
 
@@ -569,26 +452,24 @@ Three rules hold across all of them:
 
 ### Prisma ORM
 
-The database client is **[Prisma][ref-prisma] v6.19.x**. Repositories talk to Prisma only: generated types, `PrismaClient` as the boundary, shared query API and transactions. Schema sync is `pnpm db:migrate` (`prisma db push`).
+The database client is **[Prisma][ref-prisma] v6.19.x**. Repositories talk to Prisma only: generated types, `PrismaClient` as the boundary, shared query API and transactions. Schema sync is `pnpm db:migrate` (`prisma migrate dev`).
 
 ### Database provider
 
-This boilerplate uses **MongoDB** (`provider = "mongodb"`). ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. There is no `prisma migrate` history; shape changes go through `db push`.
-
-PostgreSQL is on the project TODO. Setup and seeding for the current MongoDB path are in the sections above.
+This boilerplate uses **PostgreSQL** (`provider = "postgresql"`). UUID primary keys, relational transactions, and seed commands assume PostgreSQL. Schema changes are tracked as migration files under `prisma/migrations/`.
 
 #### Learn More
 
-- [Prisma MongoDB Documentation][ref-prisma-mongodb]
+- [Prisma PostgreSQL Documentation][ref-prisma-postgresql]
 - [nest-commander][ref-nest-commander]
 
 
 <!-- REFERENCES -->
 
 [ref-prisma]: https://www.prisma.io
-[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
+[ref-prisma-postgresql]: https://www.prisma.io/docs/orm/overview/databases/postgresql
+[ref-prisma-migrate]: https://www.prisma.io/docs/orm/prisma-migrate
 [ref-nest-commander]: https://nest-commander.jaymcdoniel.dev
-[ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/
 
 [ref-doc-installation]: installation.md

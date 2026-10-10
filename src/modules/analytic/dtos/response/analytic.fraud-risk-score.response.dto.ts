@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticFraudRiskScoreResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the scored user',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     score: z.number().meta({
         description: 'Weighted fraud score of the user',

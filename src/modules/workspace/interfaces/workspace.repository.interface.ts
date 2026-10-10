@@ -24,11 +24,9 @@ export interface IWorkspaceRepository {
         }: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
     ): Promise<IPaginationCursorReturn<Workspace>>;
     findWithPaginationOffsetForAdmin(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+        params: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
+        isPublic?: Record<string, IPaginationEqual>,
+        where?: Prisma.WorkspaceWhereInput
     ): Promise<IResponsePaginationReturn<Workspace>>;
     createInTx(
         tx: IDatabaseTransactionClient,

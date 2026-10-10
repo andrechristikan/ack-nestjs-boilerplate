@@ -17,7 +17,8 @@ export interface IPasswordHistoryRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
+        additionalWhere?: Prisma.PasswordHistoryWhereInput
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>>;
     findWithPaginationCursor(
         userId: string,

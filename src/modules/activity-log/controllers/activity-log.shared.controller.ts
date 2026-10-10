@@ -54,7 +54,7 @@ export class ActivityLogSharedController {
         query: ActivityLogSharedListRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListCursorByUser(userId, query);
+        return this.activityLogHttpService.getListCursor({ userId }, query);
     }
 
     @Doc({ summary: 'get my own activity logs in the current workspace' })
@@ -76,9 +76,8 @@ export class ActivityLogSharedController {
         @AuthJwtPayload('userId') userId: string,
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListCursorByWorkspace(
-            workspace.id,
-            userId,
+        return this.activityLogHttpService.getListCursor(
+            { workspaceId: workspace.id, userId },
             query
         );
     }

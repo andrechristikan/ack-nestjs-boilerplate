@@ -1,211 +1,176 @@
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
+
+interface IRow {
+    id: string;
+    at: Date;
+    n: number;
+    s: string;
+    hidden: number;
+}
 
 describe('AnalyticSortUtil', () => {
     let util: AnalyticSortUtil;
+    const keys: (keyof IRow)[] = ['id', 'at', 'n', 's'];
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    const row = (id: string, at: number, n: number, s: string): IRow => ({
+        id,
+        at: new Date(at),
+        n,
+        s,
+        hidden: 0,
+    });
 
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [AnalyticSortUtil],
-        }).compile();
-
-        util = module.get(AnalyticSortUtil);
+    beforeEach(() => {
+        util = new AnalyticSortUtil();
     });
 
     describe('sortRows', () => {
-        it('returns the very same array instance when orderBy is undefined', () => {
-            const rows = [
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ];
-            const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
+        it('returns the same array when orderBy is undefined', () => {
+            const rows = [row('a', 2, 2, 'b'), row('b', 1, 1, 'a')];
 
-            const result = util.sortRows(rows, undefined, sortableKeys);
-
-            expect(result).toBe(rows);
-            expect(result).toEqual([
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ]);
+            expect(util.sortRows(rows, undefined, keys)).toBe(rows);
         });
 
-        it('returns the very same array instance when orderBy is empty', () => {
-            const rows = [
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ];
-            const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
+        it('returns the same array when orderBy is empty', () => {
+            const rows = [row('a', 2, 2, 'b')];
 
-            const result = util.sortRows(rows, [], sortableKeys);
-
-            expect(result).toBe(rows);
+            expect(util.sortRows(rows, [], keys)).toBe(rows);
         });
 
-        it('returns the very same array instance when no orderBy key is sortable', () => {
-            const rows = [
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ];
-            const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
-            const orderBy: IPaginationOrderBy[] = [
-                { createdAt: EnumPaginationOrderDirectionType.desc },
-            ];
+        it('ignores terms whose field is not sortable', () => {
+            const rows = [row('a', 2, 2, 'b')];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
-
-            expect(result).toBe(rows);
-            expect(result).toEqual([
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ]);
+            expect(
+                util.sortRows(
+                    rows,
+                    [{ hidden: EnumPaginationOrderDirectionType.asc }],
+                    keys
+                )
+            ).toBe(rows);
         });
 
-        it('sorts ascending on a sortable key into a new array and leaves the input untouched', () => {
+        it('sorts dates ascending without mutating input', () => {
             const rows = [
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ];
-            const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
-            const orderBy: IPaginationOrderBy[] = [
-                { userId: EnumPaginationOrderDirectionType.asc },
+                row('a', 3, 0, ''),
+                row('b', 1, 0, ''),
+                row('c', 2, 0, ''),
             ];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
+            const result = util.sortRows(
+                rows,
+                [{ at: EnumPaginationOrderDirectionType.asc }],
+                keys
+            );
 
+            expect(result.map(r => r.id)).toEqual(['b', 'c', 'a']);
             expect(result).not.toBe(rows);
-            expect(result).toEqual([
-                { userId: 'user-1', score: 40 },
-                { userId: 'user-2', score: 10 },
-            ]);
-            expect(rows).toEqual([
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ]);
+            expect(rows.map(r => r.id)).toEqual(['a', 'b', 'c']);
         });
 
-        it('sorts descending on a sortable key', () => {
+        it('sorts numbers descending', () => {
             const rows = [
-                { userId: 'user-1', score: 10 },
-                { userId: 'user-2', score: 40 },
-            ];
-            const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
-            const orderBy: IPaginationOrderBy[] = [
-                { score: EnumPaginationOrderDirectionType.desc },
+                row('a', 0, 1, ''),
+                row('b', 0, 3, ''),
+                row('c', 0, 2, ''),
             ];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
-
-            expect(result).toEqual([
-                { userId: 'user-2', score: 40 },
-                { userId: 'user-1', score: 10 },
-            ]);
-        });
-
-        it('drops the unsortable terms and applies only the sortable ones', () => {
-            const rows = [
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ];
-            const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
-            const orderBy: IPaginationOrderBy[] = [
-                { createdAt: EnumPaginationOrderDirectionType.asc },
-                { userId: EnumPaginationOrderDirectionType.asc },
-            ];
-
-            const result = util.sortRows(rows, orderBy, sortableKeys);
-
-            expect(result).toEqual([
-                { userId: 'user-1', score: 40 },
-                { userId: 'user-2', score: 10 },
-            ]);
-        });
-
-        it('falls through to the next term when the first term compares equal', () => {
-            const rows = [
-                { userId: 'user-1', score: 10, band: 'review' },
-                { userId: 'user-1', score: 40, band: 'monitor' },
-            ];
-            const sortableKeys: ('userId' | 'score' | 'band')[] = [
-                'userId',
-                'score',
-                'band',
-            ];
-            const orderBy: IPaginationOrderBy[] = [
-                { userId: EnumPaginationOrderDirectionType.asc },
-                { score: EnumPaginationOrderDirectionType.desc },
-            ];
-
-            const result = util.sortRows(rows, orderBy, sortableKeys);
-
-            expect(result).toEqual([
-                { userId: 'user-1', score: 40, band: 'monitor' },
-                { userId: 'user-1', score: 10, band: 'review' },
-            ]);
-        });
-
-        it('keeps the given order when every term compares equal', () => {
-            const rows = [
-                { userId: 'user-1', score: 10, band: 'review' },
-                { userId: 'user-1', score: 10, band: 'monitor' },
-            ];
-            const sortableKeys: ('userId' | 'score' | 'band')[] = [
-                'userId',
-                'score',
-                'band',
-            ];
-            const orderBy: IPaginationOrderBy[] = [
-                { userId: EnumPaginationOrderDirectionType.asc },
-                { score: EnumPaginationOrderDirectionType.asc },
-            ];
-
-            const result = util.sortRows(rows, orderBy, sortableKeys);
-
-            expect(result).toEqual([
-                { userId: 'user-1', score: 10, band: 'review' },
-                { userId: 'user-1', score: 10, band: 'monitor' },
-            ]);
-        });
-    });
-
-    describe('compareValues', () => {
-        it('compares two Dates by their epoch milliseconds', () => {
-            const earlier = new Date(2026, 0, 1, 0, 0, 0);
-            const later = new Date(2026, 0, 2, 0, 0, 0);
-
-            expect(util['compareValues'](earlier, later)).toBe(
-                earlier.getTime() - later.getTime()
+            const result = util.sortRows(
+                rows,
+                [{ n: EnumPaginationOrderDirectionType.desc }],
+                keys
             );
-            expect(util['compareValues'](later, earlier)).toBe(
-                later.getTime() - earlier.getTime()
+
+            expect(result.map(r => r.id)).toEqual(['b', 'c', 'a']);
+        });
+
+        it('sorts strings ascending and descending', () => {
+            const rows = [
+                row('1', 0, 0, 'b'),
+                row('2', 0, 0, 'c'),
+                row('3', 0, 0, 'a'),
+            ];
+
+            expect(
+                util
+                    .sortRows(
+                        rows,
+                        [{ s: EnumPaginationOrderDirectionType.asc }],
+                        keys
+                    )
+                    .map(r => r.s)
+            ).toEqual(['a', 'b', 'c']);
+            expect(
+                util
+                    .sortRows(
+                        rows,
+                        [{ s: EnumPaginationOrderDirectionType.desc }],
+                        keys
+                    )
+                    .map(r => r.s)
+            ).toEqual(['c', 'b', 'a']);
+        });
+
+        it('falls back to string compare on mixed types', () => {
+            const rows = [
+                { v: 'b' as unknown },
+                { v: 2 as unknown },
+                { v: 'a' as unknown },
+            ];
+
+            const result = util.sortRows(
+                rows,
+                [{ v: EnumPaginationOrderDirectionType.asc }],
+                ['v']
             );
-            expect(util['compareValues'](earlier, earlier)).toBe(0);
+
+            expect(result.map(r => r.v)).toEqual([2, 'a', 'b']);
         });
 
-        it('compares two numbers by subtraction', () => {
-            expect(util['compareValues'](10, 4)).toBe(6);
-            expect(util['compareValues'](4, 10)).toBe(-6);
-            expect(util['compareValues'](4, 4)).toBe(0);
+        it('uses the next term as tie-breaker when the first is equal', () => {
+            const rows = [
+                row('a', 0, 1, 'x'),
+                row('b', 0, 1, 'y'),
+                row('c', 0, 0, 'z'),
+            ];
+
+            const result = util.sortRows(
+                rows,
+                [
+                    { n: EnumPaginationOrderDirectionType.asc },
+                    { s: EnumPaginationOrderDirectionType.desc },
+                ],
+                keys
+            );
+
+            expect(result.map(r => r.id)).toEqual(['c', 'b', 'a']);
         });
 
-        it('returns 0 when the stringified values match', () => {
-            expect(util['compareValues']('monitor', 'monitor')).toBe(0);
-            expect(util['compareValues'](null, null)).toBe(0);
+        it('treats equal strings as a tie', () => {
+            const rows = [row('a', 0, 0, 'x'), row('b', 0, 0, 'x')];
+
+            const result = util.sortRows(
+                rows,
+                [{ s: EnumPaginationOrderDirectionType.asc }],
+                keys
+            );
+
+            expect(result.map(r => r.id)).toEqual(['a', 'b']);
         });
 
-        it('returns -1 when the left string sorts first and 1 when it sorts last', () => {
-            expect(util['compareValues']('elevate', 'monitor')).toBe(-1);
-            expect(util['compareValues']('monitor', 'elevate')).toBe(1);
-        });
+        it('keeps order when every term compares equal', () => {
+            const rows = [row('a', 1, 1, 'x'), row('b', 1, 1, 'x')];
 
-        it('stringifies a mixed pair rather than comparing it numerically', () => {
-            expect(util['compareValues'](10, '4')).toBe(-1);
-            expect(util['compareValues'](new Date(2026, 0, 1), 4)).toBe(1);
-            expect(util['compareValues'](undefined, null)).toBe(1);
+            const result = util.sortRows(
+                rows,
+                [
+                    { n: EnumPaginationOrderDirectionType.asc },
+                    { at: EnumPaginationOrderDirectionType.desc },
+                ],
+                keys
+            );
+
+            expect(result.map(r => r.id)).toEqual(['a', 'b']);
         });
     });
 });

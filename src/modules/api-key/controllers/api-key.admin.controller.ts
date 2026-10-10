@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -35,18 +35,16 @@ import type {
 } from '@common/response/interfaces/response.interface';
 
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 import type { ApiKey } from '@generated/prisma-client/client';
 import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ApiKeyUpdateStatusRequestSchema } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -65,11 +63,10 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -84,11 +81,10 @@ export class ApiKeyAdminController {
     @Doc({ summary: 'create an api key' })
     @Response('apiKey.create', { schema: ApiKeyCreateResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -106,18 +102,17 @@ export class ApiKeyAdminController {
         schema: ApiKeyCreateResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Patch('/reset/:apiKeyId')
     async reset(
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         return this.apiKeyHttpService.resetByAdmin(apiKeyId);
@@ -128,11 +123,10 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -141,7 +135,7 @@ export class ApiKeyAdminController {
     async update(
         @Body({ schema: ApiKeyUpdateRequestSchema })
         body: ApiKeyUpdateRequestDto,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.updateByAdmin(apiKeyId, body);
@@ -152,11 +146,10 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -165,7 +158,7 @@ export class ApiKeyAdminController {
     async updateDate(
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
         body: ApiKeyUpdateDateRequestDto,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.updateDatesByAdmin(apiKeyId, body);
@@ -176,18 +169,17 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
@@ -200,18 +192,17 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Delete('/delete/:apiKeyId')
     async delete(
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.deleteByAdmin(apiKeyId);
