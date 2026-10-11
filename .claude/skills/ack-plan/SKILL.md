@@ -34,19 +34,19 @@ Skip this step when the session already holds the location table and no contract
 
 ## 4. Design
 
-Invoke `superpowers:brainstorming` with the settled paragraph and the location table. Its save step writes under `.superpowers/`; its commit step is not taken, and git stays read-only.
+Invoke `superpowers:brainstorming` with the settled paragraph and the location table. Its spec saves to `.superpowers/specs/YYYY-MM-DD-<topic>-design.md`, in place of its `docs/superpowers/specs/` default. No spec or plan goes directly under `.superpowers/` or under `generated/docs/`. Its commit step is not taken, and git stays read-only.
 
 - A bounded change stops at a design the owner approved in chat.
-- An architectural change produces `.superpowers/<date>-<slug>-spec.md`, which the owner approves.
+- An architectural change produces `.superpowers/specs/YYYY-MM-DD-<topic>-design.md`, which the owner approves.
 
 ## 5. Plan
 
-Invoke `superpowers:writing-plans` on the approved design; the output is `.superpowers/<date>-<slug>-plan.md`. Its Execution Handoff is not taken: the plan ends here, and execution is the owner's `/ack-build` after step 7.
+Invoke `superpowers:writing-plans` on the approved design. The plan saves to `.superpowers/plans/YYYY-MM-DD-<feature-name>.md`, in place of its `docs/superpowers/plans/` default. Its Execution Handoff is not taken: the plan ends here, and execution is the owner's `/ack-build` after step 7.
 
 The plan opens with the writing-plans header. Its `**Spec:**` line names the spec, and two lines follow it directly, before `## Global Constraints`:
 
 ```
-**Spec:** <.superpowers/<date>-<slug>-spec.md | none>
+**Spec:** <.superpowers/specs/YYYY-MM-DD-<topic>-design.md | none>
 
 **Requirement:** <the settled paragraph>
 
@@ -78,7 +78,7 @@ Invoke `superpowers:verification-before-completion`: report every step above wit
 
 ## Boundaries
 
-- Write only under `.superpowers/`: no `src/`, `test/`, `prisma/`, or `.claude/**` edit.
+- Write only under `.superpowers/specs/`, `.superpowers/plans/`, and the brainstorming companion's `.superpowers/brainstorm/`: no `src/`, `test/`, `prisma/`, `generated/docs/`, or `.claude/**` edit.
 - Git stays read-only; no DB or seed command.
 
 ## Hand back

@@ -6,7 +6,7 @@ disable-model-invocation: true
 model: opus
 effort: medium
 context: fork
-argument-hint: '<.superpowers/<date>-<slug>-plan.md | pin: files <paths>; cause <file:line>; change <one sentence>>'
+argument-hint: '<.superpowers/plans/YYYY-MM-DD-<feature-name>.md | pin: files <paths>; cause <file:line>; change <one sentence>>'
 ---
 
 !`git status --short` !`git diff --name-only HEAD`
@@ -20,11 +20,11 @@ You orchestrate in a fork; agents do the work. `coder` writes `src/`, `test/`, a
 - A plan path: read the plan whole. Its header carries `**Review depth:** rules and boot | end to end`, set by `/ack-plan`. A header without it means `rules and boot`.
 - A pin: files, the cause at `file:line`, and the change. Missing any of the three, stop and hand back. A pin's review depth is `rules and boot`.
 - Nothing open is decided here. An open product question, a shape with two readings, or a cause not in hand is a hand-back naming `/ack-plan`.
-- The progress ledger is `.superpowers/sdd/<plan-basename>/progress.md`, in the per-plan workspace `superpowers:subagent-driven-development` keeps (its `scripts/sdd-workspace` prints the path). Read it before the first dispatch and resume where its lines end. A `progress.md` directly under `.superpowers/sdd/` belongs to another plan; leave it alone.
+- The progress ledger is `.superpowers/sdd/<plan-basename>/progress.md`, `<plan-basename>` the plan file name without `.md`, in the per-plan workspace `superpowers:subagent-driven-development` keeps (its `scripts/sdd-workspace` prints the path). Read it before the first dispatch and resume where its lines end. A `progress.md` directly under `.superpowers/sdd/` belongs to another plan; leave it alone.
 
 ## 2. Build, through `coder`
 
-Follow `superpowers:subagent-driven-development` with the project's agents: one fresh `coder` per plan task, in order, one at a time, its brief under `.superpowers/sdd/`. Its review steps are not taken; the one review is step 3. Dispatch template: `references/dispatch.md`, Coder. `coder` runs on the model in its own frontmatter; its Agent call carries no `model`. A pin is one dispatch carrying the pin instead of a plan path, its `Rules to read:` the output of `bash .claude/hooks/rules.sh` over the pin's files.
+Follow `superpowers:subagent-driven-development` with the project's agents: one fresh `coder` per plan task, in order, one at a time, its brief at `.superpowers/sdd/<plan-basename>/task-<N>-brief.md`. Its review steps are not taken; the one review is step 3. Dispatch template: `references/dispatch.md`, Coder. `coder` runs on the model in its own frontmatter; its Agent call carries no `model`. A pin is one dispatch carrying the pin instead of a plan path, its `Rules to read:` the output of `bash .claude/hooks/rules.sh` over the pin's files.
 
 - When the task changes `src/` behaviour, `coder` writes the failing unit spec under `test/unit/`, watches it fail, and implements. Specs, test helpers, setup or global-setup files, and test config the task's Files list names are written as listed.
 - `coder` then runs `pnpm typecheck` and `pnpm test <module>`, or the task's own acceptance commands when the plan names them, and repairs the run surface the change made stale.

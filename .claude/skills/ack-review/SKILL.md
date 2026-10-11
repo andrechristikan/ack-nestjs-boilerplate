@@ -23,7 +23,7 @@ You orchestrate in a fork; `reviewer` does the work. You dispatch one `reviewer`
 | Scope | Depth |
 | --- | --- |
 | `src/` and `test/` paths | `rules and boot` |
-| a `.superpowers/*-plan.md` or `.superpowers/plans/*.md` path | `plan` |
+| a `.superpowers/plans/*.md` path | `plan` |
 | markdown under `docs/`, the root people files, or `.github/`; diagram files under `docs/assets/` | `docs` |
 | `.claude/**`, `AGENTS.md`, or `.github/copilot-instructions.md` | `harness` |
 

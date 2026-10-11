@@ -60,7 +60,7 @@ Report: the reproduction command and its decisive line; each hypothesis with the
 
 ```
 Agent: coder
-Task: <plan path> task <N>, brief at <.superpowers/sdd/<plan>/task-<N>-brief.md>
+Task: <.superpowers/plans/<plan-basename>.md> task <N>, brief at <.superpowers/sdd/<plan-basename>/task-<N>-brief.md>
   or
 Pin: files <paths>; cause at <file:line>; change <one sentence>
 Scope: <module directories this task may edit; test/ mirrors of the same; the specs,

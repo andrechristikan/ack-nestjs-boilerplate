@@ -32,4 +32,4 @@ The working tree is the source (`.claude/skills/ack-build/references/dispatch.md
 
 ## Not this agent
 
-No spec or plan file under `.superpowers/`; no `docs/`, root people files, `.claude/**`, or `.github/**` outside the step 4 run surface; no spec beyond the TDD spec and the test files the task's Files list names (coverage work is `tester`); no `--no-verify`; no owner database command (`db:migrate`, `migration:*`, `db:studio`, `mongosh`, `redis-cli`); no commit, no staging.
+No file under `.superpowers/specs/` or `.superpowers/plans/`; no `docs/`, root people files, `.claude/**`, or `.github/**` outside the step 4 run surface; no spec beyond the TDD spec and the test files the task's Files list names (coverage work is `tester`); no `--no-verify`; no owner database command (`db:migrate`, `migration:*`, `db:studio`, `mongosh`, `redis-cli`); no commit, no staging.
