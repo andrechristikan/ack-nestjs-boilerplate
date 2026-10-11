@@ -53,6 +53,7 @@ NestJS applies each layer on the route handler. A role decides nothing by itself
   - [Guards](#guards-2)
     - [PolicyAbilityGuard](#policyabilityguard)
     - [PolicyGuard](#policyguard)
+  - [Policy 403 and Resource 404](#policy-403-and-resource-404)
   - [Record-Level Checks](#record-level-checks)
   - [Collection Queries](#collection-queries)
   - [Effective Permissions](#effective-permissions)
@@ -396,6 +397,30 @@ flowchart TD
     ErrorForbidden --> End
 ```
 
+### Policy 403 and Resource 404
+
+Policy enforcement distinguishes a missing capability from a resource that the caller cannot
+reach:
+
+| Decision point | Result |
+|---|---|
+| `PolicyGuard` denies the required action and subject | `403 PolicyForbiddenException` |
+| `accessibleWhere` finds no rule for the action and subject | `403 PolicyForbiddenException` |
+| `assertCan` denies a prospective create or an already loaded record | `403 PolicyForbiddenException` |
+| A single-record query includes the CASL predicate and finds no row | The feature's `404` not-found exception |
+| A collection query excludes rows through the CASL predicate | `200` with only accessible rows |
+
+A policy-filtered single-record lookup does not query again without the CASL predicate to determine
+whether the row exists. A missing row and an existing but inaccessible row therefore produce the
+same feature-specific `404`. This prevents the endpoint from disclosing the existence of resources
+outside the caller's accessible set.
+
+The `403` response is appropriate when the application can reject the capability before looking up
+a protected record. The `404` response is appropriate when the ability grants the action on the
+subject type but its conditions exclude the requested record. A flow that loads a record first and
+then calls `assertCan` receives `403`, because that API performs an explicit policy assertion rather
+than a policy-filtered lookup.
+
 ### Record-Level Checks
 
 The type-level check asks by subject name, so a rule's `conditions` are not evaluated by it. An HTTP service closes that gap by loading the record and calling `assertCan(action, subject(EnumPolicySubject.X, record))`. CASL evaluates the conditions against the real record before the domain call. A target lookup stays within its workspace, project, user, or role boundary, so an out-of-bound identifier answers the module's not-found exception.
@@ -421,6 +446,27 @@ The service authorizes its loaded copy. The domain reloads the data it needs and
 
 `PolicyAbilityDomain.accessibleWhere(action, subject)` converts the stored ability into a Prisma where-input with `accessibleBy(ability, action).ofType(subject)`. The subject is typed as a generic `K extends PolicyModelSubject`, and the return type is that model's `WhereInput` (for example `Prisma.RoleWhereInput` for `Role`), so a call site passes no type argument and needs no cast. It throws `PolicyForbiddenException` when the ability holds no rule for that action and subject, and a missing stored ability throws `RequestContextMissingException`.
 
+`accessibleWhere` does not implement a different rule-to-query conversion from CASL. It is the
+application wrapper around the direct call:
+
+```typescript
+const ability = this.getAbility();
+if (ability.rulesFor(action, subjectName).length === 0) {
+  throw new PolicyForbiddenException({
+    missing: [{ subject: subjectName, actions: [action] }]
+  });
+}
+
+return accessibleBy(ability, action).ofType(subjectName);
+```
+
+Calling `accessibleBy(ability, action).ofType(subject)` directly requires the caller to obtain the
+ability and choose its missing-rule behavior. CASL returns its special denied condition when no row
+is accessible. With `createCaslExtension()`, a query containing that condition produces an empty
+result instead of a Prisma validation error. On a single-record lookup, the empty result is normally
+mapped to the feature's `404`. The wrapper instead returns `403` before the query when the ability
+contains no rule at all for that action and subject.
+
 | Collection | Policy predicate |
 |---|---|
 | Admin user, session, API key, role, password-history, term-policy, feature-flag, workspace, workspace-member, and project lists | `accessibleWhere(read, <subject>)` |
@@ -433,6 +479,26 @@ The service authorizes its loaded copy. The domain reloads the data it needs and
 | Member project list | `accessibleWhere(read, Project)` |
 
 The HTTP service passes the predicate to the domain as an optional `where`. The repository AND-composes it with mandatory workspace, project, active-row, search, equality, and pagination constraints. The member project predicate alone decides which projects the caller sees; the seeded workspace `member` rule limits it to projects where that user is assigned. Analytics lists, shared self-service lists, and public and system routes carry no collection predicate.
+
+The additional condition is composed as an `AND` operand rather than spread into the surrounding
+object:
+
+```typescript
+where: {
+  AND: [
+    additionalWhere ?? {},
+    filters ?? {},
+    mandatoryWhere
+  ]
+}
+```
+
+`...additionalWhere` is not a replacement for this expression. An object cannot be spread as an
+array element, and object-level `{ ...baseWhere, ...additionalWhere }` can overwrite an existing
+`AND`, `OR`, `NOT`, or field constraint instead of intersecting both conditions. The expression
+`additionalWhere ?? {}` handles the absence of a caller-provided condition.
+`createCaslExtension()` separately handles the special denied condition returned by CASL; it does
+not handle JavaScript `undefined` or compose ordinary Prisma conditions.
 
 ### Effective Permissions
 
