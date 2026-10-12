@@ -23,16 +23,16 @@ The target design keeps three concerns separate and exposes one small authorizat
 3. `PolicyAbilityDomain.scope` produces a typed query predicate for database-backed operations.
 4. Repositories compose the predicate with their database queries.
 
-Raw Prisma filters do not cross the HTTP service boundary. Persisted policy conditions are resolved
-inside the policy ability layer before a typed predicate reaches a domain and repository. Redis is
-not part of policy resolution.
+Raw Prisma filters are not derived from transport DTOs. Persisted policy conditions are resolved
+inside the policy ability layer before a typed predicate reaches the feature domain and repository.
+Redis is not part of policy resolution.
 
 ## Goals
 
 - Apply attribute-based access control with CASL and `@casl/prisma`.
 - Store fully customizable policy conditions in the database.
 - Build one deterministic, fail-closed ability per request.
-- Generate `accessibleBy` conditions through `PolicyAbilityDomain.scope` and pass them to repositories.
+- Generate `accessibleBy` conditions through `PolicyAbilityDomain.scope` in HTTP services and pass them through feature domains to repositories.
 - Enforce record authorization in the database query that reads or mutates the record.
 - Distinguish coarse permission denial from an inaccessible resource.
 - Reuse repository methods for authorized requests and trusted internal operations.
@@ -66,17 +66,18 @@ The desired implementation has these properties:
 ```text
 Controller
   -> HTTP Service
+      -> PolicyAbilityDomain
       -> Domain Service
-          -> PolicyAbilityDomain
           -> Repository
               -> DatabaseService
 ```
 
-HTTP services translate transport DTOs and responses. Feature domain services own business decisions
-and choose the authorization operation. `PolicyAbilityDomain` exposes the request-scoped ability
-through two application methods: `authorize` for one type, record, or prospective-record decision,
-and `scope` for a typed database predicate. Repositories own final Prisma query composition and
-transactions.
+HTTP services translate transport DTOs and responses and perform request-scoped authorization.
+Feature domain services remain reusable by jobs and trusted internal flows; they receive an optional
+typed authorization predicate and pass it to repositories. `PolicyAbilityDomain` exposes the
+request-scoped ability through two methods: `authorize` for one type, record, or prospective-record
+decision, and `scope` for a typed database predicate. Repositories own final Prisma query
+composition and transactions.
 
 ```mermaid
 sequenceDiagram
@@ -96,10 +97,10 @@ sequenceDiagram
     G->>G: Store ability in request context
     G->>G: Check coarse action and subject
     G->>H: Continue
-    H->>D: Transport-neutral input
-    D->>PD: Request scope or authorize decision
-    PD-->>D: Typed additional where condition
-    D->>R: Business input and additional where
+    H->>PD: Request authorize or scope decision
+    PD-->>H: Decision or typed additional where condition
+    H->>D: Business input and optional authorization where
+    D->>R: Business input and optional authorization where
     R->>R: Compose final query
     R->>DB: Query with business and CASL predicates
     DB-->>R: Accessible result
@@ -290,10 +291,30 @@ return ability;
 An absent ability after the authorization guards have run is an internal configuration error, not
 an authorization denial.
 
+## Request Context Loading
+
+Workspace and project context decorators resolve their resource and load the caller's membership
+when one exists. `@WorkspaceProtected()` runs `WorkspaceGuard` followed by
+`WorkspaceMemberGuard`; `@ProjectProtected()` runs `ProjectGuard` followed by
+`ProjectMemberGuard`. The existing decorator order resolves workspace context before project
+context.
+
+Member guards are context loaders, not authorization gates. They validate a loaded member's role
+scope and store it in request context, but a missing `WorkspaceMember` or `ProjectMember` row
+stores nothing and lets the request continue. Ability construction includes only the platform,
+workspace, and project roles available in request context. A missing membership consequently
+contributes no role rules.
+
+`@PolicyProtected`, `authorize`, and `scope` decide whether that ability may perform the requested
+operation. Routes that only need an ability without a coarse route requirement use `@PolicyAbility`
+and perform their object-level decision in the HTTP service. A self-service leave operation loads
+the caller's membership as domain data, returns the feature member-not-found result when absent,
+then authorizes the loaded membership before changing it.
+
 ## Authorization API
 
-The application has one policy decision primitive and one query-scoping primitive. They use the same
-request ability and must not be repeated for the same operation.
+The application has one policy decision primitive and one query-scoping primitive. HTTP services use
+them with the same request ability and must not repeat authorization for the same operation.
 
 ### `authorize`
 
@@ -337,21 +358,25 @@ this.policyAbilityDomain.authorize(
 ```
 
 The prospective object must contain every attribute used by its stored condition. If a
-relation-backed condition cannot be evaluated from the object, use `scope` in the repository query
-instead.
+relation-backed condition cannot be evaluated from the object, use `scope` in the final repository
+query instead.
 
 ### `scope`
 
 `scope(action, subject)` returns the typed `accessibleBy` predicate for a Prisma model subject. The
-domain passes it to the repository, which composes it with business filters:
+HTTP service passes it through the feature domain to the repository, which composes it with business
+filters:
 
 ```ts
-const where = this.policyAbilityDomain.scope(
+const authorizationWhere = this.policyAbilityDomain.scope(
     EnumPolicyAction.read,
     EnumPolicySubject.Project
 );
 
-const projects = await this.projectRepository.findMany(params, where);
+const projects = await this.projectDomain.findMany(
+    params,
+    authorizationWhere
+);
 ```
 
 Use `scope` for collections, single-record lookups, updates, and deletes. The predicate must be part
@@ -393,8 +418,9 @@ export function PolicyAbility(): MethodDecorator {
 The scope-specific names `PlatformPolicyProtected`, `WorkspacePolicyProtected`, and
 `ProjectPolicyProtected` are removed. `PolicyAbility` builds the ability without enforcing
 a declared capability.
-`RequireAccess` is not introduced: authentication, workspace/project resolution, membership, feature
-flags, terms acceptance, and CASL remain separate decorators because they are separate decisions.
+`RequireAccess` is not introduced. Authentication, context resolution and membership loading,
+feature flags, terms acceptance, and CASL remain distinct concerns. Context decorators compose the
+resource and optional membership loaders, while CASL remains the authorization decision.
 
 ## Implementation Cleanup Inventory
 
@@ -407,7 +433,8 @@ specifications use the target API.
 | Current surface | Cleanup |
 | --- | --- |
 | `PlatformPolicyProtected`, `WorkspacePolicyProtected`, `ProjectPolicyProtected` | Delete the scope-specific wrappers. Use `PolicyProtected` with the generated `EnumPolicySubject`. |
-| `WorkspacePolicyProtected` and `ProjectPolicyProtected` imports in workspace/project decorators | Delete the policy-wrapper exports and retain only context and membership decorators. |
+| `WorkspaceMemberProtected`, `ProjectMemberProtected`, `WorkspaceMemberCurrent`, `ProjectMemberCurrent`, and `ProjectMemberRequiredMetaKey` | Delete the standalone membership route surface. Context decorators load and store a membership only when one exists. |
+| `WorkspacePolicyProtected` and `ProjectPolicyProtected` imports in workspace/project decorators | Delete the policy-wrapper exports. `WorkspaceProtected` and `ProjectProtected` retain context loading. |
 | `EnumPolicyPlatformSubject`, `EnumPolicyWorkspaceSubject`, `EnumPolicyProjectSubject`, and `PolicySubject` | Delete the TypeScript-only subject subsets. Persisted and route subjects use `EnumPolicySubject`. |
 | `PolicyAbilityDomain.accessibleWhere` | Delete after all collection, lookup, update, and delete callers use `scope`. |
 | `PolicyAbilityDomain.assertCan` | Delete after object and prospective-record callers use `authorize`. |
@@ -446,6 +473,7 @@ These classes and services remain part of the final architecture:
 - `PolicyCache`, storing raw policy rows by role revision.
 - `EnumPolicyConditionPlaceholder`, `isPolicyPlaceholder`, and the placeholder value resolver.
 - `PolicyAbilityStoreKey`, which identifies the request-scoped ability.
+- `WorkspaceMemberGuard` and `ProjectMemberGuard`, which load an optional membership and role into request context.
 - `PolicyForbiddenException`, `PolicyPredefinedNotFoundException`, and the policy documentation
   error responses.
 - The official CASL Prisma extension and explicit `accessibleBy` predicate generation.
@@ -456,16 +484,20 @@ and repository boundaries remain.
 
 ## Domain Enforcement
 
-Feature domain services obtain a typed CASL condition and pass it to the repository as an additional
-`where` condition. HTTP services do not build CASL conditions or inspect Prisma filters.
+HTTP services obtain a typed CASL condition and pass it through the feature domain as an additional
+`where` condition. Feature domain services do not build abilities or depend on a request-scoped
+ability; they pass the optional condition to repositories. Trusted jobs and internal flows omit it.
 
 ```ts
 public async findOneById(id: string): Promise<Project> {
-    const where = this.policyAbilityDomain.scope(
+    const authorizationWhere = this.policyAbilityDomain.scope(
         EnumPolicyAction.read,
         EnumPolicySubject.Project
     );
-    const project = await this.projectRepository.findOneById(id, where);
+    const project = await this.projectDomain.findOneById(
+        id,
+        authorizationWhere
+    );
 
     if (!project) {
         throw new ProjectNotFoundException();
@@ -477,6 +509,8 @@ public async findOneById(id: string): Promise<Project> {
 
 Object assertions through `authorize` remain useful for prospective records, already-loaded scalar
 records, and business transitions. Query-oriented relation conditions use repository filtering.
+CASL policies express owner and administrator peer restrictions for workspace-member mutations;
+feature domains retain data-integrity invariants such as preserving the final workspace owner.
 
 ### Prospective Create
 
@@ -498,17 +532,18 @@ public async create(
         prospectiveProject
     );
 
-    return this.projectRepository.create(input, actorId);
+    return this.projectDomain.create(input, actorId);
 }
 ```
 
 ## Repository Enforcement
 
-Repositories accept an optional, model-typed additional `where` condition. They do not import CASL,
+Feature domains accept an optional, model-typed additional `where` condition and pass it to
+repositories. Repositories do not import CASL,
 inspect abilities, or distinguish authorization conditions from other caller-provided constraints.
-Request-driven domain methods pass the result of `PolicyAbilityDomain.scope`. Trusted system and
-processor domain methods call the same repository operation without that condition. Repositories do
-not import CASL or build policy decisions.
+Request-driven HTTP services pass the result of `PolicyAbilityDomain.scope`. Trusted system and
+processor domain methods call the same feature-domain operation without that condition. Repositories
+do not build policy decisions.
 
 ```ts
 public async findMany(
@@ -612,7 +647,8 @@ return this.$extends(auditExtension).$extends(createCaslExtension());
 
 The extension normalizes CASL's impossible-query shape so Prisma returns no rows instead of raising
 a validation error. Authorization predicates are still created explicitly with `accessibleBy` in
-`PolicyAbilityDomain` and passed to repositories as additional `where` conditions.
+`PolicyAbilityDomain`, called by HTTP services, and passed through feature domains as additional
+`where` conditions.
 
 A custom Prisma query extension is not used for automatic authorization because it would need
 request context, action and subject inference, nested-operation handling, and an explicit bypass
@@ -708,6 +744,9 @@ Behavior changes follow test-first implementation. Unit specifications cover:
 - Allow-before-deny ordering.
 - Invalid persisted condition handling.
 - Unique role-ID loading and request ability reuse.
+- Workspace and project membership loading when a member exists and when it does not.
+- Policy denial when an authenticated caller has no applicable platform, workspace, or project role.
+- Self-service leave mapping of an absent membership to the feature member-not-found result.
 - Domain prospective-subject checks.
 - Domain mapping of authorized lookup misses to feature `404` exceptions.
 - Policy-authoring validation and accepted `Role: update` behavior.
@@ -732,11 +771,13 @@ with record conditions also have an inaccessible-existing-record case.
 - [ ] Policy definitions validate structural role, subject, and action fields without restricting condition JSON.
 - [ ] Ability construction is deterministic and fail-closed.
 - [ ] One ability is built and reused per protected request.
+- [ ] Workspace and project context decorators load an optional membership without rejecting an absent row.
+- [ ] CASL policies, `authorize`, and `scope` provide every request authorization decision; membership loading only supplies request context.
 - [ ] Raw policy caching uses role revisions and cache deletion is not an authorization correctness boundary.
-- [ ] HTTP services contain no Prisma authorization filters.
+- [ ] HTTP services call `PolicyAbilityDomain.authorize` or `scope` for request authorization.
 - [ ] `PolicyAbilityDomain.authorize` is the only object/prospective authorization operation.
 - [ ] `PolicyAbilityDomain.scope` is the only database predicate operation.
-- [ ] User-request domain methods pass CASL-generated conditions to repositories.
+- [ ] Feature domain methods accept optional authorization predicates without requiring a request ability.
 - [ ] Collection, record, update, and delete queries include CASL predicates.
 - [ ] Prospective creates are checked before persistence.
 - [ ] Inaccessible existing records return feature-specific `404` responses.

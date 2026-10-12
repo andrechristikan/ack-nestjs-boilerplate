@@ -70,9 +70,6 @@ const projectRule = (
             EnumPolicyConditionPlaceholder.projectId,
     });
 
-const projectCreateRule = (): IMigrationPolicyRule =>
-    rule(EnumPolicySubject.Project, [EnumPolicyAction.create]);
-
 /**
  * `Project` read limited to the workspace's projects the caller is a member
  * of. The `members` relation is a list-query predicate: a record check on a
@@ -130,7 +127,7 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
             ]),
-            projectCreateRule(),
+            workspaceRule(EnumPolicySubject.Project, [EnumPolicyAction.create]),
             workspaceRule(EnumPolicySubject.Project, [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
@@ -167,7 +164,7 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
             ]),
-            projectCreateRule(),
+            workspaceRule(EnumPolicySubject.Project, [EnumPolicyAction.create]),
             workspaceRule(EnumPolicySubject.Project, [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
