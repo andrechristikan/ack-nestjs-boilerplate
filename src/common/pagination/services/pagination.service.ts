@@ -104,29 +104,20 @@ export class PaginationService {
     }
 
     private resolveOrderBy(
-        orderBy: IPaginationOrderBy[]
-    ): IPaginationOrderBy[] {
-        if (orderBy.length === 0) {
-            return [...PaginationDefaultOrderBy];
-        }
-
-        return orderBy;
-    }
-
-    private resolveCursorOrderBy(
         orderBy: IPaginationOrderBy[],
-        cursorField: string
+        tiebreakField: string
     ): IPaginationOrderBy[] {
-        const resolved = this.resolveOrderBy(orderBy);
+        const resolved =
+            orderBy.length === 0 ? [...PaginationDefaultOrderBy] : orderBy;
 
-        if (resolved.some(term => cursorField in term)) {
+        if (resolved.some(term => tiebreakField in term)) {
             return resolved;
         }
 
         const lastTerm = resolved[resolved.length - 1]!;
         const direction = Object.values(lastTerm)[0]!;
 
-        return [...resolved, { [cursorField]: direction }];
+        return [...resolved, { [tiebreakField]: direction }];
     }
 
     offsetPage<TReturn>(
@@ -161,7 +152,10 @@ export class PaginationService {
         args: IPaginationOffsetArgs<TArgsWhere>
     ): Promise<IPaginationOffsetReturn<TReturn>> {
         const { limit, skip, where, include, select } = args;
-        const orderBy = this.resolveOrderBy(args.orderBy);
+        const orderBy = this.resolveOrderBy(
+            args.orderBy,
+            PaginationDefaultCursorField
+        );
 
         const [count, items] = await Promise.all([
             repository.count({
@@ -193,7 +187,7 @@ export class PaginationService {
             cursorField = PaginationDefaultCursorField,
             includeCount,
         } = args;
-        const orderBy = this.resolveCursorOrderBy(args.orderBy, cursorField);
+        const orderBy = this.resolveOrderBy(args.orderBy, cursorField);
         const fingerprint = this.fingerprint(where, orderBy);
 
         let decodedCursor: IPaginationCursorValue | null = null;

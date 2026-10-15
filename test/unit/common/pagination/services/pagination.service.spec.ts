@@ -149,13 +149,38 @@ describe('PaginationService', () => {
                 where: { name: 'a' },
                 skip: 0,
                 take: 20,
-                orderBy: [...PaginationDefaultOrderBy],
+                orderBy: [
+                    ...PaginationDefaultOrderBy,
+                    { id: EnumPaginationOrderDirectionType.desc },
+                ],
                 include: undefined,
                 select: undefined,
             });
         });
 
-        it('passes an explicit order by through unchanged', async () => {
+        it('appends the id tiebreaker to an explicit order by using the last term direction', async () => {
+            (repository.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+            (repository.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(
+                []
+            );
+
+            await service.offset(repository, {
+                limit: 20,
+                skip: 0,
+                orderBy: [{ name: EnumPaginationOrderDirectionType.asc }],
+            });
+
+            expect(repository.findMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    orderBy: [
+                        { name: EnumPaginationOrderDirectionType.asc },
+                        { id: EnumPaginationOrderDirectionType.asc },
+                    ],
+                })
+            );
+        });
+
+        it('leaves an order by that already names id unchanged', async () => {
             (repository.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
             (repository.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(
                 []
@@ -163,13 +188,10 @@ describe('PaginationService', () => {
 
             const orderBy: IPaginationOrderBy[] = [
                 { name: EnumPaginationOrderDirectionType.asc },
+                { id: EnumPaginationOrderDirectionType.desc },
             ];
 
-            await service.offset(repository, {
-                limit: 20,
-                skip: 0,
-                orderBy,
-            });
+            await service.offset(repository, { limit: 20, skip: 0, orderBy });
 
             expect(repository.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({ orderBy })
@@ -515,38 +537,27 @@ describe('PaginationService', () => {
     });
 
     describe('resolveOrderBy', () => {
-        it('falls back to the default order when an empty list is sent', () => {
-            expect(service['resolveOrderBy']([])).toEqual([
+        it('falls back to the default order plus the tiebreaker when an empty list is sent', () => {
+            expect(service['resolveOrderBy']([], 'id')).toEqual([
                 ...PaginationDefaultOrderBy,
+                { id: EnumPaginationOrderDirectionType.desc },
             ]);
         });
 
-        it('returns an explicit order unchanged', () => {
-            const orderBy: IPaginationOrderBy[] = [
-                { name: EnumPaginationOrderDirectionType.asc },
-            ];
-
-            expect(service['resolveOrderBy'](orderBy)).toBe(orderBy);
-        });
-    });
-
-    describe('resolveCursorOrderBy', () => {
-        it('returns the order unchanged when it already carries the cursor field', () => {
+        it('returns the order unchanged when it already carries the tiebreak field', () => {
             const orderBy: IPaginationOrderBy[] = [
                 { id: EnumPaginationOrderDirectionType.asc },
             ];
 
-            expect(service['resolveCursorOrderBy'](orderBy, 'id')).toBe(
-                orderBy
-            );
+            expect(service['resolveOrderBy'](orderBy, 'id')).toBe(orderBy);
         });
 
-        it('appends the cursor field as a tiebreaker using the last term direction', () => {
+        it('appends the tiebreak field using the last term direction', () => {
             const orderBy: IPaginationOrderBy[] = [
                 { name: EnumPaginationOrderDirectionType.asc },
             ];
 
-            expect(service['resolveCursorOrderBy'](orderBy, 'id')).toEqual([
+            expect(service['resolveOrderBy'](orderBy, 'id')).toEqual([
                 { name: EnumPaginationOrderDirectionType.asc },
                 { id: EnumPaginationOrderDirectionType.asc },
             ]);

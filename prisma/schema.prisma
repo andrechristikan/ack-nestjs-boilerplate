@@ -27,8 +27,9 @@ model ApiKey {
 
   @@unique(fields: [key])
   @@unique(fields: [hash])
-  @@index(fields: [isActive, type, createdAt(sort: Desc)])
-  @@index(fields: [name])
+  @@index(fields: [isActive, type, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [name, id])
   @@map("ApiKeys")
 }
 
@@ -47,7 +48,7 @@ model Role {
   users    User[]   @relation("UserRole")
 
   @@unique(fields: [name])
-  @@index(fields: [type, createdAt(sort: Desc)])
+  @@index(fields: [type, createdAt(sort: Desc), id(sort: Desc)])
   @@map("Roles")
 }
 
@@ -87,7 +88,6 @@ model Country {
 
   @@unique(fields: [alpha2Code])
   @@unique(fields: [alpha3Code])
-  @@index(fields: [continent])
   @@index(fields: [name])
   @@map("Countries")
 }
@@ -111,7 +111,7 @@ model UserMobileNumber {
   verifications Verification[] @relation("UserMobileNumberVerification")
 
   @@unique(fields: [userId, countryId, phoneCode, number])
-  @@index(fields: [userId, isVerified])
+  @@index(fields: [countryId])
   @@map("UserMobiles")
 }
 
@@ -171,14 +171,14 @@ model User {
 
   @@unique(fields: [username])
   @@unique(fields: [email])
-  @@index(fields: [id, deletedAt])
-  @@index(fields: [email, deletedAt])
-  @@index(fields: [status, deletedAt, createdAt(sort: Desc)])
-  @@index(fields: [roleId, status, deletedAt])
-  @@index(fields: [countryId, status, signUpAt(sort: Desc)])
+  @@index(fields: [deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [deletedAt, name, id])
+  @@index(fields: [status, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [roleId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [countryId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [signUpAt(sort: Desc)])
   @@index(fields: [deletedAt, signUpAt(sort: Desc)])
-  @@index(fields: [deletedAt, createdAt])
+  @@index(fields: [deletedAt, passwordAttempt])
   @@map("Users")
 }
 
@@ -201,8 +201,10 @@ model Verification {
   mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id])
 
   @@unique(fields: [reference])
-  @@index(fields: [token, expiredAt, isUsed, type])
-  @@index(fields: [userId, type, isUsed])
+  @@index(fields: [token])
+  @@index(fields: [userId, type, createdAt(sort: Desc)])
+  @@index(fields: [mobileNumberId])
+  @@index(fields: [type, createdAt])
   @@map("Verifications")
 }
 
@@ -218,9 +220,9 @@ model PasswordHistory {
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
 
-  @@index(fields: [userId, expiredAt(sort: Desc)])
+  @@index(fields: [userId, expiredAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, type, createdAt(sort: Desc)])
+  @@index(fields: [type, createdAt(sort: Desc)])
   @@map("PasswordHistories")
 }
 
@@ -243,9 +245,8 @@ model ActivityLog {
 
   @@index(fields: [userId, workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [workspaceId, createdAt(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [action, createdAt(sort: Desc)])
-  @@index(fields: [userId, action, createdAt(sort: Desc)])
   @@map("ActivityLogs")
 }
 
@@ -272,12 +273,11 @@ model Session {
   updatedBy String?  @db.ObjectId
 
   @@unique(fields: [userId, jti])
-  @@index(fields: [userId, expiredAt(sort: Desc), isRevoked])
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [isRevoked, expiredAt(sort: Asc)])
-  @@index(fields: [userId, deviceOwnershipId, isRevoked])
-  @@index(fields: [deviceOwnershipId])
+  @@index(fields: [userId, isRevoked, expiredAt])
+  @@index(fields: [deviceOwnershipId, isRevoked, expiredAt])
   @@index(fields: [createdAt(sort: Desc)])
+  @@index(fields: [revokedById])
   @@map("Sessions")
 }
 
@@ -299,6 +299,7 @@ model Device {
 
   @@unique(fields: [fingerprint])
   @@index(fields: [createdAt(sort: Desc)])
+  @@index(fields: [notificationToken, lastActiveAt])
   @@map("Devices")
 }
 
@@ -326,11 +327,12 @@ model DeviceOwnership {
   user      User      @relation("DeviceOwnershipUser", fields: [userId], references: [id])
   sessions  Session[] @relation("DeviceOwnershipSessions")
 
-  @@index(fields: [deviceId, revokedAt])
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, revokedAt])
-  @@index(fields: [deviceId, userId, revokedAt])
-  @@index(fields: [userId, lastActiveAt(sort: Desc)])
+  @@index(fields: [userId, lastActiveAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [deviceId, userId, isRevoked])
+  @@index(fields: [isRevoked, lastActiveAt])
+  @@index(fields: [createdAt])
+  @@index(fields: [revokedById])
   @@map("DeviceOwnerships")
 }
 
@@ -373,7 +375,7 @@ model TermPolicy {
   userAcceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceTermPolicy")
 
   @@unique(fields: [type, version])
-  @@index(fields: [type, status, publishedAt(sort: Desc)])
+  @@index(fields: [type, status, version(sort: Desc)])
   @@map("TermPolicies")
 }
 
@@ -394,7 +396,8 @@ model TermPolicyRecipient {
   updatedBy String?  @db.ObjectId
 
   @@unique(fields: [termPolicyId, userId])
-  @@index(fields: [termPolicyId, batchId])
+  @@index(fields: [termPolicyId, batchId, userId])
+  @@index(fields: [userId])
   @@map("TermPolicyRecipients")
 }
 
@@ -413,6 +416,7 @@ model TermPolicyUserAcceptance {
   @@unique(fields: [userId, termPolicyId])
   @@index(fields: [termPolicyId, acceptedAt(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [acceptedAt])
   @@map("TermPolicyUserAcceptances")
 }
 
@@ -431,7 +435,6 @@ model FeatureFlag {
   updatedBy String?  @db.ObjectId
 
   @@unique(fields: [key])
-  @@index(fields: [isEnable])
   @@map("FeatureFlags")
 }
 
@@ -451,8 +454,9 @@ model ForgotPassword {
   user User @relation("UserForgotPassword", fields: [userId], references: [id])
 
   @@unique(fields: [reference])
-  @@index(fields: [token, expiredAt, isUsed])
-  @@index(fields: [isUsed, createdAt(sort: Desc)])
+  @@index(fields: [token])
+  @@index(fields: [userId, createdAt(sort: Desc)])
+  @@index(fields: [createdAt(sort: Desc)])
   @@map("ForgotPasswords")
 }
 
@@ -476,9 +480,7 @@ model Notification {
   updatedBy String?  @db.ObjectId
 
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, isRead, createdAt(sort: Desc)])
-  @@index(fields: [userId, type, createdAt(sort: Desc)])
-  @@index(fields: [userId, priority, isRead, createdAt(sort: Desc)])
+  @@index(fields: [userId, isRead, createdAt(sort: Desc), id(sort: Desc)])
   @@map("Notifications")
 }
 
@@ -496,7 +498,6 @@ model NotificationDelivery {
   updatedAt DateTime @updatedAt
 
   @@unique(fields: [notificationId, channel])
-  @@index(fields: [channel, createdAt(sort: Desc)])
   @@map("NotificationDeliveries")
 }
 
@@ -515,7 +516,6 @@ model NotificationUserSetting {
   updatedBy String?  @db.ObjectId
 
   @@unique(fields: [userId, channel, type])
-  @@index(fields: [userId, isActive])
   @@map("NotificationUserSettings")
 }
 
@@ -540,9 +540,10 @@ model Workspace {
   deletedBy String?   @db.ObjectId
 
   @@unique(fields: [slug])
-  @@index(fields: [isPublic, deletedAt, createdAt(sort: Desc)])
+  @@index(fields: [isPublic, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [deletedAt, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [deletedAt, name])
+  @@index(fields: [name, id])
+  @@index(fields: [createdAt(sort: Desc), id(sort: Desc)])
   @@map("Workspaces")
 }
 
@@ -562,7 +563,7 @@ model WorkspaceMember {
   updatedBy String?  @db.ObjectId
 
   @@unique(fields: [workspaceId, userId])
-  @@index(fields: [userId])
+  @@index(fields: [userId, role])
   @@index(fields: [workspaceId, role, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, joinedAt, id])
@@ -597,8 +598,8 @@ model WorkspaceInvite {
   @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [email, status])
-  @@index(fields: [token, expiredAt, status])
-  @@index(fields: [workspaceId, expiredAt])
+  @@index(fields: [status, expiredAt])
+  @@index(fields: [projectId])
   @@map("WorkspaceInvites")
 }
 
@@ -646,6 +647,7 @@ model Project {
 
   @@unique(fields: [workspaceId, slug])
   @@index(fields: [workspaceId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [createdAt(sort: Desc), id(sort: Desc)])
   @@map("Projects")
 }
 

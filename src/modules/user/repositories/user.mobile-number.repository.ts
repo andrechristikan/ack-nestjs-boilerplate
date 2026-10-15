@@ -24,9 +24,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         return this.databaseService.client.userMobileNumber.findFirst({
             where: {
                 id: mobileNumberId,
-                user: {
-                    id: userId,
-                },
+                userId,
             },
             select: {
                 id: true,
@@ -47,9 +45,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 number,
                 countryId,
                 phoneCode,
-                user: {
-                    id: userId,
-                },
+                userId,
                 ...(excludeId
                     ? {
                           id: { not: excludeId },
