@@ -15,7 +15,7 @@ import {
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationSendPushPayload,
+    INotificationSendPushEncryptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
@@ -26,10 +26,10 @@ describe('NotificationPushQueue', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     let queue: NotificationPushQueue;
 
-    const send: INotificationSendPushPayload = {
+    const send: INotificationSendPushEncryptedPayload = {
         userId: 'user-id',
         notificationId: 'notification-id',
-        notificationTokens: ['token-1'],
+        encryptedNotificationTokens: ['cipher(token-1)'],
         username: 'nadia',
     };
 
@@ -73,8 +73,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -98,8 +98,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data: null,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -123,8 +123,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data: null,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -148,8 +148,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data: null,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -192,8 +192,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -226,8 +226,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -257,8 +257,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -284,8 +284,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -316,8 +316,8 @@ describe('NotificationPushQueue', () => {
                     send,
                     data,
                     completedSteps: [],
-                    failureTokens: null,
-                    pendingTokens: null,
+                    encryptedFailureTokens: null,
+                    encryptedPendingTokens: null,
                 },
                 {
                     jobId: 'notification-id-sendPush',
@@ -334,14 +334,17 @@ describe('NotificationPushQueue', () => {
     describe('sendCleanupTokens', () => {
         it('enqueues the cleanupTokens job with low priority when there are failure tokens', async () => {
             await queue.sendCleanupTokens('notification-id', 'user-id', [
-                'token-1',
-                'token-2',
+                'cipher(token-1)',
+                'cipher(token-2)',
             ]);
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.cleanupTokens,
                 {
-                    failureTokens: ['token-1', 'token-2'],
+                    encryptedFailureTokens: [
+                        'cipher(token-1)',
+                        'cipher(token-2)',
+                    ],
                     userId: 'user-id',
                 },
                 {

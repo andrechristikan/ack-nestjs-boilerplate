@@ -22,8 +22,13 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import type { INotificationWorkspaceInvitePayload } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationRecipient,
+    INotificationWorkspaceInvitePayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
@@ -44,6 +49,7 @@ import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/excepti
 import type {
     IWorkspaceInviteCreate,
     IWorkspaceInviteList,
+    IWorkspaceInviteNotificationTarget,
     IWorkspaceInvitePreview,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -82,6 +88,7 @@ export class WorkspaceInviteDomain {
         private readonly helperHashService: HelperHashService,
         private readonly configService: ConfigService,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly featureFlagDomain: FeatureFlagDomain
     ) {
@@ -148,17 +155,50 @@ export class WorkspaceInviteDomain {
         };
     }
 
+    private async getInviteeRecipient(
+        existingUser: User | null
+    ): Promise<INotificationRecipient | null> {
+        if (!existingUser) {
+            return null;
+        }
+
+        return this.notificationRecipientDomain.getRecipient(
+            existingUser,
+            EnumNotificationKind.workspaceInvite
+        );
+    }
+
+    private async getInviteeRecipientByEmail(
+        email: string
+    ): Promise<INotificationRecipient | null> {
+        const existingUser = await this.userDomain.getOneActiveByEmail(email);
+
+        return this.getInviteeRecipient(existingUser);
+    }
+
+    private async getNotificationTarget(
+        workspace: Workspace,
+        actorId: string,
+        recipient: Promise<INotificationRecipient | null>
+    ): Promise<IWorkspaceInviteNotificationTarget> {
+        const [inviter, inviteeRecipient] = await Promise.all([
+            this.userDomain.getNameById(actorId),
+            recipient,
+        ]);
+
+        return {
+            inviterName: inviter?.name ?? inviter?.username ?? workspace.name,
+            recipient: inviteeRecipient,
+        };
+    }
+
     private async sendInviteNotification(
         workspace: Workspace,
         invite: WorkspaceInvite,
         tokenData: IWorkspaceInviteTokenData,
         actorId: string,
-        existingUser: User | null
+        { inviterName, recipient }: IWorkspaceInviteNotificationTarget
     ): Promise<void> {
-        const inviter = await this.userDomain.getNameById(actorId);
-        const inviterName =
-            inviter?.name ?? inviter?.username ?? workspace.name;
-
         const expiredAt = this.helperDateService.formatToIso(invite.expiredAt);
         const payloadBase: Omit<
             INotificationWorkspaceInvitePayload,
@@ -172,9 +212,9 @@ export class WorkspaceInviteDomain {
             expiredAt,
         };
 
-        if (existingUser) {
+        if (recipient) {
             await this.notificationQueue.sendWorkspaceInvite(
-                existingUser.id,
+                recipient,
                 { ...payloadBase, inviteAcceptLink: tokenData.claimLink },
                 actorId
             );
@@ -324,6 +364,13 @@ export class WorkspaceInviteDomain {
             activityLogs.push(workspaceInviteCreatedByAdminActivityLog);
         }
 
+        const inviteeRecipient = this.getInviteeRecipient(existingUser);
+        // Sequential by design: write must not run if an earlier step throws
+        const target = await this.getNotificationTarget(
+            workspace,
+            actorId,
+            inviteeRecipient
+        );
         const invite = await this.workspaceInviteRepository.createPending({
             workspaceInviteId,
             workspaceId: workspace.id,
@@ -344,7 +391,7 @@ export class WorkspaceInviteDomain {
             invite,
             tokenData,
             actorId,
-            existingUser
+            target
         );
 
         return invite;
@@ -372,22 +419,28 @@ export class WorkspaceInviteDomain {
 
         const tokenData = this.createInviteTokenData(expiryDuration);
 
-        const [invite, existingUser] = await Promise.all([
-            this.workspaceInviteRepository.rotateForResend(
-                workspaceInviteId,
-                tokenData.hashedToken,
-                tokenData.reference,
-                tokenData.expiredAt
-            ),
-            this.userDomain.getOneActiveByEmail(existing.email),
-        ]);
+        const inviteeRecipient = this.getInviteeRecipientByEmail(
+            existing.email
+        );
+        // Sequential by design: write must not run if an earlier step throws
+        const target = await this.getNotificationTarget(
+            workspace,
+            actorId,
+            inviteeRecipient
+        );
+        const invite = await this.workspaceInviteRepository.rotateForResend(
+            workspaceInviteId,
+            tokenData.hashedToken,
+            tokenData.reference,
+            tokenData.expiredAt
+        );
 
         await this.sendInviteNotification(
             workspace,
             invite,
             tokenData,
             actorId,
-            existingUser
+            target
         );
 
         return invite;

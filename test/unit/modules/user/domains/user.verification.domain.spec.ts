@@ -21,6 +21,9 @@ import { HelperNumberService } from '@common/helper/services/helper.number.servi
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
@@ -33,6 +36,7 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { Duration } from 'luxon';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserVerificationDomain', () => {
     const userVerificationRepository: MockProxy<UserVerificationRepository> =
@@ -45,6 +49,8 @@ describe('UserVerificationDomain', () => {
         mock<HelperHashService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const helperStringService: MockProxy<HelperStringService> =
@@ -146,8 +152,15 @@ describe('UserVerificationDomain', () => {
         createdBy: null,
     };
 
+    const recipient: INotificationRecipient = {
+        ...TestRecipient,
+        userId: baseUser.id,
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
+        notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
+        userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
 
         configGet.mockImplementation(key => configValues[key]);
         activityLogDomain.prepare.mockReturnValue(activityLog);
@@ -172,6 +185,10 @@ describe('UserVerificationDomain', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
                 {
@@ -290,8 +307,40 @@ describe('UserVerificationDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.verifiedEmail
+            );
             expect(notificationQueue.sendVerifiedEmail).toHaveBeenCalledWith(
-                verification.userId,
+                recipient,
+                { reference: verification.reference }
+            );
+        });
+
+        it('notifies from the user the transaction marks verified, whatever its status', async () => {
+            const inactiveUser: IUser = {
+                ...baseUser,
+                status: EnumUserStatus.inactive,
+            };
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
+                verification
+            );
+            userRepository.markVerifiedInTx.mockResolvedValue(inactiveUser);
+
+            await domain.verifyEmail('raw-token');
+
+            expect(userRepository.findOneActiveById).not.toHaveBeenCalled();
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                inactiveUser,
+                EnumNotificationKind.verifiedEmail
+            );
+            expect(notificationQueue.sendVerifiedEmail).toHaveBeenCalledWith(
+                recipient,
                 { reference: verification.reference }
             );
         });
@@ -384,7 +433,48 @@ describe('UserVerificationDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
-            expect(notificationQueue.sendVerificationEmail).toHaveBeenCalled();
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                { ...baseUser, isVerified: false },
+                EnumNotificationKind.verificationEmail
+            );
+            expect(
+                notificationQueue.sendVerificationEmail
+            ).toHaveBeenCalledWith(
+                recipient,
+                expect.objectContaining({ reference: 'VRF-random-token' })
+            );
+        });
+
+        it('commits nothing and stages nothing when the recipient read rejects', async () => {
+            userRepository.findOneActiveByEmail.mockResolvedValue({
+                ...baseUser,
+                isVerified: false,
+            });
+            userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
+                null
+            );
+            helperStringService.random.mockReturnValue('random-token');
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            helperStringService.fillPattern.mockReturnValue(
+                'https://example.com/verify?token=random-token'
+            );
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.sendVerificationEmail('flint@example.com');
+
+            await expect(call).rejects.toMatchObject({ rawError: error });
+            expect(
+                userVerificationRepository.createReplacingActive
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendVerificationEmail
+            ).not.toHaveBeenCalled();
         });
 
         it('sends again when the previous verification is past its resend window', async () => {

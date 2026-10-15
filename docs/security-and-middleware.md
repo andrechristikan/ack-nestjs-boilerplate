@@ -674,6 +674,7 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 **Queue boundary exception:**
 
 - The new-device-login BullMQ job carries `requestLog` explicitly on its payload (`INotificationNewDeviceLoginPayload.requestLog`), snapshotted at enqueue time.
+- A notification job for a registered user carries a recipient snapshot taken at enqueue (`INotificationQueuePayload.recipient`): the username, the channels the user's settings leave enabled, and the address and device push tokens encrypted.
 - A worker runs outside any HTTP request, so no CLS store is active there.
 - The value crosses the boundary as data.
 

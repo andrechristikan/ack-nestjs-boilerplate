@@ -7,6 +7,8 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -23,6 +25,7 @@ export class TermPolicyAcceptanceDomain {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
@@ -107,6 +110,12 @@ export class TermPolicyAcceptanceDomain {
                     action: EnumActivityLogAction.userAcceptTermPolicy,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    user,
+                    EnumNotificationKind.userAcceptTermPolicy
+                );
             await this.databaseService.withTransaction(async tx => {
                 const acceptedAt = this.helperDateService.create();
                 await this.termPolicyRepository.acceptInTx(
@@ -121,7 +130,7 @@ export class TermPolicyAcceptanceDomain {
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
-            await this.notificationQueue.sendUserAcceptTermPolicy(user.id, {
+            await this.notificationQueue.sendUserAcceptTermPolicy(recipient, {
                 termPolicyId: policy.id,
                 type: policy.type,
                 version: policy.version,

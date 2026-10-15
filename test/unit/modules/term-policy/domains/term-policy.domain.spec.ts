@@ -120,6 +120,9 @@ describe('TermPolicyDomain', () => {
 
         awsS3Service.isInitialized.mockReturnValue(true);
         helperDateService.create.mockReturnValue(timestamp);
+        helperDateService.formatToIso.mockImplementation((date: Date) =>
+            date.toISOString()
+        );
         termPolicyUtil.mapActivityLogMetadata.mockReturnValue({
             termPolicyId: 'term-policy-1',
             termPolicyType: EnumTermPolicyType.privacy,
@@ -646,6 +649,7 @@ describe('TermPolicyDomain', () => {
                     termPolicyId: 'term-policy-1',
                     type: EnumTermPolicyType.privacy,
                     version: 1,
+                    recipientCutoffAt: timestamp.toISOString(),
                 },
                 'user-1'
             );
@@ -675,6 +679,7 @@ describe('TermPolicyDomain', () => {
                     termPolicyId: 'term-policy-1',
                     type: EnumTermPolicyType.privacy,
                     version: 1,
+                    recipientCutoffAt: timestamp.toISOString(),
                 },
                 'user-1'
             );
@@ -825,6 +830,7 @@ describe('TermPolicyDomain', () => {
                     termPolicyId: 'term-policy-1',
                     type: EnumTermPolicyType.privacy,
                     version: 1,
+                    recipientCutoffAt: timestamp.toISOString(),
                 },
                 'user-1'
             );

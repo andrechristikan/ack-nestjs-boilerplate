@@ -30,6 +30,7 @@ import type {
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 
 describe('NotificationProcessorService', () => {
@@ -93,6 +94,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'admin-id',
             data: data,
         };
@@ -111,7 +113,14 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationAccountDomain.processWelcomeByAdmin
-            ).toHaveBeenCalledWith('user-id', 'admin-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                'admin-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -162,6 +171,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data,
         };
@@ -180,7 +190,14 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationAccountDomain.processWelcome
-            ).toHaveBeenCalledWith('user-id', verification, 'n-1', 'n-2', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                verification,
+                'n-1',
+                'n-2',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -218,6 +235,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data: null,
         };
@@ -236,7 +254,12 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationAccountDomain.processWelcomeSocial
-            ).toHaveBeenCalledWith('user-id', 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -278,6 +301,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data: data,
         };
@@ -296,7 +320,13 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationAccountDomain.processVerifiedEmail
-            ).toHaveBeenCalledWith('user-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -343,6 +373,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data: data,
         };
@@ -361,7 +392,13 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationAccountDomain.processVerificationEmail
-            ).toHaveBeenCalledWith('user-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -407,6 +444,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data: data,
         };
@@ -425,7 +463,13 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationAccountDomain.processVerifiedMobileNumber
-            ).toHaveBeenCalledWith('user-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -471,6 +515,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'admin-id',
             data: data,
         };
@@ -490,7 +535,14 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationSecurityDomain.processTemporaryPasswordByAdmin
-            ).toHaveBeenCalledWith('user-id', 'admin-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                'admin-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -530,6 +582,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data: null,
         };
@@ -548,7 +601,12 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationSecurityDomain.processChangePassword
-            ).toHaveBeenCalledWith('user-id', 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -596,6 +654,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data: data,
         };
@@ -614,7 +673,13 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationSecurityDomain.processForgotPassword
-            ).toHaveBeenCalledWith('user-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -654,6 +719,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data: null,
         };
@@ -672,7 +738,12 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationSecurityDomain.processResetPassword
-            ).toHaveBeenCalledWith('user-id', 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -712,6 +783,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'admin-id',
             data: null,
         };
@@ -730,7 +802,13 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationSecurityDomain.processResetTwoFactorByAdmin
-            ).toHaveBeenCalledWith('user-id', 'admin-id', 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                'admin-id',
+                TestEncryptedRecipient,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -789,6 +867,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data: data,
         };
@@ -807,7 +886,13 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationSecurityDomain.processNewDeviceLogin
-            ).toHaveBeenCalledWith('user-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -847,6 +932,7 @@ describe('NotificationProcessorService', () => {
                 termPolicyId: 'term-policy-id',
                 type: EnumTermPolicyType.privacy,
                 version: 2,
+                recipientCutoffAt: '2024-01-01T00:00:00.000Z',
             };
             notificationTermPolicyDomain.processPublishTermPolicy.mockResolvedValue(
                 response
@@ -878,6 +964,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'user-id',
             data,
         };
@@ -896,7 +983,13 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationTermPolicyDomain.processUserAcceptTermPolicy
-            ).toHaveBeenCalledWith('user-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -946,6 +1039,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'admin-id',
             data: data,
         };
@@ -964,7 +1058,14 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationWorkspaceDomain.processWorkspaceInvite
-            ).toHaveBeenCalledWith('user-id', 'admin-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                'admin-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -1011,6 +1112,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'admin-id',
             data: data,
         };
@@ -1029,7 +1131,14 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationWorkspaceDomain.processWorkspaceJoinRequest
-            ).toHaveBeenCalledWith('user-id', 'admin-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                'admin-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -1071,6 +1180,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'admin-id',
             data: data,
         };
@@ -1089,7 +1199,14 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationWorkspaceDomain.processWorkspaceJoinAccepted
-            ).toHaveBeenCalledWith('user-id', 'admin-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                'admin-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -1135,6 +1252,7 @@ describe('NotificationProcessorService', () => {
             userId: 'user-id',
             notificationId: 'n-1',
             completedSteps: [],
+            recipient: TestEncryptedRecipient,
             proceedBy: 'admin-id',
             data: data,
         };
@@ -1153,7 +1271,14 @@ describe('NotificationProcessorService', () => {
 
             expect(
                 notificationWorkspaceDomain.processWorkspaceJoinRejected
-            ).toHaveBeenCalledWith('user-id', 'admin-id', data, 'n-1', []);
+            ).toHaveBeenCalledWith(
+                'user-id',
+                'admin-id',
+                TestEncryptedRecipient,
+                data,
+                'n-1',
+                []
+            );
             expect(queueJob.updateData).toHaveBeenCalledTimes(1);
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,

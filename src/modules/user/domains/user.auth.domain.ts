@@ -14,6 +14,8 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -36,6 +38,7 @@ import type {
     IUserLoginCredential,
     IUserLoginOutcome,
     IUserLoginSocial,
+    IUserRecipient,
     IUserSignUp,
     IUserSignUpWorkspaceContext,
     IUserVerificationEmailCreate,
@@ -64,6 +67,7 @@ export class UserAuthDomain {
         private readonly featureFlagCache: FeatureFlagCache,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
@@ -339,13 +343,17 @@ export class UserAuthDomain {
     }
 
     async notifyWelcome(
-        userId: string,
+        user: IUserRecipient,
         emailVerification: IUserVerificationEmailCreate
     ): Promise<void> {
         const expiredAt = this.helperDateService.formatToIso(
             emailVerification.expiredAt
         );
-        await this.notificationQueue.sendWelcome(userId, {
+        const recipient = await this.notificationRecipientDomain.getRecipient(
+            user,
+            EnumNotificationKind.welcome
+        );
+        await this.notificationQueue.sendWelcome(recipient, {
             expiredAt,
             reference: emailVerification.reference,
             link: emailVerification.link,
@@ -353,8 +361,12 @@ export class UserAuthDomain {
         });
     }
 
-    async notifyWelcomeSocial(userId: string): Promise<void> {
-        await this.notificationQueue.sendWelcomeSocial(userId);
+    async notifyWelcomeSocial(user: IUserRecipient): Promise<void> {
+        const recipient = await this.notificationRecipientDomain.getRecipient(
+            user,
+            EnumNotificationKind.welcomeSocial
+        );
+        await this.notificationQueue.sendWelcomeSocial(recipient);
     }
 
     async logout(

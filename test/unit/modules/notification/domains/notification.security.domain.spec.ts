@@ -4,21 +4,14 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import type { Notification, User } from '@generated/prisma-client/client';
+import type { Notification } from '@generated/prisma-client/client';
 import {
-    EnumDeviceNotificationProvider,
-    EnumDevicePlatform,
+    EnumNotificationChannel,
     EnumNotificationPriority,
     EnumNotificationType,
-    EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
-import type { IDeviceOwnershipWithDevice } from '@modules/device/interfaces/device.interface';
 import { NotificationSecurityDomain } from '@modules/notification/domains/notification.security.domain';
 import {
     EnumNotificationKind,
@@ -29,13 +22,11 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationSecurityDomain', () => {
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
-    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const requestContextService: MockProxy<RequestContextService> =
@@ -46,75 +37,17 @@ describe('NotificationSecurityDomain', () => {
         mock<NotificationPushQueue>();
     let domain: NotificationSecurityDomain;
 
-    const user: User = {
-        id: 'user-id',
-        name: 'Nadia Bloom',
-        username: 'nadia',
-        isVerified: true,
-        verifiedAt: new Date('2024-01-01T00:00:00.000Z'),
-        email: 'nadia@example.com',
-        roleId: 'role-id',
-        password: 'hashed',
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: 0,
-        signUpAt: new Date('2024-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.female,
-        countryId: 'country-id',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: true,
-        },
-        photo: null,
-        createdAt: new Date('2024-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
+    const recipient = TestEncryptedRecipient;
+    const noChannelRecipient = { ...recipient, channels: [] };
+    const inAppRecipient = {
+        ...recipient,
+        channels: [EnumNotificationChannel.inApp],
     };
-
-    const deviceOwnership: IDeviceOwnershipWithDevice = {
-        id: 'ownership-id',
-        deviceId: 'device-id',
-        userId: 'user-id',
-        revokedAt: null,
-        isRevoked: false,
-        revokedById: null,
-        lastActiveAt: new Date('2024-01-01T00:00:00.000Z'),
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
-        createdAt: new Date('2024-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        device: {
-            id: 'device-id',
-            fingerprint: 'fingerprint-1',
-            name: 'iPhone',
-            platform: EnumDevicePlatform.ios,
-            lastActiveAt: new Date('2024-01-01T00:00:00.000Z'),
-            notificationToken: 'push-token',
-            notificationProvider: EnumDeviceNotificationProvider.fcm,
-            createdAt: new Date('2024-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-            updatedBy: null,
-        },
+    const emailOnlyRecipient = {
+        ...recipient,
+        channels: [EnumNotificationChannel.email],
     };
+    const noPushRecipient = { ...recipient, encryptedNotificationTokens: [] };
 
     const notification: Notification = {
         id: 'notification-id',
@@ -133,9 +66,9 @@ describe('NotificationSecurityDomain', () => {
     };
 
     const emailPayload = {
-        userId: user.id,
-        email: user.email,
-        username: user.username,
+        userId: 'user-id',
+        encryptedEmail: recipient.encryptedEmail,
+        username: recipient.username,
         notificationId: 'n-1',
         cc: [],
         bcc: [],
@@ -143,8 +76,8 @@ describe('NotificationSecurityDomain', () => {
     const pushPayload = {
         userId: 'user-id',
         notificationId: 'n-1',
-        notificationTokens: ['push-token'],
-        username: user.username,
+        encryptedNotificationTokens: recipient.encryptedNotificationTokens,
+        username: recipient.username,
     };
     const allSteps = [
         EnumNotificationStep.createNotification,
@@ -155,7 +88,6 @@ describe('NotificationSecurityDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         notificationRepository.createMany.mockResolvedValue([notification]);
-        deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([]);
         helperDateService.createFromIso.mockImplementation(
             (iso: string) => new Date(iso)
         );
@@ -167,8 +99,6 @@ describe('NotificationSecurityDomain', () => {
                     provide: NotificationRepository,
                     useValue: notificationRepository,
                 },
-                { provide: UserDomain, useValue: userDomain },
-                { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: RequestContextService,
@@ -194,35 +124,11 @@ describe('NotificationSecurityDomain', () => {
             passwordCreatedAt: '2024-01-01T00:00:00.000Z',
         };
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processTemporaryPasswordByAdmin(
-                'user-id',
-                'admin-id',
-                data,
-                'n-1',
-                []
-            );
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping temporary password by admin notification',
-                completedSteps: [],
-                failedSteps: [],
-            });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-        });
-
         it('creates the row, then enqueues email and push, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processTemporaryPasswordByAdmin(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -233,12 +139,13 @@ describe('NotificationSecurityDomain', () => {
                     kind: EnumNotificationKind.temporaryPasswordByAdmin,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
+                        userId: 'user-id',
                         metadata: {
-                            username: user.username,
+                            username: recipient.username,
                             passwordExpiredAt: new Date(data.passwordExpiredAt),
                         },
                         createdBy: 'admin-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -259,11 +166,10 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processTemporaryPasswordByAdmin(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -279,14 +185,10 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processTemporaryPasswordByAdmin(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 [
@@ -306,12 +208,12 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processTemporaryPasswordByAdmin(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -324,10 +226,6 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationEmailQueue.sendTemporaryPasswordByAdmin.mockRejectedValue(
                 new Error('redis')
             );
@@ -335,6 +233,7 @@ describe('NotificationSecurityDomain', () => {
             const result = await domain.processTemporaryPasswordByAdmin(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -353,10 +252,6 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
@@ -364,6 +259,7 @@ describe('NotificationSecurityDomain', () => {
             const result = await domain.processTemporaryPasswordByAdmin(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -386,32 +282,135 @@ describe('NotificationSecurityDomain', () => {
                 ],
             });
         });
-    });
 
-    describe('processChangePassword', () => {
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processChangePassword(
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processTemporaryPasswordByAdmin(
                 'user-id',
+                'admin-id',
+                noChannelRecipient,
+                data,
                 'n-1',
                 []
             );
 
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendTemporaryPasswordByAdmin
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendTemporaryPasswordByAdmin
+            ).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message:
-                    'User not found, skipping change password notification',
+                    'Temporary password by admin notification skipped, no channel enabled',
                 completedSteps: [],
                 failedSteps: [],
             });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
         });
 
-        it('creates the row, enqueues the email, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processTemporaryPasswordByAdmin(
+                'user-id',
+                'admin-id',
+                inAppRecipient,
+                data,
+                'n-1',
+                []
+            );
 
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.temporaryPasswordByAdmin,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendTemporaryPasswordByAdmin
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processTemporaryPasswordByAdmin(
+                'user-id',
+                'admin-id',
+                emailOnlyRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendTemporaryPasswordByAdmin
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendTemporaryPasswordByAdmin
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendTemporaryPasswordByAdmin.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendTemporaryPasswordByAdmin.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processTemporaryPasswordByAdmin(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+            const second = await domain.processTemporaryPasswordByAdmin(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
+        });
+    });
+
+    describe('processChangePassword', () => {
+        it('creates the row, enqueues the email, and reports every step completed', async () => {
             const result = await domain.processChangePassword(
                 'user-id',
+                noPushRecipient,
                 'n-1',
                 []
             );
@@ -421,9 +420,10 @@ describe('NotificationSecurityDomain', () => {
                     kind: EnumNotificationKind.changePassword,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
-                        metadata: { username: user.username },
-                        createdBy: user.id,
+                        userId: 'user-id',
+                        metadata: { username: recipient.username },
+                        createdBy: 'user-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -441,10 +441,9 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processChangePassword(
                 'user-id',
+                noPushRecipient,
                 'n-1',
                 [
                     EnumNotificationStep.createNotification,
@@ -463,11 +462,11 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processChangePassword(
                 'user-id',
+                noPushRecipient,
                 'n-1',
                 []
             );
@@ -476,13 +475,13 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('names a rejected side effect', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationEmailQueue.sendChangePassword.mockRejectedValue(
                 new Error('redis')
             );
 
             const result = await domain.processChangePassword(
                 'user-id',
+                noPushRecipient,
                 'n-1',
                 []
             );
@@ -496,13 +495,13 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
 
             const result = await domain.processChangePassword(
                 'user-id',
+                noPushRecipient,
                 'n-1',
                 []
             );
@@ -517,6 +516,87 @@ describe('NotificationSecurityDomain', () => {
                 },
             ]);
         });
+
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processChangePassword(
+                'user-id',
+                noChannelRecipient,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendChangePassword
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message:
+                    'Change password notification skipped, no channel enabled',
+                completedSteps: [],
+                failedSteps: [],
+            });
+        });
+
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processChangePassword(
+                'user-id',
+                inAppRecipient,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.changePassword,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendChangePassword
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendChangePassword.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processChangePassword(
+                'user-id',
+                recipient,
+                'n-1',
+                []
+            );
+            const second = await domain.processChangePassword(
+                'user-id',
+                recipient,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(second).toEqual(first);
+        });
     });
 
     describe('processForgotPassword', () => {
@@ -528,33 +608,10 @@ describe('NotificationSecurityDomain', () => {
             resendInMinutes: 5,
         };
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processForgotPassword(
-                'user-id',
-                data,
-                'n-1',
-                []
-            );
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping forgot password notification',
-                completedSteps: [],
-                failedSteps: [],
-            });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-        });
-
         it('creates the row, then enqueues email and push, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processForgotPassword(
                 'user-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -565,9 +622,10 @@ describe('NotificationSecurityDomain', () => {
                     kind: EnumNotificationKind.forgotPassword,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
-                        metadata: { username: user.username },
-                        createdBy: user.id,
+                        userId: 'user-id',
+                        metadata: { username: recipient.username },
+                        createdBy: 'user-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -585,10 +643,9 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processForgotPassword(
                 'user-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -604,13 +661,9 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processForgotPassword(
                 'user-id',
+                recipient,
                 data,
                 'n-1',
                 [
@@ -630,11 +683,11 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processForgotPassword(
                 'user-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -644,16 +697,13 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationPushQueue.sendForgotPassword.mockRejectedValue(
                 new Error('redis')
             );
 
             const result = await domain.processForgotPassword(
                 'user-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -672,16 +722,13 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
 
             const result = await domain.processForgotPassword(
                 'user-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -700,34 +747,130 @@ describe('NotificationSecurityDomain', () => {
                 },
             ]);
         });
-    });
 
-    describe('processResetPassword', () => {
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processResetPassword(
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processForgotPassword(
                 'user-id',
+                noChannelRecipient,
+                data,
                 'n-1',
                 []
             );
 
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendForgotPassword
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendForgotPassword
+            ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'User not found, skipping reset password notification',
+                message:
+                    'Forgot password notification skipped, no channel enabled',
                 completedSteps: [],
                 failedSteps: [],
             });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
         });
 
-        it('creates the row, then enqueues email and push, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processForgotPassword(
+                'user-id',
+                inAppRecipient,
+                data,
+                'n-1',
+                []
+            );
 
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.forgotPassword,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendForgotPassword
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processForgotPassword(
+                'user-id',
+                emailOnlyRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendForgotPassword
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendForgotPassword
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendForgotPassword.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendForgotPassword.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processForgotPassword(
+                'user-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+            const second = await domain.processForgotPassword(
+                'user-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
+        });
+    });
+
+    describe('processResetPassword', () => {
+        it('creates the row, then enqueues email and push, and reports every step completed', async () => {
             const result = await domain.processResetPassword(
                 'user-id',
+                recipient,
                 'n-1',
                 []
             );
@@ -737,9 +880,10 @@ describe('NotificationSecurityDomain', () => {
                     kind: EnumNotificationKind.resetPassword,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
-                        metadata: { username: user.username },
-                        createdBy: user.id,
+                        userId: 'user-id',
+                        metadata: { username: recipient.username },
+                        createdBy: 'user-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -757,10 +901,9 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processResetPassword(
                 'user-id',
+                noPushRecipient,
                 'n-1',
                 []
             );
@@ -775,15 +918,15 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
-            const result = await domain.processResetPassword('user-id', 'n-1', [
-                EnumNotificationStep.createNotification,
-                EnumNotificationStep.sendEmail,
-            ]);
+            const result = await domain.processResetPassword(
+                'user-id',
+                recipient,
+                'n-1',
+                [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ]
+            );
 
             expect(notificationRepository.createMany).not.toHaveBeenCalled();
             expect(
@@ -796,11 +939,11 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processResetPassword(
                 'user-id',
+                noPushRecipient,
                 'n-1',
                 []
             );
@@ -809,16 +952,13 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationEmailQueue.sendResetPassword.mockRejectedValue(
                 new Error('redis')
             );
 
             const result = await domain.processResetPassword(
                 'user-id',
+                recipient,
                 'n-1',
                 []
             );
@@ -836,16 +976,13 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
 
             const result = await domain.processResetPassword(
                 'user-id',
+                recipient,
                 'n-1',
                 []
             );
@@ -863,37 +1000,126 @@ describe('NotificationSecurityDomain', () => {
                 },
             ]);
         });
-    });
 
-    describe('processResetTwoFactorByAdmin', () => {
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processResetTwoFactorByAdmin(
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processResetPassword(
                 'user-id',
-                'admin-id',
+                noChannelRecipient,
                 'n-1',
                 []
             );
 
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendResetPassword
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendResetPassword
+            ).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message:
-                    'User not found, skipping reset two factor by admin notification',
+                    'Reset password notification skipped, no channel enabled',
                 completedSteps: [],
                 failedSteps: [],
             });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
         });
 
-        it('creates the row, then enqueues email and push, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processResetPassword(
+                'user-id',
+                inAppRecipient,
+                'n-1',
+                []
+            );
 
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.resetPassword,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendResetPassword
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processResetPassword(
+                'user-id',
+                emailOnlyRecipient,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendResetPassword
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendResetPassword
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendResetPassword.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendResetPassword.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processResetPassword(
+                'user-id',
+                recipient,
+                'n-1',
+                []
+            );
+            const second = await domain.processResetPassword(
+                'user-id',
+                recipient,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
+        });
+    });
+
+    describe('processResetTwoFactorByAdmin', () => {
+        it('creates the row, then enqueues email and push, and reports every step completed', async () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 'user-id',
                 'admin-id',
+                recipient,
                 'n-1',
                 []
             );
@@ -903,9 +1129,10 @@ describe('NotificationSecurityDomain', () => {
                     kind: EnumNotificationKind.resetTwoFactorByAdmin,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
-                        metadata: { username: user.username },
+                        userId: 'user-id',
+                        metadata: { username: recipient.username },
                         createdBy: 'admin-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -923,11 +1150,10 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processResetTwoFactorByAdmin(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 'n-1',
                 []
             );
@@ -942,14 +1168,10 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processResetTwoFactorByAdmin(
                 'user-id',
                 'admin-id',
+                recipient,
                 'n-1',
                 [
                     EnumNotificationStep.createNotification,
@@ -968,12 +1190,12 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processResetTwoFactorByAdmin(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 'n-1',
                 []
             );
@@ -982,10 +1204,6 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationEmailQueue.sendResetTwoFactorByAdmin.mockRejectedValue(
                 new Error('redis')
             );
@@ -993,6 +1211,7 @@ describe('NotificationSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 'user-id',
                 'admin-id',
+                recipient,
                 'n-1',
                 []
             );
@@ -1010,10 +1229,6 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
@@ -1021,6 +1236,7 @@ describe('NotificationSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 'user-id',
                 'admin-id',
+                recipient,
                 'n-1',
                 []
             );
@@ -1037,6 +1253,123 @@ describe('NotificationSecurityDomain', () => {
                     error: 'mongo',
                 },
             ]);
+        });
+
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processResetTwoFactorByAdmin(
+                'user-id',
+                'admin-id',
+                noChannelRecipient,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendResetTwoFactorByAdmin
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendResetTwoFactorByAdmin
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message:
+                    'Reset two factor by admin notification skipped, no channel enabled',
+                completedSteps: [],
+                failedSteps: [],
+            });
+        });
+
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processResetTwoFactorByAdmin(
+                'user-id',
+                'admin-id',
+                inAppRecipient,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.resetTwoFactorByAdmin,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendResetTwoFactorByAdmin
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processResetTwoFactorByAdmin(
+                'user-id',
+                'admin-id',
+                emailOnlyRecipient,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendResetTwoFactorByAdmin
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendResetTwoFactorByAdmin
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendResetTwoFactorByAdmin.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendResetTwoFactorByAdmin.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processResetTwoFactorByAdmin(
+                'user-id',
+                'admin-id',
+                recipient,
+                'n-1',
+                []
+            );
+            const second = await domain.processResetTwoFactorByAdmin(
+                'user-id',
+                'admin-id',
+                recipient,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
         });
     });
 
@@ -1073,33 +1406,10 @@ describe('NotificationSecurityDomain', () => {
             requestContextService.resolveCity.mockReturnValue('San Francisco');
         });
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processNewDeviceLogin(
-                'user-id',
-                data,
-                'n-1',
-                []
-            );
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping new device login notification',
-                completedSteps: [],
-                failedSteps: [],
-            });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-        });
-
         it('resolves device and city, creates the row, then enqueues email and push', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processNewDeviceLogin(
                 'user-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -1116,16 +1426,17 @@ describe('NotificationSecurityDomain', () => {
                     kind: EnumNotificationKind.newDeviceLogin,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
+                        userId: 'user-id',
                         metadata: {
-                            username: user.username,
+                            username: recipient.username,
                             loginFrom: data.loginFrom,
                             loginWith: data.loginWith,
                             device: 'Chrome on macOS',
                             city: 'San Francisco',
                             loginAt: new Date(data.loginAt),
                         },
-                        createdBy: user.id,
+                        createdBy: 'user-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -1143,10 +1454,9 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processNewDeviceLogin(
                 'user-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -1162,13 +1472,9 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processNewDeviceLogin(
                 'user-id',
+                recipient,
                 data,
                 'n-1',
                 [
@@ -1188,11 +1494,11 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processNewDeviceLogin(
                 'user-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -1202,16 +1508,13 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationEmailQueue.sendNewDeviceLogin.mockRejectedValue(
                 new Error('redis')
             );
 
             const result = await domain.processNewDeviceLogin(
                 'user-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -1230,16 +1533,13 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
 
             const result = await domain.processNewDeviceLogin(
                 'user-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -1257,6 +1557,123 @@ describe('NotificationSecurityDomain', () => {
                     error: 'mongo',
                 },
             ]);
+        });
+
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processNewDeviceLogin(
+                'user-id',
+                noChannelRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendNewDeviceLogin
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendNewDeviceLogin
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message:
+                    'New device login notification skipped, no channel enabled',
+                completedSteps: [],
+                failedSteps: [],
+            });
+        });
+
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processNewDeviceLogin(
+                'user-id',
+                inAppRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.newDeviceLogin,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendNewDeviceLogin
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processNewDeviceLogin(
+                'user-id',
+                emailOnlyRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendNewDeviceLogin
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendNewDeviceLogin
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendNewDeviceLogin.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendNewDeviceLogin.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processNewDeviceLogin(
+                'user-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+            const second = await domain.processNewDeviceLogin(
+                'user-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
         });
     });
 });

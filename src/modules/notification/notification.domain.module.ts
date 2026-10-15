@@ -15,6 +15,7 @@ import { NotificationEmailWorkspaceDomain } from '@modules/notification/domains/
 import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
 import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationSecurityDomain } from '@modules/notification/domains/notification.security.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { NotificationTemplateAccountDomain } from '@modules/notification/domains/notification.template.account.domain';
@@ -40,6 +41,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationTemplateTermPolicyDomain,
         NotificationTemplateWorkspaceDomain,
         NotificationAccountDomain,
+        NotificationRecipientDomain,
         NotificationSecurityDomain,
         NotificationTermPolicyDomain,
         NotificationWorkspaceDomain,
@@ -63,6 +65,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationTemplateTermPolicyDomain,
         NotificationTemplateWorkspaceDomain,
         NotificationAccountDomain,
+        NotificationRecipientDomain,
         NotificationSecurityDomain,
         NotificationTermPolicyDomain,
         NotificationWorkspaceDomain,

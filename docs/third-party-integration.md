@@ -21,7 +21,7 @@ AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema
     - A call that reaches the provider logs a warning and returns without calling it.
     - S3 returns `null`, `[]`, `false`, or nothing.
     - SES returns an empty SDK output.
-    - Firebase returns `false` from `sendPush`, and a result with `failureCount: tokens.length`, `failureTokens: []`, and `retryTokens: []` from `sendMulticast`.
+    - Firebase returns `false` from `sendPush`, and a result with `failureCount: tokens.length`, `failureTokens: []`, and `retryTokens: []` from `sendMulticast`. The push domains guard with `isInitialized()` before calling it, so they never read that result.
     - Two S3 calls behave differently: `putItemMultiPart` returns the multipart record it received unchanged, and `mapPresign` never checks initialization because it builds the record from config without a provider call.
 - A request path that cannot work without S3 throws `AwsS3NotConfiguredException` (HTTP 404). See [Error Codes](#error-codes).
 - A disabled or unconfigured capability answers 404 (`FeatureFlagDisabledException`, `AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`). The exception filters report only 5xx to Sentry, so these stay out of it.
@@ -218,6 +218,16 @@ Both email keys are validated as addresses.
 - `send` and `sendBulk` return an empty output and send nothing.
 - Template calls return an empty output.
 
+**Job data:** every email in the use cases above is sent through a notification email job. `NotificationEmailQueue` enqueues it and `NotificationEmailProcessor` (`src/modules/notification/processors/notification.email.processor.ts`) consumes it; a request never sends an email inline.
+
+- These fields travel encrypted in the job:
+    - The recipient address.
+    - A link, where the template has one.
+    - A password, where the template has one.
+- The `NotificationEmail*Domain` classes decrypt a value right before the `send` or `sendBulk` call, and it goes only into the recipients or the template data.
+- The domains do not check `isInitialized()`, so with SES unconfigured the job still decrypts first, then `send` or `sendBulk` returns an empty output, and the job completes with nothing sent.
+- A value that fails to decrypt raises `HelperDecryptFailedException`, which the email processor rethrows as `UnrecoverableError`, so the job is not retried. This holds with SES unconfigured too.
+
 Templates, the sync command, and send flow: [Email Documentation][ref-doc-email].
 
 Queue wiring: [Notification][ref-doc-notification] and [Queue][ref-doc-queue].
@@ -266,7 +276,17 @@ FIREBASE_PRIVATE_KEY=<your_firebase_private_key>
 
 - `sendPush` returns `false`.
 - `sendMulticast` returns `failureCount: tokens.length` with `failureTokens: []` and `retryTokens: []`, with no call to FCM.
-- The push domains check `isInitialized()` first and skip the job before calling `sendMulticast`, so no token cleanup runs.
+- The only callers of `sendMulticast` are the `NotificationPushSecurityDomain` and `NotificationPushWorkspaceDomain` send steps. Each send method checks `isInitialized()` first, so they never receive this unconfigured result.
+
+**Job data:** a push job carries the device tokens encrypted. `NotificationPushQueue` enqueues it and `NotificationPushProcessor` (`src/modules/notification/processors/notification.push.processor.ts`) consumes it.
+
+- Each `NotificationPush*Domain` send method checks `isInitialized()` before it decrypts any token. With Firebase unconfigured it skips the job:
+    - The step returns a result with a skip message.
+    - The recorded steps and the encrypted token fields stay unchanged.
+    - The job completes, with no failure and no retry.
+    - No decryption runs, so no `UnrecoverableError` can come from it.
+- With Firebase configured, the send step decrypts the tokens right before the `sendMulticast` call.
+- A token that fails to decrypt raises `HelperDecryptFailedException`, which the push processor rethrows as `UnrecoverableError`, so the job is not retried.
 
 **Configured but broken:** boot fails with an `AppUnknownException` subclass.
 

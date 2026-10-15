@@ -152,12 +152,19 @@ Publishing is the one admin action that fans out to every user. It ends in one `
     - `completed` or `unknown`: it removes the old job and adds a new one.
 - A retry whose job left `failed` in the meantime answers the same `409`. Any other retry error answers `500`.
 - A queue failure other than that `409` answers `500`. The policy stays `published` and no email goes out until a later publish request runs the queue decision again.
-- The job targets every non-deleted user, whatever the user's status.
+- The job targets every non-deleted user created at or before the publish, whatever the user's status.
+    - `recipientCutoffAt` rides in the job payload as the ISO form of the policy's `publishedAt`, so a retry or a repeat publish request keeps the same cutoff.
+    - A user created after `publishedAt` is outside the recipient set.
+    - The `User` index on `[deletedAt, createdAt]` serves this filter.
     - Each user gets one marker per term policy, which stops a duplicate `Notification` row and a second batch.
     - A repeat send is possible at the SES boundary when the `sentAt` update fails or the worker stalls after the send. See [Notification Documentation][ref-doc-notification].
     - A user's notification setting does not apply.
-- The job pages users with an `id` cursor and sends in batches of `email.batchSize` (50).
+- The job pages users through `UserDomain.getListRecipientCursor` with an `id` cursor and sends in batches of `email.batchSize` (50).
+- Each page selects only `id`, `email`, and `username`.
 - Each batch is one email job with a delay of `index * email.batchDelayInMs`.
+- The batch payload carries the recipients frozen at enqueue: `userId`, `notificationId`, the email address encrypted with the `userId` as authenticated data, and `username`.
+- A page that finds a marker with no `enqueuedAt` re-queues that batch. It reads the recipients that fell outside the page through `UserDomain.getManyRecipientsByIds`, bounded by the same cutoff.
+- The email job reads no user field. It reads only the batch's markers without `sentAt` and sends to the recipients in its payload that are still unsent.
 - An email job marks a recipient sent only when SES reports `Success`.
 - An email job fails when any recipient failed.
 
@@ -184,9 +191,10 @@ sequenceDiagram
     User->>API: Accept policy (type)
     API->>Database: Check latest published exists (404 otherwise)
     API->>Database: Check that version not already accepted (409 otherwise)
+    API->>Database: Read the recipient snapshot: address, channels from<br/>the user's notification settings, device tokens
     API->>Database: One transaction: create acceptance record,<br/>set only user.termPolicy[type] = true
     API->>API: Stage activity log (IP, userAgent)
-    API->>User: Queue userAcceptTermPolicy notification
+    API->>User: Queue userAcceptTermPolicy notification with the snapshot
     API->>User: Acceptance recorded
 
     Note over User,Database: Accessing Protected Endpoint
@@ -237,6 +245,10 @@ POST /shared/user/term-policy/accept
 - Accepting the same version twice returns `409` (`alreadyAccepted`).
 - The acceptance writes `termPolicy: { update: { [type]: true } }` on the user, so only that one flag changes.
 - When no published policy exists for the type, it returns `404` (`notFound`).
+- `userAccept` reads the recipient snapshot before the write, through `NotificationRecipientDomain.getRecipient`: the address, the channels the user's notification settings leave enabled, and the device tokens.
+- The job queued after the commit carries that snapshot, and its processor does not read the user again.
+- The job payload (`INotificationAcceptTermPolicyPayload`) holds `termPolicyId`, `type`, and `version`. The publish payload extends it with `recipientCutoffAt`.
+- A user whose settings leave no channel enabled gets no notification row.
 
 ### View Acceptance History
 

@@ -67,12 +67,19 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { proceedBy, userId, data, notificationId, completedSteps } =
-            job.data;
+        const {
+            proceedBy,
+            userId,
+            data,
+            notificationId,
+            completedSteps,
+            recipient,
+        } = job.data;
         const result =
             await this.notificationAccountDomain.processWelcomeByAdmin(
                 userId,
                 proceedBy,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -88,10 +95,12 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, data, notificationId, completedSteps } = job.data;
+        const { userId, data, notificationId, completedSteps, recipient } =
+            job.data;
         const { verificationNotificationId, ...verification } = data;
         const result = await this.notificationAccountDomain.processWelcome(
             userId,
+            recipient,
             verification,
             notificationId,
             verificationNotificationId,
@@ -104,10 +113,11 @@ export class NotificationProcessorService {
     async processWelcomeSocial(
         job: Job<INotificationQueuePayload, unknown, EnumNotificationProcess>
     ): Promise<IQueueResponse> {
-        const { userId, notificationId, completedSteps } = job.data;
+        const { userId, notificationId, completedSteps, recipient } = job.data;
         const result =
             await this.notificationAccountDomain.processWelcomeSocial(
                 userId,
+                recipient,
                 notificationId,
                 completedSteps
             );
@@ -122,10 +132,12 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, data, notificationId, completedSteps } = job.data;
+        const { userId, data, notificationId, completedSteps, recipient } =
+            job.data;
         const result =
             await this.notificationAccountDomain.processVerifiedEmail(
                 userId,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -141,10 +153,12 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, data, notificationId, completedSteps } = job.data;
+        const { userId, data, notificationId, completedSteps, recipient } =
+            job.data;
         const result =
             await this.notificationAccountDomain.processVerificationEmail(
                 userId,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -160,10 +174,12 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, data, notificationId, completedSteps } = job.data;
+        const { userId, data, notificationId, completedSteps, recipient } =
+            job.data;
         const result =
             await this.notificationAccountDomain.processVerifiedMobileNumber(
                 userId,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -179,12 +195,19 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { proceedBy, userId, data, notificationId, completedSteps } =
-            job.data;
+        const {
+            proceedBy,
+            userId,
+            data,
+            notificationId,
+            completedSteps,
+            recipient,
+        } = job.data;
         const result =
             await this.notificationSecurityDomain.processTemporaryPasswordByAdmin(
                 userId,
                 proceedBy,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -196,10 +219,11 @@ export class NotificationProcessorService {
     async processChangePassword(
         job: Job<INotificationQueuePayload, unknown, EnumNotificationProcess>
     ): Promise<IQueueResponse> {
-        const { userId, notificationId, completedSteps } = job.data;
+        const { userId, notificationId, completedSteps, recipient } = job.data;
         const result =
             await this.notificationSecurityDomain.processChangePassword(
                 userId,
+                recipient,
                 notificationId,
                 completedSteps
             );
@@ -214,10 +238,12 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, data, notificationId, completedSteps } = job.data;
+        const { userId, data, notificationId, completedSteps, recipient } =
+            job.data;
         const result =
             await this.notificationSecurityDomain.processForgotPassword(
                 userId,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -229,10 +255,11 @@ export class NotificationProcessorService {
     async processResetPassword(
         job: Job<INotificationQueuePayload, unknown, EnumNotificationProcess>
     ): Promise<IQueueResponse> {
-        const { userId, notificationId, completedSteps } = job.data;
+        const { userId, notificationId, completedSteps, recipient } = job.data;
         const result =
             await this.notificationSecurityDomain.processResetPassword(
                 userId,
+                recipient,
                 notificationId,
                 completedSteps
             );
@@ -243,11 +270,13 @@ export class NotificationProcessorService {
     async processResetTwoFactorByAdmin(
         job: Job<INotificationQueuePayload, unknown, EnumNotificationProcess>
     ): Promise<IQueueResponse> {
-        const { userId, proceedBy, notificationId, completedSteps } = job.data;
+        const { userId, proceedBy, notificationId, completedSteps, recipient } =
+            job.data;
         const result =
             await this.notificationSecurityDomain.processResetTwoFactorByAdmin(
                 userId,
                 proceedBy,
+                recipient,
                 notificationId,
                 completedSteps
             );
@@ -262,10 +291,12 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, data, notificationId, completedSteps } = job.data;
+        const { userId, data, notificationId, completedSteps, recipient } =
+            job.data;
         const result =
             await this.notificationSecurityDomain.processNewDeviceLogin(
                 userId,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -294,10 +325,12 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, data, notificationId, completedSteps } = job.data;
+        const { userId, data, notificationId, completedSteps, recipient } =
+            job.data;
         const result =
             await this.notificationTermPolicyDomain.processUserAcceptTermPolicy(
                 userId,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -313,12 +346,19 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, proceedBy, data, notificationId, completedSteps } =
-            job.data;
+        const {
+            userId,
+            proceedBy,
+            data,
+            notificationId,
+            completedSteps,
+            recipient,
+        } = job.data;
         const result =
             await this.notificationWorkspaceDomain.processWorkspaceInvite(
                 userId,
                 proceedBy,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -334,12 +374,19 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, proceedBy, data, notificationId, completedSteps } =
-            job.data;
+        const {
+            userId,
+            proceedBy,
+            data,
+            notificationId,
+            completedSteps,
+            recipient,
+        } = job.data;
         const result =
             await this.notificationWorkspaceDomain.processWorkspaceJoinRequest(
                 userId,
                 proceedBy,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -355,12 +402,19 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, proceedBy, data, notificationId, completedSteps } =
-            job.data;
+        const {
+            userId,
+            proceedBy,
+            data,
+            notificationId,
+            completedSteps,
+            recipient,
+        } = job.data;
         const result =
             await this.notificationWorkspaceDomain.processWorkspaceJoinAccepted(
                 userId,
                 proceedBy,
+                recipient,
                 data,
                 notificationId,
                 completedSteps
@@ -376,12 +430,19 @@ export class NotificationProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        const { userId, proceedBy, data, notificationId, completedSteps } =
-            job.data;
+        const {
+            userId,
+            proceedBy,
+            data,
+            notificationId,
+            completedSteps,
+            recipient,
+        } = job.data;
         const result =
             await this.notificationWorkspaceDomain.processWorkspaceJoinRejected(
                 userId,
                 proceedBy,
+                recipient,
                 data,
                 notificationId,
                 completedSteps

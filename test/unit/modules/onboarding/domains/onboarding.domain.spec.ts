@@ -214,7 +214,7 @@ describe('OnboardingDomain', () => {
                 5000
             );
             expect(userAuthDomain.notifyWelcome).toHaveBeenCalledWith(
-                createdUser.id,
+                createdUser,
                 emailVerification
             );
         });
@@ -275,7 +275,7 @@ describe('OnboardingDomain', () => {
                 loginSocial
             );
             expect(userAuthDomain.notifyWelcomeSocial).toHaveBeenCalledWith(
-                createdUser.id
+                createdUser
             );
         });
 
@@ -355,7 +355,7 @@ describe('OnboardingDomain', () => {
                 EnumActivityLogAction.adminUserCreate
             );
             expect(userDomain.notifyWelcomeByAdmin).toHaveBeenCalledWith(
-                createdUser.id,
+                createdUser,
                 'random-password',
                 password.passwordCreated,
                 password.passwordExpired,

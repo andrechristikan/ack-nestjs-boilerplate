@@ -17,10 +17,12 @@ import {
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationEmailSendPayload,
-    INotificationEmailSendUnregisteredPayload,
+    INotificationEmailSendEncryptedPayload,
+    INotificationEmailSendUnregisteredEncryptedPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
+    INotificationTermPolicyBatchRecipient,
+    INotificationTermPolicyBatchRecipientEncryptedPayload,
     INotificationWorkspaceInviteUnregisteredPayload,
     INotificationWorkspaceJoinRejectedPayload,
 } from '@modules/notification/interfaces/notification.interface';
@@ -33,10 +35,10 @@ describe('NotificationEmailQueue', () => {
         mock<HelperEncryptionService>();
     let queue: NotificationEmailQueue;
 
-    const send: INotificationEmailSendPayload = {
+    const send: INotificationEmailSendEncryptedPayload = {
         userId: 'user-id',
         notificationId: 'notification-id',
-        email: 'nadia@example.com',
+        encryptedEmail: 'cipher(nadia@example.com)',
         username: 'nadia',
         cc: [],
         bcc: [],
@@ -143,7 +145,7 @@ describe('NotificationEmailQueue', () => {
         });
 
         it('carries the cc and bcc recipients into the enqueued send payload', async () => {
-            const sendWithRecipients: INotificationEmailSendPayload = {
+            const sendWithRecipients: INotificationEmailSendEncryptedPayload = {
                 ...send,
                 cc: ['cc@example.com'],
                 bcc: ['bcc-1@example.com', 'bcc-2@example.com'],
@@ -384,19 +386,61 @@ describe('NotificationEmailQueue', () => {
             termPolicyId: 'term-policy-id',
             type: EnumTermPolicyType.privacy,
             version: 3,
+            recipientCutoffAt: '2024-01-01T00:00:00.000Z',
         };
+        const recipients: INotificationTermPolicyBatchRecipient[] = [
+            {
+                userId: 'user-1',
+                notificationId: 'notification-1',
+                email: 'nadia@example.com',
+                username: 'nadia',
+            },
+            {
+                userId: 'user-2',
+                notificationId: 'notification-2',
+                email: 'omar@example.com',
+                username: 'omar',
+            },
+        ];
+        const encryptedRecipients: INotificationTermPolicyBatchRecipientEncryptedPayload[] =
+            [
+                {
+                    userId: 'user-1',
+                    notificationId: 'notification-1',
+                    encryptedEmail: 'cipher(nadia@example.com)',
+                    username: 'nadia',
+                },
+                {
+                    userId: 'user-2',
+                    notificationId: 'notification-2',
+                    encryptedEmail: 'cipher(omar@example.com)',
+                    username: 'omar',
+                },
+            ];
 
-        it('enqueues one recipient-less batch job keyed by term policy and batch, medium priority, no delay at index 0', async () => {
+        beforeEach(() => {
+            helperEncryptionService.aes256Encrypt.mockImplementation(
+                (plaintext: string) => `cipher(${plaintext})`
+            );
+        });
+
+        it('enqueues one batch job keyed by term policy and batch, carrying the encrypted recipients, medium priority, no delay at index 0', async () => {
             await queue.sendPublishTermPolicyBatch(
                 data,
                 'batch-id',
                 'admin-id',
-                0
+                0,
+                recipients
             );
 
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.publishTermPolicy,
-                { data, batchId: 'batch-id', proceedBy: 'admin-id' },
+                {
+                    data,
+                    batchId: 'batch-id',
+                    proceedBy: 'admin-id',
+                    recipients: encryptedRecipients,
+                },
                 {
                     priority: EnumQueuePriority.medium,
                     jobId: 'publishTermPolicy-term-policy-id-batch-id',
@@ -405,17 +449,44 @@ describe('NotificationEmailQueue', () => {
             );
         });
 
+        it('encrypts each recipient email with its own user id as context', async () => {
+            await queue.sendPublishTermPolicyBatch(
+                data,
+                'batch-id',
+                'admin-id',
+                0,
+                recipients
+            );
+
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledTimes(
+                2
+            );
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                'nadia@example.com',
+                'secret-key',
+                'notification.payload',
+                'user-1'
+            );
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                'omar@example.com',
+                'secret-key',
+                'notification.payload',
+                'user-2'
+            );
+        });
+
         it('delays the job by index times the email batch delay', async () => {
             await queue.sendPublishTermPolicyBatch(
                 data,
                 'batch-id',
                 'admin-id',
-                2
+                2,
+                recipients
             );
 
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.publishTermPolicy,
-                { data, batchId: 'batch-id', proceedBy: 'admin-id' },
+                expect.objectContaining({ batchId: 'batch-id' }),
                 expect.objectContaining({ delay: 2000 })
             );
         });
@@ -461,9 +532,9 @@ describe('NotificationEmailQueue', () => {
                 reference: 'ref-1',
                 expiredAt: '2024-02-01T00:00:00.000Z',
             };
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'cipher-invite-link'
-            );
+            helperEncryptionService.aes256Encrypt
+                .mockReturnValueOnce('cipher-invite-link')
+                .mockReturnValueOnce('cipher-email');
 
             await queue.sendWorkspaceInviteUnregistered(
                 'invitee@example.com',
@@ -476,11 +547,18 @@ describe('NotificationEmailQueue', () => {
                 'notification.payload',
                 invite.reference
             );
-            const expectedSend: INotificationEmailSendUnregisteredPayload = {
-                email: 'invitee@example.com',
-                cc: [],
-                bcc: [],
-            };
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                'invitee@example.com',
+                'secret-key',
+                'notification.payload',
+                invite.reference
+            );
+            const expectedSend: INotificationEmailSendUnregisteredEncryptedPayload =
+                {
+                    encryptedEmail: 'cipher-email',
+                    cc: [],
+                    bcc: [],
+                };
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.workspaceInviteUnregistered,
                 {

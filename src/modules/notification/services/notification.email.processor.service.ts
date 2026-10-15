@@ -195,7 +195,8 @@ export class NotificationEmailProcessorService {
         return this.notificationEmailTermPolicyDomain.processPublishTermPolicy(
             job.data.data,
             job.data.batchId,
-            job.data.proceedBy
+            job.data.proceedBy,
+            job.data.recipients
         );
     }
 

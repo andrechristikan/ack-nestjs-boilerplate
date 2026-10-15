@@ -1,7 +1,7 @@
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationPushCleanupTokenPayload,
+    INotificationPushCleanupTokenEncryptedPayload,
     INotificationPushQueuePayload,
     INotificationPushStepResult,
     INotificationTemporaryPasswordPushPayload,
@@ -42,8 +42,8 @@ export class NotificationPushProcessorService implements OnModuleInit {
         await job.updateData({
             ...job.data,
             completedSteps: result.completedSteps,
-            failureTokens: result.failureTokens,
-            pendingTokens: result.pendingTokens,
+            encryptedFailureTokens: result.encryptedFailureTokens,
+            encryptedPendingTokens: result.encryptedPendingTokens,
         });
         if (result.failedSteps.length > 0) {
             const summary = this.notificationUtil.toStepSummary(
@@ -66,15 +66,20 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, data, completedSteps, failureTokens, pendingTokens } =
-            job.data;
+        const {
+            send,
+            data,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushSecurityDomain.processNewDeviceLogin(
                 send,
                 data,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
@@ -87,13 +92,18 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, completedSteps, failureTokens, pendingTokens } = job.data;
+        const {
+            send,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushSecurityDomain.processResetTwoFactorByAdmin(
                 send,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
@@ -106,15 +116,20 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, data, completedSteps, failureTokens, pendingTokens } =
-            job.data;
+        const {
+            send,
+            data,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushSecurityDomain.processTemporaryPasswordByAdmin(
                 send,
                 data,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
@@ -127,13 +142,18 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, completedSteps, failureTokens, pendingTokens } = job.data;
+        const {
+            send,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushSecurityDomain.processResetPassword(
                 send,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
@@ -146,13 +166,18 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, completedSteps, failureTokens, pendingTokens } = job.data;
+        const {
+            send,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushSecurityDomain.processForgotPassword(
                 send,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
@@ -165,15 +190,20 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, data, completedSteps, failureTokens, pendingTokens } =
-            job.data;
+        const {
+            send,
+            data,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushWorkspaceDomain.processWorkspaceInvite(
                 send,
                 data,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
@@ -186,15 +216,20 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, data, completedSteps, failureTokens, pendingTokens } =
-            job.data;
+        const {
+            send,
+            data,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushWorkspaceDomain.processWorkspaceJoinRequest(
                 send,
                 data,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
@@ -207,15 +242,20 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, data, completedSteps, failureTokens, pendingTokens } =
-            job.data;
+        const {
+            send,
+            data,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushWorkspaceDomain.processWorkspaceJoinAccepted(
                 send,
                 data,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
@@ -228,30 +268,35 @@ export class NotificationPushProcessorService implements OnModuleInit {
             EnumNotificationPushProcess
         >
     ): Promise<IQueueResponse> {
-        const { send, data, completedSteps, failureTokens, pendingTokens } =
-            job.data;
+        const {
+            send,
+            data,
+            completedSteps,
+            encryptedFailureTokens,
+            encryptedPendingTokens,
+        } = job.data;
         const result =
             await this.notificationPushWorkspaceDomain.processWorkspaceJoinRejected(
                 send,
                 data,
                 completedSteps,
-                failureTokens,
-                pendingTokens
+                encryptedFailureTokens,
+                encryptedPendingTokens
             );
 
         return this.recordSteps(job, result);
     }
 
     async processCleanupTokens({
-        data: { userId, failureTokens },
+        data: { userId, encryptedFailureTokens },
     }: Job<
-        INotificationPushCleanupTokenPayload,
+        INotificationPushCleanupTokenEncryptedPayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
         return this.notificationPushMaintenanceDomain.processCleanupTokens(
             userId,
-            failureTokens
+            encryptedFailureTokens
         );
     }
 

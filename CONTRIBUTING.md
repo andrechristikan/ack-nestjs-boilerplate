@@ -131,7 +131,10 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
 - `variable?: string | null` is ambiguous and never appears: the input boundary uses `?: string`, and the internal layers use `string | null`.
 - A response schema field uses `.optional()` when it is genuinely absent and `.nullable()` when it is present-or-null. `data?` on `ResponseDto<T>` is the optional wrapper field.
 - Repository filter params use `Type | null`. The repository normalizes `null` to `{}` before Prisma, not the caller.
-- A repository patch shape leaves a field unchanged when it is `null`.
+- An update is a full replace, with no unchanged state for a field:
+    - The update request DTO requires every editable field, and a nullable column takes `null` to clear it.
+    - The `I<Module>Update` shape declares `field: Type` for a required column and `field: Type | null` for a nullable one.
+    - The repository writes the values as given.
 - A create shape stores `null` as given.
 - A literal `undefined` in our own logic (a return, a `??` fallback, a ternary branch, an arrow body) is a lint error, so the code writes `null`.
 - `undefined` stays where a third party owns the contract, such as a Prisma `where` or `data` argument.

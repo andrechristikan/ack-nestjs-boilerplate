@@ -23,6 +23,7 @@ import type {
 import type {
     UserAdminListSelect,
     UserAdminNearLockoutSelect,
+    UserRecipientSelect,
 } from '@modules/user/constants/user.constant';
 import type {
     IAuthPassword,
@@ -40,6 +41,10 @@ export interface IUser extends User {
 
 export type IUserList = Prisma.UserGetPayload<{
     select: typeof UserAdminListSelect;
+}>;
+
+export type IUserRecipient = Prisma.UserGetPayload<{
+    select: typeof UserRecipientSelect;
 }>;
 
 export type IUserNearLockout = Prisma.UserGetPayload<{

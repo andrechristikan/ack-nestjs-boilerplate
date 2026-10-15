@@ -8,6 +8,7 @@ import { UserImportDomain } from '@modules/user/domains/user.import.domain';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import type {
+    IUser,
     IUserCreateByAdmin,
     IUserImport,
     IUserLoginOutcome,
@@ -47,7 +48,7 @@ export class OnboardingDomain {
             createTimeoutInMs
         );
         const created = createdUsers[0]!;
-        await this.userAuthDomain.notifyWelcome(created.id, emailVerification);
+        await this.userAuthDomain.notifyWelcome(created, emailVerification);
     }
 
     async loginWithSocial(
@@ -67,7 +68,7 @@ export class OnboardingDomain {
             loginSocial,
             workspaceContext
         );
-        let createdUserId: string | null = null;
+        let createdUser: IUser | null = null;
         if (prepared) {
             const createTimeoutInMs =
                 this.userOnboardingDomain.getCreateTimeoutInMs();
@@ -76,7 +77,7 @@ export class OnboardingDomain {
                 EnumUserCreateMode.social,
                 createTimeoutInMs
             );
-            createdUserId = createdUsers[0]!.id;
+            createdUser = createdUsers[0]!;
         }
 
         const outcome = await this.userAuthDomain.loginWithSocial(
@@ -86,8 +87,8 @@ export class OnboardingDomain {
         );
 
         // Sequential by design: write must not run if an earlier step throws
-        if (createdUserId !== null) {
-            await this.userAuthDomain.notifyWelcomeSocial(createdUserId);
+        if (createdUser !== null) {
+            await this.userAuthDomain.notifyWelcomeSocial(createdUser);
         }
 
         return outcome;
@@ -110,7 +111,7 @@ export class OnboardingDomain {
         const created = createdUsers[0]!;
         if (input.password) {
             await this.userDomain.notifyWelcomeByAdmin(
-                created.id,
+                created,
                 passwordString,
                 input.password.passwordCreated,
                 input.password.passwordExpired,

@@ -31,6 +31,9 @@ import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.i
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
@@ -44,6 +47,7 @@ import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Duration } from 'luxon';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserPasswordDomain', () => {
     const userPasswordRepository: MockProxy<UserPasswordRepository> =
@@ -64,6 +68,8 @@ describe('UserPasswordDomain', () => {
         mock<AuthPasswordUtil>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -174,8 +180,14 @@ describe('UserPasswordDomain', () => {
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
 
+    const recipient: INotificationRecipient = {
+        ...TestRecipient,
+        userId: baseUser.id,
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
+        notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
 
         configGet.mockImplementation(key => configValues[key]);
         activityLogDomain.prepare.mockReturnValue(activityLog);
@@ -209,6 +221,10 @@ describe('UserPasswordDomain', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
@@ -435,9 +451,15 @@ describe('UserPasswordDomain', () => {
                 targetActivityLog,
             ]);
             expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.temporaryPasswordByAdmin
+            );
+            expect(
                 notificationQueue.sendTemporaryPasswordByAdmin
             ).toHaveBeenCalledWith(
-                user.id,
+                recipient,
                 {
                     password: 'random-password',
                     passwordCreatedAt: password.passwordCreated.toISOString(),
@@ -450,6 +472,28 @@ describe('UserPasswordDomain', () => {
                 'stagePrepared',
                 'sendTemporaryPasswordByAdmin',
             ]);
+        });
+
+        it('commits nothing and purges nothing when the recipient read rejects', async () => {
+            userRepository.findOneById.mockResolvedValue(baseUser);
+            authPasswordUtil.createPasswordRandom.mockReturnValue(
+                'random-password'
+            );
+            authPasswordUtil.createPassword.mockReturnValue(password);
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.updatePasswordByAdmin(
+                'user-hollow',
+                'admin-hollow'
+            );
+
+            await expect(call).rejects.toMatchObject({ rawError: error });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('throws UserNotSelfException when the admin targets themselves', async () => {
@@ -638,8 +682,11 @@ describe('UserPasswordDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(user, EnumNotificationKind.changePassword);
             expect(notificationQueue.sendChangePassword).toHaveBeenCalledWith(
-                user.id
+                recipient
             );
             expect(callOrder).toEqual([
                 'revokeActiveByUserInTx',
@@ -647,6 +694,35 @@ describe('UserPasswordDomain', () => {
                 'stagePrepared',
                 'sendChangePassword',
             ]);
+        });
+
+        it('commits nothing and purges nothing when the recipient read rejects', async () => {
+            const user = {
+                ...baseUser,
+                twoFactor: { ...baseTwoFactor, enabled: false },
+            };
+            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
+            authPasswordUtil.validatePassword.mockReturnValue(true);
+            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
+            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
+            authPasswordUtil.createPassword.mockReturnValue(password);
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.changePassword(user, {
+                newPassword: 'new-password',
+                oldPassword: 'old-password',
+                method: null,
+                code: null,
+                backupCode: null,
+            });
+
+            await expect(call).rejects.toMatchObject({ rawError: error });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('verifies two-factor, records it in the same transaction, and stages both activity logs when enabled', async () => {
@@ -942,12 +1018,46 @@ describe('UserPasswordDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(notificationQueue.sendForgotPassword).toHaveBeenCalled();
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.forgotPassword
+            );
+            expect(notificationQueue.sendForgotPassword).toHaveBeenCalledWith(
+                recipient,
+                expect.objectContaining({ reference: 'FGT-random-token' })
+            );
             expect(callOrder).toEqual([
                 'createReplacingUnused',
                 'stagePrepared',
                 'sendForgotPassword',
             ]);
+        });
+
+        it('commits nothing and stages nothing when the recipient read rejects', async () => {
+            userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
+            userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
+                null
+            );
+            helperStringService.random.mockReturnValue('random-token');
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            helperStringService.fillPattern.mockReturnValue(
+                'https://example.com/reset?token=random-token'
+            );
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.forgotPassword('hollow@example.com');
+
+            await expect(call).rejects.toMatchObject({ rawError: error });
+            expect(
+                userPasswordRepository.createReplacingUnused
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(notificationQueue.sendForgotPassword).not.toHaveBeenCalled();
         });
 
         it('sends again when the previous request is past its resend window', async () => {
@@ -1158,8 +1268,14 @@ describe('UserPasswordDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                resetRecord.user,
+                EnumNotificationKind.resetPassword
+            );
             expect(notificationQueue.sendResetPassword).toHaveBeenCalledWith(
-                resetRecord.userId
+                recipient
             );
             expect(callOrder).toEqual([
                 'markUsedInTx',
@@ -1167,6 +1283,33 @@ describe('UserPasswordDomain', () => {
                 'stagePrepared',
                 'sendResetPassword',
             ]);
+        });
+
+        it('commits nothing and purges nothing when the recipient read rejects', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+                resetRecord
+            );
+            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
+            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
+            authPasswordUtil.createPassword.mockReturnValue(password);
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.resetPassword({
+                newPassword: 'new-password',
+                token: 'raw-token',
+                method: null,
+                code: null,
+                backupCode: null,
+            });
+
+            await expect(call).rejects.toMatchObject({ rawError: error });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('verifies two-factor, records it in the same transaction, and stages both activity logs when enabled', async () => {

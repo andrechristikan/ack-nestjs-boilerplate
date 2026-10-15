@@ -27,7 +27,7 @@ You orchestrate in a fork; agents do the work. `coder` writes `src/`, `test/`, a
 Follow `superpowers:subagent-driven-development` with the project's agents: one fresh `coder` per plan task, in order, one at a time, its brief at `.superpowers/sdd/<plan-basename>/task-<N>-brief.md`. Its review steps are not taken; the one review is step 3. Dispatch template: `references/dispatch.md`, Coder. `coder` runs on the model in its own frontmatter; its Agent call carries no `model`. A pin is one dispatch carrying the pin instead of a plan path, its `Rules to read:` the output of `bash .claude/hooks/rules.sh` over the pin's files.
 
 - When the task changes `src/` behaviour, `coder` writes the failing unit spec under `test/unit/`, watches it fail, and implements. Specs, test helpers, setup or global-setup files, and test config the task's Files list names are written as listed.
-- `coder` then runs `pnpm typecheck` and `pnpm test <module>`, or the task's own acceptance commands when the plan names them, and repairs the run surface the change made stale.
+- `coder` then typechecks, through the boot's `pnpm build` when the step boots and `pnpm typecheck` otherwise, runs `pnpm test <module>` or the task's own acceptance commands when the plan names them, and repairs the run surface the change made stale.
 - A schema delta is `coder`'s edit and the owner's push: `coder` runs `pnpm db:generate`; relay the model, the field, the index, and the owner's `pnpm db:migrate`.
 - Read each report; one quoting every acceptance line green completes the task, and the next starts.
 - A rule wins over a plan step: `coder` builds the rule's way and names the deviation; record it on the task's `implemented` ledger line, not as `blocked`.

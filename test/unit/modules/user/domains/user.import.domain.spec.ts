@@ -16,6 +16,9 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
@@ -28,6 +31,7 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserImportDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -41,6 +45,8 @@ describe('UserImportDomain', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
@@ -140,6 +146,10 @@ describe('UserImportDomain', () => {
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
             ],
@@ -359,9 +369,20 @@ describe('UserImportDomain', () => {
             ];
             const passwordHasheds: IAuthPassword[] = [password, password];
             const passwordStrings = ['password-one', 'password-two'];
+            const recipientOne: INotificationRecipient = {
+                ...TestRecipient,
+                userId: 'user-id-one',
+            };
+            const recipientTwo: INotificationRecipient = {
+                ...TestRecipient,
+                userId: 'user-id-two',
+            };
             helperDateService.formatToIso.mockImplementation(date =>
                 date.toISOString()
             );
+            notificationRecipientDomain.getRecipient
+                .mockResolvedValueOnce(recipientOne)
+                .mockResolvedValueOnce(recipientTwo);
 
             await domain.notifyImported(
                 users,
@@ -371,10 +392,24 @@ describe('UserImportDomain', () => {
             );
 
             expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenNthCalledWith(
+                1,
+                users[0],
+                EnumNotificationKind.welcomeByAdmin
+            );
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenNthCalledWith(
+                2,
+                users[1],
+                EnumNotificationKind.welcomeByAdmin
+            );
+            expect(
                 notificationQueue.sendWelcomeByAdmin
             ).toHaveBeenNthCalledWith(
                 1,
-                'user-id-one',
+                recipientOne,
                 {
                     password: 'password-one',
                     passwordCreatedAt: password.passwordCreated.toISOString(),
@@ -386,7 +421,7 @@ describe('UserImportDomain', () => {
                 notificationQueue.sendWelcomeByAdmin
             ).toHaveBeenNthCalledWith(
                 2,
-                'user-id-two',
+                recipientTwo,
                 {
                     password: 'password-two',
                     passwordCreatedAt: password.passwordCreated.toISOString(),

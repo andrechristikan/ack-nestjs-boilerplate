@@ -1,27 +1,31 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
+    EnumNotificationChannel,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
+import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationSendPushPayload,
+    INotificationSendPushEncryptedPayload,
     INotificationTemporaryPasswordPushPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import {
-    buildPushNotification,
     expectPushAllStepsSkipped,
     expectPushFailureTokensMerged,
     expectPushOutagePending,
@@ -32,6 +36,7 @@ import {
     expectPushSentWithCleanup,
     PushAllSteps,
     PushRecordedSteps,
+    stubCipherDecryption,
 } from '@test/unit/helpers/test.unit.notification-push.helper';
 import type { INotificationPushDoubles } from '@test/unit/helpers/test.unit.notification-push.helper';
 
@@ -46,17 +51,19 @@ describe('NotificationPushSecurityDomain', () => {
         mock<RequestContextService>();
     const notificationPushQueue: MockProxy<NotificationPushQueue> =
         mock<NotificationPushQueue>();
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     let domain: NotificationPushSecurityDomain;
 
-    const send: INotificationSendPushPayload = {
+    const send: INotificationSendPushEncryptedPayload = {
         userId: 'user-id',
         notificationId: 'notification-id',
-        notificationTokens: ['token-1', 'token-2'],
+        encryptedNotificationTokens: ['cipher(token-1)', 'cipher(token-2)'],
         username: 'nadia',
     };
-    const notification = buildPushNotification();
     const partialFailure = {
-        failureTokens: ['bad'],
+        failureTokens: ['token-1'],
         retryTokens: [],
         successCount: 1,
         failureCount: 1,
@@ -69,7 +76,7 @@ describe('NotificationPushSecurityDomain', () => {
     };
     const totalOutage = {
         failureTokens: [],
-        retryTokens: ['t1', 't2'],
+        retryTokens: ['token-1', 'token-2'],
         successCount: 0,
         failureCount: 2,
     };
@@ -78,10 +85,13 @@ describe('NotificationPushSecurityDomain', () => {
         firebaseService,
         notificationRepository,
         notificationPushQueue,
+        helperEncryptionService,
     };
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        vi.mocked(configService.get).mockReturnValue('secret-key');
+        stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationPushSecurityDomain,
@@ -101,11 +111,16 @@ describe('NotificationPushSecurityDomain', () => {
                     provide: NotificationPushQueue,
                     useValue: notificationPushQueue,
                 },
+                {
+                    provide: HelperEncryptionService,
+                    useValue: helperEncryptionService,
+                },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         domain = module.get(NotificationPushSecurityDomain);
         firebaseService.isInitialized.mockReturnValue(true);
-        notificationRepository.updateProcessAt.mockResolvedValue(notification);
+        notificationRepository.updateProcessAt.mockResolvedValue();
     });
 
     describe('processNewDeviceLogin', () => {
@@ -166,8 +181,8 @@ describe('NotificationPushSecurityDomain', () => {
                     'Firebase not initialized, skipping new login notification',
                 completedSteps: [EnumNotificationStep.updateProcessAt],
                 failedSteps: [],
-                failureTokens: ['bad'],
-                pendingTokens: ['t1'],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: ['t1'],
             });
             expect(
                 notificationRepository.updateProcessAt
@@ -185,9 +200,17 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
+            expect(
+                notificationRepository.updateProcessAt
+            ).toHaveBeenCalledTimes(1);
+            expect(notificationRepository.updateProcessAt).toHaveBeenCalledWith(
+                send.userId,
+                send.notificationId,
+                EnumNotificationChannel.push
+            );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
-                'body',
+                NotificationKindContract.newDeviceLogin.body,
                 {
                     properties: {
                         device: 'Chrome on macOS',
@@ -198,7 +221,7 @@ describe('NotificationPushSecurityDomain', () => {
                 }
             );
             expect(firebaseService.sendMulticast).toHaveBeenCalledWith(
-                send.notificationTokens,
+                ['token-1', 'token-2'],
                 { title: 'New login', body: 'New login from Chrome on macOS' }
             );
             expectPushSentWithCleanup(
@@ -209,12 +232,54 @@ describe('NotificationPushSecurityDomain', () => {
             );
         });
 
+        it('rethrows a token decryption failure without calling Firebase', async () => {
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                throw new HelperDecryptFailedException();
+            });
+
+            await expect(
+                domain.processNewDeviceLogin(
+                    send,
+                    data,
+                    [EnumNotificationStep.updateProcessAt],
+                    null,
+                    null
+                )
+            ).rejects.toBeInstanceOf(HelperDecryptFailedException);
+            expect(firebaseService.sendMulticast).not.toHaveBeenCalled();
+        });
+
+        it('skips updateProcessAt and builds the message from the kind contract when the step is recorded', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            await domain.processNewDeviceLogin(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                null
+            );
+
+            expect(
+                notificationRepository.updateProcessAt
+            ).not.toHaveBeenCalled();
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                1,
+                NotificationKindContract.newDeviceLogin.title
+            );
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                2,
+                NotificationKindContract.newDeviceLogin.body,
+                expect.any(Object)
+            );
+        });
+
         it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
             const result = await domain.processNewDeviceLogin(
                 send,
                 data,
                 recorded,
-                ['bad'],
+                ['cipher(token-1)'],
                 null
             );
 
@@ -285,8 +350,8 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                ['bad'],
-                ['t2']
+                ['cipher(token-1)'],
+                ['cipher(token-2)']
             );
 
             expectPushRetrySendsPending(doubles, send, result);
@@ -299,8 +364,8 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                ['old', 'bad'],
-                ['t2']
+                ['cipher(old)', 'cipher(token-1)'],
+                ['cipher(token-1)', 'cipher(token-2)']
             );
 
             expectPushFailureTokensMerged(doubles, send, result);
@@ -329,8 +394,8 @@ describe('NotificationPushSecurityDomain', () => {
                     'Firebase not initialized, skipping reset two-factor notification',
                 completedSteps: [],
                 failedSteps: [],
-                failureTokens: null,
-                pendingTokens: ['t1'],
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: ['t1'],
             });
         });
 
@@ -344,9 +409,17 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
+            expect(
+                notificationRepository.updateProcessAt
+            ).toHaveBeenCalledTimes(1);
+            expect(notificationRepository.updateProcessAt).toHaveBeenCalledWith(
+                send.userId,
+                send.notificationId,
+                EnumNotificationChannel.push
+            );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
-                'body',
+                NotificationKindContract.resetTwoFactorByAdmin.body,
                 { properties: { username: send.username } }
             );
             expectPushSentWithCleanup(
@@ -357,11 +430,35 @@ describe('NotificationPushSecurityDomain', () => {
             );
         });
 
+        it('skips updateProcessAt and builds the message from the kind contract when the step is recorded', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            await domain.processResetTwoFactorByAdmin(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                null
+            );
+
+            expect(
+                notificationRepository.updateProcessAt
+            ).not.toHaveBeenCalled();
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                1,
+                NotificationKindContract.resetTwoFactorByAdmin.title
+            );
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                2,
+                NotificationKindContract.resetTwoFactorByAdmin.body,
+                expect.any(Object)
+            );
+        });
+
         it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 recorded,
-                ['bad'],
+                ['cipher(token-1)'],
                 null
             );
 
@@ -427,8 +524,8 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                ['bad'],
-                ['t2']
+                ['cipher(token-1)'],
+                ['cipher(token-2)']
             );
 
             expectPushRetrySendsPending(doubles, send, result);
@@ -440,8 +537,8 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                ['old', 'bad'],
-                ['t2']
+                ['cipher(old)', 'cipher(token-1)'],
+                ['cipher(token-1)', 'cipher(token-2)']
             );
 
             expectPushFailureTokensMerged(doubles, send, result);
@@ -482,8 +579,8 @@ describe('NotificationPushSecurityDomain', () => {
                     'Firebase not initialized, skipping temporary password notification',
                 completedSteps: [],
                 failedSteps: [],
-                failureTokens: null,
-                pendingTokens: ['t1'],
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: ['t1'],
             });
         });
 
@@ -498,9 +595,17 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
+            expect(
+                notificationRepository.updateProcessAt
+            ).toHaveBeenCalledTimes(1);
+            expect(notificationRepository.updateProcessAt).toHaveBeenCalledWith(
+                send.userId,
+                send.notificationId,
+                EnumNotificationChannel.push
+            );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
-                'body',
+                NotificationKindContract.temporaryPasswordByAdmin.body,
                 {
                     properties: {
                         username: send.username,
@@ -516,12 +621,37 @@ describe('NotificationPushSecurityDomain', () => {
             );
         });
 
+        it('skips updateProcessAt and builds the message from the kind contract when the step is recorded', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                null
+            );
+
+            expect(
+                notificationRepository.updateProcessAt
+            ).not.toHaveBeenCalled();
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                1,
+                NotificationKindContract.temporaryPasswordByAdmin.title
+            );
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                2,
+                NotificationKindContract.temporaryPasswordByAdmin.body,
+                expect.any(Object)
+            );
+        });
+
         it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
             const result = await domain.processTemporaryPasswordByAdmin(
                 send,
                 data,
                 recorded,
-                ['bad'],
+                ['cipher(token-1)'],
                 null
             );
 
@@ -592,8 +722,8 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                ['bad'],
-                ['t2']
+                ['cipher(token-1)'],
+                ['cipher(token-2)']
             );
 
             expectPushRetrySendsPending(doubles, send, result);
@@ -606,8 +736,8 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                ['old', 'bad'],
-                ['t2']
+                ['cipher(old)', 'cipher(token-1)'],
+                ['cipher(token-1)', 'cipher(token-2)']
             );
 
             expectPushFailureTokensMerged(doubles, send, result);
@@ -633,8 +763,8 @@ describe('NotificationPushSecurityDomain', () => {
                     'Firebase not initialized, skipping reset password notification',
                 completedSteps: [],
                 failedSteps: [],
-                failureTokens: null,
-                pendingTokens: ['t1'],
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: ['t1'],
             });
         });
 
@@ -648,9 +778,17 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
+            expect(
+                notificationRepository.updateProcessAt
+            ).toHaveBeenCalledTimes(1);
+            expect(notificationRepository.updateProcessAt).toHaveBeenCalledWith(
+                send.userId,
+                send.notificationId,
+                EnumNotificationChannel.push
+            );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
-                'body',
+                NotificationKindContract.resetPassword.body,
                 { properties: { username: send.username } }
             );
             expectPushSentWithCleanup(
@@ -661,11 +799,35 @@ describe('NotificationPushSecurityDomain', () => {
             );
         });
 
+        it('skips updateProcessAt and builds the message from the kind contract when the step is recorded', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            await domain.processResetPassword(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                null
+            );
+
+            expect(
+                notificationRepository.updateProcessAt
+            ).not.toHaveBeenCalled();
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                1,
+                NotificationKindContract.resetPassword.title
+            );
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                2,
+                NotificationKindContract.resetPassword.body,
+                expect.any(Object)
+            );
+        });
+
         it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
             const result = await domain.processResetPassword(
                 send,
                 recorded,
-                ['bad'],
+                ['cipher(token-1)'],
                 null
             );
 
@@ -731,8 +893,8 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetPassword(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                ['bad'],
-                ['t2']
+                ['cipher(token-1)'],
+                ['cipher(token-2)']
             );
 
             expectPushRetrySendsPending(doubles, send, result);
@@ -744,8 +906,8 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetPassword(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                ['old', 'bad'],
-                ['t2']
+                ['cipher(old)', 'cipher(token-1)'],
+                ['cipher(token-1)', 'cipher(token-2)']
             );
 
             expectPushFailureTokensMerged(doubles, send, result);
@@ -771,8 +933,8 @@ describe('NotificationPushSecurityDomain', () => {
                     'Firebase not initialized, skipping forgot password notification',
                 completedSteps: [],
                 failedSteps: [],
-                failureTokens: null,
-                pendingTokens: ['t1'],
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: ['t1'],
             });
         });
 
@@ -786,9 +948,17 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
+            expect(
+                notificationRepository.updateProcessAt
+            ).toHaveBeenCalledTimes(1);
+            expect(notificationRepository.updateProcessAt).toHaveBeenCalledWith(
+                send.userId,
+                send.notificationId,
+                EnumNotificationChannel.push
+            );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
-                'body',
+                NotificationKindContract.forgotPassword.body,
                 { properties: { username: send.username } }
             );
             expectPushSentWithCleanup(
@@ -799,11 +969,35 @@ describe('NotificationPushSecurityDomain', () => {
             );
         });
 
+        it('skips updateProcessAt and builds the message from the kind contract when the step is recorded', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            await domain.processForgotPassword(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                null
+            );
+
+            expect(
+                notificationRepository.updateProcessAt
+            ).not.toHaveBeenCalled();
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                1,
+                NotificationKindContract.forgotPassword.title
+            );
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                2,
+                NotificationKindContract.forgotPassword.body,
+                expect.any(Object)
+            );
+        });
+
         it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
             const result = await domain.processForgotPassword(
                 send,
                 recorded,
-                ['bad'],
+                ['cipher(token-1)'],
                 null
             );
 
@@ -869,8 +1063,8 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processForgotPassword(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                ['bad'],
-                ['t2']
+                ['cipher(token-1)'],
+                ['cipher(token-2)']
             );
 
             expectPushRetrySendsPending(doubles, send, result);
@@ -882,8 +1076,8 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processForgotPassword(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                ['old', 'bad'],
-                ['t2']
+                ['cipher(old)', 'cipher(token-1)'],
+                ['cipher(token-1)', 'cipher(token-2)']
             );
 
             expectPushFailureTokensMerged(doubles, send, result);

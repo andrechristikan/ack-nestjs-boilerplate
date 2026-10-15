@@ -13,6 +13,7 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserList,
     IUserProfile,
+    IUserRecipient,
     IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
 import {
@@ -35,9 +36,18 @@ export interface IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IUserList>>;
-    findIdsCursor(cursor: string | null, take: number): Promise<string[]>;
+    findRecipientsCursor(
+        cursor: string | null,
+        take: number,
+        createdBefore: Date
+    ): Promise<IUserRecipient[]>;
+    findRecipientsByIds(
+        ids: string[],
+        createdBefore: Date
+    ): Promise<IUserRecipient[]>;
     findOneById(id: string): Promise<User | null>;
     findOneActiveById(id: string): Promise<User | null>;
+    findManyActiveByIds(ids: string[]): Promise<IUserRecipient[]>;
     findOneActiveByEmail(email: string): Promise<User | null>;
     findNameById(userId: string): Promise<IWorkspaceInviteInviter | null>;
     findOneWithRoleByEmail(email: string): Promise<IUser | null>;

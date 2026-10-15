@@ -18,10 +18,26 @@ import {
 export interface INotificationKindContract {
     type: EnumNotificationType;
     priority: EnumNotificationPriority;
+    isMandatory: boolean;
     title: string;
     body: string;
     pendingChannels: EnumNotificationChannel[];
     deliveredChannels: EnumNotificationChannel[];
+}
+
+export interface INotificationRecipient {
+    userId: string;
+    email: string;
+    username: string;
+    notificationTokens: string[];
+    channels: EnumNotificationChannel[];
+}
+
+export interface INotificationRecipientEncryptedPayload {
+    encryptedEmail: string;
+    username: string;
+    encryptedNotificationTokens: string[];
+    channels: EnumNotificationChannel[];
 }
 
 export interface INotificationSettingContract {
@@ -34,6 +50,7 @@ export interface INotificationCreate {
     userId: string;
     metadata: Prisma.InputJsonValue;
     createdBy: string;
+    channels: EnumNotificationChannel[];
 }
 
 export interface INotificationCreateEntry {
@@ -43,6 +60,7 @@ export interface INotificationCreateEntry {
 
 export interface INotificationTermPolicyRecipientState {
     userId: string;
+    notificationId: string;
     batchId: string;
     enqueuedAt: Date | null;
 }
@@ -52,10 +70,17 @@ export interface INotificationTermPolicyRecipientCreate {
     notificationId: string;
 }
 
-export interface INotificationTermPolicyRecipientSend {
+export interface INotificationTermPolicyBatchRecipient {
     userId: string;
     notificationId: string;
     email: string;
+    username: string;
+}
+
+export interface INotificationTermPolicyBatchRecipientEncryptedPayload {
+    userId: string;
+    notificationId: string;
+    encryptedEmail: string;
     username: string;
 }
 
@@ -128,14 +153,15 @@ export interface INotificationNewDeviceLoginPayload {
     requestLog: IRequestLog;
 }
 
-export interface INotificationPublishTermPolicyPayload {
+export interface INotificationAcceptTermPolicyPayload {
     termPolicyId: string;
     type: EnumTermPolicyType;
     version: number;
 }
 
-export type INotificationAcceptTermPolicyPayload =
-    INotificationPublishTermPolicyPayload;
+export interface INotificationPublishTermPolicyPayload extends INotificationAcceptTermPolicyPayload {
+    recipientCutoffAt: string;
+}
 
 export interface INotificationWorkspaceInvitePayload {
     workspaceId: string;
@@ -210,39 +236,40 @@ export interface INotificationQueuePayload<
     userId: string;
     notificationId: string;
     completedSteps: EnumNotificationStep[];
+    recipient: INotificationRecipientEncryptedPayload;
 }
 
-export interface INotificationSendPushPayload {
+export interface INotificationSendPushEncryptedPayload {
     userId: string;
     notificationId: string;
-    notificationTokens: string[];
+    encryptedNotificationTokens: string[];
     username: string;
 }
 
 export interface INotificationPushQueuePayload<T = null> {
-    send: INotificationSendPushPayload;
+    send: INotificationSendPushEncryptedPayload;
     data: T;
     completedSteps: EnumNotificationStep[];
-    failureTokens: string[] | null;
-    pendingTokens: string[] | null;
+    encryptedFailureTokens: string[] | null;
+    encryptedPendingTokens: string[] | null;
 }
 
-export interface INotificationPushCleanupTokenPayload {
+export interface INotificationPushCleanupTokenEncryptedPayload {
     userId: string;
-    failureTokens: string[];
+    encryptedFailureTokens: string[];
 }
 
-export interface INotificationEmailSendPayload {
+export interface INotificationEmailSendEncryptedPayload {
     userId: string;
     notificationId: string;
-    email: string;
+    encryptedEmail: string;
     username: string;
     cc: string[];
     bcc: string[];
 }
 
 export interface INotificationEmailQueuePayload<T = null> {
-    send: INotificationEmailSendPayload;
+    send: INotificationEmailSendEncryptedPayload;
     data: T;
 }
 
@@ -250,16 +277,17 @@ export interface INotificationEmailBulkQueuePayload<T = null> {
     data: T;
     batchId: string;
     proceedBy: string;
+    recipients: INotificationTermPolicyBatchRecipientEncryptedPayload[];
 }
 
-export interface INotificationEmailSendUnregisteredPayload {
-    email: string;
+export interface INotificationEmailSendUnregisteredEncryptedPayload {
+    encryptedEmail: string;
     cc: string[];
     bcc: string[];
 }
 
 export interface INotificationEmailUnregisteredQueuePayload<T = null> {
-    send: INotificationEmailSendUnregisteredPayload;
+    send: INotificationEmailSendUnregisteredEncryptedPayload;
     data: T;
 }
 
@@ -275,12 +303,12 @@ export interface INotificationStepResult {
 }
 
 export interface INotificationPushSendOutcome {
-    failureTokens: string[] | null;
-    pendingTokens: string[] | null;
+    encryptedFailureTokens: string[] | null;
+    encryptedPendingTokens: string[] | null;
     failure: INotificationStepFailure | null;
 }
 
 export interface INotificationPushStepResult extends INotificationStepResult {
-    failureTokens: string[] | null;
-    pendingTokens: string[] | null;
+    encryptedFailureTokens: string[] | null;
+    encryptedPendingTokens: string[] | null;
 }

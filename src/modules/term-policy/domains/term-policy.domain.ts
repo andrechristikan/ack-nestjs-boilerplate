@@ -73,15 +73,19 @@ export class TermPolicyDomain {
     }
 
     private async enqueuePublishNotification(
-        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version' | 'publishedAt'>,
         updatedBy: string
     ): Promise<void> {
         try {
+            const recipientCutoffAt = this.helperDateService.formatToIso(
+                termPolicy.publishedAt!
+            );
             await this.notificationQueue.sendPublishTermPolicy(
                 {
                     termPolicyId: termPolicy.id,
                     type: termPolicy.type,
                     version: termPolicy.version,
+                    recipientCutoffAt,
                 },
                 updatedBy
             );
@@ -306,8 +310,8 @@ export class TermPolicyDomain {
             const newContents = this.mapPublicContent(newItems, contents);
 
             // Sequential by design: write must not run if an earlier step throws
-            const activityLogs = await this.databaseService.withTransaction(
-                async tx => {
+            const { publishedRow, activityLogs } =
+                await this.databaseService.withTransaction(async tx => {
                     const published =
                         await this.termPolicyRepository.publishInTx(
                             tx,
@@ -331,21 +335,23 @@ export class TermPolicyDomain {
                         termPolicy.type
                     );
 
-                    return [
-                        this.prepareActivityLog(
-                            EnumActivityLogAction.adminTermPolicyPublish,
-                            row,
-                            row.updatedAt,
-                            true
-                        ),
-                    ];
-                }
-            );
+                    return {
+                        publishedRow: row,
+                        activityLogs: [
+                            this.prepareActivityLog(
+                                EnumActivityLogAction.adminTermPolicyPublish,
+                                row,
+                                row.updatedAt,
+                                true
+                            ),
+                        ],
+                    };
+                });
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
             // Sequential by design: the job must not be enqueued if an earlier step throws
-            await this.enqueuePublishNotification(termPolicy, updatedBy);
+            await this.enqueuePublishNotification(publishedRow, updatedBy);
 
             return;
         } catch (err: unknown) {

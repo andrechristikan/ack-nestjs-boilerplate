@@ -17,6 +17,11 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import {
+    expectRecipientEncrypted,
+    TestEncryptedRecipient,
+    TestRecipient,
+} from '@test/unit/helpers/test.unit.notification-push.helper';
 import type {
     INotificationAcceptTermPolicyPayload,
     INotificationForgotPasswordPayload,
@@ -45,6 +50,7 @@ describe('NotificationQueue', () => {
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const recipient = TestRecipient;
     let queue: NotificationQueue;
 
     beforeEach(async () => {
@@ -88,7 +94,7 @@ describe('NotificationQueue', () => {
                 passwordExpiredAt: '2024-02-01T00:00:00.000Z',
             };
 
-            await queue.sendWelcomeByAdmin('user-id', payload, 'admin-id');
+            await queue.sendWelcomeByAdmin(recipient, payload, 'admin-id');
 
             expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 payload.password,
@@ -96,12 +102,14 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'user-id'
             );
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.welcomeByAdmin,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'admin-id',
                     data: {
                         encryptedPassword: 'cipher(plain-password)',
@@ -133,7 +141,7 @@ describe('NotificationQueue', () => {
                 .mockReturnValueOnce('n-1')
                 .mockReturnValueOnce('n-2');
 
-            await queue.sendWelcome('user-id', payload);
+            await queue.sendWelcome(recipient, payload);
 
             expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 payload.link,
@@ -141,12 +149,14 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'user-id'
             );
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.welcome,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'user-id',
                     data: {
                         encryptedLink: 'cipher(https://verify.example.com)',
@@ -169,14 +179,16 @@ describe('NotificationQueue', () => {
 
     describe('sendWelcomeSocial', () => {
         it('enqueues the welcomeSocial job with no data, medium priority', async () => {
-            await queue.sendWelcomeSocial('user-id');
+            await queue.sendWelcomeSocial(recipient);
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.welcomeSocial,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'user-id',
                     data: null,
                 },
@@ -200,7 +212,7 @@ describe('NotificationQueue', () => {
             };
 
             await queue.sendTemporaryPasswordByAdmin(
-                'user-id',
+                recipient,
                 payload,
                 'admin-id'
             );
@@ -211,12 +223,14 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'user-id'
             );
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.temporaryPasswordByAdmin,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'admin-id',
                     data: {
                         encryptedPassword: 'cipher(plain-password)',
@@ -237,14 +251,16 @@ describe('NotificationQueue', () => {
 
     describe('sendChangePassword', () => {
         it('enqueues the changePassword job with no data, medium priority', async () => {
-            await queue.sendChangePassword('user-id');
+            await queue.sendChangePassword(recipient);
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.changePassword,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'user-id',
                     data: null,
                 },
@@ -263,14 +279,16 @@ describe('NotificationQueue', () => {
         it('enqueues the verifiedEmail job, medium priority', async () => {
             const verified = { reference: 'ref-1' };
 
-            await queue.sendVerifiedEmail('user-id', verified);
+            await queue.sendVerifiedEmail(recipient, verified);
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.verifiedEmail,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     data: verified,
                     proceedBy: 'user-id',
                 },
@@ -294,7 +312,7 @@ describe('NotificationQueue', () => {
                 reference: 'ref-1',
             };
 
-            await queue.sendVerificationEmail('user-id', payload);
+            await queue.sendVerificationEmail(recipient, payload);
 
             expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 payload.link,
@@ -302,12 +320,14 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'user-id'
             );
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.verificationEmail,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'user-id',
                     data: {
                         encryptedLink: 'cipher(https://verify.example.com)',
@@ -337,7 +357,7 @@ describe('NotificationQueue', () => {
                 resendInMinutes: 5,
             };
 
-            await queue.sendForgotPassword('user-id', payload);
+            await queue.sendForgotPassword(recipient, payload);
 
             expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 payload.link,
@@ -345,12 +365,14 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'user-id'
             );
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.forgotPassword,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'user-id',
                     data: {
                         encryptedLink: 'cipher(https://reset.example.com)',
@@ -373,14 +395,16 @@ describe('NotificationQueue', () => {
 
     describe('sendResetPassword', () => {
         it('enqueues the resetPassword job with no data, medium priority', async () => {
-            await queue.sendResetPassword('user-id');
+            await queue.sendResetPassword(recipient);
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.resetPassword,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'user-id',
                     data: null,
                 },
@@ -397,14 +421,16 @@ describe('NotificationQueue', () => {
 
     describe('sendResetTwoFactorByAdmin', () => {
         it('enqueues the resetTwoFactorByAdmin job, high priority', async () => {
-            await queue.sendResetTwoFactorByAdmin('user-id', 'admin-id');
+            await queue.sendResetTwoFactorByAdmin(recipient, 'admin-id');
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.resetTwoFactorByAdmin,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'admin-id',
                     data: null,
                 },
@@ -440,14 +466,16 @@ describe('NotificationQueue', () => {
                 requestLog,
             };
 
-            await queue.sendNewDeviceLogin('user-id', newDevice);
+            await queue.sendNewDeviceLogin(recipient, newDevice);
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.newDeviceLogin,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     data: newDevice,
                     proceedBy: 'user-id',
                 },
@@ -468,6 +496,7 @@ describe('NotificationQueue', () => {
                 termPolicyId: 'term-policy-id',
                 type: EnumTermPolicyType.privacy,
                 version: 3,
+                recipientCutoffAt: '2024-01-01T00:00:00.000Z',
             };
 
             await queue.sendPublishTermPolicy(payload, 'admin-id');
@@ -490,6 +519,7 @@ describe('NotificationQueue', () => {
                 termPolicyId: 'term-policy-id',
                 type: EnumTermPolicyType.privacy,
                 version: 3,
+                recipientCutoffAt: '2024-01-01T00:00:00.000Z',
             };
             const job: MockProxy<Job> = mock<Job>();
 
@@ -611,14 +641,16 @@ describe('NotificationQueue', () => {
                 mobileNumber: '+15551234567',
             };
 
-            await queue.sendVerifiedMobileNumber('user-id', verifiedMobile);
+            await queue.sendVerifiedMobileNumber(recipient, verifiedMobile);
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.verifiedMobileNumber,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     data: verifiedMobile,
                     proceedBy: 'user-id',
                 },
@@ -641,14 +673,16 @@ describe('NotificationQueue', () => {
                 termPolicyId: 'term-policy-id',
             };
 
-            await queue.sendUserAcceptTermPolicy('user-id', payload);
+            await queue.sendUserAcceptTermPolicy(recipient, payload);
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.userAcceptTermPolicy,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     data: payload,
                     proceedBy: 'user-id',
                 },
@@ -675,7 +709,7 @@ describe('NotificationQueue', () => {
                 expiredAt: '2024-02-01T00:00:00.000Z',
             };
 
-            await queue.sendWorkspaceInvite('user-id', payload, 'admin-id');
+            await queue.sendWorkspaceInvite(recipient, payload, 'admin-id');
 
             expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 payload.inviteAcceptLink,
@@ -683,12 +717,14 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'user-id'
             );
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.workspaceInvite,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'admin-id',
                     data: {
                         workspaceId: payload.workspaceId,
@@ -722,7 +758,7 @@ describe('NotificationQueue', () => {
             };
 
             await queue.sendWorkspaceJoinRequest(
-                'user-id',
+                recipient,
                 payload,
                 'requester-id'
             );
@@ -733,12 +769,14 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'user-id'
             );
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.workspaceJoinRequest,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     proceedBy: 'requester-id',
                     data: {
                         workspaceId: payload.workspaceId,
@@ -767,17 +805,19 @@ describe('NotificationQueue', () => {
             };
 
             await queue.sendWorkspaceJoinAccepted(
-                'user-id',
+                recipient,
                 payload,
                 'reviewer-id'
             );
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.workspaceJoinAccepted,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     data: payload,
                     proceedBy: 'reviewer-id',
                 },
@@ -802,17 +842,19 @@ describe('NotificationQueue', () => {
             };
 
             await queue.sendWorkspaceJoinRejected(
-                'user-id',
+                recipient,
                 payload,
                 'reviewer-id'
             );
 
+            expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.workspaceJoinRejected,
                 {
                     userId: 'user-id',
                     notificationId: 'n-1',
                     completedSteps: [],
+                    recipient: TestEncryptedRecipient,
                     data: payload,
                     proceedBy: 'reviewer-id',
                 },
@@ -838,6 +880,15 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'context-id'
             );
+        });
+    });
+
+    describe('encryptRecipient', () => {
+        it('encrypts the email and every token with the user id as context and keeps username and channels', () => {
+            const result = queue['encryptRecipient'](recipient);
+
+            expect(result).toEqual(TestEncryptedRecipient);
+            expectRecipientEncrypted(helperEncryptionService, recipient);
         });
     });
 });

@@ -53,21 +53,12 @@ export const NotificationUserTermPolicyJobIdPattern =
 export const NotificationStepJobIdPattern = '{notificationId}-{step}';
 
 /**
- * Prisma where of a recipient user that is not deleted.
- * @public
- */
-export const NotificationUserNotDeletedWhere = {
-    deletedAt: null,
-} satisfies Prisma.UserWhereInput;
-
-/**
- * Prisma where of a term policy recipient row not yet emailed whose user is not deleted.
+ * Prisma where of a term policy recipient row not yet emailed.
  * Spread with the term policy id and batch id.
  * @public
  */
 export const NotificationTermPolicyRecipientSendWhere = {
     sentAt: null,
-    user: { is: NotificationUserNotDeletedWhere },
 } satisfies Prisma.TermPolicyRecipientWhereInput;
 
 /**
@@ -76,16 +67,15 @@ export const NotificationTermPolicyRecipientSendWhere = {
  */
 export const NotificationTermPolicyRecipientStateSelect = {
     userId: true,
+    notificationId: true,
     batchId: true,
     enqueuedAt: true,
 } satisfies Prisma.TermPolicyRecipientSelect;
 
 /**
- * Columns a term policy email send reads from a recipient row and its user.
+ * Columns a term policy email send reads from a recipient row.
  * @public
  */
 export const NotificationTermPolicyRecipientSendSelect = {
     userId: true,
-    notificationId: true,
-    user: { select: { email: true, username: true } },
 } satisfies Prisma.TermPolicyRecipientSelect;

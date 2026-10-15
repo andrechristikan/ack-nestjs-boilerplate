@@ -7,7 +7,7 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type { INotificationKindContract } from '@modules/notification/interfaces/notification.interface';
 
 /**
- * Per-kind notification rule: type, priority, i18n title and body, and the pending and delivered channels of the stored row.
+ * Per-kind notification rule: type, priority, whether the user may opt out, i18n title and body, and the pending and delivered channels of the stored row.
  * @public
  */
 export const NotificationKindContract: Record<
@@ -17,6 +17,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.welcome]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.welcome.title',
         body: 'notification.notify.welcome.body',
         pendingChannels: [EnumNotificationChannel.email],
@@ -28,6 +29,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.welcomeSocial]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.welcomeSocial.title',
         body: 'notification.notify.welcomeSocial.body',
         pendingChannels: [EnumNotificationChannel.email],
@@ -39,6 +41,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.welcomeByAdmin]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.welcomeByAdmin.title',
         body: 'notification.notify.welcomeByAdmin.body',
         pendingChannels: [EnumNotificationChannel.email],
@@ -50,6 +53,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.verificationEmail]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.high,
+        isMandatory: true,
         title: 'notification.notify.verificationEmail.title',
         body: 'notification.notify.verificationEmail.body',
         pendingChannels: [EnumNotificationChannel.email],
@@ -58,6 +62,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.verifiedEmail]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.verifiedEmail.title',
         body: 'notification.notify.verifiedEmail.body',
         pendingChannels: [EnumNotificationChannel.email],
@@ -66,6 +71,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.verifiedMobileNumber]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.verifiedMobileNumber.title',
         body: 'notification.notify.verifiedMobileNumber.body',
         pendingChannels: [EnumNotificationChannel.email],
@@ -74,6 +80,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.temporaryPasswordByAdmin]: {
         type: EnumNotificationType.securityAlert,
         priority: EnumNotificationPriority.critical,
+        isMandatory: false,
         title: 'notification.notify.temporaryPasswordByAdmin.title',
         body: 'notification.notify.temporaryPasswordByAdmin.body',
         pendingChannels: [
@@ -85,6 +92,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.changePassword]: {
         type: EnumNotificationType.securityAlert,
         priority: EnumNotificationPriority.critical,
+        isMandatory: false,
         title: 'notification.notify.changePassword.title',
         body: 'notification.notify.changePassword.body',
         pendingChannels: [EnumNotificationChannel.email],
@@ -93,6 +101,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.forgotPassword]: {
         type: EnumNotificationType.securityAlert,
         priority: EnumNotificationPriority.critical,
+        isMandatory: false,
         title: 'notification.notify.forgotPassword.title',
         body: 'notification.notify.forgotPassword.body',
         pendingChannels: [
@@ -104,6 +113,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.resetPassword]: {
         type: EnumNotificationType.securityAlert,
         priority: EnumNotificationPriority.critical,
+        isMandatory: false,
         title: 'notification.notify.resetPassword.title',
         body: 'notification.notify.resetPassword.body',
         pendingChannels: [
@@ -115,6 +125,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.resetTwoFactorByAdmin]: {
         type: EnumNotificationType.securityAlert,
         priority: EnumNotificationPriority.critical,
+        isMandatory: false,
         title: 'notification.notify.resetTwoFactorByAdmin.title',
         body: 'notification.notify.resetTwoFactorByAdmin.body',
         pendingChannels: [
@@ -126,6 +137,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.newDeviceLogin]: {
         type: EnumNotificationType.securityAlert,
         priority: EnumNotificationPriority.critical,
+        isMandatory: false,
         title: 'notification.notify.newDeviceLogin.title',
         body: 'notification.notify.newDeviceLogin.body',
         pendingChannels: [
@@ -137,6 +149,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.publishTermPolicy]: {
         type: EnumNotificationType.transactional,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.publishTermPolicy.title',
         body: 'notification.notify.publishTermPolicy.body',
         pendingChannels: [EnumNotificationChannel.email],
@@ -145,6 +158,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.userAcceptTermPolicy]: {
         type: EnumNotificationType.transactional,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.userAcceptTermPolicy.title',
         body: 'notification.notify.userAcceptTermPolicy.body',
         pendingChannels: [EnumNotificationChannel.push],
@@ -153,6 +167,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.workspaceInvite]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.workspaceInvite.title',
         body: 'notification.notify.workspaceInvite.body',
         pendingChannels: [
@@ -167,6 +182,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.workspaceJoinRequest]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.workspaceJoinRequest.title',
         body: 'notification.notify.workspaceJoinRequest.body',
         pendingChannels: [
@@ -181,6 +197,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.workspaceJoinAccepted]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.workspaceJoinAccepted.title',
         body: 'notification.notify.workspaceJoinAccepted.body',
         pendingChannels: [
@@ -195,6 +212,7 @@ export const NotificationKindContract: Record<
     [EnumNotificationKind.workspaceJoinRejected]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
+        isMandatory: false,
         title: 'notification.notify.workspaceJoinRejected.title',
         body: 'notification.notify.workspaceJoinRejected.body',
         pendingChannels: [

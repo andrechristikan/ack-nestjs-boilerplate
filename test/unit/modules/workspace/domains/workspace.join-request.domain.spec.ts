@@ -12,18 +12,27 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
     Prisma,
+    User,
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
@@ -39,6 +48,7 @@ import type { IWorkspaceJoinRequestCreate } from '@modules/workspace/interfaces/
 import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('WorkspaceJoinRequestDomain', () => {
     const workspaceJoinRequestRepository: MockProxy<WorkspaceJoinRequestRepository> =
@@ -63,6 +73,8 @@ describe('WorkspaceJoinRequestDomain', () => {
     });
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
 
@@ -101,11 +113,57 @@ describe('WorkspaceJoinRequestDomain', () => {
         reviewedAt: null,
     };
 
+    const requester: User = {
+        id: 'user-2',
+        name: 'Jane Doe',
+        username: 'userTwo',
+        isVerified: true,
+        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+        email: 'user2@example.com',
+        roleId: 'role-id',
+        password: 'hashed',
+        passwordExpired: null,
+        passwordCreated: null,
+        passwordAttempt: 0,
+        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
+        signUpFrom: EnumUserSignUpFrom.website,
+        signUpWith: EnumUserSignUpWith.credential,
+        status: EnumUserStatus.active,
+        gender: null,
+        countryId: 'country-id',
+        lastLoginAt: null,
+        lastIPAddress: null,
+        lastLoginFrom: EnumUserLoginFrom.website,
+        lastLoginWith: EnumUserLoginWith.credential,
+        lastWorkspaceId: null,
+        lastWorkspaceChangedAt: null,
+        termPolicy: {
+            termsOfService: true,
+            privacy: true,
+            marketing: false,
+            cookies: false,
+        },
+        photo: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+    };
+    const recipient: INotificationRecipient = {
+        ...TestRecipient,
+        userId: 'user-2',
+    };
+
     let domain: WorkspaceJoinRequestDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => configValues[key]);
+        userDomain.getOneActive.mockResolvedValue(requester);
+        userDomain.getManyActiveByIds.mockResolvedValue([]);
+        notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -133,6 +191,10 @@ describe('WorkspaceJoinRequestDomain', () => {
                 },
                 { provide: ConfigService, useValue: configService },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
             ],
         }).compile();
@@ -288,6 +350,30 @@ describe('WorkspaceJoinRequestDomain', () => {
             workspaceMemberRepository.findReviewersByWorkspace.mockResolvedValue(
                 [{ userId: 'reviewer-1' }, { userId: 'reviewer-2' }]
             );
+            const reviewers = [
+                {
+                    id: 'reviewer-1',
+                    email: 'reviewer1@example.com',
+                    username: 'reviewerOne',
+                },
+                {
+                    id: 'reviewer-2',
+                    email: 'reviewer2@example.com',
+                    username: 'reviewerTwo',
+                },
+            ];
+            const recipientOne: INotificationRecipient = {
+                ...TestRecipient,
+                userId: 'reviewer-1',
+            };
+            const recipientTwo: INotificationRecipient = {
+                ...TestRecipient,
+                userId: 'reviewer-2',
+            };
+            userDomain.getManyActiveByIds.mockResolvedValue(reviewers);
+            notificationRecipientDomain.getRecipient
+                .mockResolvedValueOnce(recipientOne)
+                .mockResolvedValueOnce(recipientTwo);
 
             const result = await domain.createJoinRequest('user-2', create);
 
@@ -309,6 +395,27 @@ describe('WorkspaceJoinRequestDomain', () => {
                 stagedActivityLog,
             ]);
             expect(callOrder).toEqual(['createPending', 'stagePrepared']);
+            expect(userDomain.getManyActiveByIds).toHaveBeenCalledWith([
+                'reviewer-1',
+                'reviewer-2',
+            ]);
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledTimes(2);
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenNthCalledWith(
+                1,
+                reviewers[0],
+                EnumNotificationKind.workspaceJoinRequest
+            );
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenNthCalledWith(
+                2,
+                reviewers[1],
+                EnumNotificationKind.workspaceJoinRequest
+            );
             expect(
                 notificationQueue.sendWorkspaceJoinRequest
             ).toHaveBeenCalledTimes(2);
@@ -316,7 +423,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 notificationQueue.sendWorkspaceJoinRequest
             ).toHaveBeenNthCalledWith(
                 1,
-                'reviewer-1',
+                recipientOne,
                 {
                     workspaceId: 'workspace-1',
                     workspaceName: 'Acme',
@@ -326,6 +433,52 @@ describe('WorkspaceJoinRequestDomain', () => {
                 },
                 'user-2'
             );
+            expect(
+                notificationQueue.sendWorkspaceJoinRequest
+            ).toHaveBeenNthCalledWith(
+                2,
+                recipientTwo,
+                expect.objectContaining({ requesterName: 'Jane Doe' }),
+                'user-2'
+            );
+        });
+
+        it('creates nothing and stages nothing when a reviewer recipient read rejects', async () => {
+            workspaceRepository.findActiveById.mockResolvedValue(workspace);
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                null
+            );
+            workspaceJoinRequestRepository.existsPendingByWorkspaceAndUser.mockResolvedValue(
+                false
+            );
+            workspaceJoinRequestRepository.createPending.mockResolvedValue(
+                baseJoinRequest
+            );
+            workspaceMemberRepository.findReviewersByWorkspace.mockResolvedValue(
+                [{ userId: 'reviewer-1' }]
+            );
+            userDomain.getManyActiveByIds.mockResolvedValue([
+                {
+                    id: 'reviewer-1',
+                    email: 'reviewer1@example.com',
+                    username: 'reviewerOne',
+                },
+            ]);
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.createJoinRequest('user-2', create);
+
+            await expect(call).rejects.toBe(error);
+            expect(
+                workspaceJoinRequestRepository.createPending
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinRequest
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -498,10 +651,17 @@ describe('WorkspaceJoinRequestDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
+            expect(userDomain.getOneActive).toHaveBeenCalledWith('reviewer-1');
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                requester,
+                EnumNotificationKind.workspaceJoinAccepted
+            );
             expect(
                 notificationQueue.sendWorkspaceJoinAccepted
             ).toHaveBeenCalledWith(
-                'reviewer-1',
+                recipient,
                 { workspaceId: 'workspace-1', workspaceName: 'Acme' },
                 'reviewer-1'
             );
@@ -510,6 +670,56 @@ describe('WorkspaceJoinRequestDomain', () => {
                 'stagePrepared',
                 'sendWorkspaceJoinAccepted',
             ]);
+        });
+
+        it('commits nothing and stages nothing when the recipient read rejects', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.acceptJoinRequest(
+                workspace,
+                'reviewer-1',
+                'join-request-1'
+            );
+
+            await expect(call).rejects.toBe(error);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(workspaceMemberDomain.createInTx).not.toHaveBeenCalled();
+            expect(
+                workspaceJoinRequestRepository.acceptInTx
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
+        });
+
+        it('accepts without notifying when the requester is no longer active', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            userDomain.getOneActive.mockResolvedValue(null);
+
+            await domain.acceptJoinRequest(
+                workspace,
+                'reviewer-1',
+                'join-request-1'
+            );
+
+            expect(
+                workspaceJoinRequestRepository.acceptInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
         });
 
         it('accepts with two activity logs when the reviewer differs from the requester', async () => {
@@ -663,10 +873,17 @@ describe('WorkspaceJoinRequestDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
+            expect(userDomain.getOneActive).toHaveBeenCalledWith('reviewer-1');
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                requester,
+                EnumNotificationKind.workspaceJoinRejected
+            );
             expect(
                 notificationQueue.sendWorkspaceJoinRejected
             ).toHaveBeenCalledWith(
-                'reviewer-1',
+                recipient,
                 {
                     workspaceId: 'workspace-1',
                     workspaceName: 'Acme',
@@ -680,6 +897,56 @@ describe('WorkspaceJoinRequestDomain', () => {
                 'stagePrepared',
                 'sendWorkspaceJoinRejected',
             ]);
+        });
+
+        it('commits nothing and stages nothing when the recipient read rejects', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.rejectJoinRequest(
+                workspace,
+                'reviewer-1',
+                'join-request-1',
+                EnumWorkspaceJoinRejectReason.wrongWorkspace
+            );
+
+            await expect(call).rejects.toBe(error);
+            expect(
+                workspaceJoinRequestRepository.reject
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinRejected
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rejects without notifying when the requester is no longer active', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            userDomain.getOneActive.mockResolvedValue(null);
+
+            await domain.rejectJoinRequest(
+                workspace,
+                'reviewer-1',
+                'join-request-1',
+                EnumWorkspaceJoinRejectReason.wrongWorkspace
+            );
+
+            expect(workspaceJoinRequestRepository.reject).toHaveBeenCalledTimes(
+                1
+            );
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinRejected
+            ).not.toHaveBeenCalled();
         });
 
         it('rejects with two activity logs when the reviewer differs from the requester', async () => {
@@ -739,17 +1006,70 @@ describe('WorkspaceJoinRequestDomain', () => {
         });
     });
 
-    describe('sendJoinRequestNotifications', () => {
-        const joinRequest = baseJoinRequest;
+    describe('getReviewerRecipients', () => {
+        it('returns one recipient per active reviewer', async () => {
+            workspaceMemberRepository.findReviewersByWorkspace.mockResolvedValue(
+                [{ userId: 'reviewer-1' }]
+            );
+            const reviewer = {
+                id: 'reviewer-1',
+                email: 'reviewer1@example.com',
+                username: 'reviewerOne',
+            };
+            userDomain.getManyActiveByIds.mockResolvedValue([reviewer]);
 
-        it('falls back to the requester username, then "A user", and notifies every reviewer', async () => {
+            const result = await domain['getReviewerRecipients']('workspace-1');
+
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                reviewer,
+                EnumNotificationKind.workspaceJoinRequest
+            );
+            expect(result).toEqual([recipient]);
+        });
+    });
+
+    describe('getNotificationTarget', () => {
+        beforeEach(() => {
+            workspaceMemberRepository.findReviewersByWorkspace.mockResolvedValue(
+                []
+            );
+        });
+
+        it('falls back to the requester username', async () => {
             userDomain.getNameById.mockResolvedValue({
                 name: null,
                 username: 'jane',
             });
-            workspaceMemberRepository.findReviewersByWorkspace.mockResolvedValue(
-                [{ userId: 'reviewer-1' }]
+
+            const result = await domain['getNotificationTarget'](
+                'workspace-1',
+                'user-2'
             );
+
+            expect(result).toEqual({
+                requesterName: 'jane',
+                reviewerRecipients: [],
+            });
+        });
+
+        it('falls back to "A user" when the requester is not found', async () => {
+            userDomain.getNameById.mockResolvedValue(null);
+
+            const result = await domain['getNotificationTarget'](
+                'workspace-1',
+                'user-2'
+            );
+
+            expect(result.requesterName).toBe('A user');
+        });
+    });
+
+    describe('sendJoinRequestNotifications', () => {
+        const joinRequest = baseJoinRequest;
+
+        it('notifies every reviewer recipient with the requester name', async () => {
             helperStringService.fillPattern.mockReturnValue(
                 'https://app.example.com/review/join-request-1'
             );
@@ -757,23 +1077,26 @@ describe('WorkspaceJoinRequestDomain', () => {
             await domain['sendJoinRequestNotifications'](
                 workspace,
                 joinRequest,
-                'user-2'
+                'user-2',
+                { requesterName: 'jane', reviewerRecipients: [recipient] }
             );
 
             expect(
                 notificationQueue.sendWorkspaceJoinRequest
             ).toHaveBeenCalledWith(
-                'reviewer-1',
-                expect.objectContaining({ requesterName: 'jane' }),
+                recipient,
+                {
+                    workspaceId: 'workspace-1',
+                    workspaceName: 'Acme',
+                    requesterName: 'jane',
+                    joinRequestReviewLink:
+                        'https://app.example.com/review/join-request-1',
+                },
                 'user-2'
             );
         });
 
-        it('falls back to "A user" when the requester has neither a name nor is found', async () => {
-            userDomain.getNameById.mockResolvedValue(null);
-            workspaceMemberRepository.findReviewersByWorkspace.mockResolvedValue(
-                []
-            );
+        it('sends nothing when there are no reviewer recipients', async () => {
             helperStringService.fillPattern.mockReturnValue(
                 'https://app.example.com/review/join-request-1'
             );
@@ -781,7 +1104,8 @@ describe('WorkspaceJoinRequestDomain', () => {
             await domain['sendJoinRequestNotifications'](
                 workspace,
                 joinRequest,
-                'user-2'
+                'user-2',
+                { requesterName: 'A user', reviewerRecipients: [] }
             );
 
             expect(

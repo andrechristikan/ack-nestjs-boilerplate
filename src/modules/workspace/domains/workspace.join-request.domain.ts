@@ -19,6 +19,9 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
@@ -27,7 +30,10 @@ import { WorkspaceJoinRequestDuplicateException } from '@modules/workspace/excep
 import { WorkspaceJoinRequestNotFoundException } from '@modules/workspace/exceptions/workspace.join-request-not-found.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
-import type { IWorkspaceJoinRequestCreate } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceJoinRequestCreate,
+    IWorkspaceJoinRequestNotificationTarget,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
@@ -52,6 +58,7 @@ export class WorkspaceJoinRequestDomain {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly featureFlagDomain: FeatureFlagDomain
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
@@ -67,32 +74,73 @@ export class WorkspaceJoinRequestDomain {
         );
     }
 
+    private async getReviewerRecipients(
+        workspaceId: string
+    ): Promise<INotificationRecipient[]> {
+        const reviewerMembers =
+            await this.workspaceMemberRepository.findReviewersByWorkspace(
+                workspaceId
+            );
+        const reviewers = await this.userDomain.getManyActiveByIds(
+            reviewerMembers.map(member => member.userId)
+        );
+
+        return Promise.all(
+            reviewers.map(reviewer =>
+                this.notificationRecipientDomain.getRecipient(
+                    reviewer,
+                    EnumNotificationKind.workspaceJoinRequest
+                )
+            )
+        );
+    }
+
+    private async getNotificationTarget(
+        workspaceId: string,
+        requesterId: string
+    ): Promise<IWorkspaceJoinRequestNotificationTarget> {
+        const [requester, reviewerRecipients] = await Promise.all([
+            this.userDomain.getNameById(requesterId),
+            this.getReviewerRecipients(workspaceId),
+        ]);
+
+        return {
+            requesterName: requester?.name ?? requester?.username ?? 'A user',
+            reviewerRecipients,
+        };
+    }
+
+    private async getRequesterRecipient(
+        requesterId: string,
+        kind: EnumNotificationKind
+    ): Promise<INotificationRecipient | null> {
+        const requester = await this.userDomain.getOneActive(requesterId);
+        if (!requester) {
+            return null;
+        }
+
+        return this.notificationRecipientDomain.getRecipient(requester, kind);
+    }
+
     private async sendJoinRequestNotifications(
         workspace: Workspace,
         joinRequest: WorkspaceJoinRequest,
-        requesterId: string
+        requesterId: string,
+        target: IWorkspaceJoinRequestNotificationTarget
     ): Promise<void> {
-        const [requester, reviewers] = await Promise.all([
-            this.userDomain.getNameById(requesterId),
-            this.workspaceMemberRepository.findReviewersByWorkspace(
-                workspace.id
-            ),
-        ]);
-        const requesterName =
-            requester?.name ?? requester?.username ?? 'A user';
         const link = this.helperStringService.fillPattern(
             this.joinRequestReviewLinkPattern,
             { homeUrl: this.homeUrl, joinRequestId: joinRequest.id }
         );
 
         await Promise.all(
-            reviewers.map(reviewer =>
+            target.reviewerRecipients.map(recipient =>
                 this.notificationQueue.sendWorkspaceJoinRequest(
-                    reviewer.userId,
+                    recipient,
                     {
                         workspaceId: workspace.id,
                         workspaceName: workspace.name,
-                        requesterName,
+                        requesterName: target.requesterName,
                         joinRequestReviewLink: link,
                     },
                     requesterId
@@ -162,6 +210,8 @@ export class WorkspaceJoinRequestDomain {
             }),
         ];
 
+        // Sequential by design: write must not run if an earlier step throws
+        const target = await this.getNotificationTarget(workspace.id, userId);
         const joinRequest =
             await this.workspaceJoinRequestRepository.createPending({
                 workspaceId: workspace.id,
@@ -171,7 +221,12 @@ export class WorkspaceJoinRequestDomain {
 
         this.activityLogDomain.stagePrepared(activityLogs);
 
-        await this.sendJoinRequestNotifications(workspace, joinRequest, userId);
+        await this.sendJoinRequestNotifications(
+            workspace,
+            joinRequest,
+            userId,
+            target
+        );
 
         return joinRequest;
     }
@@ -226,6 +281,10 @@ export class WorkspaceJoinRequestDomain {
         }
 
         // Sequential by design: write must not run if an earlier step throws
+        const recipient = await this.getRequesterRecipient(
+            joinRequest.userId,
+            EnumNotificationKind.workspaceJoinAccepted
+        );
         await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberDomain.createInTx(
                 tx,
@@ -244,14 +303,16 @@ export class WorkspaceJoinRequestDomain {
 
         this.activityLogDomain.stagePrepared(activityLogs);
 
-        await this.notificationQueue.sendWorkspaceJoinAccepted(
-            joinRequest.userId,
-            {
-                workspaceId: workspace.id,
-                workspaceName: workspace.name,
-            },
-            reviewerId
-        );
+        if (recipient) {
+            await this.notificationQueue.sendWorkspaceJoinAccepted(
+                recipient,
+                {
+                    workspaceId: workspace.id,
+                    workspaceName: workspace.name,
+                },
+                reviewerId
+            );
+        }
     }
 
     async rejectJoinRequest(
@@ -291,6 +352,10 @@ export class WorkspaceJoinRequestDomain {
         }
 
         // Sequential by design: write must not run if an earlier step throws
+        const recipient = await this.getRequesterRecipient(
+            joinRequest.userId,
+            EnumNotificationKind.workspaceJoinRejected
+        );
         await this.workspaceJoinRequestRepository.reject(
             workspaceJoinRequestId,
             reviewerId,
@@ -300,14 +365,16 @@ export class WorkspaceJoinRequestDomain {
 
         this.activityLogDomain.stagePrepared(activityLogs);
 
-        await this.notificationQueue.sendWorkspaceJoinRejected(
-            joinRequest.userId,
-            {
-                workspaceId: workspace.id,
-                workspaceName: workspace.name,
-                rejectReasonCode,
-            },
-            reviewerId
-        );
+        if (recipient) {
+            await this.notificationQueue.sendWorkspaceJoinRejected(
+                recipient,
+                {
+                    workspaceId: workspace.id,
+                    workspaceName: workspace.name,
+                    rejectReasonCode,
+                },
+                reviewerId
+            );
+        }
     }
 }

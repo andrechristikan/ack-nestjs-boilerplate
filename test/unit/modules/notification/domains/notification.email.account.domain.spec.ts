@@ -3,10 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { NotificationEmailAccountDomain } from '@modules/notification/domains/notification.email.account.domain';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationEmailAccountDomain', () => {
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
@@ -20,7 +22,7 @@ describe('NotificationEmailAccountDomain', () => {
     const send = {
         userId: 'user-id',
         notificationId: 'notification-id',
-        email: 'nadia@example.com',
+        encryptedEmail: 'cipher(nadia@example.com)',
         username: 'nadia',
         cc: [],
         bcc: [],
@@ -44,6 +46,7 @@ describe('NotificationEmailAccountDomain', () => {
 
             return values[key];
         });
+        stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationEmailAccountDomain,
@@ -60,6 +63,43 @@ describe('NotificationEmailAccountDomain', () => {
     });
 
     describe('processWelcome', () => {
+        it('decrypts the email with the user id before sending and sends to the plaintext', async () => {
+            const callOrder: string[] = [];
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                callOrder.push('decrypt');
+
+                return 'nadia@example.com';
+            });
+            awsSESService.send.mockImplementation(async () => {
+                callOrder.push('send');
+
+                return { $metadata: {}, MessageId: 'message-1' };
+            });
+
+            await domain.processWelcome(send);
+
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                send.encryptedEmail,
+                'secret-key',
+                'notification.payload',
+                send.userId
+            );
+            expect(awsSESService.send).toHaveBeenCalledWith(
+                expect.objectContaining({ recipients: ['nadia@example.com'] })
+            );
+            expect(callOrder).toEqual(['decrypt', 'send']);
+        });
+
+        it('rethrows a decryption failure without calling SES', async () => {
+            const error = new HelperDecryptFailedException();
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                throw error;
+            });
+
+            await expect(domain.processWelcome(send)).rejects.toBe(error);
+            expect(awsSESService.send).not.toHaveBeenCalled();
+        });
+
         it('sends the welcome email with cc and bcc when present', async () => {
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
@@ -70,7 +110,7 @@ describe('NotificationEmailAccountDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.welcome,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -108,7 +148,7 @@ describe('NotificationEmailAccountDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.welcomeSocial,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -140,9 +180,9 @@ describe('NotificationEmailAccountDomain', () => {
         };
 
         it('decrypts the password, formats the dates, and sends the email', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'plain-password'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('plain-password');
             helperDateService.createFromIso.mockImplementation(
                 (iso: string) => new Date(iso)
             );
@@ -167,7 +207,7 @@ describe('NotificationEmailAccountDomain', () => {
             );
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.welcomeByAdmin,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -187,9 +227,9 @@ describe('NotificationEmailAccountDomain', () => {
         });
 
         it('rethrows when SES rejects, with no cc or bcc present', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'plain-password'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('plain-password');
             helperDateService.createFromIso.mockImplementation(
                 (iso: string) => new Date(iso)
             );
@@ -214,9 +254,9 @@ describe('NotificationEmailAccountDomain', () => {
         };
 
         it('decrypts the link, formats the date, and sends the email', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://verify.example.com'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('https://verify.example.com');
             helperDateService.createFromIso.mockImplementation(
                 (iso: string) => new Date(iso)
             );
@@ -241,7 +281,7 @@ describe('NotificationEmailAccountDomain', () => {
             );
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.verificationEmail,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -262,9 +302,9 @@ describe('NotificationEmailAccountDomain', () => {
         });
 
         it('rethrows when SES rejects, with no cc or bcc present', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://verify.example.com'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('https://verify.example.com');
             helperDateService.createFromIso.mockImplementation(
                 (iso: string) => new Date(iso)
             );
@@ -296,7 +336,7 @@ describe('NotificationEmailAccountDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.verifiedEmail,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -343,7 +383,7 @@ describe('NotificationEmailAccountDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.verifiedMobileNumber,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',

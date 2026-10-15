@@ -41,6 +41,9 @@ import type { IDeviceIdentity } from '@modules/device/interfaces/device.interfac
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionCache } from '@modules/session/caches/session.cache';
@@ -54,6 +57,7 @@ import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { stubUserRefreshSession } from '@test/unit/helpers/test.unit.user.helper';
 import type { IUserRefreshSessionDoubles } from '@test/unit/helpers/test.unit.user.helper';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserLoginDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -75,6 +79,8 @@ describe('UserLoginDomain', () => {
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -195,9 +201,15 @@ describe('UserLoginDomain', () => {
         twoFactor: baseTwoFactor,
     };
 
+    const recipient: INotificationRecipient = {
+        ...TestRecipient,
+        userId: baseUser.id,
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
 
+        notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
         activityLogDomain.prepare.mockReturnValue(activityLog);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -232,6 +244,10 @@ describe('UserLoginDomain', () => {
                 { provide: SessionCache, useValue: sessionCache },
                 { provide: SessionDomain, useValue: sessionDomain },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: HelperHashService, useValue: helperHashService },
@@ -408,8 +424,11 @@ describe('UserLoginDomain', () => {
                 loginAt
             );
             expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(user, EnumNotificationKind.newDeviceLogin);
             expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledWith(
-                user.id,
+                recipient,
                 expect.objectContaining({ requestLog })
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
@@ -761,7 +780,54 @@ describe('UserLoginDomain', () => {
                 user.email,
                 expect.objectContaining({ reference: 'VRF-wisteria' })
             );
-            expect(notificationQueue.sendVerificationEmail).toHaveBeenCalled();
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.verificationEmail
+            );
+            expect(
+                notificationQueue.sendVerificationEmail
+            ).toHaveBeenCalledWith(
+                recipient,
+                expect.objectContaining({ reference: 'VRF-wisteria' })
+            );
+        });
+
+        it('persists nothing and sends nothing when the recipient read rejects for an unverified user', async () => {
+            const user = { ...baseUser, isVerified: false };
+            userVerificationDomain.verificationCreateVerification.mockReturnValue(
+                {
+                    type: 'email',
+                    expiredAt: new Date('2026-03-05T00:00:00.000Z'),
+                    expiredInMinutes: 15,
+                    resendInMinutes: 5,
+                    reference: 'VRF-wisteria',
+                    token: 'raw-token',
+                    hashedToken: 'hashed-token',
+                    link: 'https://example.com/verify?token=raw-token',
+                }
+            );
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.handleLogin(
+                user,
+                device,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                now
+            );
+
+            await expect(call).rejects.toBe(error);
+            expect(
+                userVerificationDomain.persistVerificationEmail
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendVerificationEmail
+            ).not.toHaveBeenCalled();
         });
 
         it('logs the user in directly when two-factor is not enabled', async () => {

@@ -25,6 +25,8 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthCache } from '@modules/auth/caches/auth.cache';
 import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
@@ -55,6 +57,7 @@ export class UserTwoFactorDomain {
         private readonly authTwoFactorDomain: AuthTwoFactorDomain,
         private readonly authCache: AuthCache,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -427,6 +430,11 @@ export class UserTwoFactorDomain {
             ];
             const now = this.helperDateService.create();
             // Sequential by design: write must not run if an earlier step throws
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    user,
+                    EnumNotificationKind.resetTwoFactorByAdmin
+                );
             await Promise.all([
                 this.databaseService.withTransaction(async tx => {
                     await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
@@ -448,7 +456,7 @@ export class UserTwoFactorDomain {
             this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendResetTwoFactorByAdmin(
-                user.id,
+                recipient,
                 updatedBy
             );
 

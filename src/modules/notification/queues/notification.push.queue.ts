@@ -11,9 +11,9 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationPushCleanupTokenPayload,
+    INotificationPushCleanupTokenEncryptedPayload,
     INotificationPushQueuePayload,
-    INotificationSendPushPayload,
+    INotificationSendPushEncryptedPayload,
     INotificationTemporaryPasswordPushPayload,
     INotificationWorkspaceInvitePushPayload,
     INotificationWorkspaceJoinAcceptedPayload,
@@ -51,7 +51,7 @@ export class NotificationPushQueue {
     }
 
     async sendTemporaryPasswordByAdmin(
-        sendPayload: INotificationSendPushPayload,
+        sendPayload: INotificationSendPushEncryptedPayload,
         {
             passwordCreatedAt,
             passwordExpiredAt,
@@ -62,8 +62,8 @@ export class NotificationPushQueue {
                 send: sendPayload,
                 data: { passwordCreatedAt, passwordExpiredAt },
                 completedSteps: [],
-                failureTokens: null,
-                pendingTokens: null,
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -97,14 +97,14 @@ export class NotificationPushQueue {
     }
 
     async sendResetPassword(
-        sendPayload: INotificationSendPushPayload
+        sendPayload: INotificationSendPushEncryptedPayload
     ): Promise<void> {
         const payload: INotificationPushQueuePayload = {
             send: sendPayload,
             data: null,
             completedSteps: [],
-            failureTokens: null,
-            pendingTokens: null,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -138,14 +138,14 @@ export class NotificationPushQueue {
     }
 
     async sendForgotPassword(
-        sendPayload: INotificationSendPushPayload
+        sendPayload: INotificationSendPushEncryptedPayload
     ): Promise<void> {
         const payload: INotificationPushQueuePayload = {
             send: sendPayload,
             data: null,
             completedSteps: [],
-            failureTokens: null,
-            pendingTokens: null,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -179,14 +179,14 @@ export class NotificationPushQueue {
     }
 
     async sendResetTwoFactorByAdmin(
-        sendPayload: INotificationSendPushPayload
+        sendPayload: INotificationSendPushEncryptedPayload
     ): Promise<void> {
         const payload: INotificationPushQueuePayload = {
             send: sendPayload,
             data: null,
             completedSteps: [],
-            failureTokens: null,
-            pendingTokens: null,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -220,7 +220,7 @@ export class NotificationPushQueue {
     }
 
     async sendNewDeviceLogin(
-        sendPayload: INotificationSendPushPayload,
+        sendPayload: INotificationSendPushEncryptedPayload,
         data: INotificationNewDeviceLoginPayload
     ): Promise<void> {
         const payload: INotificationPushQueuePayload<INotificationNewDeviceLoginPayload> =
@@ -228,8 +228,8 @@ export class NotificationPushQueue {
                 send: sendPayload,
                 data,
                 completedSteps: [],
-                failureTokens: null,
-                pendingTokens: null,
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -263,7 +263,7 @@ export class NotificationPushQueue {
     }
 
     async sendWorkspaceInvite(
-        sendPayload: INotificationSendPushPayload,
+        sendPayload: INotificationSendPushEncryptedPayload,
         {
             workspaceId,
             workspaceName,
@@ -285,8 +285,8 @@ export class NotificationPushQueue {
                     expiredAt,
                 },
                 completedSteps: [],
-                failureTokens: null,
-                pendingTokens: null,
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -320,7 +320,7 @@ export class NotificationPushQueue {
     }
 
     async sendWorkspaceJoinRequest(
-        sendPayload: INotificationSendPushPayload,
+        sendPayload: INotificationSendPushEncryptedPayload,
         {
             workspaceId,
             workspaceName,
@@ -332,8 +332,8 @@ export class NotificationPushQueue {
                 send: sendPayload,
                 data: { workspaceId, workspaceName, requesterName },
                 completedSteps: [],
-                failureTokens: null,
-                pendingTokens: null,
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -368,7 +368,7 @@ export class NotificationPushQueue {
     }
 
     async sendWorkspaceJoinAccepted(
-        sendPayload: INotificationSendPushPayload,
+        sendPayload: INotificationSendPushEncryptedPayload,
         data: INotificationWorkspaceJoinAcceptedPayload
     ): Promise<void> {
         const payload: INotificationPushQueuePayload<INotificationWorkspaceJoinAcceptedPayload> =
@@ -376,8 +376,8 @@ export class NotificationPushQueue {
                 send: sendPayload,
                 data,
                 completedSteps: [],
-                failureTokens: null,
-                pendingTokens: null,
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -412,7 +412,7 @@ export class NotificationPushQueue {
     }
 
     async sendWorkspaceJoinRejected(
-        sendPayload: INotificationSendPushPayload,
+        sendPayload: INotificationSendPushEncryptedPayload,
         data: INotificationWorkspaceJoinRejectedPayload
     ): Promise<void> {
         const payload: INotificationPushQueuePayload<INotificationWorkspaceJoinRejectedPayload> =
@@ -420,8 +420,8 @@ export class NotificationPushQueue {
                 send: sendPayload,
                 data,
                 completedSteps: [],
-                failureTokens: null,
-                pendingTokens: null,
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -458,11 +458,11 @@ export class NotificationPushQueue {
     async sendCleanupTokens(
         notificationId: string,
         userId: string,
-        failureTokens: string[]
+        encryptedFailureTokens: string[]
     ): Promise<void> {
-        if (failureTokens.length > 0) {
-            const payload: INotificationPushCleanupTokenPayload = {
-                failureTokens,
+        if (encryptedFailureTokens.length > 0) {
+            const payload: INotificationPushCleanupTokenEncryptedPayload = {
+                encryptedFailureTokens,
                 userId,
             };
 

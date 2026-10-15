@@ -32,6 +32,8 @@ import type {
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -61,6 +63,7 @@ import type {
     IUserList,
     IUserOnboardingVerification,
     IUserProfile,
+    IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
@@ -85,6 +88,7 @@ export class UserDomain {
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
@@ -160,12 +164,12 @@ export class UserDomain {
         );
     }
 
-    async getOneById(userId: string): Promise<User | null> {
-        return this.userRepository.findOneById(userId);
-    }
-
     async getOneActive(userId: string): Promise<User | null> {
         return this.userRepository.findOneActiveById(userId);
+    }
+
+    async getManyActiveByIds(userIds: string[]): Promise<IUserRecipient[]> {
+        return this.userRepository.findManyActiveByIds(userIds);
     }
 
     async getOneActiveByEmail(email: string): Promise<User | null> {
@@ -260,11 +264,23 @@ export class UserDomain {
         await this.userRepository.touchUpdatedByInTx(tx, userId);
     }
 
-    async getListIdCursor(
+    async getListRecipientCursor(
         cursor: string | null,
-        take: number
-    ): Promise<string[]> {
-        return this.userRepository.findIdsCursor(cursor, take);
+        take: number,
+        createdBefore: Date
+    ): Promise<IUserRecipient[]> {
+        return this.userRepository.findRecipientsCursor(
+            cursor,
+            take,
+            createdBefore
+        );
+    }
+
+    async getManyRecipientsByIds(
+        ids: string[],
+        createdBefore: Date
+    ): Promise<IUserRecipient[]> {
+        return this.userRepository.findRecipientsByIds(ids, createdBefore);
     }
 
     async getOne(id: string): Promise<IUserProfile> {
@@ -361,7 +377,7 @@ export class UserDomain {
     }
 
     async notifyWelcomeByAdmin(
-        userId: string,
+        user: IUserRecipient,
         passwordString: string,
         passwordCreated: Date,
         passwordExpired: Date,
@@ -371,8 +387,12 @@ export class UserDomain {
             this.helperDateService.formatToIso(passwordCreated);
         const passwordExpiredAt =
             this.helperDateService.formatToIso(passwordExpired);
+        const recipient = await this.notificationRecipientDomain.getRecipient(
+            user,
+            EnumNotificationKind.welcomeByAdmin
+        );
         await this.notificationQueue.sendWelcomeByAdmin(
-            userId,
+            recipient,
             {
                 password: passwordString,
                 passwordCreatedAt,

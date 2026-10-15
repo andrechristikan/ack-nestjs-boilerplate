@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -13,6 +14,7 @@ import {
 import { flatten } from 'flat';
 import { NotificationEmailSecurityDomain } from '@modules/notification/domains/notification.email.security.domain';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 import type { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
 
 describe('NotificationEmailSecurityDomain', () => {
@@ -27,7 +29,7 @@ describe('NotificationEmailSecurityDomain', () => {
     const send = {
         userId: 'user-id',
         notificationId: 'notification-id',
-        email: 'nadia@example.com',
+        encryptedEmail: 'cipher(nadia@example.com)',
         username: 'nadia',
         cc: [],
         bcc: [],
@@ -57,6 +59,7 @@ describe('NotificationEmailSecurityDomain', () => {
         helperDateService.formatToRFC2822.mockImplementation((date: Date) =>
             date.toISOString()
         );
+        stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationEmailSecurityDomain,
@@ -80,9 +83,9 @@ describe('NotificationEmailSecurityDomain', () => {
         };
 
         it('decrypts the password, formats the dates, and sends the email', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'plain-password'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('plain-password');
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
                 MessageId: 'message-1',
@@ -101,7 +104,7 @@ describe('NotificationEmailSecurityDomain', () => {
             );
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -121,9 +124,9 @@ describe('NotificationEmailSecurityDomain', () => {
         });
 
         it('rethrows when SES rejects, with no cc or bcc present', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'plain-password'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('plain-password');
             const error = new Error('ses down');
             awsSESService.send.mockRejectedValue(error);
 
@@ -134,6 +137,45 @@ describe('NotificationEmailSecurityDomain', () => {
     });
 
     describe('processChangePassword', () => {
+        it('decrypts the email with the user id before sending and sends to the plaintext', async () => {
+            const callOrder: string[] = [];
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                callOrder.push('decrypt');
+
+                return 'nadia@example.com';
+            });
+            awsSESService.send.mockImplementation(async () => {
+                callOrder.push('send');
+
+                return { $metadata: {}, MessageId: 'message-1' };
+            });
+
+            await domain.processChangePassword(send);
+
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                send.encryptedEmail,
+                'secret-key',
+                'notification.payload',
+                send.userId
+            );
+            expect(awsSESService.send).toHaveBeenCalledWith(
+                expect.objectContaining({ recipients: ['nadia@example.com'] })
+            );
+            expect(callOrder).toEqual(['decrypt', 'send']);
+        });
+
+        it('rethrows a decryption failure without calling SES', async () => {
+            const error = new HelperDecryptFailedException();
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                throw error;
+            });
+
+            await expect(domain.processChangePassword(send)).rejects.toBe(
+                error
+            );
+            expect(awsSESService.send).not.toHaveBeenCalled();
+        });
+
         it('sends the change password email with cc and bcc when present', async () => {
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
@@ -144,7 +186,7 @@ describe('NotificationEmailSecurityDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.changePassword,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -181,7 +223,7 @@ describe('NotificationEmailSecurityDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.resetPassword,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -215,9 +257,9 @@ describe('NotificationEmailSecurityDomain', () => {
         };
 
         it('decrypts the link, formats the date, and sends the email', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://reset.example.com'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('https://reset.example.com');
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
                 MessageId: 'message-1',
@@ -236,7 +278,7 @@ describe('NotificationEmailSecurityDomain', () => {
             );
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.forgotPassword,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -257,9 +299,9 @@ describe('NotificationEmailSecurityDomain', () => {
         });
 
         it('rethrows when SES rejects, with no cc or bcc present', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://reset.example.com'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('https://reset.example.com');
             const error = new Error('ses down');
             awsSESService.send.mockRejectedValue(error);
 
@@ -281,7 +323,7 @@ describe('NotificationEmailSecurityDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -351,7 +393,7 @@ describe('NotificationEmailSecurityDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.newDeviceLogin,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',

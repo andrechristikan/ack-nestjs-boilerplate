@@ -21,6 +21,9 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
@@ -40,6 +43,7 @@ import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserAuthDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -58,6 +62,8 @@ describe('UserAuthDomain', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const configGet = vi.fn<(key: string) => string | undefined>();
@@ -171,6 +177,10 @@ describe('UserAuthDomain', () => {
                 { provide: FeatureFlagCache, useValue: featureFlagCache },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
             ],
@@ -946,6 +956,16 @@ describe('UserAuthDomain', () => {
     });
 
     describe('notifyWelcome', () => {
+        const recipientUser = {
+            id: 'user-halcyon',
+            email: 'halcyon@example.com',
+            username: 'halcyon',
+        };
+        const recipient: INotificationRecipient = {
+            ...TestRecipient,
+            userId: recipientUser.id,
+        };
+
         it('sends the welcome notification', async () => {
             const emailVerification: IUserVerificationEmailCreate = {
                 type: 'email',
@@ -960,11 +980,17 @@ describe('UserAuthDomain', () => {
             helperDateService.formatToIso.mockReturnValue(
                 '2026-03-05T00:00:00.000Z'
             );
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
 
-            await domain.notifyWelcome('user-halcyon', emailVerification);
+            await domain.notifyWelcome(recipientUser, emailVerification);
 
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(recipientUser, EnumNotificationKind.welcome);
             expect(notificationQueue.sendWelcome).toHaveBeenCalledWith(
-                'user-halcyon',
+                recipient,
                 {
                     expiredAt: '2026-03-05T00:00:00.000Z',
                     reference: emailVerification.reference,
@@ -976,11 +1002,31 @@ describe('UserAuthDomain', () => {
     });
 
     describe('notifyWelcomeSocial', () => {
-        it('enqueues the social welcome for the user', async () => {
-            await domain.notifyWelcomeSocial('user-bramble');
+        const recipientUser = {
+            id: 'user-bramble',
+            email: 'bramble@example.com',
+            username: 'bramble',
+        };
+        const recipient: INotificationRecipient = {
+            ...TestRecipient,
+            userId: recipientUser.id,
+        };
 
+        it('enqueues the social welcome for the user', async () => {
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
+
+            await domain.notifyWelcomeSocial(recipientUser);
+
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                recipientUser,
+                EnumNotificationKind.welcomeSocial
+            );
             expect(notificationQueue.sendWelcomeSocial).toHaveBeenCalledWith(
-                'user-bramble'
+                recipient
             );
         });
     });

@@ -27,6 +27,9 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthCache } from '@modules/auth/caches/auth.cache';
 import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -37,6 +40,7 @@ import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-fac
 import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserTwoFactorDomain', () => {
     const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
@@ -53,6 +57,8 @@ describe('UserTwoFactorDomain', () => {
     const authCache: MockProxy<AuthCache> = mock<AuthCache>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -161,8 +167,14 @@ describe('UserTwoFactorDomain', () => {
         loginWith: EnumUserLoginWith.credential,
     };
 
+    const recipient: INotificationRecipient = {
+        ...TestRecipient,
+        userId: baseUser.id,
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
+        notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
 
         activityLogDomain.prepare.mockReturnValue(activityLog);
         databaseService.withTransaction.mockImplementation(
@@ -189,6 +201,10 @@ describe('UserTwoFactorDomain', () => {
                 },
                 { provide: AuthCache, useValue: authCache },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -1285,13 +1301,38 @@ describe('UserTwoFactorDomain', () => {
                 targetActivityLog,
             ]);
             expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.resetTwoFactorByAdmin
+            );
+            expect(
                 notificationQueue.sendResetTwoFactorByAdmin
-            ).toHaveBeenCalledWith('user-quartz', 'admin-quartz');
+            ).toHaveBeenCalledWith(recipient, 'admin-quartz');
             expect(callOrder).toEqual([
                 'purgeLoginsByUser',
                 'stagePrepared',
                 'sendResetTwoFactorByAdmin',
             ]);
+        });
+
+        it('commits nothing and purges nothing when the recipient read rejects', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.resetTwoFactorByAdmin(
+                'user-quartz',
+                'admin-quartz'
+            );
+
+            await expect(call).rejects.toMatchObject({ rawError: error });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(authCache.clearLockTwoFactorAttempt).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('throws UserNotSelfException when the admin targets themselves', async () => {

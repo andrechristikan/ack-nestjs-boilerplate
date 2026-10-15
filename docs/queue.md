@@ -34,6 +34,7 @@ Code lives in two places:
 - [Available Queues](#available-queues)
 - [Usage](#usage)
     - [Adding Jobs to Queue](#adding-jobs-to-queue)
+    - [Producer Decisions in Job Data](#producer-decisions-in-job-data)
     - [Job Options](#job-options)
     - [Re-adding a Job by Id](#re-adding-a-job-by-id)
 - [Creating New Queue](#creating-new-queue)
@@ -157,7 +158,7 @@ export class NotificationPushQueue {
     }
 
     async sendNewDeviceLogin(
-        sendPayload: INotificationSendPushPayload,
+        sendPayload: INotificationSendPushEncryptedPayload,
         data: INotificationNewDeviceLoginPayload
     ): Promise<void> {
         const payload: INotificationPushQueuePayload<INotificationNewDeviceLoginPayload> =
@@ -165,8 +166,8 @@ export class NotificationPushQueue {
                 send: sendPayload,
                 data,
                 completedSteps: [],
-                failureTokens: null,
-                pendingTokens: null,
+                encryptedFailureTokens: null,
+                encryptedPendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -208,11 +209,60 @@ A deduplication id is a `{token}` pattern from `src/modules/notification/constan
 - The two term-policy publication patterns, `{process}-{termPolicyId}` and `{process}-{termPolicyId}-{batchId}`, fill a BullMQ `jobId` instead and carry no deduplication TTL.
 - `NotificationStepJobIdPattern` is `{notificationId}-{step}`. It fills the `jobId` of a push job, of a cleanup job, and of an email job for a recipient with an account, so one notification enqueues each step once.
 
+A sensitive payload field is sealed by the queue class with `HelperEncryptionService` and named `encrypted<Field>`: a generated password, a link, a recipient email address, and device notification tokens.
+
+- The queue class seals the field with the module's encryption purpose and the recipient id as authenticated data.
+- Job data sits in Redis and shows in Bull Board, so it holds the ciphertext only.
+- The `NotificationPushQueue` above receives `send.encryptedNotificationTokens` already sealed, from the recipient snapshot that `NotificationQueue` sealed.
+
 A domain that needs the job injects the queue class and calls that method:
 
 ```typescript
 await this.notificationPushQueue.sendNewDeviceLogin(sendPayload, data);
 ```
+
+### Producer Decisions in Job Data
+
+The producer decides once, at enqueue, and the decision rides in the job data as a required non-null field:
+
+- who receives the job
+- at which address
+- on which channels, after the user's notification settings
+- to which device tokens
+- the bound of a recipient set
+
+The processor takes these fields from the job and does not re-read the user, the device, or the setting to decide again. The producer reads the settings when it builds the decision, so a setting changed after the enqueue does not reach a queued job.
+
+A notification job carries the sealed recipient snapshot (see [Notification: Recipient Snapshot][ref-doc-notification-snapshot]).
+
+A recipient set too large for a payload carries a fixed bound taken from a stored column. The term-policy publication is the one such job:
+
+1. The publication processor is the producer of its batch jobs, so its user paging is the enqueue-time read for them, not a consumer re-read.
+    - It takes no recipient snapshot.
+    - It reads users a page of `email.batchSize` (`src/configs/email.config.ts`, 50) at a time in id order.
+2. The processor applies no notification settings. Each `Notification` row it creates carries every channel of the kind.
+3. For each page it creates the `Notification` rows and the `TermPolicyRecipient` markers for users without a marker, and it seals the address of each recipient into an email batch job.
+    - The new rows of one page form one batch job of at most `email.batchSize` recipients.
+    - A retry also re-adds each batch of that page whose markers still lack `enqueuedAt`.
+    - A batch job carries its recipients, so the email processor does not read users.
+4. The bound is `recipientCutoffAt`, the policy's stored `publishedAt`.
+    - `TermPolicyDomain` writes it into the publication job data when it enqueues the job.
+    - The processor takes it from the job data and does not read the policy, so every attempt uses the same value.
+    - `publishedAt` is written once, when a draft is published, and a re-publish of a published policy writes nothing.
+5. The cutoff is inclusive: a user qualifies when `createdAt` is at or before it. A user created after `publishedAt` never qualifies for that policy's publication.
+
+The job also reads and updates state at run time, and that state is not a decision field:
+
+- Step state in the job data: `completedSteps`, `encryptedFailureTokens`, and `encryptedPendingTokens`. The producer sets `completedSteps` to `[]` and the two token fields to `null`, and the processor service writes them back with `job.updateData`.
+    - In a push job the two token fields are the only step state that may be `null`: each holds progress, so it has no value at enqueue, while the decision fields are always set.
+    - An orchestration job holds `completedSteps` alone, always an array. The bulk publication job holds no step state.
+    - An email job carries no step state.
+- Step state on the `TermPolicyRecipient` marker: the publication processor stamps `enqueuedAt`, and the email processor reads `sentAt` to skip a recipient already sent and stamps it after a successful send.
+
+Two jobs read at run time by design, because they decide from the current time or purge idempotently:
+
+- `cleanupStaleTokens`, a scheduler sweep whose cutoff is relative to now.
+- `cleanupTokens`, an idempotent purge of the tokens the job carries.
 
 ### Job Options
 
@@ -281,7 +331,7 @@ The read and the add are two separate Redis calls with no lock around them:
 **Per-batch email jobs.** `NotificationEmailQueue.sendPublishTermPolicyBatch` adds one job per recipient batch under the `jobId` `publishTermPolicy-{termPolicyId}-{batchId}`, with a `delay` of `index * email.batchDelayInMs`. It checks no job state, so BullMQ's duplicate rule decides a re-publish:
 
 1. A re-publish runs `processPublishTermPolicy` again, and users that already hold a recipient marker are skipped.
-2. A batch whose markers carry no `enqueuedAt` is added again under its stored `batchId`.
+2. A batch whose markers carry no `enqueuedAt` is added again under its stored `batchId`, with its recipients rebuilt from the users and sealed again.
     - BullMQ ignores that `add` while a job with the id still exists in the email queue (waiting, delayed, active, or kept after completion or failure).
     - Once the old job has expired, the same `add` creates a new job.
 3. A batch already marked enqueued is not added again.
@@ -385,7 +435,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 `handle` is the dispatcher:
 
 - It switches on `job.name` and awaits a `*.processor.service.ts` method.
-- Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` maps `HelperDecryptFailedException` to BullMQ `UnrecoverableError`).
+- Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` and `NotificationPushProcessor` map `HelperDecryptFailedException` to BullMQ `UnrecoverableError`).
 - The subclass implements `handle` only. `QueueProcessorBase` owns `process`, Nest failure logging, and `job.log`.
 
 The second argument of `@QueueProcessor` is `IQueueProcessorOptions`:
@@ -573,7 +623,7 @@ flowchart TD
 6. **Sentry Reporting**: on that final fatal failure, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`, then `SentryService.captureException` runs once.
 
 - A processor throws `UnrecoverableError` for a failure no retry can fix.
-- `NotificationEmailProcessor.handle` does so for a payload that fails to decrypt (see [Notification][ref-doc-notification]).
+- `NotificationEmailProcessor.handle` and `NotificationPushProcessor.handle` do so for a payload that fails to decrypt (see [Notification][ref-doc-notification]).
 
 ## QueueException
 
@@ -660,5 +710,6 @@ redis-bullboard:
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-notification]: notification.md
+[ref-doc-notification-snapshot]: notification.md#recipient-snapshot
 [ref-doc-installation]: installation.md
 [ref-doc-release]: release.md

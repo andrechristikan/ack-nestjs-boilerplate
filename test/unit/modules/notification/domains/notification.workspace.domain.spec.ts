@@ -1,23 +1,14 @@
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Notification, User } from '@generated/prisma-client/client';
+import type { Notification } from '@generated/prisma-client/client';
 import {
-    EnumDeviceNotificationProvider,
-    EnumDevicePlatform,
+    EnumNotificationChannel,
     EnumNotificationPriority,
     EnumNotificationType,
-    EnumUserGender,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
-import type { IDeviceOwnershipWithDevice } from '@modules/device/interfaces/device.interface';
 import { NotificationWorkspaceDomain } from '@modules/notification/domains/notification.workspace.domain';
 import {
     EnumNotificationKind,
@@ -33,88 +24,28 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationWorkspaceDomain', () => {
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
-    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
         mock<NotificationEmailQueue>();
     const notificationPushQueue: MockProxy<NotificationPushQueue> =
         mock<NotificationPushQueue>();
     let domain: NotificationWorkspaceDomain;
 
-    const user: User = {
-        id: 'user-id',
-        name: 'Nadia Bloom',
-        username: 'nadia',
-        isVerified: true,
-        verifiedAt: new Date('2024-01-01T00:00:00.000Z'),
-        email: 'nadia@example.com',
-        roleId: 'role-id',
-        password: 'hashed',
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: 0,
-        signUpAt: new Date('2024-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.female,
-        countryId: 'country-id',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: true,
-        },
-        photo: null,
-        createdAt: new Date('2024-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
+    const recipient = TestEncryptedRecipient;
+    const noChannelRecipient = { ...recipient, channels: [] };
+    const inAppRecipient = {
+        ...recipient,
+        channels: [EnumNotificationChannel.inApp],
     };
-
-    const deviceOwnership: IDeviceOwnershipWithDevice = {
-        id: 'ownership-id',
-        deviceId: 'device-id',
-        userId: 'user-id',
-        revokedAt: null,
-        isRevoked: false,
-        revokedById: null,
-        lastActiveAt: new Date('2024-01-01T00:00:00.000Z'),
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
-        createdAt: new Date('2024-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        device: {
-            id: 'device-id',
-            fingerprint: 'fingerprint-1',
-            name: 'iPhone',
-            platform: EnumDevicePlatform.ios,
-            lastActiveAt: new Date('2024-01-01T00:00:00.000Z'),
-            notificationToken: 'push-token',
-            notificationProvider: EnumDeviceNotificationProvider.fcm,
-            createdAt: new Date('2024-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-            updatedBy: null,
-        },
+    const emailOnlyRecipient = {
+        ...recipient,
+        channels: [EnumNotificationChannel.email],
     };
+    const noPushRecipient = { ...recipient, encryptedNotificationTokens: [] };
 
     const notification: Notification = {
         id: 'notification-id',
@@ -134,8 +65,8 @@ describe('NotificationWorkspaceDomain', () => {
 
     const emailPayload = {
         userId: 'user-id',
-        email: user.email,
-        username: user.username,
+        encryptedEmail: recipient.encryptedEmail,
+        username: recipient.username,
         notificationId: 'n-1',
         cc: [],
         bcc: [],
@@ -143,8 +74,8 @@ describe('NotificationWorkspaceDomain', () => {
     const pushPayload = {
         userId: 'user-id',
         notificationId: 'n-1',
-        notificationTokens: ['push-token'],
-        username: user.username,
+        encryptedNotificationTokens: recipient.encryptedNotificationTokens,
+        username: recipient.username,
     };
     const allSteps = [
         EnumNotificationStep.createNotification,
@@ -155,7 +86,6 @@ describe('NotificationWorkspaceDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         notificationRepository.createMany.mockResolvedValue([notification]);
-        deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([]);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationWorkspaceDomain,
@@ -164,8 +94,6 @@ describe('NotificationWorkspaceDomain', () => {
                     provide: NotificationRepository,
                     useValue: notificationRepository,
                 },
-                { provide: UserDomain, useValue: userDomain },
-                { provide: DeviceDomain, useValue: deviceDomain },
                 {
                     provide: NotificationEmailQueue,
                     useValue: notificationEmailQueue,
@@ -190,35 +118,11 @@ describe('NotificationWorkspaceDomain', () => {
             expiredAt: '2024-02-01T00:00:00.000Z',
         };
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processWorkspaceInvite(
-                'user-id',
-                'admin-id',
-                data,
-                'n-1',
-                []
-            );
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping workspace invite notification',
-                completedSteps: [],
-                failedSteps: [],
-            });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-        });
-
         it('creates the row, then enqueues email and push, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processWorkspaceInvite(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -229,14 +133,15 @@ describe('NotificationWorkspaceDomain', () => {
                     kind: EnumNotificationKind.workspaceInvite,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
+                        userId: 'user-id',
                         metadata: {
-                            username: user.username,
+                            username: recipient.username,
                             workspaceId: data.workspaceId,
                             workspaceName: data.workspaceName,
                             inviterName: data.inviterName,
                         },
                         createdBy: 'admin-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -261,11 +166,10 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processWorkspaceInvite(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -281,14 +185,10 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processWorkspaceInvite(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 [
@@ -308,12 +208,12 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processWorkspaceInvite(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -326,10 +226,6 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationEmailQueue.sendWorkspaceInvite.mockRejectedValue(
                 new Error('redis')
             );
@@ -337,6 +233,7 @@ describe('NotificationWorkspaceDomain', () => {
             const result = await domain.processWorkspaceInvite(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -355,10 +252,6 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
@@ -366,6 +259,7 @@ describe('NotificationWorkspaceDomain', () => {
             const result = await domain.processWorkspaceInvite(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -388,6 +282,128 @@ describe('NotificationWorkspaceDomain', () => {
                 ],
             });
         });
+
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processWorkspaceInvite(
+                'user-id',
+                'admin-id',
+                noChannelRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceInvite
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendWorkspaceInvite
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message:
+                    'Workspace invite notification skipped, no channel enabled',
+                completedSteps: [],
+                failedSteps: [],
+            });
+        });
+
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processWorkspaceInvite(
+                'user-id',
+                'admin-id',
+                inAppRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.workspaceInvite,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendWorkspaceInvite
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processWorkspaceInvite(
+                'user-id',
+                'admin-id',
+                emailOnlyRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendWorkspaceInvite
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceInvite
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendWorkspaceInvite.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendWorkspaceInvite.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processWorkspaceInvite(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+            const second = await domain.processWorkspaceInvite(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
+        });
     });
 
     describe('processWorkspaceJoinRequest', () => {
@@ -398,35 +414,11 @@ describe('NotificationWorkspaceDomain', () => {
             encryptedJoinRequestReviewLink: 'cipher-review-link',
         };
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processWorkspaceJoinRequest(
-                'user-id',
-                'admin-id',
-                data,
-                'n-1',
-                []
-            );
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping workspace join request notification',
-                completedSteps: [],
-                failedSteps: [],
-            });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-        });
-
         it('creates the row, then enqueues email and push, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processWorkspaceJoinRequest(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -437,14 +429,15 @@ describe('NotificationWorkspaceDomain', () => {
                     kind: EnumNotificationKind.workspaceJoinRequest,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
+                        userId: 'user-id',
                         metadata: {
-                            username: user.username,
+                            username: recipient.username,
                             workspaceId: data.workspaceId,
                             workspaceName: data.workspaceName,
                             requesterName: data.requesterName,
                         },
                         createdBy: 'admin-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -466,11 +459,10 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processWorkspaceJoinRequest(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -486,14 +478,10 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processWorkspaceJoinRequest(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 [
@@ -513,12 +501,12 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processWorkspaceJoinRequest(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -531,10 +519,6 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationEmailQueue.sendWorkspaceJoinRequest.mockRejectedValue(
                 new Error('redis')
             );
@@ -542,6 +526,7 @@ describe('NotificationWorkspaceDomain', () => {
             const result = await domain.processWorkspaceJoinRequest(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -560,10 +545,6 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
@@ -571,6 +552,7 @@ describe('NotificationWorkspaceDomain', () => {
             const result = await domain.processWorkspaceJoinRequest(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -593,6 +575,128 @@ describe('NotificationWorkspaceDomain', () => {
                 ],
             });
         });
+
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processWorkspaceJoinRequest(
+                'user-id',
+                'admin-id',
+                noChannelRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinRequest
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendWorkspaceJoinRequest
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message:
+                    'Workspace join request notification skipped, no channel enabled',
+                completedSteps: [],
+                failedSteps: [],
+            });
+        });
+
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processWorkspaceJoinRequest(
+                'user-id',
+                'admin-id',
+                inAppRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.workspaceJoinRequest,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinRequest
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processWorkspaceJoinRequest(
+                'user-id',
+                'admin-id',
+                emailOnlyRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendWorkspaceJoinRequest
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinRequest
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendWorkspaceJoinRequest.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendWorkspaceJoinRequest.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processWorkspaceJoinRequest(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+            const second = await domain.processWorkspaceJoinRequest(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
+        });
     });
 
     describe('processWorkspaceJoinAccepted', () => {
@@ -601,35 +705,11 @@ describe('NotificationWorkspaceDomain', () => {
             workspaceName: 'Acme',
         };
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processWorkspaceJoinAccepted(
-                'user-id',
-                'admin-id',
-                data,
-                'n-1',
-                []
-            );
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping workspace join accepted notification',
-                completedSteps: [],
-                failedSteps: [],
-            });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-        });
-
         it('creates the row, then enqueues email and push, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processWorkspaceJoinAccepted(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -640,13 +720,14 @@ describe('NotificationWorkspaceDomain', () => {
                     kind: EnumNotificationKind.workspaceJoinAccepted,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
+                        userId: 'user-id',
                         metadata: {
-                            username: user.username,
+                            username: recipient.username,
                             workspaceId: data.workspaceId,
                             workspaceName: data.workspaceName,
                         },
                         createdBy: 'admin-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -664,11 +745,10 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processWorkspaceJoinAccepted(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -684,14 +764,10 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processWorkspaceJoinAccepted(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 [
@@ -711,12 +787,12 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processWorkspaceJoinAccepted(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -729,10 +805,6 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationEmailQueue.sendWorkspaceJoinAccepted.mockRejectedValue(
                 new Error('redis')
             );
@@ -740,6 +812,7 @@ describe('NotificationWorkspaceDomain', () => {
             const result = await domain.processWorkspaceJoinAccepted(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -758,10 +831,6 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
@@ -769,6 +838,7 @@ describe('NotificationWorkspaceDomain', () => {
             const result = await domain.processWorkspaceJoinAccepted(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -791,6 +861,128 @@ describe('NotificationWorkspaceDomain', () => {
                 ],
             });
         });
+
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processWorkspaceJoinAccepted(
+                'user-id',
+                'admin-id',
+                noChannelRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message:
+                    'Workspace join accepted notification skipped, no channel enabled',
+                completedSteps: [],
+                failedSteps: [],
+            });
+        });
+
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processWorkspaceJoinAccepted(
+                'user-id',
+                'admin-id',
+                inAppRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.workspaceJoinAccepted,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processWorkspaceJoinAccepted(
+                'user-id',
+                'admin-id',
+                emailOnlyRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinAccepted
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendWorkspaceJoinAccepted.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendWorkspaceJoinAccepted.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processWorkspaceJoinAccepted(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+            const second = await domain.processWorkspaceJoinAccepted(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
+        });
     });
 
     describe('processWorkspaceJoinRejected', () => {
@@ -800,35 +992,11 @@ describe('NotificationWorkspaceDomain', () => {
             rejectReasonCode: EnumWorkspaceJoinRejectReason.memberLimitReached,
         };
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
-
-            const result = await domain.processWorkspaceJoinRejected(
-                'user-id',
-                'admin-id',
-                data,
-                'n-1',
-                []
-            );
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping workspace join rejected notification',
-                completedSteps: [],
-                failedSteps: [],
-            });
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-        });
-
         it('creates the row, then enqueues email and push, and reports every step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processWorkspaceJoinRejected(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -839,14 +1007,15 @@ describe('NotificationWorkspaceDomain', () => {
                     kind: EnumNotificationKind.workspaceJoinRejected,
                     payload: {
                         id: 'n-1',
-                        userId: user.id,
+                        userId: 'user-id',
                         metadata: {
-                            username: user.username,
+                            username: recipient.username,
                             workspaceId: data.workspaceId,
                             workspaceName: data.workspaceName,
                             rejectReasonCode: data.rejectReasonCode,
                         },
                         createdBy: 'admin-id',
+                        channels: recipient.channels,
                     },
                 },
             ]);
@@ -864,11 +1033,10 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-
             const result = await domain.processWorkspaceJoinRejected(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -884,14 +1052,10 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('skips the completed steps on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
-
             const result = await domain.processWorkspaceJoinRejected(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 [
@@ -911,12 +1075,12 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('continues when the rows already exist and the progress is empty', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processWorkspaceJoinRejected(
                 'user-id',
                 'admin-id',
+                noPushRecipient,
                 data,
                 'n-1',
                 []
@@ -929,10 +1093,6 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('names a rejected side effect and still runs the others', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationEmailQueue.sendWorkspaceJoinRejected.mockRejectedValue(
                 new Error('redis')
             );
@@ -940,6 +1100,7 @@ describe('NotificationWorkspaceDomain', () => {
             const result = await domain.processWorkspaceJoinRejected(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -958,10 +1119,6 @@ describe('NotificationWorkspaceDomain', () => {
         });
 
         it('stops at the create gate when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
-                deviceOwnership,
-            ]);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );
@@ -969,6 +1126,7 @@ describe('NotificationWorkspaceDomain', () => {
             const result = await domain.processWorkspaceJoinRejected(
                 'user-id',
                 'admin-id',
+                recipient,
                 data,
                 'n-1',
                 []
@@ -990,6 +1148,128 @@ describe('NotificationWorkspaceDomain', () => {
                     },
                 ],
             });
+        });
+
+        it('skips every step and creates no row when no channel is enabled', async () => {
+            const result = await domain.processWorkspaceJoinRejected(
+                'user-id',
+                'admin-id',
+                noChannelRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinRejected
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationPushQueue.sendWorkspaceJoinRejected
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message:
+                    'Workspace join rejected notification skipped, no channel enabled',
+                completedSteps: [],
+                failedSteps: [],
+            });
+        });
+
+        it('creates the row with the remaining channels and skips the email when the email channel is disabled', async () => {
+            const result = await domain.processWorkspaceJoinRejected(
+                'user-id',
+                'admin-id',
+                inAppRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.workspaceJoinRejected,
+                    payload: expect.objectContaining({
+                        channels: [EnumNotificationChannel.inApp],
+                    }),
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinRejected
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('skips the push when the push channel is disabled', async () => {
+            const result = await domain.processWorkspaceJoinRejected(
+                'user-id',
+                'admin-id',
+                emailOnlyRecipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationPushQueue.sendWorkspaceJoinRejected
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceJoinRejected
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('makes the same decisions on a second pass over the same job', async () => {
+            const createManyCalls: unknown[] = [];
+            notificationRepository.createMany.mockImplementation(
+                async entries => {
+                    createManyCalls.push(entries);
+
+                    return [notification];
+                }
+            );
+            const emailCalls0: unknown[] = [];
+            notificationEmailQueue.sendWorkspaceJoinRejected.mockImplementation(
+                async (...args) => {
+                    emailCalls0.push(args);
+                }
+            );
+            const pushCalls0: unknown[] = [];
+            notificationPushQueue.sendWorkspaceJoinRejected.mockImplementation(
+                async (...args) => {
+                    pushCalls0.push(args);
+                }
+            );
+
+            const first = await domain.processWorkspaceJoinRejected(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+            const second = await domain.processWorkspaceJoinRejected(
+                'user-id',
+                'admin-id',
+                recipient,
+                data,
+                'n-1',
+                []
+            );
+
+            expect(createManyCalls).toHaveLength(2);
+            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
+            expect(emailCalls0).toHaveLength(2);
+            expect(emailCalls0[1]).toEqual(emailCalls0[0]);
+            expect(pushCalls0).toHaveLength(2);
+            expect(pushCalls0[1]).toEqual(pushCalls0[0]);
+            expect(second).toEqual(first);
         });
     });
 });

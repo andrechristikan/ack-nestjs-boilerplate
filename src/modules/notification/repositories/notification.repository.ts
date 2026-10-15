@@ -1,5 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -14,7 +15,6 @@ import type {
     INotificationCreate,
     INotificationCreateEntry,
     INotificationTermPolicyRecipientCreate,
-    INotificationTermPolicyRecipientSend,
     INotificationTermPolicyRecipientState,
 } from '@modules/notification/interfaces/notification.interface';
 import type { INotificationRepository } from '@modules/notification/interfaces/notification.repository.interface';
@@ -35,7 +35,7 @@ export class NotificationRepository implements INotificationRepository {
 
     private buildCreateData(
         kind: EnumNotificationKind,
-        { id, userId, metadata, createdBy }: INotificationCreate,
+        { id, userId, metadata, createdBy, channels }: INotificationCreate,
         today: Date
     ): Prisma.NotificationUncheckedCreateInput {
         const {
@@ -60,12 +60,16 @@ export class NotificationRepository implements INotificationRepository {
             deliveries: {
                 createMany: {
                     data: [
-                        ...pendingChannels.map(channel => ({ channel })),
-                        ...deliveredChannels.map(channel => ({
-                            channel,
-                            processedAt: today,
-                            sentAt: today,
-                        })),
+                        ...pendingChannels
+                            .filter(channel => channels.includes(channel))
+                            .map(channel => ({ channel })),
+                        ...deliveredChannels
+                            .filter(channel => channels.includes(channel))
+                            .map(channel => ({
+                                channel,
+                                processedAt: today,
+                                sentAt: today,
+                            })),
                     ],
                 },
             },
@@ -142,6 +146,17 @@ export class NotificationRepository implements INotificationRepository {
         });
     }
 
+    async findTermPolicyRecipientsByBatchIds(
+        termPolicyId: string,
+        batchIds: string[]
+    ): Promise<INotificationTermPolicyRecipientState[]> {
+        return this.databaseService.client.termPolicyRecipient.findMany({
+            where: { termPolicyId, batchId: { in: batchIds } },
+            select: NotificationTermPolicyRecipientStateSelect,
+            orderBy: { userId: EnumPaginationOrderDirectionType.asc },
+        });
+    }
+
     async createTermPolicyRecipients(
         proceedBy: string,
         termPolicyId: string,
@@ -189,7 +204,7 @@ export class NotificationRepository implements INotificationRepository {
     async findTermPolicyRecipientsUnsent(
         termPolicyId: string,
         batchId: string
-    ): Promise<INotificationTermPolicyRecipientSend[]> {
+    ): Promise<string[]> {
         const rows =
             await this.databaseService.client.termPolicyRecipient.findMany({
                 where: {
@@ -200,12 +215,7 @@ export class NotificationRepository implements INotificationRepository {
                 select: NotificationTermPolicyRecipientSendSelect,
             });
 
-        return rows.map(({ userId, notificationId, user }) => ({
-            userId,
-            notificationId,
-            email: user.email,
-            username: user.username,
-        }));
+        return rows.map(({ userId }) => userId);
     }
 
     async markTermPolicyRecipientsSent(
@@ -264,9 +274,9 @@ export class NotificationRepository implements INotificationRepository {
         userId: string,
         notificationId: string,
         channel: EnumNotificationChannel
-    ): Promise<Notification> {
+    ): Promise<void> {
         const today = this.helperDateService.create();
-        return this.databaseService.client.notification.update({
+        await this.databaseService.client.notification.update({
             where: { id: notificationId, userId },
             data: {
                 deliveries: {

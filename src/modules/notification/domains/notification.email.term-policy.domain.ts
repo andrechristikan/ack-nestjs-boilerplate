@@ -1,7 +1,13 @@
+import type { IAwsSESSendBulkRecipient } from '@common/aws/interfaces/aws.ses.interface';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import type { INotificationPublishTermPolicyPayload } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationPublishTermPolicyPayload,
+    INotificationTermPolicyBatchRecipientEncryptedPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,11 +25,14 @@ export class NotificationEmailTermPolicyDomain {
 
     private readonly defaultTemplateData: Record<string, string>;
 
+    private readonly encryptionSecretKey: string;
+
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly notificationRepository: NotificationRepository,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly helperEncryptionService: HelperEncryptionService
     ) {
         // AppEnvSchema requires both addresses once AWS SES credentials are set, and
         // AwsSESService.send is a no-op while SES is uninitialized, so neither is read as null.
@@ -32,6 +41,9 @@ export class NotificationEmailTermPolicyDomain {
 
         this.homeName = this.configService.get<string>('home.name')!;
         this.homeUrl = this.configService.get<string>('home.url')!;
+        this.encryptionSecretKey = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
@@ -40,26 +52,45 @@ export class NotificationEmailTermPolicyDomain {
         };
     }
 
+    private toBulkDestination({
+        userId,
+        encryptedEmail,
+        username,
+    }: INotificationTermPolicyBatchRecipientEncryptedPayload): IAwsSESSendBulkRecipient {
+        const recipient = this.helperEncryptionService.aes256Decrypt(
+            encryptedEmail,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            userId
+        );
+
+        return { recipient, templateData: { username } };
+    }
+
     async processPublishTermPolicy(
         { termPolicyId, type, version }: INotificationPublishTermPolicyPayload,
         batchId: string,
-        proceedBy: string
+        proceedBy: string,
+        batchRecipients: INotificationTermPolicyBatchRecipientEncryptedPayload[]
     ): Promise<IQueueResponse> {
-        const recipients =
+        const unsentIds =
             await this.notificationRepository.findTermPolicyRecipientsUnsent(
                 termPolicyId,
                 batchId
             );
+        const unsentUserIds = new Set(unsentIds);
+        const recipients = batchRecipients.filter(({ userId }) =>
+            unsentUserIds.has(userId)
+        );
         if (recipients.length === 0) {
             return { message: 'Publish term policy email processed' };
         }
 
         const result = await this.awsSESService.sendBulk({
             templateName: EnumNotificationProcess.publishTermPolicy,
-            recipients: recipients.map(({ email, username }) => ({
-                recipient: email,
-                templateData: { username },
-            })),
+            recipients: recipients.map(recipient =>
+                this.toBulkDestination(recipient)
+            ),
             sender: this.noreplyEmail,
             defaultTemplateData: {
                 ...this.defaultTemplateData,

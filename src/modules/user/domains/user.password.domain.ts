@@ -14,6 +14,8 @@ import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.i
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
@@ -65,6 +67,7 @@ export class UserPasswordDomain {
         private readonly databaseService: DatabaseService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
@@ -226,8 +229,13 @@ export class UserPasswordDomain {
             );
 
             // Sequential by design: write must not run if an earlier step throws
-            const { updated, activityLogs } =
-                await this.databaseService.withTransaction(async tx => {
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    user,
+                    EnumNotificationKind.temporaryPasswordByAdmin
+                );
+            const activityLogs = await this.databaseService.withTransaction(
+                async tx => {
                     const row = await this.userDomain.updatePasswordInTx(
                         tx,
                         userId,
@@ -258,22 +266,20 @@ export class UserPasswordDomain {
                             updatedBy
                         );
 
-                    return {
-                        updated: row,
-                        activityLogs: [
-                            this.activityLogDomain.prepare({
-                                action: EnumActivityLogAction.adminUserUpdatePassword,
-                                metadata: actorMetadata,
-                            }),
-                            this.activityLogDomain.prepare({
-                                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
-                                userId,
-                                createdBy: updatedBy,
-                                metadata: targetMetadata,
-                            }),
-                        ],
-                    };
-                });
+                    return [
+                        this.activityLogDomain.prepare({
+                            action: EnumActivityLogAction.adminUserUpdatePassword,
+                            metadata: actorMetadata,
+                        }),
+                        this.activityLogDomain.prepare({
+                            action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                            userId,
+                            createdBy: updatedBy,
+                            metadata: targetMetadata,
+                        }),
+                    ];
+                }
+            );
             // Sequential by design: side effects whose order is part of the contract
             await this.sessionDomain.purgeLoginsByUser(userId);
 
@@ -286,7 +292,7 @@ export class UserPasswordDomain {
                 password.passwordExpired
             );
             await this.notificationQueue.sendTemporaryPasswordByAdmin(
-                updated.id,
+                recipient,
                 {
                     password: passwordString,
                     passwordCreatedAt,
@@ -377,6 +383,11 @@ export class UserPasswordDomain {
             }
 
             // Sequential by design: write must not run if an earlier step throws
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    user,
+                    EnumNotificationKind.changePassword
+                );
             await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.updatePasswordInTx(
                     tx,
@@ -412,7 +423,7 @@ export class UserPasswordDomain {
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
-            await this.notificationQueue.sendChangePassword(user.id);
+            await this.notificationQueue.sendChangePassword(recipient);
 
             return;
         } catch (err: unknown) {
@@ -469,6 +480,11 @@ export class UserPasswordDomain {
                 }),
             ];
             // Sequential by design: write must not run if an earlier step throws
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    user,
+                    EnumNotificationKind.forgotPassword
+                );
             await this.userPasswordRepository.createReplacingUnused(
                 user.id,
                 email,
@@ -480,7 +496,7 @@ export class UserPasswordDomain {
             const expiredAt = this.helperDateService.formatToIso(
                 resetPassword.expiredAt
             );
-            await this.notificationQueue.sendForgotPassword(user.id, {
+            await this.notificationQueue.sendForgotPassword(recipient, {
                 expiredAt,
                 link: resetPassword.link,
                 reference: resetPassword.reference,
@@ -566,6 +582,11 @@ export class UserPasswordDomain {
             }
 
             // Sequential by design: write must not run if an earlier step throws
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    resetPassword.user,
+                    EnumNotificationKind.resetPassword
+                );
             await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.updatePasswordInTx(
                     tx,
@@ -606,9 +627,7 @@ export class UserPasswordDomain {
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
-            await this.notificationQueue.sendResetPassword(
-                resetPassword.userId
-            );
+            await this.notificationQueue.sendResetPassword(recipient);
 
             return;
         } catch (err: unknown) {

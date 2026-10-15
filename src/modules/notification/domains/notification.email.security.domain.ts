@@ -3,7 +3,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationEmailSendPayload,
+    INotificationEmailSendEncryptedPayload,
     INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
     INotificationTemporaryPasswordEncryptedPayload,
@@ -51,14 +51,30 @@ export class NotificationEmailSecurityDomain {
         };
     }
 
+    private decryptEmail(encryptedEmail: string, userId: string): string {
+        return this.helperEncryptionService.aes256Decrypt(
+            encryptedEmail,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            userId
+        );
+    }
+
     async processTemporaryPasswordByAdmin(
-        { email, username, cc, bcc, userId }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         {
             encryptedPassword,
             passwordExpiredAt,
             passwordCreatedAt,
         }: INotificationTemporaryPasswordEncryptedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const password = this.helperEncryptionService.aes256Decrypt(
             encryptedPassword,
             this.encryptionSecretKey,
@@ -93,11 +109,13 @@ export class NotificationEmailSecurityDomain {
     }
 
     async processChangePassword({
-        email,
+        encryptedEmail,
         username,
         cc,
         bcc,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+        userId,
+    }: INotificationEmailSendEncryptedPayload): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.changePassword,
             recipients: [email],
@@ -114,11 +132,13 @@ export class NotificationEmailSecurityDomain {
     }
 
     async processResetPassword({
-        email,
+        encryptedEmail,
         username,
         cc,
         bcc,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+        userId,
+    }: INotificationEmailSendEncryptedPayload): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.resetPassword,
             recipients: [email],
@@ -135,7 +155,13 @@ export class NotificationEmailSecurityDomain {
     }
 
     async processForgotPassword(
-        { email, username, cc, bcc, userId }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         {
             expiredAt,
             encryptedLink,
@@ -143,6 +169,7 @@ export class NotificationEmailSecurityDomain {
             expiredInMinutes,
         }: INotificationForgotPasswordEncryptedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const link = this.helperEncryptionService.aes256Decrypt(
             encryptedLink,
             this.encryptionSecretKey,
@@ -173,11 +200,13 @@ export class NotificationEmailSecurityDomain {
     }
 
     async processResetTwoFactorByAdmin({
-        email,
+        encryptedEmail,
         username,
         cc,
         bcc,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+        userId,
+    }: INotificationEmailSendEncryptedPayload): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
             recipients: [email],
@@ -197,7 +226,13 @@ export class NotificationEmailSecurityDomain {
     }
 
     async processNewDeviceLogin(
-        { email, username, cc, bcc }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         {
             loginFrom,
             loginWith,
@@ -205,6 +240,7 @@ export class NotificationEmailSecurityDomain {
             requestLog: { userAgent, ipAddress },
         }: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const loginAtDate = this.helperDateService.createFromIso(loginAt);
         const loginAtFormatted =
             this.helperDateService.formatToRFC2822(loginAtDate);

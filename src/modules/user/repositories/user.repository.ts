@@ -15,14 +15,15 @@ import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/use
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     UserAdminListSelect,
-    UserIdSelect,
     UserNotDeletedWhere,
+    UserRecipientSelect,
 } from '@modules/user/constants/user.constant';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserList,
     IUserProfile,
+    IUserRecipient,
     IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
@@ -104,21 +105,35 @@ export class UserRepository implements IUserRepository {
         );
     }
 
-    async findIdsCursor(
+    async findRecipientsCursor(
         cursor: string | null,
-        take: number
-    ): Promise<string[]> {
-        const rows = await this.databaseService.client.user.findMany({
+        take: number,
+        createdBefore: Date
+    ): Promise<IUserRecipient[]> {
+        return this.databaseService.client.user.findMany({
             where: {
                 ...UserNotDeletedWhere,
+                createdAt: { lte: createdBefore },
                 ...(cursor !== null && { id: { gt: cursor } }),
             },
-            select: UserIdSelect,
+            select: UserRecipientSelect,
             orderBy: { id: EnumPaginationOrderDirectionType.asc },
             take,
         });
+    }
 
-        return rows.map(({ id }) => id);
+    async findRecipientsByIds(
+        ids: string[],
+        createdBefore: Date
+    ): Promise<IUserRecipient[]> {
+        return this.databaseService.client.user.findMany({
+            where: {
+                ...UserNotDeletedWhere,
+                id: { in: ids },
+                createdAt: { lte: createdBefore },
+            },
+            select: UserRecipientSelect,
+        });
     }
 
     async findOneById(id: string): Promise<User | null> {
@@ -130,6 +145,17 @@ export class UserRepository implements IUserRepository {
     async findOneActiveById(id: string): Promise<User | null> {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
+        });
+    }
+
+    async findManyActiveByIds(ids: string[]): Promise<IUserRecipient[]> {
+        return this.databaseService.client.user.findMany({
+            where: {
+                id: { in: ids },
+                deletedAt: null,
+                status: EnumUserStatus.active,
+            },
+            select: UserRecipientSelect,
         });
     }
 

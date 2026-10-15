@@ -3,7 +3,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationEmailSendPayload,
+    INotificationEmailSendEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -51,12 +51,23 @@ export class NotificationEmailAccountDomain {
         };
     }
 
+    private decryptEmail(encryptedEmail: string, userId: string): string {
+        return this.helperEncryptionService.aes256Decrypt(
+            encryptedEmail,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            userId
+        );
+    }
+
     async processWelcome({
-        email,
+        encryptedEmail,
         username,
         bcc,
         cc,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+        userId,
+    }: INotificationEmailSendEncryptedPayload): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.welcome,
             recipients: [email],
@@ -73,11 +84,13 @@ export class NotificationEmailAccountDomain {
     }
 
     async processWelcomeSocial({
-        email,
+        encryptedEmail,
         username,
         bcc,
         cc,
-    }: INotificationEmailSendPayload): Promise<IQueueResponse> {
+        userId,
+    }: INotificationEmailSendEncryptedPayload): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.welcomeSocial,
             recipients: [email],
@@ -94,13 +107,20 @@ export class NotificationEmailAccountDomain {
     }
 
     async processWelcomeByAdmin(
-        { email, username, cc, bcc, userId }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         {
             encryptedPassword,
             passwordExpiredAt,
             passwordCreatedAt,
         }: INotificationWelcomeByAdminEncryptedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const password = this.helperEncryptionService.aes256Decrypt(
             encryptedPassword,
             this.encryptionSecretKey,
@@ -134,7 +154,13 @@ export class NotificationEmailAccountDomain {
     }
 
     async processVerificationEmail(
-        { email, username, cc, bcc, userId }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         {
             expiredAt,
             reference,
@@ -142,6 +168,7 @@ export class NotificationEmailAccountDomain {
             expiredInMinutes,
         }: INotificationVerificationEmailEncryptedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const link = this.helperEncryptionService.aes256Decrypt(
             encryptedLink,
             this.encryptionSecretKey,
@@ -173,9 +200,16 @@ export class NotificationEmailAccountDomain {
     }
 
     async processVerifiedEmail(
-        { email, username, cc, bcc }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         { reference }: INotificationVerifiedEmailPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.verifiedEmail,
             recipients: [email],
@@ -193,9 +227,16 @@ export class NotificationEmailAccountDomain {
     }
 
     async processVerifiedMobileNumber(
-        { email, username, cc, bcc }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         { reference, mobileNumber }: INotificationVerifiedMobileNumberPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.verifiedMobileNumber,
             recipients: [email],

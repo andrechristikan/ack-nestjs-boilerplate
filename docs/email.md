@@ -83,12 +83,17 @@ SES credentials and the unconfigured state: [Third Party Integration: SES][ref-d
 
 `NotificationEmailProcessor` dispatches each job by its `EnumNotificationProcess` name to `NotificationEmailProcessorService`, which calls an email channel domain (`NotificationEmailAccountDomain`, `NotificationEmailSecurityDomain`, `NotificationEmailTermPolicyDomain`, `NotificationEmailWorkspaceDomain`). That domain:
 
+- opens the sealed recipient address, and any sealed link or password, right before the send
+    - The authenticated data is the recipient `userId`, or the invite `reference` for `workspaceInviteUnregistered`.
+    - A `publishTermPolicy` batch carries one sealed address per recipient.
+    - A value that fails to open fails the job without retries.
 - calls `AwsSESService.send()` (or `sendBulk()` for `publishTermPolicy`) with the SES template named after the job's `EnumNotificationProcess` value (`workspaceInviteUnregistered` sends the `workspaceInvite` template)
 - sends from `EMAIL_NO_REPLY`
 - merges `defaultTemplateData` (`homeName`, `supportEmail` from `EMAIL_SUPPORT`, `homeUrl`) into the template data
 
 Send behavior:
 
+- A job reaches the email queue only when the recipient's resolved channels hold `email`, except the verification email of `welcome`, the invite to an address with no account, and the publication batch.
 - A job carries `cc` and `bcc` as arrays, empty when there is no copy recipient.
 - The channel domain passes a non-empty list on to the send call.
 - When `AWS_SES_IDENTITY_ARN` is set, both calls pass it as `SourceArn`.

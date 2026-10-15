@@ -10,6 +10,9 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumActivityLogAction,
@@ -31,12 +34,15 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('TermPolicyAcceptanceDomain', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
@@ -126,6 +132,10 @@ describe('TermPolicyAcceptanceDomain', () => {
                     useValue: termPolicyRepository,
                 },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -243,6 +253,11 @@ describe('TermPolicyAcceptanceDomain', () => {
     });
 
     describe('userAccept', () => {
+        const recipient: INotificationRecipient = {
+            ...TestRecipient,
+            userId: 'user-1',
+        };
+
         const user: IUser = baseUser;
 
         it('throws TermPolicyNotFoundException when no published policy of the type exists', async () => {
@@ -286,6 +301,32 @@ describe('TermPolicyAcceptanceDomain', () => {
             });
         });
 
+        it('commits nothing and stages nothing when the recipient read rejects', async () => {
+            termPolicyRepository.findLatestPublishedByType.mockResolvedValue(
+                termPolicy
+            );
+            termPolicyRepository.existsAcceptanceByPolicyAndUser.mockResolvedValue(
+                false
+            );
+            databaseService.withTransaction.mockImplementation(async fn =>
+                fn(tx)
+            );
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
+
+            await expect(promise).rejects.toMatchObject({ rawError: error });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(termPolicyRepository.acceptInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendUserAcceptTermPolicy
+            ).not.toHaveBeenCalled();
+        });
+
         it('accepts the policy, stages the activity log, and queues the notification', async () => {
             termPolicyRepository.findLatestPublishedByType.mockResolvedValue(
                 termPolicy
@@ -306,6 +347,10 @@ describe('TermPolicyAcceptanceDomain', () => {
                 fn(tx)
             );
 
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
+
             await domain.userAccept(user, EnumTermPolicyType.privacy);
 
             expect(termPolicyRepository.acceptInTx).toHaveBeenCalledWith(
@@ -324,8 +369,14 @@ describe('TermPolicyAcceptanceDomain', () => {
                 preparedActivityLog,
             ]);
             expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.userAcceptTermPolicy
+            );
+            expect(
                 notificationQueue.sendUserAcceptTermPolicy
-            ).toHaveBeenCalledWith('user-1', {
+            ).toHaveBeenCalledWith(recipient, {
                 termPolicyId: 'term-policy-1',
                 type: EnumTermPolicyType.privacy,
                 version: 1,

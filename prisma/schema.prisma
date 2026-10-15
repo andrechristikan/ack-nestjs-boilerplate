@@ -178,6 +178,7 @@ model User {
   @@index(fields: [countryId, status, signUpAt(sort: Desc)])
   @@index(fields: [signUpAt(sort: Desc)])
   @@index(fields: [deletedAt, signUpAt(sort: Desc)])
+  @@index(fields: [deletedAt, createdAt])
   @@map("Users")
 }
 

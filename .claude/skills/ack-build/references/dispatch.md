@@ -95,10 +95,12 @@ Scope: <files and modules from git status --short, a plan path, docs files, or h
 Requirement: <the task brief, the plan path, or the settled paragraph>
 Checks: at task, rules and boot, and end to end: every rule file that binds a changed path,
   named in the report; every sequential await of independent work
-  (.claude/rules/concurrency.md); boot (timeout 90 pnpm start:dev, the 'App Name:' block in its
-  log) when the depth includes it; pnpm typecheck, pnpm lint, pnpm deadcode, pnpm spell. At
-  plan, docs, and harness: only what the depth names in .claude/agents/reviewer.md. Never
-  pnpm test at any scope.
+  (.claude/rules/concurrency.md); boot (pnpm build, on exit 0 timeout 90 node --import
+  ./dist/instrument.js dist/main.js, the 'App Name:' block in its log) when the depth
+  includes it; pnpm lint, pnpm deadcode, pnpm spell; pnpm typecheck only with no boot,
+  as the boot's pnpm build runs it: quote the build's exit code and first error TS line.
+  At plan, docs, and harness: only what the depth names in .claude/agents/reviewer.md.
+  Never pnpm test at any scope.
 Report: only what affects correctness or the stated requirement, each labelled Critical,
   Important, or Minor, with file:line and the rule or requirement it breaks; the rule
   files read; the surfaces checked and found clean; each check command with its exit code

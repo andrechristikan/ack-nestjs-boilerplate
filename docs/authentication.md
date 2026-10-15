@@ -370,7 +370,8 @@ Two branches then short-circuit before any session or token is created:
 
 - **Email not verified**:
     - A new email verification is issued.
-    - The verification email is sent.
+    - The recipient snapshot (address, enabled channels, device tokens) is read before the verification row is written.
+    - The verification email job is enqueued with that snapshot.
     - The login fails with `UserEmailNotVerifiedException`.
 - **Two-factor enabled**: no session and no tokens are created.
     - The challenge is written to Redis (`AuthCache.createChallenge`), concurrently with the secret provisioning when setup is required. A Redis failure there answers 500, or 503 (`52400`) when Redis is not connected.
@@ -401,7 +402,7 @@ After the commit, one parallel batch runs:
 
 - the new session key is written (`SessionCache.setLogin`)
 - exactly the superseded session ids are purged (`SessionDomain.purgeRevokedLogins`)
-- the new-device login notification runs when the device ownership was created rather than reused
+- the new-device login notification runs when the device ownership was created rather than reused: it reads the recipient snapshot, then enqueues the job with it
 
 Then:
 
@@ -861,7 +862,7 @@ When the account does not exist:
     1. The default user role is resolved.
     2. The username is checked against the allowed pattern, the bad-word list, and existing usernames.
     3. The record is created already verified.
-    4. Once the login has completed, the welcome email is enqueued.
+    4. Once the login has completed, the welcome notification is enqueued with a recipient snapshot taken from the created user row.
 - If `signUpAllowed` is false, the login fails with `UserNotFoundException`.
 
 ### Google Authentication
@@ -1546,6 +1547,7 @@ Around that order:
 - The JWT guards read Redis, so a revoked token fails on the first request after the purge.
 - A purge failure is logged and does not fail the request.
 - The password change, forgot-password reset, admin temporary password, and admin two-factor reset enqueue their notification last, after the purge and the staged rows.
+- Each of those four reads the recipient snapshot (address, enabled channels, device tokens) before the transaction opens. The order commit, purge, stage is unchanged.
 
 | Trigger | Scope | Redis purge |
 | --- | --- | --- |

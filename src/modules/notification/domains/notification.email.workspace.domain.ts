@@ -4,8 +4,8 @@ import { MessageService } from '@common/message/services/message.service';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationEmailSendPayload,
-    INotificationEmailSendUnregisteredPayload,
+    INotificationEmailSendEncryptedPayload,
+    INotificationEmailSendUnregisteredEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceInviteUnregisteredEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
@@ -55,8 +55,22 @@ export class NotificationEmailWorkspaceDomain {
         };
     }
 
+    private decryptEmail(encryptedEmail: string, context: string): string {
+        return this.helperEncryptionService.aes256Decrypt(
+            encryptedEmail,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            context
+        );
+    }
+
     async processWorkspaceInvite(
-        { email, cc, bcc, userId }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         {
             workspaceName,
             inviterName,
@@ -66,6 +80,7 @@ export class NotificationEmailWorkspaceDomain {
             expiredAt,
         }: INotificationWorkspaceInviteEncryptedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
             encryptedInviteAcceptLink,
             this.encryptionSecretKey,
@@ -97,7 +112,7 @@ export class NotificationEmailWorkspaceDomain {
     }
 
     async processWorkspaceInviteUnregistered(
-        { email }: INotificationEmailSendUnregisteredPayload,
+        { encryptedEmail }: INotificationEmailSendUnregisteredEncryptedPayload,
         {
             workspaceName,
             inviterName,
@@ -107,6 +122,7 @@ export class NotificationEmailWorkspaceDomain {
             expiredAt,
         }: INotificationWorkspaceInviteUnregisteredEncryptedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, reference);
         const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
             encryptedInviteAcceptLink,
             this.encryptionSecretKey,
@@ -139,13 +155,20 @@ export class NotificationEmailWorkspaceDomain {
     }
 
     async processWorkspaceJoinRequest(
-        { email, username, cc, bcc, userId }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         {
             workspaceName,
             requesterName,
             encryptedJoinRequestReviewLink,
         }: INotificationWorkspaceJoinRequestEncryptedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const joinRequestReviewLink =
             this.helperEncryptionService.aes256Decrypt(
                 encryptedJoinRequestReviewLink,
@@ -176,9 +199,16 @@ export class NotificationEmailWorkspaceDomain {
     }
 
     async processWorkspaceJoinAccepted(
-        { email, username, cc, bcc }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         { workspaceName }: INotificationWorkspaceJoinAcceptedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceJoinAccepted,
             recipients: [email],
@@ -199,12 +229,19 @@ export class NotificationEmailWorkspaceDomain {
     }
 
     async processWorkspaceJoinRejected(
-        { email, username, cc, bcc }: INotificationEmailSendPayload,
+        {
+            encryptedEmail,
+            username,
+            cc,
+            bcc,
+            userId,
+        }: INotificationEmailSendEncryptedPayload,
         {
             workspaceName,
             rejectReasonCode,
         }: INotificationWorkspaceJoinRejectedPayload
     ): Promise<IQueueResponse> {
+        const email = this.decryptEmail(encryptedEmail, userId);
         const rejectReasonLabel = this.messageService.setMessage(
             `notification.rejectReason.${rejectReasonCode}`
         );

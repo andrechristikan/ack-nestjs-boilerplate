@@ -341,6 +341,7 @@ sequenceDiagram
     participant User
 
     Admin->>API: PATCH /admin/user/2fa/:userId/reset
+    API->>Database: Read the notification recipient snapshot
     API->>Database: One transaction: set requiredSetup=true, attempt=0,<br/>clear secret, pendingSecret and backup codes,<br/>revoke all user sessions
     API->>API: Purge every session key of the user from the session cache
     API->>API: Stage the admin and user activity rows
@@ -460,6 +461,7 @@ sequenceDiagram
     User->>Admin: Request 2FA reset
 
     Admin->>API: PATCH /admin/user/2fa/:userId/reset
+    API->>Database: Read the notification recipient snapshot
     par
         API->>Database: One transaction: reset 2FA (set requiredSetup=true),<br/>clear attempt counter, revoke all sessions
     and
@@ -522,6 +524,7 @@ sequenceDiagram
                     API->>User: Error: Invalid 2FA (401)
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
+                    API->>Database: Read the notification recipient snapshot
                     API->>Database: One transaction: change password, revoke all sessions,<br/>record the 2FA use
                     API->>Cache: Delete every session key of the user
                     API->>API: Stage userChangePassword and userVerifyTwoFactor
@@ -530,6 +533,7 @@ sequenceDiagram
                 end
             end
         else 2FA not enabled
+            API->>Database: Read the notification recipient snapshot
             API->>Database: One transaction: change password, revoke all sessions
             API->>Cache: Delete every session key of the user
             API->>API: Stage userChangePassword
@@ -541,6 +545,7 @@ sequenceDiagram
 
 - The password-history check is what makes the reuse window real. A password still held in history for `auth.password.periodInDays` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA.
 - A user with no password set (a social sign-up) skips the attempt-limit, old-password, and history checks and goes straight to the 2FA step.
+- The recipient snapshot is the address, the channels the user's settings leave enabled, and the device push tokens. The password change, the password reset, and the admin 2FA reset read it before their transaction opens and hand it to the notification job.
 
 **Reset Password (Forgot Password):**
 
@@ -575,6 +580,7 @@ sequenceDiagram
                     API->>User: Error: Invalid 2FA (401)
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
+                    API->>Database: Read the notification recipient snapshot
                     API->>Database: One transaction: reset password, consume the reset token,<br/>revoke all sessions, record the 2FA use
                     API->>Cache: Delete every session key of the user
                     API->>API: Stage userResetPassword and userVerifyTwoFactor
@@ -583,6 +589,7 @@ sequenceDiagram
                 end
             end
         else 2FA not enabled
+            API->>Database: Read the notification recipient snapshot
             API->>Database: One transaction: reset password, consume the reset token,<br/>revoke all sessions
             API->>Cache: Delete every session key of the user
             API->>API: Stage userResetPassword

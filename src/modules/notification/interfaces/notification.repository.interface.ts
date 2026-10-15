@@ -3,7 +3,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type {
     INotificationCreateEntry,
     INotificationTermPolicyRecipientCreate,
-    INotificationTermPolicyRecipientSend,
     INotificationTermPolicyRecipientState,
 } from '@modules/notification/interfaces/notification.interface';
 import {
@@ -29,6 +28,10 @@ export interface INotificationRepository {
         termPolicyId: string,
         userIds: string[]
     ): Promise<INotificationTermPolicyRecipientState[]>;
+    findTermPolicyRecipientsByBatchIds(
+        termPolicyId: string,
+        batchIds: string[]
+    ): Promise<INotificationTermPolicyRecipientState[]>;
     createTermPolicyRecipients(
         proceedBy: string,
         termPolicyId: string,
@@ -45,7 +48,7 @@ export interface INotificationRepository {
     findTermPolicyRecipientsUnsent(
         termPolicyId: string,
         batchId: string
-    ): Promise<INotificationTermPolicyRecipientSend[]>;
+    ): Promise<string[]>;
     markTermPolicyRecipientsSent(
         termPolicyId: string,
         batchId: string,
@@ -59,7 +62,7 @@ export interface INotificationRepository {
         userId: string,
         notificationId: string,
         channel: EnumNotificationChannel
-    ): Promise<Notification>;
+    ): Promise<void>;
     updateSentAt(
         userId: string,
         notificationId: string,

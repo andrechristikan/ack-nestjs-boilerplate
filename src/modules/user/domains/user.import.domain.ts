@@ -13,6 +13,8 @@ import {
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -49,6 +51,7 @@ export class UserImportDomain {
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
@@ -155,26 +158,30 @@ export class UserImportDomain {
         passwordStrings: IUserImportPrepared['passwordStrings'],
         createdBy: string
     ): Promise<void> {
-        await Promise.all(
-            users.map((newUser, index) => {
-                const passwordCreatedAt = this.helperDateService.formatToIso(
-                    passwordHasheds[index]!.passwordCreated
-                );
-                const passwordExpiredAt = this.helperDateService.formatToIso(
-                    passwordHasheds[index]!.passwordExpired
+        const notified = users.map(async (newUser, index) => {
+            const passwordCreatedAt = this.helperDateService.formatToIso(
+                passwordHasheds[index]!.passwordCreated
+            );
+            const passwordExpiredAt = this.helperDateService.formatToIso(
+                passwordHasheds[index]!.passwordExpired
+            );
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    newUser,
+                    EnumNotificationKind.welcomeByAdmin
                 );
 
-                return this.notificationQueue.sendWelcomeByAdmin(
-                    newUser.id,
-                    {
-                        password: passwordStrings[index]!,
-                        passwordCreatedAt,
-                        passwordExpiredAt,
-                    },
-                    createdBy
-                );
-            })
-        );
+            await this.notificationQueue.sendWelcomeByAdmin(
+                recipient,
+                {
+                    password: passwordStrings[index]!,
+                    passwordCreatedAt,
+                    passwordExpiredAt,
+                },
+                createdBy
+            );
+        });
+        await Promise.all(notified);
     }
 
     async exportByAdmin(

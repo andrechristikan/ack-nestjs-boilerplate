@@ -10,6 +10,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
@@ -48,6 +50,7 @@ export class UserVerificationDomain {
         private readonly databaseService: DatabaseService,
         private readonly helperHashService: HelperHashService,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
@@ -170,27 +173,32 @@ export class UserVerificationDomain {
             ];
             const verifiedAt = this.helperDateService.create();
             // Sequential by design: write must not run if an earlier step throws
-            await this.databaseService.withTransaction(async tx => {
-                await this.userVerificationRepository.markUsedInTx(
-                    tx,
-                    verification.id,
-                    verifiedAt
-                );
-                await this.userRepository.markVerifiedInTx(
-                    tx,
-                    verification.userId,
-                    verifiedAt
-                );
-            });
+            const user = await this.databaseService.withTransaction(
+                async tx => {
+                    await this.userVerificationRepository.markUsedInTx(
+                        tx,
+                        verification.id,
+                        verifiedAt
+                    );
+
+                    return this.userRepository.markVerifiedInTx(
+                        tx,
+                        verification.userId,
+                        verifiedAt
+                    );
+                }
+            );
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
-            await this.notificationQueue.sendVerifiedEmail(
-                verification.userId,
-                {
-                    reference: verification.reference,
-                }
-            );
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    user,
+                    EnumNotificationKind.verifiedEmail
+                );
+            await this.notificationQueue.sendVerifiedEmail(recipient, {
+                reference: verification.reference,
+            });
 
             return;
         } catch (err: unknown) {
@@ -250,6 +258,11 @@ export class UserVerificationDomain {
                 }),
             ];
             // Sequential by design: write must not run if an earlier step throws
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    user,
+                    EnumNotificationKind.verificationEmail
+                );
             await this.userVerificationRepository.createReplacingActive(
                 user.id,
                 user.email,
@@ -262,7 +275,7 @@ export class UserVerificationDomain {
             const expiredAt = this.helperDateService.formatToIso(
                 emailVerification.expiredAt
             );
-            await this.notificationQueue.sendVerificationEmail(user.id, {
+            await this.notificationQueue.sendVerificationEmail(recipient, {
                 expiredAt,
                 reference: emailVerification.reference,
                 link: emailVerification.link,

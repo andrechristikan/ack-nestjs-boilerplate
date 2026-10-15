@@ -32,6 +32,9 @@ import type { IDeviceIdentity } from '@modules/device/interfaces/device.interfac
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionCache } from '@modules/session/caches/session.cache';
@@ -68,11 +71,23 @@ export class UserLoginDomain {
         private readonly sessionCache: SessionCache,
         private readonly sessionDomain: SessionDomain,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly requestStoreService: RequestStoreService
     ) {}
+
+    private async notifyNewDeviceLogin(
+        user: IUser,
+        newDevice: INotificationNewDeviceLoginPayload
+    ): Promise<void> {
+        const recipient = await this.notificationRecipientDomain.getRecipient(
+            user,
+            EnumNotificationKind.newDeviceLogin
+        );
+        await this.notificationQueue.sendNewDeviceLogin(recipient, newDevice);
+    }
 
     private async assertTwoFactorUnlocked(user: IUser): Promise<void> {
         const remainingMs = await this.authCache.getLockTwoFactorAttempt(user);
@@ -220,13 +235,12 @@ export class UserLoginDomain {
 
         if (isNewDevice) {
             const loginAtIso = this.helperDateService.formatToIso(loginAt);
-            const newDeviceLoginSent =
-                this.notificationQueue.sendNewDeviceLogin(user.id, {
-                    requestLog,
-                    loginFrom,
-                    loginWith,
-                    loginAt: loginAtIso,
-                });
+            const newDeviceLoginSent = this.notifyNewDeviceLogin(user, {
+                requestLog,
+                loginFrom,
+                loginWith,
+                loginAt: loginAtIso,
+            });
             promises.push(newDeviceLoginSent);
         }
 
@@ -251,6 +265,11 @@ export class UserLoginDomain {
                 ) as IUserVerificationEmailCreate;
 
             // Sequential by design: write must not run if an earlier step throws
+            const recipient =
+                await this.notificationRecipientDomain.getRecipient(
+                    user,
+                    EnumNotificationKind.verificationEmail
+                );
             await this.userVerificationDomain.persistVerificationEmail(
                 user.id,
                 user.email,
@@ -260,7 +279,7 @@ export class UserLoginDomain {
             const expiredAt = this.helperDateService.formatToIso(
                 emailVerification.expiredAt
             );
-            await this.notificationQueue.sendVerificationEmail(user.id, {
+            await this.notificationQueue.sendVerificationEmail(recipient, {
                 expiredAt,
                 reference: emailVerification.reference,
                 link: emailVerification.link,

@@ -17,10 +17,10 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationPushCleanupTokenPayload,
+    INotificationPushCleanupTokenEncryptedPayload,
     INotificationPushQueuePayload,
     INotificationPushStepResult,
-    INotificationSendPushPayload,
+    INotificationSendPushEncryptedPayload,
     INotificationWorkspaceInvitePushPayload,
     INotificationWorkspaceJoinRejectedPayload,
 } from '@modules/notification/interfaces/notification.interface';
@@ -42,10 +42,10 @@ describe('NotificationPushProcessorService', () => {
     let service: NotificationPushProcessorService;
 
     const response: IQueueResponse = { message: 'processed' };
-    const send: INotificationSendPushPayload = {
+    const send: INotificationSendPushEncryptedPayload = {
         userId: 'user-id',
         notificationId: 'notification-id',
-        notificationTokens: ['token-1'],
+        encryptedNotificationTokens: ['cipher(token-1)'],
         username: 'nadia',
     };
     const progress = [
@@ -60,8 +60,8 @@ describe('NotificationPushProcessorService', () => {
             EnumNotificationStep.updateSentAt,
         ],
         failedSteps: [],
-        failureTokens: ['bad'],
-        pendingTokens: [],
+        encryptedFailureTokens: ['bad'],
+        encryptedPendingTokens: [],
     };
     const failed: INotificationPushStepResult = {
         message: 'm',
@@ -69,8 +69,8 @@ describe('NotificationPushProcessorService', () => {
         failedSteps: [
             { step: EnumNotificationStep.cleanupTokens, error: 'redis' },
         ],
-        failureTokens: ['bad'],
-        pendingTokens: [],
+        encryptedFailureTokens: ['bad'],
+        encryptedPendingTokens: [],
     };
     const outage: INotificationPushStepResult = {
         message: 'm',
@@ -81,8 +81,8 @@ describe('NotificationPushProcessorService', () => {
                 error: '2 tokens pending retry',
             },
         ],
-        failureTokens: [],
-        pendingTokens: ['t1', 't2'],
+        encryptedFailureTokens: [],
+        encryptedPendingTokens: ['t1', 't2'],
     };
     const pending = ['t1', 't2'];
 
@@ -150,8 +150,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -179,8 +179,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -207,8 +207,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -232,8 +232,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
@@ -243,8 +243,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data: null,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -271,8 +271,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -299,8 +299,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -324,8 +324,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
@@ -339,8 +339,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -368,8 +368,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -396,8 +396,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -421,8 +421,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
@@ -432,8 +432,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data: null,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -460,8 +460,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -488,8 +488,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -513,8 +513,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
@@ -524,8 +524,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data: null,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -552,8 +552,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -580,8 +580,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -605,8 +605,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
@@ -624,8 +624,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -653,8 +653,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -681,8 +681,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -706,8 +706,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
@@ -722,8 +722,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -751,8 +751,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -779,8 +779,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -804,8 +804,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
@@ -816,8 +816,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -845,8 +845,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -873,8 +873,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -898,8 +898,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
@@ -914,8 +914,8 @@ describe('NotificationPushProcessorService', () => {
             send,
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
-            failureTokens: null,
-            pendingTokens: pending,
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -943,8 +943,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -971,8 +971,8 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: progress,
-                failureTokens: ['bad'],
-                pendingTokens: [],
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
             });
         });
 
@@ -996,23 +996,23 @@ describe('NotificationPushProcessorService', () => {
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: outage.completedSteps,
-                failureTokens: [],
-                pendingTokens: pending,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
             });
         });
     });
 
     describe('processCleanupTokens', () => {
-        it('forwards userId and failureTokens to the maintenance domain', async () => {
-            const payload: INotificationPushCleanupTokenPayload = {
+        it('forwards userId and encryptedFailureTokens to the maintenance domain', async () => {
+            const payload: INotificationPushCleanupTokenEncryptedPayload = {
                 userId: 'user-id',
-                failureTokens: ['token-1'],
+                encryptedFailureTokens: ['cipher(token-1)'],
             };
             notificationPushMaintenanceDomain.processCleanupTokens.mockResolvedValue(
                 response
             );
             const job = buildQueueJob<
-                INotificationPushCleanupTokenPayload,
+                INotificationPushCleanupTokenEncryptedPayload,
                 IQueueResponse,
                 EnumNotificationPushProcess
             >(payload);
@@ -1021,7 +1021,7 @@ describe('NotificationPushProcessorService', () => {
 
             expect(
                 notificationPushMaintenanceDomain.processCleanupTokens
-            ).toHaveBeenCalledWith('user-id', ['token-1']);
+            ).toHaveBeenCalledWith('user-id', ['cipher(token-1)']);
             expect(result).toBe(response);
         });
     });

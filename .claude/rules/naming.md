@@ -32,7 +32,7 @@ Under `test/`, a spec with a subject file is that file's name plus `.spec.ts` an
 | Kind | Rule | Example |
 | --- | --- | --- |
 | class | module-prefixed | `UserDomain`, `UserAdminController` |
-| interface, data shape, payload | kind word last | `IUser`, `INotificationSendPushPayload` |
+| interface, data shape, payload | kind word last | `IUser`, `INotificationSendPushEncryptedPayload` |
 | constant of any kind | PascalCase | `UserDefaultAvailableSearch`, `AuthJwtAccessGuardKey` |
 | injected field | the class name in camelCase | `authDomain: AuthDomain` |
 | metadata key; CLS store key; passport strategy key | `<Module>[<Concern>]MetaKey`, `StoreKey`, `GuardKey`; the value equals the name | `PolicyRequiredMetaKey = 'PolicyRequiredMetaKey'`; `UserStoreKey = 'UserStoreKey'` |

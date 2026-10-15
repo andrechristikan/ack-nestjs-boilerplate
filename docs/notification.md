@@ -10,13 +10,14 @@ Key features:
 
 - **Multi-Channel Delivery**: `email`, `push`, `inApp`, and `silent` channels
 - **Queue-Based Processing**: Three separate BullMQ queues for orchestration, email, and push, each fed by its own `@Injectable()` queue class in `src/modules/notification/queues/`
-- **User Preference Control**: Per type+channel opt-in/out settings for each user
+- **User Preference Control**: Per type+channel opt-in/out settings for each user, resolved once at enqueue into the job's recipient snapshot
+- **Recipient Snapshot**: every orchestration job except the term-policy publication job carries who receives it, at which address, on which channels, and to which device tokens, so a processor never re-reads the user
 - **AWS SES Email Templates**: Handlebars `.hbs` templates synced to SES, see [Email Documentation][ref-doc-email]
 - **Firebase FCM Push**: Multicast delivery with batch chunking, rate limiting, and stale token cleanup
 - **Step-Tracked Jobs**: a job records the steps it completed in its own data, so a retry skips the steps recorded as completed
 - **Delivery Tracking**:
     - `silent` and `inApp` deliveries are pre-marked at creation time.
-    - `push` deliveries record `processedAt`, `sentAt`, and `failureTokens` as the processor runs, and `sentAt` waits until no token is pending retry.
+    - `push` deliveries record `processedAt` once per job, then `sentAt` and `failureTokens` as the processor runs, and `sentAt` waits until no token is pending retry.
     - `email` deliveries carry no timestamps at all.
 
 ## Related Documents
@@ -35,6 +36,7 @@ Key features:
 - [Notification Types and Priorities](#notification-types-and-priorities)
 - [Notification Channels](#notification-channels)
 - [Queue Architecture](#queue-architecture)
+    - [Recipient Snapshot](#recipient-snapshot)
     - [Orchestration Queue](#orchestration-queue)
     - [Step Tracking](#step-tracking)
     - [Email Queue](#email-queue)
@@ -79,7 +81,7 @@ Each notification record carries one or more `NotificationDelivery` rows, one pe
 | Channel | Delivery | `processedAt` / `sentAt` |
 | --- | --- | --- |
 | `email` | Via AWS SES (queued) | Never set. The email channel domains send through SES and do not touch the delivery record |
-| `push` | Via Firebase FCM (queued) | Set by the push channel domains: `processedAt` before each send attempt, `sentAt` once the send completes with no token pending retry |
+| `push` | Via Firebase FCM (queued) | Set by the push channel domains: `processedAt` once per job before the first send, `sentAt` once the send completes with no token pending retry |
 | `inApp` | In-application UI | Pre-filled at notification creation time |
 | `silent` | No external delivery; record-only | Pre-filled at notification creation time |
 
@@ -90,7 +92,7 @@ A notification can target multiple channels simultaneously. `NotificationKindCon
 - the i18n title and body keys
 - two channel lists: `pendingChannels` and `deliveredChannels`
 
-`NotificationRepository` reads that entry and creates the delivery rows from it.
+`NotificationRepository` reads that entry and creates a delivery row for each of its channels that is also in the recipient's resolved `channels` (see [Recipient Snapshot](#recipient-snapshot)). The `verificationEmail` row of the `welcome` job is the exception: it takes every channel of its kind.
 
 > **`inApp` and `silent` are considered immediately "delivered"**:
 >
@@ -107,6 +109,65 @@ NotificationQueue       → EnumQueue.notification       → NotificationProcess
 NotificationEmailQueue  → EnumQueue.notificationEmail  → NotificationEmailProcessor
 NotificationPushQueue   → EnumQueue.notificationPush   → NotificationPushProcessor
 ```
+
+### Recipient Snapshot
+
+The producer takes the delivery decision once, at enqueue, and the job carries it. `NotificationRecipientDomain.getRecipient(user, kind)` builds the snapshot (`INotificationRecipient`):
+
+- `userId`, `email`, and `username` of the recipient
+- `notificationTokens`: the distinct device tokens of the user's ownerships that are not revoked and whose device holds a token, read through `DeviceDomain.getOwnershipsWithNotificationToken()`
+- `channels`: the channels left for the kind after the user's settings, from `NotificationUtil.resolveChannels`
+
+The domain reads the user's settings and the device tokens concurrently.
+
+`NotificationUtil.resolveChannels(kind, settings)` resolves the channels in this order:
+
+1. It starts from the kind's `pendingChannels` followed by its `deliveredChannels` in `NotificationKindContract`.
+2. A kind with `isMandatory` set, or whose type `NotificationSettingContract` does not list, returns that list as it is. The settings do not apply to it and step 4 never runs. Every kind has a pending channel other than `silent`, so that list never holds `silent` alone.
+3. Any other kind loses each channel that the settings disable. A setting disables a channel when its type is the kind's type, `isActive` is false, and `NotificationSettingContract` lists the channel for that type. `silent` is listed for no type, so a setting never removes it.
+4. When no channel other than `silent` is left, which includes the case where nothing is left, the result is an empty list: no channel and no notification row. Only a kind of a listed type reaches this, and no kind has the `marketing` type, so it is a `userActivity` kind. Its channels other than `silent` are all among `email`, `inApp`, and `push`, which the type lists, so a user who disables them all leaves `silent` alone.
+
+`verificationEmail` is the only mandatory kind.
+
+#### Which jobs carry the snapshot
+
+A snapshot job is a job on the orchestration queue whose payload holds `recipient`. Every process on that queue is one except `publishTermPolicy`.
+
+The sealed snapshot (`INotificationRecipientEncryptedPayload`) holds `encryptedEmail`, `username`, `encryptedNotificationTokens`, and `channels`. It has no `userId`: the plain snapshot's `userId` becomes the job's top-level `userId`, which is also the authenticated data of the sealed email and tokens (see [Payload Encryption](#payload-encryption)).
+
+These jobs carry no snapshot:
+
+- The orchestration `publishTermPolicy` job. It takes no snapshot because it pages every user (see [Term-Policy Publication Email](#term-policy-publication-email)).
+- The email `publishTermPolicy` batch job. It carries `recipients`, each with its own sealed address.
+- The email `workspaceInviteUnregistered` job. The invitee has no account, so there are no settings, tokens, or notification row.
+- The push `cleanupTokens` and `cleanupStaleTokens` jobs. They notify no one.
+
+The email and push jobs that a snapshot job enqueues carry a `send` object with the address or tokens copied from the snapshot, not the snapshot itself.
+
+#### How the snapshot travels
+
+1. The domain that raises the event reads the snapshot before any write that does not depend on it, then passes it to the queue class.
+2. `NotificationQueue` seals the email address and every device token (see [Payload Encryption](#payload-encryption)) and sets the result as `recipient` in the job data.
+3. The orchestration domain reads `recipient.channels`, `username`, and the sealed fields from the job. It reads no user, setting, or device.
+
+What the orchestration domain does with it:
+
+- An empty `channels` list ends the job with a skip message: no `Notification` row and no channel job. `welcome` is the exception below.
+- The `Notification` row gets a delivery row for each channel of its kind that is also in `channels`.
+- The email job is enqueued when `channels` holds `email`.
+- The push job is enqueued when `channels` holds `push` and the snapshot holds at least one token.
+
+#### The welcome job
+
+The `welcome` job writes a `welcome` row and a `verificationEmail` row. Only `verificationEmail` is a mandatory kind, so the two rows follow different channel rules:
+
+1. `recipient.channels` is resolved for the `welcome` kind.
+2. The `welcome` row is written only when that list is not empty, with the channels in it.
+3. The `verificationEmail` row is always written, with every channel of `NotificationKindContract.verificationEmail`.
+4. The welcome email is enqueued only when `channels` holds `email`.
+5. The verification email is always enqueued.
+
+A user whose settings leave the `welcome` kind no channel therefore gets no `welcome` row and no welcome email, and still gets the `verificationEmail` row and the verification email.
 
 ### Orchestration Queue
 
@@ -128,11 +189,11 @@ Handles the main event orchestration:
 
 That domain then:
 
-1. Fetches the target user, and for a push-capable event the user's device tokens alongside it.
-    - A user that does not resolve as active ends the job with a skip message rather than an error, so the job is not retried.
+1. Reads the recipient snapshot from the job data.
+    - An empty `channels` list ends the job with a skip message rather than an error, so the job is not retried. The `welcome` job is the exception (see [The welcome job](#the-welcome-job)).
 2. Creates the `Notification` rows, with their delivery rows, through one `NotificationRepository.createMany` call, unless `createNotification` is already in `completedSteps`.
     - `createMany` runs one transaction and creates only the rows whose id does not exist yet. It returns every row, created or found.
-    - A job that writes several rows passes them all in that one call. The `welcome` job writes its `welcome` row and its `verificationEmail` row together.
+    - A job that writes several rows passes them all in that one call. The `welcome` job writes its `welcome` row, when `channels` is not empty, and its `verificationEmail` row together.
     - A failure here ends the run with a failed `createNotification` step, and no channel job is enqueued.
 3. Enqueues the `notificationEmail` / `notificationPush` jobs in one `Promise.allSettled` batch, skipping each step already in `completedSteps`.
 
@@ -140,7 +201,7 @@ Step 3 runs after step 2 has committed:
 
 - A queued delivery job always references a record that exists.
 - `allSettled` means one channel failing does not stop the other.
-- A push job is only added when the user has at least one device token.
+- A channel job is only added when its channel is in the snapshot `channels`, and a push job also needs at least one token. The verification email of the `welcome` job is added whatever `channels` holds.
 - Each outcome is inspected: a rejected enqueue becomes a failed step (see [Step Tracking](#step-tracking)).
 
 Jobs reach this queue through `NotificationQueue`, which deduplicates on the process name plus whatever identifies that event. Only the publication job sets a `jobId` on this queue:
@@ -157,6 +218,8 @@ Jobs reach this queue through `NotificationQueue`, which deduplicates on the pro
 - A publication has no deduplication TTL: its job id `publishTermPolicy-{termPolicyId}` is unique per term policy, and a repeat publish request reuses it (see [Term-Policy Publication Email](#term-policy-publication-email)).
 
 **Supported processes (`EnumNotificationProcess`):**
+
+`EnumNotificationProcess` also names the jobs of the email queue. Every process below runs on this queue except `workspaceInviteUnregistered`, which only the email queue handles.
 
 | Job Name | Description |
 | --- | --- |
@@ -175,7 +238,7 @@ Jobs reach this queue through `NotificationQueue`, which deduplicates on the pro
 | `publishTermPolicy` | New term policy published. A bulk process: see [Term-Policy Publication Email](#term-policy-publication-email) |
 | `userAcceptTermPolicy` | User accepted a term policy |
 | `workspaceInvite` | Workspace invite sent to a registered user |
-| `workspaceInviteUnregistered` | Workspace invite sent to an address with no account |
+| `workspaceInviteUnregistered` | Workspace invite sent to an address with no account. Email queue only |
 | `workspaceJoinRequest` | Workspace join request submitted |
 | `workspaceJoinAccepted` | Workspace join request accepted |
 | `workspaceJoinRejected` | Workspace join request rejected |
@@ -200,9 +263,9 @@ Every orchestration job except the bulk `publishTermPolicy` job, and every push 
 
 How a run records progress:
 
-1. The producer builds the payload with `completedSteps: []`. A push payload also carries `failureTokens: null` and `pendingTokens: null`.
-2. The domain skips each step already in `completedSteps` and returns an `INotificationStepResult`: a `message`, the `completedSteps`, and the `failedSteps` (each a step and an error string). A push domain adds `failureTokens` and `pendingTokens`.
-3. The processor service writes `completedSteps` back with `job.updateData` (plus `failureTokens` and `pendingTokens` for push). It writes before it decides whether the run failed.
+1. The producer builds the payload with `completedSteps: []`. A push payload also carries `encryptedFailureTokens: null` and `encryptedPendingTokens: null`.
+2. The domain skips each step already in `completedSteps` and returns an `INotificationStepResult`: a `message`, the `completedSteps`, and the `failedSteps` (each a step and an error string). A push domain adds `encryptedFailureTokens` and `encryptedPendingTokens`.
+3. The processor service writes `completedSteps` back with `job.updateData` (plus `encryptedFailureTokens` and `encryptedPendingTokens` for push). It writes before it decides whether the run failed.
 4. When `failedSteps` is not empty, the processor service throws `QueueException(summary, true)`. The summary reads `Notification steps failed: sendEmail:<error>, sendPush:<error>`.
 
 Behavior of a retried run:
@@ -212,11 +275,12 @@ Behavior of a retried run:
 - `updateProcessAt` is outside the step outcomes. A missing notification row makes it throw out of the domain, so the run fails with no failed step and no `completedSteps` write, and BullMQ retries the job.
 - `isFatal` is `true`, so Sentry receives the report on the last attempt only.
 - A crash between the commit of `createMany` and the `updateData` write leaves `completedSteps` empty. The retry calls `createMany` again, which creates nothing and does not throw.
-- `updateProcessAt` is the one step a retry does not skip: the call runs on every attempt, because the push message is rendered from the notification row it returns.
-    - Each run re-stamps `processedAt`, so it holds the time of the latest attempt that reached the call.
-- A multicast whose failed tokens are all invalid is not a failed step. The invalid tokens go to `failureTokens` and the job succeeds.
+- `updateProcessAt` runs once per job:
+    - The push domain adds it to `completedSteps` once the write succeeds, and a retry skips it.
+    - `processedAt` therefore holds the time of the first attempt whose write succeeded.
+- A multicast whose failed tokens are all invalid is not a failed step. The invalid tokens go to `encryptedFailureTokens` and the job succeeds.
 - A multicast that leaves tokens in `retryTokens` fails the `sendMulticast` step with the error `<n> tokens pending retry`. See [Retrying Transient Failures](#retrying-transient-failures).
-- A skip (no active user, Firebase not initialized) returns a message with no failed step, so the job completes.
+- A skip (Firebase not initialized) returns a message with no failed step, so the job completes.
 
 The job id of a channel job is `{notificationId}-{step}`, from `NotificationStepJobIdPattern`:
 
@@ -242,6 +306,7 @@ Rate-limited to match the AWS SES sending quota (`AwsSESRateLimitPerDuration` pe
 
 That domain:
 
+- opens the sealed address and any sealed field of the job just before the SES call (see [Payload Encryption](#payload-encryption))
 - calls `AwsSESService.send()` or `AwsSESService.sendBulk()` using the named SES template for that event
 - merges `defaultTemplateData` (`homeName`, `supportEmail`, `homeUrl`) automatically
 
@@ -284,6 +349,8 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 - `NotificationPushWorkspaceDomain` for the invite and join-request messages
 - `NotificationPushMaintenanceDomain` for the two token-cleanup jobs
 
+The push channel domain opens the sealed device tokens just before the FCM call (see [Payload Encryption](#payload-encryption)).
+
 **Supported push processes (`EnumNotificationPushProcess`):**
 
 | Job Name                   | Description                                |
@@ -308,7 +375,7 @@ On `onModuleInit`, `NotificationPushProcessorService` calls `NotificationPushQue
 
 ### Payload Encryption
 
-A job payload sits in Redis until a worker consumes it, so the queue classes seal every secret-bearing field before `add()`, and only the email channel domain that sends the message opens it.
+A job payload sits in Redis until a worker consumes it, so the queue classes seal every secret-bearing field before `add()`, and only the channel domain that makes the external call opens it.
 
 Each field is sealed with `HelperEncryptionService.aes256Encrypt` under:
 
@@ -318,6 +385,10 @@ Each field is sealed with `HelperEncryptionService.aes256Encrypt` under:
 
 | Sealed field | Plain input | Processes | Authenticated data |
 | --- | --- | --- | --- |
+| `encryptedEmail` | the recipient address | every orchestration job (inside `recipient`), every email job, and each recipient of a `publishTermPolicy` batch | recipient `userId` |
+| `encryptedEmail` | the invitee address | `workspaceInviteUnregistered` (email queue only) | invite `reference` |
+| `encryptedNotificationTokens` | the device tokens | every orchestration job (inside `recipient`) and every push job | recipient `userId` |
+| `encryptedFailureTokens`, `encryptedPendingTokens` | the invalid and the retryable tokens of a send | push jobs, and `cleanupTokens` for the failure tokens | recipient `userId` |
 | `encryptedPassword` | `password` | `welcomeByAdmin`, `temporaryPasswordByAdmin` | recipient `userId` |
 | `encryptedLink` | `link` | `welcome`, `verificationEmail`, `forgotPassword` | recipient `userId` |
 | `encryptedInviteAcceptLink` | `inviteAcceptLink` | `workspaceInvite` | invited `userId` |
@@ -326,15 +397,23 @@ Each field is sealed with `HelperEncryptionService.aes256Encrypt` under:
 
 Who seals:
 
-- `NotificationQueue` seals the fields of the orchestration jobs. The orchestration domains pass the sealed value through to the email job unopened.
-- `NotificationEmailQueue` seals the invite link of `workspaceInviteUnregistered`, which skips the orchestration queue.
-- Push jobs carry no secret. `NotificationPushQueue` builds each push payload from an explicit field list (`INotification*PushPayload`) that leaves out passwords and links.
+- `NotificationQueue` seals the recipient snapshot and the secret fields of the orchestration jobs. The orchestration domains pass the sealed values through to the email and push jobs unopened.
+- `NotificationEmailQueue` seals the invite address and invite link of `workspaceInviteUnregistered`, which skips the orchestration queue, and the address of each recipient of a `publishTermPolicy` batch.
+- `NotificationPushQueue` builds each push payload from an explicit field list (`INotification*PushPayload`) that leaves out passwords and links. The tokens ride in `send` as sealed values.
+- `username` stays plain in the snapshot and in every `send`.
+- The sealed type of a payload carries the `Encrypted` infix (`INotificationRecipientEncryptedPayload`, `INotificationWelcomeByAdminEncryptedPayload`).
+
+Who opens:
+
+- An email channel domain opens the address and the sealed link or password right before `AwsSESService.send()` or `sendBulk()`. The value goes into the send call and the template data only.
+- A push channel domain opens the tokens right before `FirebaseService.sendMulticast()`. It keeps the failure and pending tokens sealed in the job data, and opens the failure tokens again to store them on the delivery record.
+- `NotificationPushMaintenanceDomain` opens the failure tokens of a `cleanupTokens` job before it clears them on the devices.
 
 A payload that fails to open (a rotated key, a tampered value, the wrong recipient) raises `HelperDecryptFailedException` (`52200`):
 
-- Inside `handle`, `NotificationEmailProcessor` maps that to a BullMQ `UnrecoverableError`, so the job fails at once without retries.
+- Inside `handle`, `NotificationEmailProcessor` and `NotificationPushProcessor` map that to a BullMQ `UnrecoverableError`, so the job fails at once without retries.
 - `QueueProcessorBase.onFailed` counts an `UnrecoverableError` as the last attempt and reports it to Sentry.
-- Every other email failure fails the job and is retried. A `QueueException`, an `AppBaseException`, or an `UnrecoverableError` passes through, and anything else is wrapped in `AppUnknownException`.
+- Every other failure fails the job and is retried. A `QueueException`, an `AppBaseException`, or an `UnrecoverableError` passes through, and anything else is wrapped in `AppUnknownException`.
 
 ### Job Payloads
 
@@ -345,16 +424,17 @@ Orchestration, email, and push jobs carry an envelope, and `data` holds the extr
 
 | Queue | Payload |
 | --- | --- |
-| Orchestration | `{ userId, notificationId, completedSteps, proceedBy, data }` |
-| Orchestration, `publishTermPolicy` (bulk) | `{ proceedBy, data: { termPolicyId, type, version } }`, with no `userId`: `NotificationTermPolicyDomain.processPublishTermPolicy` pages the recipients |
-| Email | `{ send: { userId, notificationId, email, username, cc, bcc }, data }` |
-| Email, `publishTermPolicy` (bulk) | `{ data: { termPolicyId, type, version }, batchId, proceedBy }`, one job per batch of up to `email.batchSize` users, with no `send` list: the job reads its recipients by `batchId` |
-| Email, recipient without an account | `{ send: { email, cc, bcc }, data }` |
-| Push | `{ send: { userId, notificationId, notificationTokens, username }, data, completedSteps, failureTokens, pendingTokens }` |
-| Push, `cleanupTokens` | `{ userId, failureTokens }` |
+| Orchestration | `{ userId, notificationId, completedSteps, recipient, proceedBy, data }`, with `recipient` as `{ encryptedEmail, username, encryptedNotificationTokens, channels }` |
+| Orchestration, `publishTermPolicy` (bulk) | `{ proceedBy, data: { termPolicyId, type, version, recipientCutoffAt } }`, with no `userId` and no `recipient`: `NotificationTermPolicyDomain.processPublishTermPolicy` pages the recipients |
+| Email | `{ send: { userId, notificationId, encryptedEmail, username, cc, bcc }, data }` |
+| Email, `publishTermPolicy` (bulk) | `{ data: { termPolicyId, type, version, recipientCutoffAt }, batchId, proceedBy, recipients }`, one job per batch of up to `email.batchSize` users, with no `send` list: `recipients` holds `{ userId, notificationId, encryptedEmail, username }` for each user of the batch |
+| Email, recipient without an account | `{ send: { encryptedEmail, cc, bcc }, data }` |
+| Push | `{ send: { userId, notificationId, encryptedNotificationTokens, username }, data, completedSteps, encryptedFailureTokens, encryptedPendingTokens }` |
+| Push, `cleanupTokens` | `{ userId, encryptedFailureTokens }` |
 | Push, `cleanupStaleTokens` | `{}` |
 
 - `notificationId` is minted by `NotificationQueue` at enqueue. `completedSteps` starts as an empty array (see [Step Tracking](#step-tracking)).
+- `recipient` is the sealed [Recipient Snapshot](#recipient-snapshot), without `userId`, which sits beside it at the top level of the job. The orchestration domain copies `encryptedEmail` and `username` into the `send` of the email job, and `encryptedNotificationTokens` and `username` into the `send` of the push job.
 - The `welcome` job's `data` also carries `verificationNotificationId`, the id of the second row the job writes. The verification email job id is built from it: `{verificationNotificationId}-sendVerificationEmail`.
 - `proceedBy` is the id of the user whose action raised the event.
 - The orchestration domains store `proceedBy` as `createdBy` on the `Notification` row.
@@ -368,13 +448,14 @@ Orchestration, email, and push jobs carry an envelope, and `data` holds the extr
 - `cc` and `bcc` are always arrays, empty when there is no copy recipient.
     - The queue class puts them on the job.
     - The email channel domain passes each non-empty list to `AwsSESService.send()`.
-- A bulk email job carries no recipient list.
-    - `NotificationEmailProcessorService` passes `data`, `batchId`, and `proceedBy` to the email channel domain.
-    - The email channel domain reads the batch's recipients from the database and calls `AwsSESService.sendBulk()` once. See [Term-Policy Publication Email](#term-policy-publication-email).
+- A bulk email job carries its recipients in the payload.
+    - `NotificationEmailProcessorService` passes `data`, `batchId`, `proceedBy`, and `recipients` to the email channel domain.
+    - The email channel domain keeps the recipients whose marker has no `sentAt` and calls `AwsSESService.sendBulk()` once. See [Term-Policy Publication Email](#term-policy-publication-email).
 - `cleanupStaleTokens` is the job the `upsertJobScheduler` call registers. Its data is an empty object, and the 30-day threshold is read from config when the job runs.
-- A sealed field sits inside `data`, never in `send` or at the top of the envelope.
-    - The `encrypted*` field replaces its plain input (`encryptedPassword` for `password`, and so on, as in [Payload Encryption](#payload-encryption)).
-    - Redis therefore holds only the ciphertext.
+- A sealed field replaces its plain input, with the `encrypted` prefix (`encryptedPassword` for `password`, `encryptedEmail` for the address, and so on, as in [Payload Encryption](#payload-encryption)).
+    - A secret process field sits inside `data`.
+    - The address and the tokens sit in `recipient` and `send`.
+    - Redis therefore holds only the ciphertext of each.
 
 ### Term-Policy Publication Email
 
@@ -382,9 +463,10 @@ Publishing a term policy queues one `publishTermPolicy` orchestration job: a rep
 
 **Recipients:**
 
-- Every non-deleted user is a candidate, whatever the user's status.
+- Every non-deleted user created at or before the term policy's `publishedAt` is a candidate, whatever the user's status.
+    - `TermPolicyDomain` sends `publishedAt` in the job data as `recipientCutoffAt`, so every attempt and every re-added batch reads the same candidate set.
 - Each candidate gets at most one marker, and so one `Notification` row, per term policy.
-- The user's notification setting does not apply.
+- The user's notification setting does not apply: the row carries every channel of the kind, and the job takes no recipient snapshot.
 - `TermPolicyRecipient` (collection `TermPolicyRecipients`), owned by `NotificationRepository`, holds one marker per user and term policy, unique on `termPolicyId` and `userId`.
 - A marker records the `notificationId`, the `batchId`, and the `enqueuedAt` and `sentAt` timestamps.
 
@@ -399,14 +481,14 @@ sequenceDiagram
 
     TP->>DB: Publish a draft, updateMany where status is draft
     TP->>OQ: Read the job publishTermPolicy-{termPolicyId}, then add it, retry it, or answer 409 by its state
-    loop Each page of email.batchSize non-deleted users
+    loop Each page of email.batchSize non-deleted users created by the cutoff
         OQ->>DB: Create Notification rows and markers for users without one
-        OQ->>EQ: Add publishTermPolicy-{termPolicyId}-{batchId}, delay index * email.batchDelayInMs
+        OQ->>EQ: Add publishTermPolicy-{termPolicyId}-{batchId} with the sealed recipients, delay index * email.batchDelayInMs
         OQ->>DB: Set enqueuedAt on the batch markers
     end
     EQ->>EM: Job dequeued
-    EM->>DB: Read the batch markers with no sentAt, user not deleted
-    EM->>SES: One bulk send
+    EM->>DB: Read the batch markers with no sentAt
+    EM->>SES: One bulk send to the payload recipients with such a marker
     SES-->>EM: Status per recipient
     EM->>DB: Set sentAt for each Success
 ```
@@ -442,12 +524,13 @@ What the publish guarantees:
 
 **Orchestration job:**
 
-1. Reads the ids of non-deleted users (`UserNotDeletedWhere`: `deletedAt` null, any status) in pages of `email.batchSize`, ordered by `id` with an `id` cursor.
+1. Reads the recipients (`id`, `email`, `username`) of non-deleted users (`UserNotDeletedWhere`: `deletedAt` null, any status) created at or before `recipientCutoffAt`, through `UserDomain.getListRecipientCursor`, in pages of `email.batchSize`, ordered by `id` with an `id` cursor.
 2. Reads the markers that already exist for the page.
 3. Creates, for the users without a marker and in one transaction, a `Notification` row each (kind `publishTermPolicy`, email delivery pending) and a marker, all under one new `batchId`.
 4. Adds one email job per batch.
     - The job id is `publishTermPolicy-{termPolicyId}-{batchId}`.
-    - The payload is `{ data, batchId, proceedBy }`.
+    - The payload is `{ data, batchId, proceedBy, recipients }`.
+    - `NotificationEmailQueue` seals each recipient address, with the user id as authenticated data.
     - The delay is `index * email.batchDelayInMs`, where `index` counts the email jobs of the run across pages.
 5. Sets `enqueuedAt` on the markers of the batches it added.
 
@@ -462,6 +545,7 @@ On a new attempt:
 - A user who already has a marker gets no second marker and no second `Notification` row.
 - A batch whose markers still have no `enqueuedAt` (the run stopped before step 5) gets its email job added again.
     - The batch keeps its stored `batchId`, so the job id is the same as before.
+    - The recipients come from the users of the page and, for markers on no page of this run, from `UserDomain.getManyRecipientsByIds` under the same cutoff. A marker whose user was deleted since is left out of the payload.
     - BullMQ ignores an add whose job id still exists in the queue, so the original job and its original delay stand.
     - When the original job is gone, the new job takes the delay `index * email.batchDelayInMs`.
     - `index` counts only the email jobs this attempt adds or re-adds. A batch already marked `enqueuedAt` adds none.
@@ -477,9 +561,9 @@ When the job exhausts its attempts:
 
 **Email job:**
 
-1. Reads the batch markers with no `sentAt` whose user is not deleted.
+1. Reads the batch markers with no `sentAt` and keeps the payload recipients that have one.
     - With none left, the job completes.
-2. Makes one `AwsSESService.sendBulk()` call with the `publishTermPolicy` template, passing `type` and `version` as default template data.
+2. Opens the sealed address of each kept recipient and makes one `AwsSESService.sendBulk()` call with the `publishTermPolicy` template, passing `type` and `version` as default template data.
 3. Completes at once when SES returns an empty or absent `Status` list, before any count check.
     - SES unconfigured is this case: `sendBulk()` returns an empty `Status` list and no marker gets `sentAt`.
 4. Sets `sentAt` on the markers whose SES status is `Success`.
@@ -488,7 +572,7 @@ When the job exhausts its attempts:
 
 On a failed or retried job:
 
-- A retry reads only the markers with no `sentAt`, so a recipient whose marker is set is not read again.
+- A retry keeps only the recipients whose marker has no `sentAt`, so a recipient whose marker is set is not sent to again.
 - `sendBulk()` and the `sentAt` update are separate steps.
     - When the update fails or the worker stalls between them, the retry reads those recipients again and SES sends to them again.
 - `queue.job.attempts` (3) is the number of attempts in total, with an exponential backoff from `queue.job.emailBackoffDelayInMs` (10 seconds).
@@ -512,9 +596,10 @@ On a failed or retried job:
 
 Push tokens (FCM device tokens) are part of the **Device module** (`src/modules/device`), not stored in the notification module directly.
 
-- The orchestration-side domains read them through `DeviceDomain.getOwnershipsWithNotificationToken()`, which calls `DeviceOwnershipRepository.findTokensByUserId()`.
-- They place the tokens on the push job payload as `notificationTokens`.
-- The push channel domain sends to the tokens it receives on the job.
+- `NotificationRecipientDomain` reads them through `DeviceDomain.getOwnershipsWithNotificationToken()`, which calls `DeviceOwnershipRepository.findTokensByUserId()`, when the producer builds the [Recipient Snapshot](#recipient-snapshot).
+- The snapshot keeps the distinct tokens, and `NotificationQueue` seals them as `encryptedNotificationTokens`.
+- The orchestration domain places them on the push job as `send.encryptedNotificationTokens`.
+- The push channel domain opens them and sends to the tokens it receives on the job.
 - The lookup returns only device ownerships that are not revoked and whose device holds a token, so a revoked ownership never receives a push.
 
 For push token registration, revocation, and session-linking details, see the [Device documentation][ref-doc-device].
@@ -531,14 +616,15 @@ A response with any other code, such as `messaging/invalid-argument` for a bad p
 
 The invalid tokens go through three steps:
 
-1. Merged into the `failureTokens` of the push job data after every send, including a send that leaves tokens pending. Once the `sendMulticast` step is complete, a retry of a later step reuses them without sending again.
+1. Merged into the `encryptedFailureTokens` of the push job data after every send, including a send that leaves tokens pending. The job data holds them sealed. Once the `sendMulticast` step is complete, a retry of a later step reuses them without sending again.
 2. Once no token is pending, queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`.
     - The job id is `{notificationId}-cleanupTokens`. The job carries no deduplication option.
+    - The payload is `{ userId, encryptedFailureTokens }`.
     - A send with no invalid token enqueues nothing.
     - `NotificationPushMaintenanceDomain.processCleanupTokens()` handles it.
-    - It calls `DeviceDomain.cleanupNotificationTokens()`, which resolves the user's devices holding those tokens through `DeviceOwnershipRepository.findDeviceIdsByUserAndTokens()`.
+    - It opens the sealed tokens and calls `DeviceDomain.cleanupNotificationTokens()`, which resolves the user's devices holding those tokens through `DeviceOwnershipRepository.findDeviceIdsByUserAndTokens()`.
     - It clears `notificationToken` and `notificationProvider` on them through `DeviceRepository.clearTokens()`.
-3. Once no token is pending, stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field).
+3. Once no token is pending, opened and stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field), as plain tokens.
 
 Stale tokens are those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days). The recurring `cleanupStaleTokens` job registered at startup prunes them daily:
 
@@ -582,17 +668,17 @@ A token lands in `retryTokens` under one of three conditions:
 
 A token is never in both `failureTokens` and `retryTokens`.
 
-The push job keeps the retry tokens as `pendingTokens`:
+The push job keeps the retry tokens as `encryptedPendingTokens`, sealed:
 
-1. `sendMulticastStep` in the push channel domain sends to `pendingTokens` when the job carries them, and to all `notificationTokens` when `pendingTokens` is `null`.
-    - An empty `pendingTokens` array counts as carried: it selects no recipient, `sendMulticast()` returns without calling FCM, and the step completes.
+1. `sendMulticastStep` in the push channel domain opens and sends to `encryptedPendingTokens` when the job carries them, and to all `encryptedNotificationTokens` when `encryptedPendingTokens` is `null`.
+    - An empty `encryptedPendingTokens` array counts as carried: it selects no recipient, `sendMulticast()` returns without calling FCM, and the step completes.
     - The array is empty only after a send that left nothing pending.
-2. It merges the new `failureTokens` into the ones the job already holds, without duplicates.
-3. It stores the new `retryTokens` as `pendingTokens`.
+2. It merges the new `failureTokens` into the `encryptedFailureTokens` the job already holds, without duplicates.
+3. It stores the new `retryTokens` as `encryptedPendingTokens`.
 4. When any token is pending, the `sendMulticast` step fails with the error `<n> tokens pending retry`. The step stays out of `completedSteps`, and BullMQ retries the job.
 5. When none is pending, the step completes. Only then do `cleanupTokens` and `updateSentAt` run, so `sentAt` is stamped once nothing is pending.
 
-A run that fails a step writes `completedSteps`, the merged `failureTokens`, and the new `pendingTokens` back to the job data before it throws. A retry therefore sends only to the tokens still pending.
+A run that fails a step writes `completedSteps`, the merged `encryptedFailureTokens`, and the new `encryptedPendingTokens` back to the job data before it throws. A retry therefore sends only to the tokens still pending.
 
 The retry schedule comes from the push queue options:
 
@@ -645,7 +731,7 @@ Each `Notification` record has related `NotificationDelivery` rows in `Notificat
 
 | Field | Description |
 | --- | --- |
-| `processedAt` | When the latest attempt started handling the delivery: each push attempt overwrites it. Written for `push`, pre-filled for `silent` / `inApp`, never written for `email` |
+| `processedAt` | When the push job first started handling the delivery: the `updateProcessAt` step writes it once and a retry does not overwrite it. Written for `push`, pre-filled for `silent` / `inApp`, never written for `email` |
 | `sentAt` | When the `updateSentAt` step ran, after a send that left no token pending retry. On a job that retried, it is the attempt that cleared the last pending token. Stays null when the attempts run out with tokens pending. Same coverage as `processedAt` |
 | `failureTokens` | FCM tokens that were invalid (push channel only) |
 
@@ -675,9 +761,8 @@ sequenceDiagram
 
     Q->>P: Job dequeued
     P->>P: Skip when Firebase is not initialized
-    P->>DB: updateProcessAt (processedAt = now)
-    DB-->>P: Notification row
-    P->>FCM: sendMulticast
+    P->>DB: updateProcessAt (processedAt = now), once per job
+    P->>FCM: sendMulticast with the opened tokens
     FCM-->>P: result with failureTokens and retryTokens
     P->>P: Merge failureTokens into the job data
     alt Any retryTokens
@@ -690,7 +775,8 @@ sequenceDiagram
 
 The skip returns a message rather than throwing, so a push job on a deployment with Firebase disabled completes instead of being retried.
 
-- `updateProcessAt` is an `update` that returns the notification row the message is rendered from. A missing row makes it throw, and the job retries.
+- `updateProcessAt` is an `update` on the delivery row, and the push message renders from the job data. A missing notification row makes it throw, and the job retries.
+- Once the write succeeds, `updateProcessAt` is in `completedSteps`, and a retry does not repeat it.
 - `sendMulticast` is skipped on a retry when it is in `completedSteps`. The invalid tokens come from the job data, which holds them after a send that completed.
 - A retry of a `sendMulticast` that left tokens pending sends to `pendingTokens` only.
 - The `cleanupTokens` enqueue and `updateSentAt` settle together, and each is recorded on its own (see [Step Tracking](#step-tracking)).
@@ -705,6 +791,16 @@ The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.
 
 - Users control which notification channels are active per type.
 - `NotificationUserSetting` stores the settings, one row per `userId + type + channel`.
+- The settings apply when a producer builds the [Recipient Snapshot](#recipient-snapshot): a channel the user disabled for the type is absent from the job's `channels`, and a change made after the enqueue does not reach a job already queued.
+
+The settings do not apply to:
+
+- A kind marked `isMandatory`: only `verificationEmail`, including the `verificationEmail` row of the `welcome` job.
+- A kind whose type `NotificationSettingContract` does not list: every `securityAlert` and `transactional` kind.
+- The `silent` channel: it is listed for no type, so a setting never removes it.
+- The term-policy publication: the job takes no snapshot, and each row carries every channel of the kind.
+- The `workspaceInviteUnregistered` email: the invitee has no account and so no settings.
+- The two token-cleanup jobs: they notify no one.
 
 Allowed type+channel combinations are defined in `NotificationSettingContract` (`src/modules/notification/contracts/notification.setting.contract.ts`):
 

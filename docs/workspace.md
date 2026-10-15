@@ -397,8 +397,13 @@ Constraints:
 
 Create and resend look the invited address up among active users. `sendInviteNotification` picks one of two deliveries from that result:
 
-- an address that already has a User row is sent the claim link through the `workspaceInvite` notification process, sealed by `NotificationQueue` with that user's `userId` as authenticated data
-- an address with no account is sent the sign-up link through `workspaceInviteUnregistered`, sealed by `NotificationEmailQueue` with the invite `reference` as authenticated data
+- an address that already has an active account is sent the claim link through the `workspaceInvite` notification process
+    - `NotificationRecipientDomain.getRecipient` reads the invitee's recipient snapshot: address, username, the channels the user's notification settings leave enabled, and device tokens.
+    - `NotificationQueue` seals the address, the tokens, and the link with that user's `userId` as authenticated data.
+- an address with no account is sent the sign-up link through `workspaceInviteUnregistered`
+    - `NotificationEmailQueue` seals the address (`encryptedEmail` in the job's `send` block) and the link (`encryptedInviteAcceptLink`) with the invite `reference` as authenticated data.
+
+Create and resend read the snapshot before their write, so the processor reads no user record afterwards.
 
 The two processes share one SES template.
 
@@ -443,7 +448,9 @@ The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepa
 - Only a workspace with `isPublic: true` accepts requests. A private one throws `WorkspaceNotPublicException` (400, `51614`).
 - Already being a member throws `WorkspaceJoinRequestAlreadyMemberException` (400, `51615`).
 - A second pending request throws `WorkspaceJoinRequestDuplicateException` (400, `51616`).
-- On create, every reviewer (`owner` and `admin`) is notified.
+- On create, every active reviewer (`owner` and `admin`) is notified.
+    - The reviewer ids come from `WorkspaceMemberRepository.findReviewersByWorkspace`, and `UserDomain.getManyActiveByIds` keeps the active users among them.
+    - Each reviewer gets a recipient snapshot (address, username, channels, device tokens), read before the request row is written.
     - Each reviewer's review link is sealed (AES-256-GCM) with **that reviewer's** user id as authenticated data.
     - A link sealed for one reviewer therefore does not open in another reviewer's job.
 - **Accept always creates a `member` membership.** The role is not configurable on this path.
@@ -454,6 +461,8 @@ The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepa
 - The requester switches to the workspace themselves.
 - Reject requires a `rejectReasonCode` from `EnumWorkspaceJoinRejectReason`.
 - Both outcomes notify the requester once the write commits: `workspaceJoinAccepted` on accept, `workspaceJoinRejected` (carrying the reason code) on reject.
+    - The requester's recipient snapshot is read before the write, from `UserDomain.getOneActive`.
+    - A requester who is not an active user gets no notification, and the write still completes.
 - Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`).
 - An id that does not belong to the resolved workspace is `WorkspaceJoinRequestNotFoundException` (404, `51617`).
 

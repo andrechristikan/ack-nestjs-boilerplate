@@ -15,12 +15,14 @@ import {
 import type {
     INotificationEmailBulkQueuePayload,
     INotificationEmailQueuePayload,
-    INotificationEmailSendPayload,
+    INotificationEmailSendEncryptedPayload,
     INotificationEmailUnregisteredQueuePayload,
     INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordEncryptedPayload,
+    INotificationTermPolicyBatchRecipient,
+    INotificationTermPolicyBatchRecipientEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -77,15 +79,31 @@ export class NotificationEmailQueue {
         )!;
     }
 
+    private encryptBatchRecipient({
+        userId,
+        notificationId,
+        email,
+        username,
+    }: INotificationTermPolicyBatchRecipient): INotificationTermPolicyBatchRecipientEncryptedPayload {
+        const encryptedEmail = this.helperEncryptionService.aes256Encrypt(
+            email,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            userId
+        );
+
+        return { userId, notificationId, encryptedEmail, username };
+    }
+
     async sendWelcomeByAdmin(
         {
-            email,
+            encryptedEmail,
             username,
             userId,
             notificationId,
             cc,
             bcc,
-        }: INotificationEmailSendPayload,
+        }: INotificationEmailSendEncryptedPayload,
         {
             passwordCreatedAt,
             passwordExpiredAt,
@@ -96,7 +114,7 @@ export class NotificationEmailQueue {
             {
                 send: {
                     userId,
-                    email,
+                    encryptedEmail,
                     username,
                     notificationId,
                     cc,
@@ -139,13 +157,13 @@ export class NotificationEmailQueue {
 
     async sendTemporaryPasswordByAdmin(
         {
-            email,
+            encryptedEmail,
             username,
             userId,
             notificationId,
             cc,
             bcc,
-        }: INotificationEmailSendPayload,
+        }: INotificationEmailSendEncryptedPayload,
         {
             encryptedPassword,
             passwordCreatedAt,
@@ -156,7 +174,7 @@ export class NotificationEmailQueue {
             {
                 send: {
                     userId,
-                    email,
+                    encryptedEmail,
                     username,
                     notificationId,
                     cc,
@@ -200,17 +218,17 @@ export class NotificationEmailQueue {
     }
 
     async sendResetPassword({
-        email,
+        encryptedEmail,
         username,
         userId,
         notificationId,
         cc,
         bcc,
-    }: INotificationEmailSendPayload): Promise<void> {
+    }: INotificationEmailSendEncryptedPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
-                email,
+                encryptedEmail,
                 username,
                 notificationId,
                 cc,
@@ -247,17 +265,17 @@ export class NotificationEmailQueue {
     }
 
     async sendChangePassword({
-        email,
+        encryptedEmail,
         username,
         userId,
         notificationId,
         cc,
         bcc,
-    }: INotificationEmailSendPayload): Promise<void> {
+    }: INotificationEmailSendEncryptedPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
-                email,
+                encryptedEmail,
                 username,
                 notificationId,
                 cc,
@@ -295,13 +313,13 @@ export class NotificationEmailQueue {
 
     async sendVerificationEmail(
         {
-            email,
+            encryptedEmail,
             username,
             userId,
             notificationId,
             cc,
             bcc,
-        }: INotificationEmailSendPayload,
+        }: INotificationEmailSendEncryptedPayload,
         {
             expiredAt,
             expiredInMinutes,
@@ -313,7 +331,7 @@ export class NotificationEmailQueue {
             {
                 send: {
                     userId,
-                    email,
+                    encryptedEmail,
                     username,
                     notificationId,
                     cc,
@@ -358,17 +376,17 @@ export class NotificationEmailQueue {
     }
 
     async sendWelcome({
-        email,
+        encryptedEmail,
         username,
         userId,
         notificationId,
         cc,
         bcc,
-    }: INotificationEmailSendPayload): Promise<void> {
+    }: INotificationEmailSendEncryptedPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
-                email,
+                encryptedEmail,
                 username,
                 notificationId,
                 cc,
@@ -402,17 +420,17 @@ export class NotificationEmailQueue {
     }
 
     async sendWelcomeSocial({
-        email,
+        encryptedEmail,
         username,
         userId,
         notificationId,
         cc,
         bcc,
-    }: INotificationEmailSendPayload): Promise<void> {
+    }: INotificationEmailSendEncryptedPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
-                email,
+                encryptedEmail,
                 username,
                 notificationId,
                 cc,
@@ -451,20 +469,20 @@ export class NotificationEmailQueue {
 
     async sendVerifiedEmail(
         {
-            email,
+            encryptedEmail,
             username,
             userId,
             notificationId,
             cc,
             bcc,
-        }: INotificationEmailSendPayload,
+        }: INotificationEmailSendEncryptedPayload,
         { reference }: INotificationVerifiedEmailPayload
     ): Promise<void> {
         const payload: INotificationEmailQueuePayload<INotificationVerifiedEmailPayload> =
             {
                 send: {
                     userId,
-                    email,
+                    encryptedEmail,
                     username,
                     notificationId,
                     cc,
@@ -505,13 +523,13 @@ export class NotificationEmailQueue {
 
     async sendForgotPassword(
         {
-            email,
+            encryptedEmail,
             username,
             userId,
             notificationId,
             cc,
             bcc,
-        }: INotificationEmailSendPayload,
+        }: INotificationEmailSendEncryptedPayload,
         {
             expiredAt,
             expiredInMinutes,
@@ -524,7 +542,7 @@ export class NotificationEmailQueue {
             {
                 send: {
                     userId,
-                    email,
+                    encryptedEmail,
                     username,
                     notificationId,
                     cc,
@@ -568,13 +586,13 @@ export class NotificationEmailQueue {
 
     async sendVerifiedMobileNumber(
         {
-            email,
+            encryptedEmail,
             username,
             userId,
             notificationId,
             cc,
             bcc,
-        }: INotificationEmailSendPayload,
+        }: INotificationEmailSendEncryptedPayload,
         {
             mobileNumber,
             reference,
@@ -585,7 +603,7 @@ export class NotificationEmailQueue {
             {
                 send: {
                     userId,
-                    email,
+                    encryptedEmail,
                     username,
                     notificationId,
                     cc,
@@ -630,17 +648,17 @@ export class NotificationEmailQueue {
     }
 
     async sendResetTwoFactorByAdmin({
-        email,
+        encryptedEmail,
         username,
         userId,
         notificationId,
         cc,
         bcc,
-    }: INotificationEmailSendPayload): Promise<void> {
+    }: INotificationEmailSendEncryptedPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
-                email,
+                encryptedEmail,
                 username,
                 notificationId,
                 cc,
@@ -681,13 +699,13 @@ export class NotificationEmailQueue {
 
     async sendNewDeviceLogin(
         {
-            email,
+            encryptedEmail,
             username,
             userId,
             notificationId,
             cc,
             bcc,
-        }: INotificationEmailSendPayload,
+        }: INotificationEmailSendEncryptedPayload,
         {
             loginFrom,
             loginWith,
@@ -699,7 +717,7 @@ export class NotificationEmailQueue {
             {
                 send: {
                     userId,
-                    email,
+                    encryptedEmail,
                     username,
                     notificationId,
                     cc,
@@ -744,10 +762,14 @@ export class NotificationEmailQueue {
         data: INotificationPublishTermPolicyPayload,
         batchId: string,
         proceedBy: string,
-        index: number
+        index: number,
+        recipients: INotificationTermPolicyBatchRecipient[]
     ): Promise<void> {
+        const encryptedRecipients = recipients.map(recipient =>
+            this.encryptBatchRecipient(recipient)
+        );
         const payload: INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload> =
-            { data, batchId, proceedBy };
+            { data, batchId, proceedBy, recipients: encryptedRecipients };
 
         const jobId = this.helperStringService.fillPattern(
             NotificationTermPolicyBatchJobIdPattern,
@@ -771,7 +793,7 @@ export class NotificationEmailQueue {
 
     /** Enqueues the workspace invite email for a registered invitee (has `userId`); called by the main notification processor after the `Notification` row is created. */
     async sendWorkspaceInvite(
-        sendPayload: INotificationEmailSendPayload,
+        sendPayload: INotificationEmailSendEncryptedPayload,
         data: INotificationWorkspaceInviteEncryptedPayload
     ): Promise<void> {
         const payload: INotificationEmailQueuePayload<INotificationWorkspaceInviteEncryptedPayload> =
@@ -810,7 +832,7 @@ export class NotificationEmailQueue {
         );
     }
 
-    /** Enqueues the workspace invite email directly for an unregistered invitee (no `userId`, no `Notification` row); the link is sealed to the invite reference. */
+    /** Enqueues the workspace invite email directly for an unregistered invitee (no `userId`, no `Notification` row); the address and the link are sealed to the invite reference. */
     async sendWorkspaceInviteUnregistered(
         email: string,
         {
@@ -825,9 +847,15 @@ export class NotificationEmailQueue {
                 NotificationPayloadEncryptionPurpose,
                 invite.reference
             );
+        const encryptedEmail = this.helperEncryptionService.aes256Encrypt(
+            email,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            invite.reference
+        );
         const payload: INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredEncryptedPayload> =
             {
-                send: { email, cc: [], bcc: [] },
+                send: { encryptedEmail, cc: [], bcc: [] },
                 data: {
                     ...invite,
                     encryptedInviteAcceptLink,
@@ -856,7 +884,7 @@ export class NotificationEmailQueue {
     }
 
     async sendWorkspaceJoinRequest(
-        sendPayload: INotificationEmailSendPayload,
+        sendPayload: INotificationEmailSendEncryptedPayload,
         data: INotificationWorkspaceJoinRequestEncryptedPayload
     ): Promise<void> {
         const payload: INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload> =
@@ -897,7 +925,7 @@ export class NotificationEmailQueue {
     }
 
     async sendWorkspaceJoinAccepted(
-        sendPayload: INotificationEmailSendPayload,
+        sendPayload: INotificationEmailSendEncryptedPayload,
         data: INotificationWorkspaceJoinAcceptedPayload
     ): Promise<void> {
         const payload: INotificationEmailQueuePayload<INotificationWorkspaceJoinAcceptedPayload> =
@@ -938,7 +966,7 @@ export class NotificationEmailQueue {
     }
 
     async sendWorkspaceJoinRejected(
-        sendPayload: INotificationEmailSendPayload,
+        sendPayload: INotificationEmailSendEncryptedPayload,
         data: INotificationWorkspaceJoinRejectedPayload
     ): Promise<void> {
         const payload: INotificationEmailQueuePayload<INotificationWorkspaceJoinRejectedPayload> =

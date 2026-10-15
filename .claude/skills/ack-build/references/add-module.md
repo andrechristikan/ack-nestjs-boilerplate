@@ -43,7 +43,7 @@ Copy the shape, not the names:
 
 - Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module (`src/router/http/router.http.shared.module.ts:24-47`). A missing import fails the boot.
 - Processor module: `src/router/processor/router.processor.module.ts:8-13`.
-- A `@Global()` domain module: `src/common/common.module.ts:64-72` `imports`. Read the `@Global()` decision from a sibling that needs to be reachable everywhere (`src/modules/notification/notification.domain.module.ts:33`); the default is not global.
+- A `@Global()` domain module: `src/common/common.module.ts:64-72` `imports`. Read the `@Global()` decision from a sibling that needs to be reachable everywhere (`src/modules/notification/notification.domain.module.ts:34`); the default is not global.
 
 ## 6. Messages
 
@@ -56,9 +56,9 @@ Reference rows an empty database needs: `.claude/skills/ack-build/references/add
 ## 8. Verify
 
 ```bash
-pnpm typecheck
-timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log   # wiring defects surface only at boot
+pnpm build   # read its exit code; boot only on 0
+timeout 90 node --import ./dist/instrument.js dist/main.js > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log   # wiring defects surface only at boot
 pnpm test <module>
 ```
 
-Check in the boot log for the `App Name:` block and no `UnknownDependenciesException` line; exit 124 is the expected end of the boot. Specs: `test/unit/modules/<module>/…` mirrors `src/`; controllers, repositories, modules, and processors are excluded from coverage (`coverage.exclude` in `vitest.config.ts`).
+The boot's `pnpm build` runs `pnpm typecheck`, so a red typecheck shows as a failed build. A failing build is a failed boot; its output is the evidence. Check in the boot log for the `App Name:` block and no `UnknownDependenciesException` line; exit 124 is the expected end of the boot. Specs: `test/unit/modules/<module>/…` mirrors `src/`; controllers, repositories, modules, and processors are excluded from coverage (`coverage.exclude` in `vitest.config.ts`).

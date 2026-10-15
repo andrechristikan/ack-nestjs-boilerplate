@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
@@ -12,6 +13,7 @@ import {
 } from '@generated/prisma-client/client';
 import { NotificationEmailWorkspaceDomain } from '@modules/notification/domains/notification.email.workspace.domain';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 import type {
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceJoinRequestEncryptedPayload,
@@ -30,7 +32,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
     const send = {
         userId: 'user-id',
         notificationId: 'notification-id',
-        email: 'nadia@example.com',
+        encryptedEmail: 'cipher(nadia@example.com)',
         username: 'nadia',
         cc: [],
         bcc: [],
@@ -60,6 +62,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
         helperDateService.formatToRFC2822.mockImplementation((date: Date) =>
             date.toISOString()
         );
+        stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationEmailWorkspaceDomain,
@@ -88,9 +91,9 @@ describe('NotificationEmailWorkspaceDomain', () => {
         };
 
         it('decrypts the invite link, formats the date, and sends the email', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://invite.example.com'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('https://invite.example.com');
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
                 MessageId: 'message-1',
@@ -109,7 +112,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
             );
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.workspaceInvite,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -131,9 +134,9 @@ describe('NotificationEmailWorkspaceDomain', () => {
         });
 
         it('rethrows when SES rejects, with no cc or bcc present', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://invite.example.com'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('https://invite.example.com');
             const error = new Error('ses down');
             awsSESService.send.mockRejectedValue(error);
 
@@ -154,20 +157,26 @@ describe('NotificationEmailWorkspaceDomain', () => {
             expiredAt: '2024-02-01T00:00:00.000Z',
         };
 
-        it('decrypts the invite link with the reference as context and sends the email with no cc or bcc', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://invite.example.com'
-            );
+        it('decrypts the email and the invite link with the reference as context and sends the email with no cc or bcc', async () => {
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('invitee@example.com')
+                .mockReturnValueOnce('https://invite.example.com');
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
                 MessageId: 'message-1',
             });
 
             const result = await domain.processWorkspaceInviteUnregistered(
-                { email: 'invitee@example.com', cc: [], bcc: [] },
+                { encryptedEmail: 'cipher-email', cc: [], bcc: [] },
                 encrypted
             );
 
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                'cipher-email',
+                'secret-key',
+                'notification.payload',
+                encrypted.reference
+            );
             expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
                 encrypted.encryptedInviteAcceptLink,
                 'secret-key',
@@ -204,7 +213,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
 
             await expect(
                 domain.processWorkspaceInviteUnregistered(
-                    { email: 'invitee@example.com', cc: [], bcc: [] },
+                    { encryptedEmail: 'cipher-email', cc: [], bcc: [] },
                     encrypted
                 )
             ).rejects.toBe(error);
@@ -220,9 +229,9 @@ describe('NotificationEmailWorkspaceDomain', () => {
         };
 
         it('decrypts the review link and sends the email', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://review.example.com'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('https://review.example.com');
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
                 MessageId: 'message-1',
@@ -241,7 +250,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
             );
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.workspaceJoinRequest,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -261,9 +270,9 @@ describe('NotificationEmailWorkspaceDomain', () => {
         });
 
         it('rethrows when SES rejects, with no cc or bcc present', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'https://review.example.com'
-            );
+            helperEncryptionService.aes256Decrypt
+                .mockReturnValueOnce('nadia@example.com')
+                .mockReturnValue('https://review.example.com');
             const error = new Error('ses down');
             awsSESService.send.mockRejectedValue(error);
 
@@ -275,6 +284,45 @@ describe('NotificationEmailWorkspaceDomain', () => {
 
     describe('processWorkspaceJoinAccepted', () => {
         const data = { workspaceId: 'workspace-id', workspaceName: 'Acme' };
+
+        it('decrypts the email with the user id before sending and sends to the plaintext', async () => {
+            const callOrder: string[] = [];
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                callOrder.push('decrypt');
+
+                return 'nadia@example.com';
+            });
+            awsSESService.send.mockImplementation(async () => {
+                callOrder.push('send');
+
+                return { $metadata: {}, MessageId: 'message-1' };
+            });
+
+            await domain.processWorkspaceJoinAccepted(send, data);
+
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                send.encryptedEmail,
+                'secret-key',
+                'notification.payload',
+                send.userId
+            );
+            expect(awsSESService.send).toHaveBeenCalledWith(
+                expect.objectContaining({ recipients: ['nadia@example.com'] })
+            );
+            expect(callOrder).toEqual(['decrypt', 'send']);
+        });
+
+        it('rethrows a decryption failure without calling SES', async () => {
+            const error = new HelperDecryptFailedException();
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                throw error;
+            });
+
+            await expect(
+                domain.processWorkspaceJoinAccepted(send, data)
+            ).rejects.toBe(error);
+            expect(awsSESService.send).not.toHaveBeenCalled();
+        });
 
         it('sends the email with cc and bcc when present', async () => {
             awsSESService.send.mockResolvedValue({
@@ -289,7 +337,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
 
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.workspaceJoinAccepted,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',
@@ -340,7 +388,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
             );
             expect(awsSESService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.workspaceJoinRejected,
-                recipients: [sendWithCcBcc.email],
+                recipients: ['nadia@example.com'],
                 sender: 'noreply@example.com',
                 templateData: {
                     homeName: 'Home',

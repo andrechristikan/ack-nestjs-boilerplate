@@ -73,6 +73,7 @@ A Device represents a physical or virtual client.
         - the credential lockout
 - `notificationToken`: FCM/APNs push token (optional, used for push notifications).
     - Login and `POST /shared/user/device/refresh` set it.
+    - A producer reads it when it enqueues a notification: the tokens of the user's ownerships that are not revoked go into the job as sealed values, and the push channel opens them to send (see [Notification Documentation][ref-doc-notification]).
     - It is cleared on:
         - logout
         - device removal

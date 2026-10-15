@@ -75,11 +75,13 @@ export const UserNotDeletedWhere = {
 } satisfies Prisma.UserWhereInput;
 
 /**
- * Columns an id-only user read returns.
+ * Columns a notification recipient snapshot reads from a user.
  * @public
  */
-export const UserIdSelect = {
+export const UserRecipientSelect = {
     id: true,
+    email: true,
+    username: true,
 } satisfies Prisma.UserSelect;
 
 /**

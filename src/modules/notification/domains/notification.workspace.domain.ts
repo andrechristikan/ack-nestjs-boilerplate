@@ -1,11 +1,12 @@
-import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import {
     EnumNotificationKind,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationEmailSendPayload,
-    INotificationSendPushPayload,
+    INotificationEmailSendEncryptedPayload,
+    INotificationRecipientEncryptedPayload,
+    INotificationSendPushEncryptedPayload,
     INotificationStepFailure,
     INotificationStepResult,
     INotificationWorkspaceInviteEncryptedPayload,
@@ -17,7 +18,6 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 
 /** Writes and fans out the workspace invite and join-request notifications. */
@@ -25,8 +25,6 @@ import { Injectable } from '@nestjs/common';
 export class NotificationWorkspaceDomain {
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly userDomain: UserDomain,
-        private readonly deviceDomain: DeviceDomain,
         private readonly notificationUtil: NotificationUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly notificationPushQueue: NotificationPushQueue
@@ -35,25 +33,21 @@ export class NotificationWorkspaceDomain {
     async processWorkspaceInvite(
         userId: string,
         proceedBy: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationWorkspaceInviteEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping workspace invite notification',
-                completedSteps,
+                    'Workspace invite notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -62,14 +56,15 @@ export class NotificationWorkspaceDomain {
                         kind: EnumNotificationKind.workspaceInvite,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
+                            userId,
                             metadata: {
-                                username: user.username,
+                                username: recipient.username,
                                 workspaceId: data.workspaceId,
                                 workspaceName: data.workspaceName,
                                 inviterName: data.inviterName,
                             },
                             createdBy: proceedBy,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -90,11 +85,14 @@ export class NotificationWorkspaceDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -108,16 +106,16 @@ export class NotificationWorkspaceDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent = this.notificationPushQueue.sendWorkspaceInvite(
                 pushPayload,
@@ -161,25 +159,21 @@ export class NotificationWorkspaceDomain {
     async processWorkspaceJoinRequest(
         userId: string,
         proceedBy: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationWorkspaceJoinRequestEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping workspace join request notification',
-                completedSteps,
+                    'Workspace join request notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -188,14 +182,15 @@ export class NotificationWorkspaceDomain {
                         kind: EnumNotificationKind.workspaceJoinRequest,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
+                            userId,
                             metadata: {
-                                username: user.username,
+                                username: recipient.username,
                                 workspaceId: data.workspaceId,
                                 workspaceName: data.workspaceName,
                                 requesterName: data.requesterName,
                             },
                             createdBy: proceedBy,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -216,11 +211,14 @@ export class NotificationWorkspaceDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -235,16 +233,16 @@ export class NotificationWorkspaceDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent =
                 this.notificationPushQueue.sendWorkspaceJoinRequest(
@@ -286,25 +284,21 @@ export class NotificationWorkspaceDomain {
     async processWorkspaceJoinAccepted(
         userId: string,
         proceedBy: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationWorkspaceJoinAcceptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping workspace join accepted notification',
-                completedSteps,
+                    'Workspace join accepted notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -313,13 +307,14 @@ export class NotificationWorkspaceDomain {
                         kind: EnumNotificationKind.workspaceJoinAccepted,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
+                            userId,
                             metadata: {
-                                username: user.username,
+                                username: recipient.username,
                                 workspaceId: data.workspaceId,
                                 workspaceName: data.workspaceName,
                             },
                             createdBy: proceedBy,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -340,11 +335,14 @@ export class NotificationWorkspaceDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -359,16 +357,16 @@ export class NotificationWorkspaceDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent =
                 this.notificationPushQueue.sendWorkspaceJoinAccepted(
@@ -406,25 +404,21 @@ export class NotificationWorkspaceDomain {
     async processWorkspaceJoinRejected(
         userId: string,
         proceedBy: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationWorkspaceJoinRejectedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping workspace join rejected notification',
-                completedSteps,
+                    'Workspace join rejected notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -433,14 +427,15 @@ export class NotificationWorkspaceDomain {
                         kind: EnumNotificationKind.workspaceJoinRejected,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
+                            userId,
                             metadata: {
-                                username: user.username,
+                                username: recipient.username,
                                 workspaceId: data.workspaceId,
                                 workspaceName: data.workspaceName,
                                 rejectReasonCode: data.rejectReasonCode,
                             },
                             createdBy: proceedBy,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -461,11 +456,14 @@ export class NotificationWorkspaceDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -480,16 +478,16 @@ export class NotificationWorkspaceDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent =
                 this.notificationPushQueue.sendWorkspaceJoinRejected(

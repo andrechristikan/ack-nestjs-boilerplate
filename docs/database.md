@@ -404,6 +404,9 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 - `[countryId, status, signUpAt desc]`
 - `[signUpAt desc]`
 - `[deletedAt, signUpAt desc]`
+- `[deletedAt, createdAt]`
+
+`[deletedAt, createdAt]` serves the term-policy recipient cursor, which reads live users created at or before the publication cutoff.
 
 ## Composite Types
 

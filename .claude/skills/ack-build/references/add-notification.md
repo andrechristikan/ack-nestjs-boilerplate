@@ -1,73 +1,81 @@
 # Add a notification
 
-Invariants: `.claude/rules/queue.md` (Notifications). Queue mechanics: `.claude/skills/ack-build/references/add-queue.md`. Reference: the `workspaceInvite` kind, traced below. The caller is a feature domain that injects `NotificationQueue` (exported by the `@Global()` `NotificationDomainModule`) and calls `send<Kind>` with plaintext values; the main processor writes the job's `Notification` rows and fans out to `NotificationEmailQueue` and `NotificationPushQueue`; each channel processor sends. A controller or HTTP service never enqueues.
+Invariants: `.claude/rules/queue.md` (Enqueuing, Notifications). Queue mechanics: `.claude/skills/ack-build/references/add-queue.md`. Reference: `workspaceInvite`, traced below. The producer is a feature domain injecting `NotificationRecipientDomain` and `NotificationQueue` (exported by the `@Global()` `NotificationDomainModule`): it reads the recipient snapshot, then calls `send<Kind>` with plaintext values. The main processor writes the job's `Notification` rows and fans out to `NotificationEmailQueue` and `NotificationPushQueue`; each channel processor sends.
 
 ## 1. Name the kind
 
-One camelCase name in `src/modules/notification/enums/notification.enum.ts`: `EnumNotificationKind` (`:49-68`, the stored kind), `EnumNotificationProcess` (`:5-25`, the job name on the main and email queues), and `EnumNotificationPushProcess` (`:31-43`) when the kind has a push channel. A job's steps are `EnumNotificationStep` members (`:74-84`); a new step is a member there.
+One camelCase name in `src/modules/notification/enums/notification.enum.ts`: `EnumNotificationKind` (`:49-68`, the stored kind), `EnumNotificationProcess` (`:5-25`, the main and email job name), and `EnumNotificationPushProcess` (`:31-43`) when the kind has a push channel. A new step is an `EnumNotificationStep` member (`:74-84`).
 
 ## 2. Contract and messages
 
-- Add the row to `NotificationKindContract` (`src/modules/notification/contracts/notification.kind.contract.ts:153-166`): `type` and `priority` from the Prisma enums, `title` and `body` i18n paths, `pendingChannels` (what the fan-out sends), `deliveredChannels` (what the row records at once).
-- Add `notify.<kind>.title` and `notify.<kind>.body` to `src/languages/<lang>/notification.json` in every language directory; placeholders are `{username}`-style and match the metadata the domain writes.
+- Add the row to `NotificationKindContract` (`src/modules/notification/contracts/notification.kind.contract.ts:167-181`): Prisma-enum `type` and `priority`, `isMandatory` (`true` ignores user settings), `title` and `body` i18n paths, `pendingChannels` (what the fan-out sends), `deliveredChannels` (what the row records at once).
+- Add `notify.<kind>.title` and `notify.<kind>.body` to `src/languages/<lang>/notification.json` in every language; `{username}`-style placeholders match the metadata the domain writes.
 - A type a user may toggle is listed in `NotificationSettingContract` (`src/modules/notification/contracts/notification.setting.contract.ts:11-24`).
 
-## 3. Payload shapes
+## 3. Recipient snapshot
 
-In `src/modules/notification/interfaces/notification.interface.ts`, beside the workspace-invite shapes (`:140-166`): `INotification<Kind>Payload` (plain data, secret in plaintext), `INotification<Kind>EncryptedPayload` (the secret replaced by `encrypted<Field>`; this rides in `job.data`), `INotification<Kind>PushPayload` (the plain data minus every secret). A kind that writes a second row carries that row's id in its encrypted payload (`verificationNotificationId`, `:198-200`).
+1. Read the user as `IUserRecipient` (`src/modules/user/interfaces/user.interface.ts:46-48`, `UserRecipientSelect` in `src/modules/user/constants/user.constant.ts:81-85`) or a `User`.
+2. `NotificationRecipientDomain.getRecipient(user, kind)` (`src/modules/notification/domains/notification.recipient.domain.ts:20-41`) returns `INotificationRecipient`: `userId`, `email`, `username`, distinct device `notificationTokens`, `channels`.
+3. `channels` is `NotificationUtil.resolveChannels` (`src/modules/notification/utils/notification.util.ts:33-67`): the row's pending and delivered channels, minus each one the user disabled for a toggleable type unless `isMandatory`. When only `silent` is left it is `[]`: the job writes no row and sends nothing.
+4. Read it before any write that does not depend on it (`forgotPassword`, `src/modules/user/domains/user.password.domain.ts:484`).
+5. No account, no snapshot: the producer calls the unregistered email variant (`src/modules/workspace/domains/workspace.invite.domain.ts:215-228`).
 
-Envelopes and results, reused as they are:
+## 4. Payload shapes
 
-- `INotificationQueuePayload<T>` (`:207-213`): `userId`, `notificationId`, `completedSteps: EnumNotificationStep[]`, plus `proceedBy` and `data` from the bulk envelope.
-- `INotificationPushQueuePayload<T>` (`:222-228`): `send`, `data`, `completedSteps`, `failureTokens: string[] | null`, `pendingTokens: string[] | null`.
-- `INotificationEmailQueuePayload<T>` (`:244-247`), and the bulk and unregistered variants.
-- `INotificationStepResult` (`:271-275`: `message`, `completedSteps`, `failedSteps`) and `INotificationPushStepResult` (`:283-286`, adds `failureTokens` and `pendingTokens`); a push send step returns `INotificationPushSendOutcome` (`:277-281`: `failureTokens`, `pendingTokens`, `failure`).
+In `src/modules/notification/interfaces/notification.interface.ts`, beside the workspace-invite shapes (`:166-192`): `INotification<Kind>Payload` (plain, secret in plaintext), `INotification<Kind>EncryptedPayload` (secret as `encrypted<Field>`; rides in `job.data`), `INotification<Kind>PushPayload` (plain minus every secret). A second row's id rides in the encrypted payload (`verificationNotificationId`, `:224-226`).
 
-## 4. Main queue and fan-out
+Reused as they are:
 
-1. `NotificationQueue.send<Kind>` (`src/modules/notification/queues/notification.queue.ts:581-622`): encrypt the secret with `encryptValue` (`:67-74`), generate `notificationId` with `DatabaseUtil.createId()`, plus one id per extra row (`sendWelcome`, `:128-129`), build `INotificationQueuePayload` with `completedSteps: []`, and `add` with `priority` and a `deduplication` id that names one logical send, with `notification.dedupTtlInMs`. The id is a `Notification*JobIdPattern` constant (`src/modules/notification/constants/notification.constant.ts`) filled through `HelperStringService.fillPattern`: `workspaceInvite` uses `NotificationReferenceJobIdPattern` (`notification.queue.ts:603-609`); a once-per-user kind uses `NotificationUserJobIdPattern`.
+- `INotificationQueuePayload<T>` (`:233-240`): `userId`, `notificationId`, `completedSteps`, `recipient` (`INotificationRecipientEncryptedPayload`, `:36-41`: `encryptedEmail`, `username`, `encryptedNotificationTokens`, `channels`), `proceedBy`, `data`.
+- `INotificationPushQueuePayload<T>` (`:249-255`): `send` (`INotificationSendPushEncryptedPayload`), `data`, `completedSteps`, `encryptedFailureTokens` and `encryptedPendingTokens`, each `string[] | null`.
+- `INotificationEmailQueuePayload<T>` (`:271-274`, `send` is `INotificationEmailSendEncryptedPayload`), and the bulk and unregistered variants.
+- `INotificationStepResult` (`:299-303`: `message`, `completedSteps`, `failedSteps`); `INotificationPushStepResult` (`:311-314`) adds both token lists; a push send step returns `INotificationPushSendOutcome` (`:305-309`: both lists, `failure`).
+
+## 5. Main queue and fan-out
+
+1. `NotificationQueue.send<Kind>(recipient, data, proceedBy)` (`src/modules/notification/queues/notification.queue.ts:686-730`): `encryptRecipient` (`:84-102`) seals the email and tokens and `encryptValue` (`:75-82`) the secret, both against `recipient.userId`; one `DatabaseUtil.createId()` per row (`sendWelcome`, `:161-162`); `completedSteps: []`; `add` with `priority` and `deduplication` (one logical send, ttl `notification.dedupTtlInMs`). The id is a `Notification*JobIdPattern` (`src/modules/notification/constants/notification.constant.ts`) through `HelperStringService.fillPattern`: `NotificationReferenceJobIdPattern` for `workspaceInvite` (`:711-717`), `NotificationUserJobIdPattern` for a once-per-user kind.
 2. `NotificationProcessor.handle` case (`src/modules/notification/processors/notification.processor.ts:157-164`).
-3. `NotificationProcessorService.process<Kind>` (`src/modules/notification/services/notification.processor.service.ts:309-328`): pass `notificationId` and `completedSteps` from `job.data` to the concern domain and return `recordSteps(job, result)` (`:41-61`). It calls `job.updateData({ ...job.data, completedSteps })`, then throws `QueueException(summary, true)` with `NotificationUtil.toStepSummary` when a step failed, else returns `NotificationUtil.toStepResponse(result)`.
-4. `Notification<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.workspace.domain.ts:35-159`):
-    - Load the user and devices; a gone user returns the given `completedSteps` and no failure.
-    - Unless `createNotification` is done, write every row of the job in one `notificationRepository.createMany([{ kind: EnumNotificationKind.<kind>, payload: { id: notificationId, … } }])` with the metadata the i18n body needs (`src/modules/notification/repositories/notification.repository.ts:108-134`: creates only the missing ids, in its transaction). A failure there returns at once.
-    - Start each side-effect step not in `completedSteps` (the email enqueue; the push enqueue only when devices carry tokens), `Promise.allSettled` them, and map each rejection through `NotificationUtil.toStepFailure`.
+3. `NotificationProcessorService.process<Kind>` (`src/modules/notification/services/notification.processor.service.ts:342-368`): pass the `job.data` fields to the concern domain; return `recordSteps(job, result)` (`:41-61`): `job.updateData` with `completedSteps`, then `QueueException(summary, true)` (`NotificationUtil.toStepSummary`) on a failed step, else `NotificationUtil.toStepResponse(result)`.
+4. `Notification<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.workspace.domain.ts:33-157`) reads no user, device, or setting:
+    - Empty `recipient.channels` returns the given `completedSteps` and no failure.
+    - Unless `createNotification` is done, write every row of the job in one `notificationRepository.createMany([{ kind, payload: { id: notificationId, channels: recipient.channels, metadata, … } }])`, `metadata` being what the i18n body needs (`src/modules/notification/repositories/notification.repository.ts:111-137`: creates only the missing ids, in its transaction, one delivery per contract channel in `channels`). A failure returns at once.
+    - Start each side-effect step not in `completedSteps`: email when `channels` holds `email`, from `recipient.encryptedEmail`; push when it holds `push` and `encryptedNotificationTokens` is non-empty. `Promise.allSettled` them; map each rejection through `NotificationUtil.toStepFailure`.
     - Return `INotificationStepResult`.
 5. A new concern gets its own domain, provided and exported by `notification.domain.module.ts`.
 
-Every channel job a step enqueues takes `jobId` from `NotificationStepJobIdPattern` (`{notificationId}-{step}`, `notification.constant.ts:53`) through `fillPattern`, beside its `deduplication` option.
+Every channel job takes `jobId` from `NotificationStepJobIdPattern` (`{notificationId}-{step}`, `notification.constant.ts:53`) through `fillPattern`, beside its `deduplication`.
 
-## 5. Email channel
+## 6. Email channel
 
-1. `NotificationEmailQueue.send<Kind>` (`src/modules/notification/queues/notification.email.queue.ts:773-811`): forward the ciphertext unchanged; `jobId` with `EnumNotificationStep.sendEmail`. An invitee with no account uses the unregistered variant, which writes no row and encrypts against the invite reference (`sendWorkspaceInviteUnregistered`, `:814-856`).
+1. `NotificationEmailQueue.send<Kind>` (`src/modules/notification/queues/notification.email.queue.ts:795-833`): forward the ciphertext unchanged; `jobId` with `EnumNotificationStep.sendEmail`. The unregistered variant writes no row and seals the address and link to the invite reference (`sendWorkspaceInviteUnregistered`, `:836-884`).
 2. `NotificationEmailProcessor.handle` case (`src/modules/notification/processors/notification.email.processor.ts:176-183`); `HelperDecryptFailedException` already maps to `UnrecoverableError` (`:228-230`).
-3. `NotificationEmailProcessorService.process<Kind>` (`src/modules/notification/services/notification.email.processor.service.ts:202-213`).
-4. `NotificationEmail<Concern>Domain.process<Kind>` (`processWorkspaceInvite` in `src/modules/notification/domains/notification.email.workspace.domain.ts`): decrypt immediately before `awsSESService.send({ templateName: EnumNotificationProcess.<kind>, sender: this.noreplyEmail, templateData: { ...this.defaultTemplateData, … } })`; the plaintext goes into `templateData` only.
+3. `NotificationEmailProcessorService.process<Kind>` (`src/modules/notification/services/notification.email.processor.service.ts:203-214`).
+4. `NotificationEmail<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.email.workspace.domain.ts:67`): decrypt `encryptedEmail` and the secret against `userId` immediately before `awsSESService.send({ templateName: EnumNotificationProcess.<kind>, recipients: [email], sender: this.noreplyEmail, templateData: { ...this.defaultTemplateData, … } })`; the plaintext goes into `templateData` only.
 5. Template: `src/modules/notification/templates/notification.<kind-kebab>.template.hbs`, Handlebars, placeholders named as in `templateData`.
-6. Template domain: `emailImport<Kind>`, `emailGet<Kind>`, `emailDelete<Kind>` on `NotificationTemplate<Concern>Domain` (`src/modules/notification/domains/notification.template.workspace.domain.ts:17-70`); `emailImport<Kind>` reads `join(import.meta.dirname, '../templates', '<file>.hbs')`, which the `nest-cli.json` `assets` entry copies beside the build; the SES template name is the `EnumNotificationProcess` member.
-7. Seed entry: in `src/migration/seeds/migration.template-notification.seed.ts`, add the get call (`:50-86`) and the import branch (`:204-211`) to `seed()`, and the delete call to `remove()` (`:258-276`). The owner runs `pnpm migration templateEmailNotification --type seed`.
+6. Template domain: `emailImport<Kind>`, `emailGet<Kind>`, `emailDelete<Kind>` on `NotificationTemplate<Concern>Domain` (`src/modules/notification/domains/notification.template.workspace.domain.ts:17-70`); `emailImport<Kind>` reads `join(import.meta.dirname, '../templates', '<file>.hbs')`, which `nest-cli.json` `assets` copies beside the build.
+7. Seed entry: in `src/migration/seeds/migration.template-notification.seed.ts`, add the get call (`:50-86`) and the import branch (`:204-211`) to `seed()`, and the delete call to `remove()` (`:260-278`). The owner runs `pnpm migration templateEmailNotification --type seed`.
 
-## 6. Push channel
+## 7. Push channel
 
-1. `NotificationPushQueue.send<Kind>` (`src/modules/notification/queues/notification.push.queue.ts:265-320`): the push payload carries no secret, `completedSteps: []`, `failureTokens: null`, and `pendingTokens: null`; `jobId` with `EnumNotificationStep.sendPush`.
-2. `NotificationPushProcessor.handle` case (`src/modules/notification/processors/notification.push.processor.ts:86-93`).
-3. `NotificationPushProcessorService.process<Kind>` (`src/modules/notification/services/notification.push.processor.service.ts:161-180`): pass `completedSteps`, `failureTokens`, and `pendingTokens` from `job.data` to the domain; its `recordSteps` (`:34-56`) writes all three into `job.updateData`, then throws `QueueException(summary, true)` when a step failed.
-4. `NotificationPush<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.push.workspace.domain.ts:69-182`):
-    - Check `firebaseService.isInitialized()`; unset returns the given steps and tokens.
-    - Mark the push delivery processed.
-    - Unless `sendMulticast` is done, send through the domain's `sendMulticastStep` (`:31-67`) to `pendingTokens` when set, otherwise to every device token. `FirebaseService.sendMulticast` returns `failureTokens` (invalid, merged with the earlier ones) and `retryTokens` (transient codes and network errors), which become the new `pendingTokens`.
-    - Any token pending is a failed `sendMulticast` step: return at once with `failureTokens` and `pendingTokens`, so the retry sends only to the pending tokens and `sentAt` stays unset.
-    - Nothing pending: mark `sendMulticast` done, then run `cleanupTokens` (`sendCleanupTokens`) and `updateSentAt` in `Promise.allSettled`, skipping completed steps.
-    - Return `INotificationPushStepResult` with `failureTokens` and `pendingTokens`.
+1. `NotificationPushQueue.send<Kind>` (`src/modules/notification/queues/notification.push.queue.ts:265-320`): push data carries no secret; `completedSteps: []`, both token lists `null`; `jobId` with `EnumNotificationStep.sendPush`.
+2. `NotificationPushProcessor.handle` case (`src/modules/notification/processors/notification.push.processor.ts:91-98`).
+3. `NotificationPushProcessorService.process<Kind>` (`src/modules/notification/services/notification.push.processor.service.ts:161-180`): pass the `job.data` fields; its `recordSteps` (`:34-56`) also writes both lists.
+4. `NotificationPush<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.push.workspace.domain.ts:104-227`):
+    - Unset `firebaseService.isInitialized()` returns the given steps and lists.
+    - Unless `updateProcessAt` is done, mark the push delivery processed.
+    - Unless `sendMulticast` is done, `sendMulticastStep` (`:53-102`) decrypts `encryptedPendingTokens` when set, else `send.encryptedNotificationTokens`, against `userId`, calls `FirebaseService.sendMulticast`, and maps `failureTokens` (merged with earlier ones) and `retryTokens` back to ciphertext as `encryptedFailureTokens` and `encryptedPendingTokens`.
+    - Any token pending fails `sendMulticast`: return at once with both lists, so the retry sends only to pending tokens and `sentAt` stays unset.
+    - Nothing pending: mark `sendMulticast` done, then run `cleanupTokens` (`NotificationPushQueue.sendCleanupTokens`, `notification.push.queue.ts:458-486`, with the encrypted failure tokens) and `updateSentAt` in `Promise.allSettled`, skipping completed steps.
+    - Return `INotificationPushStepResult`.
 
-## 7. Verify
+## 8. Verify
 
 ```bash
-pnpm typecheck
 pnpm test notification
-timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log   # three workers register at boot
+pnpm build
+timeout 90 node --import ./dist/instrument.js dist/main.js > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log   # three workers register
 ```
 
-Check in the boot log for the `App Name:` block and the `NotificationProcessorModule dependencies initialized` line, BullMQ logging no line per worker; exit 124 is the expected end of the boot.
+Read the build and boot as `add-queue.md`, Verify, says; the module line is `NotificationProcessorModule dependencies initialized`.
 
-Specs: each queue class method asserts job name, payload with every encrypted field and generated id, and options with `jobId` and `deduplication`; each domain asserts the rows, the fan-out, the no-op branches, a skipped completed step, and a failed step in the result; each push domain asserts a pending token keeps `sendMulticast` failed and `sentAt` unset; each processor service asserts `job.updateData` and the `QueueException`; processors are excluded from coverage. Renaming a queue, a job name, or a payload field changes every producer, processor, and payload type in the same change (`.claude/rules/queue.md`, Processors).
+Specs: each queue class method asserts job name, payload with every encrypted field (the recipient's included) and generated id, and options with `jobId` and `deduplication`; each domain asserts the rows, the fan-out, the empty-channel skip, a skipped completed step, and a failed step in the result; each push domain asserts a pending token keeps `sendMulticast` failed and `sentAt` unset; each processor service asserts `job.updateData` and the `QueueException`; processors are excluded from coverage. Renames: `.claude/rules/queue.md`, Processors.

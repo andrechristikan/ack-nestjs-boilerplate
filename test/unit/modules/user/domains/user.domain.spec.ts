@@ -29,6 +29,9 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
@@ -55,6 +58,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -73,6 +77,8 @@ describe('UserDomain', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -192,6 +198,10 @@ describe('UserDomain', () => {
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
@@ -445,13 +455,39 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('getOneById', () => {
+    describe('getManyActiveByIds', () => {
         it('delegates to the repository', async () => {
-            const user = baseUser;
-            userRepository.findOneById.mockResolvedValue(user);
+            const rows = [
+                { id: 'user-a', email: 'a@example.com', username: 'a' },
+                { id: 'user-b', email: 'b@example.com', username: 'b' },
+            ];
+            userRepository.findManyActiveByIds.mockResolvedValue(rows);
 
-            await expect(domain.getOneById(user.id)).resolves.toBe(user);
-            expect(userRepository.findOneById).toHaveBeenCalledWith(user.id);
+            await expect(
+                domain.getManyActiveByIds(['user-a', 'user-b'])
+            ).resolves.toBe(rows);
+            expect(userRepository.findManyActiveByIds).toHaveBeenCalledWith([
+                'user-a',
+                'user-b',
+            ]);
+        });
+    });
+
+    describe('getManyRecipientsByIds', () => {
+        it('delegates to the repository with the creation bound', async () => {
+            const rows = [
+                { id: 'user-a', email: 'a@example.com', username: 'a' },
+            ];
+            const createdBefore = new Date('2026-01-01T00:00:00.000Z');
+            userRepository.findRecipientsByIds.mockResolvedValue(rows);
+
+            await expect(
+                domain.getManyRecipientsByIds(['user-a'], createdBefore)
+            ).resolves.toBe(rows);
+            expect(userRepository.findRecipientsByIds).toHaveBeenCalledWith(
+                ['user-a'],
+                createdBefore
+            );
         });
     });
 
@@ -613,17 +649,30 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('getListIdCursor', () => {
-        it('forwards the cursor and take to the repository', async () => {
-            const ids = ['user-cobalt', 'user-indigo'];
-            userRepository.findIdsCursor.mockResolvedValue(ids);
+    describe('getListRecipientCursor', () => {
+        it('forwards the cursor, take, and creation bound to the repository', async () => {
+            const rows = [
+                {
+                    id: 'user-cobalt',
+                    email: 'cobalt@example.com',
+                    username: 'cobalt',
+                },
+                {
+                    id: 'user-indigo',
+                    email: 'indigo@example.com',
+                    username: 'indigo',
+                },
+            ];
+            const createdBefore = new Date('2026-01-01T00:00:00.000Z');
+            userRepository.findRecipientsCursor.mockResolvedValue(rows);
 
-            await expect(domain.getListIdCursor('user-amber', 2)).resolves.toBe(
-                ids
-            );
-            expect(userRepository.findIdsCursor).toHaveBeenCalledWith(
+            await expect(
+                domain.getListRecipientCursor('user-amber', 2, createdBefore)
+            ).resolves.toBe(rows);
+            expect(userRepository.findRecipientsCursor).toHaveBeenCalledWith(
                 'user-amber',
-                2
+                2,
+                createdBefore
             );
         });
     });
@@ -867,7 +916,20 @@ describe('UserDomain', () => {
     });
 
     describe('notifyWelcomeByAdmin', () => {
+        const recipientUser = {
+            id: 'user-cobalt',
+            email: 'cobalt@example.com',
+            username: 'cobalt',
+        };
+        const recipient: INotificationRecipient = {
+            ...TestRecipient,
+            userId: recipientUser.id,
+        };
+
         it('formats the password dates and sends the welcome notification', async () => {
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
             const passwordCreated = new Date('2026-01-01T00:00:00.000Z');
             const passwordExpired = new Date('2026-06-01T00:00:00.000Z');
             helperDateService.formatToIso.mockImplementation(date =>
@@ -875,15 +937,21 @@ describe('UserDomain', () => {
             );
 
             await domain.notifyWelcomeByAdmin(
-                'user-cobalt',
+                recipientUser,
                 'random-password',
                 passwordCreated,
                 passwordExpired,
                 'admin-cobalt'
             );
 
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                recipientUser,
+                EnumNotificationKind.welcomeByAdmin
+            );
             expect(notificationQueue.sendWelcomeByAdmin).toHaveBeenCalledWith(
-                'user-cobalt',
+                recipient,
                 {
                     password: 'random-password',
                     passwordCreatedAt: passwordCreated.toISOString(),

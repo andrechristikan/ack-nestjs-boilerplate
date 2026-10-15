@@ -1,10 +1,14 @@
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
+import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumNotificationKind,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationEmailSendPayload,
+    INotificationCreateEntry,
+    INotificationEmailSendEncryptedPayload,
+    INotificationRecipientEncryptedPayload,
     INotificationStepFailure,
     INotificationStepResult,
     INotificationVerificationEmailEncryptedPayload,
@@ -15,7 +19,6 @@ import type {
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 
 /** Writes and fans out the sign-up, welcome and verification notifications. */
@@ -23,7 +26,6 @@ import { Injectable } from '@nestjs/common';
 export class NotificationAccountDomain {
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly userDomain: UserDomain,
         private readonly helperStringService: HelperStringService,
         private readonly notificationUtil: NotificationUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue
@@ -32,22 +34,21 @@ export class NotificationAccountDomain {
     async processWelcomeByAdmin(
         userId: string,
         proceedBy: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationWelcomeByAdminEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const user = await this.userDomain.getOneActive(userId);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping welcome by admin notification',
-                completedSteps,
+                    'Welcome by admin notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -56,9 +57,10 @@ export class NotificationAccountDomain {
                         kind: EnumNotificationKind.welcomeByAdmin,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
+                            userId,
+                            metadata: { username: recipient.username },
                             createdBy: proceedBy,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -79,11 +81,14 @@ export class NotificationAccountDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -122,42 +127,47 @@ export class NotificationAccountDomain {
 
     async processWelcome(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationVerificationEmailEncryptedPayload,
         notificationId: string,
         verificationNotificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const user = await this.userDomain.getOneActive(userId);
-
-        if (!user) {
-            return {
-                message: 'User not found, skipping welcome notification',
-                completedSteps,
-                failedSteps: [],
-            };
-        }
-
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
+            const { pendingChannels, deliveredChannels } =
+                NotificationKindContract.verificationEmail;
+            const welcomeEntries: INotificationCreateEntry[] =
+                recipient.channels.length > 0
+                    ? [
+                          {
+                              kind: EnumNotificationKind.welcome,
+                              payload: {
+                                  id: notificationId,
+                                  userId,
+                                  metadata: { username: recipient.username },
+                                  createdBy: userId,
+                                  channels: recipient.channels,
+                              },
+                          },
+                      ]
+                    : [];
+
             try {
                 // Sequential by design: gate before the work it guards
                 await this.notificationRepository.createMany([
-                    {
-                        kind: EnumNotificationKind.welcome,
-                        payload: {
-                            id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
-                            createdBy: user.id,
-                        },
-                    },
+                    ...welcomeEntries,
                     {
                         kind: EnumNotificationKind.verificationEmail,
                         payload: {
                             id: verificationNotificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
-                            createdBy: user.id,
+                            userId,
+                            metadata: { username: recipient.username },
+                            createdBy: userId,
+                            channels: [
+                                ...pendingChannels,
+                                ...deliveredChannels,
+                            ],
                         },
                     },
                 ]);
@@ -178,11 +188,14 @@ export class NotificationAccountDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendWelcomeEmail)) {
-            const welcomePayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendWelcomeEmail)
+        ) {
+            const welcomePayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -194,14 +207,15 @@ export class NotificationAccountDomain {
         }
 
         if (!done.includes(EnumNotificationStep.sendVerificationEmail)) {
-            const verificationEmailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
-                notificationId: verificationNotificationId,
-                cc: [],
-                bcc: [],
-            };
+            const verificationEmailPayload: INotificationEmailSendEncryptedPayload =
+                {
+                    userId,
+                    encryptedEmail: recipient.encryptedEmail,
+                    username: recipient.username,
+                    notificationId: verificationNotificationId,
+                    cc: [],
+                    bcc: [],
+                };
             const verificationSent =
                 this.notificationEmailQueue.sendVerificationEmail(
                     verificationEmailPayload,
@@ -237,20 +251,20 @@ export class NotificationAccountDomain {
 
     async processWelcomeSocial(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const user = await this.userDomain.getOneActive(userId);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
-                message: 'User not found, skipping welcome social notification',
-                completedSteps,
+                message:
+                    'Welcome social notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -259,9 +273,10 @@ export class NotificationAccountDomain {
                         kind: EnumNotificationKind.welcomeSocial,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
-                            createdBy: user.id,
+                            userId,
+                            metadata: { username: recipient.username },
+                            createdBy: userId,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -282,11 +297,14 @@ export class NotificationAccountDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -323,21 +341,21 @@ export class NotificationAccountDomain {
 
     async processVerifiedEmail(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationVerifiedEmailPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const user = await this.userDomain.getOneActive(userId);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
-                message: 'User not found, skipping verified email notification',
-                completedSteps,
+                message:
+                    'Verified email notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -346,9 +364,10 @@ export class NotificationAccountDomain {
                         kind: EnumNotificationKind.verifiedEmail,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
-                            createdBy: user.id,
+                            userId,
+                            metadata: { username: recipient.username },
+                            createdBy: userId,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -369,11 +388,14 @@ export class NotificationAccountDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -412,22 +434,21 @@ export class NotificationAccountDomain {
 
     async processVerificationEmail(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationVerificationEmailEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const user = await this.userDomain.getOneActive(userId);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping verification email notification',
-                completedSteps,
+                    'Verification email notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -436,9 +457,10 @@ export class NotificationAccountDomain {
                         kind: EnumNotificationKind.verificationEmail,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
-                            createdBy: user.id,
+                            userId,
+                            metadata: { username: recipient.username },
+                            createdBy: userId,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -459,11 +481,14 @@ export class NotificationAccountDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendVerificationEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendVerificationEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -502,22 +527,21 @@ export class NotificationAccountDomain {
 
     async processVerifiedMobileNumber(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationVerifiedMobileNumberPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const user = await this.userDomain.getOneActive(userId);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping verified mobile number notification',
-                completedSteps,
+                    'Verified mobile number notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             const censoredMobileNumber = this.helperStringService.censor(
                 data.mobileNumber
@@ -530,12 +554,13 @@ export class NotificationAccountDomain {
                         kind: EnumNotificationKind.verifiedMobileNumber,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
+                            userId,
                             metadata: {
-                                username: user.username,
+                                username: recipient.username,
                                 mobileNumber: censoredMobileNumber,
                             },
-                            createdBy: user.id,
+                            createdBy: userId,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -556,11 +581,14 @@ export class NotificationAccountDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],

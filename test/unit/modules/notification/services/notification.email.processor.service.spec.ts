@@ -20,6 +20,7 @@ import type {
     INotificationEmailUnregisteredQueuePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
+    INotificationTermPolicyBatchRecipientEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceInviteUnregisteredEncryptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
@@ -42,7 +43,7 @@ describe('NotificationEmailProcessorService', () => {
     const send = {
         userId: 'user-id',
         notificationId: 'notification-id',
-        email: 'nadia@example.com',
+        encryptedEmail: 'cipher(nadia@example.com)',
         username: 'nadia',
         cc: [],
         bcc: [],
@@ -363,12 +364,22 @@ describe('NotificationEmailProcessorService', () => {
     });
 
     describe('processPublishTermPolicy', () => {
-        it('forwards data, batchId and proceedBy to the term-policy domain', async () => {
+        it('forwards data, batchId, proceedBy and recipients to the term-policy domain', async () => {
             const data: INotificationPublishTermPolicyPayload = {
                 termPolicyId: 'term-policy-id',
                 type: EnumTermPolicyType.privacy,
                 version: 2,
+                recipientCutoffAt: '2024-01-01T00:00:00.000Z',
             };
+            const recipients: INotificationTermPolicyBatchRecipientEncryptedPayload[] =
+                [
+                    {
+                        userId: 'user-1',
+                        notificationId: 'notification-1',
+                        encryptedEmail: 'cipher(nadia@example.com)',
+                        username: 'nadia',
+                    },
+                ];
             notificationEmailTermPolicyDomain.processPublishTermPolicy.mockResolvedValue(
                 response
             );
@@ -376,13 +387,13 @@ describe('NotificationEmailProcessorService', () => {
                 INotificationEmailBulkQueuePayload<typeof data>,
                 IQueueResponse,
                 EnumNotificationProcess
-            >({ data, batchId: 'batch-id', proceedBy: 'admin-id' });
+            >({ data, batchId: 'batch-id', proceedBy: 'admin-id', recipients });
 
             const result = await service.processPublishTermPolicy(job);
 
             expect(
                 notificationEmailTermPolicyDomain.processPublishTermPolicy
-            ).toHaveBeenCalledWith(data, 'batch-id', 'admin-id');
+            ).toHaveBeenCalledWith(data, 'batch-id', 'admin-id', recipients);
             expect(result).toBe(response);
         });
     });
@@ -419,7 +430,7 @@ describe('NotificationEmailProcessorService', () => {
     describe('processWorkspaceInviteUnregistered', () => {
         it('forwards send and data to the workspace domain', async () => {
             const unregisteredSend = {
-                email: 'invitee@example.com',
+                encryptedEmail: 'cipher-email',
                 cc: [],
                 bcc: [],
             };

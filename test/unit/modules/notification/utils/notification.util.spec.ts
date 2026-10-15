@@ -1,4 +1,12 @@
-import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationChannel,
+    EnumNotificationType,
+} from '@generated/prisma-client/client';
+import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
+import {
+    EnumNotificationKind,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 
 describe('NotificationUtil', () => {
@@ -44,6 +52,88 @@ describe('NotificationUtil', () => {
                 message: 'done',
                 completedSteps: [EnumNotificationStep.createNotification],
             });
+        });
+    });
+
+    describe('resolveChannels', () => {
+        const userActivityEmailOff = {
+            type: EnumNotificationType.userActivity,
+            channel: EnumNotificationChannel.email,
+            isActive: false,
+        };
+        const userActivityInAppOff = {
+            type: EnumNotificationType.userActivity,
+            channel: EnumNotificationChannel.inApp,
+            isActive: false,
+        };
+        const securityAlertEmailOff = {
+            type: EnumNotificationType.securityAlert,
+            channel: EnumNotificationChannel.email,
+            isActive: false,
+        };
+        const marketingEmailOff = {
+            type: EnumNotificationType.marketing,
+            channel: EnumNotificationChannel.email,
+            isActive: false,
+        };
+
+        it('returns every contract channel when the user has no setting rows', () => {
+            expect(
+                util.resolveChannels(EnumNotificationKind.workspaceInvite, [])
+            ).toEqual([
+                ...NotificationKindContract.workspaceInvite.pendingChannels,
+                ...NotificationKindContract.workspaceInvite.deliveredChannels,
+            ]);
+        });
+
+        it('drops a channel the user disabled for a configurable type', () => {
+            const channels = util.resolveChannels(
+                EnumNotificationKind.workspaceInvite,
+                [userActivityEmailOff]
+            );
+            expect(channels).not.toContain(EnumNotificationChannel.email);
+        });
+
+        it('drops inApp when disabled and keeps silent', () => {
+            const channels = util.resolveChannels(
+                EnumNotificationKind.welcome,
+                [userActivityInAppOff]
+            );
+            expect(channels).not.toContain(EnumNotificationChannel.inApp);
+            expect(channels).toContain(EnumNotificationChannel.silent);
+        });
+
+        it('returns no channel when only silent survives the disabled settings', () => {
+            expect(
+                util.resolveChannels(EnumNotificationKind.welcome, [
+                    userActivityEmailOff,
+                    userActivityInAppOff,
+                ])
+            ).toEqual([]);
+        });
+
+        it('ignores settings for a mandatory kind', () => {
+            expect(
+                util.resolveChannels(EnumNotificationKind.verificationEmail, [
+                    userActivityEmailOff,
+                ])
+            ).toContain(EnumNotificationChannel.email);
+        });
+
+        it('ignores settings for a non-configurable type', () => {
+            expect(
+                util.resolveChannels(EnumNotificationKind.newDeviceLogin, [
+                    securityAlertEmailOff,
+                ])
+            ).toContain(EnumNotificationChannel.email);
+        });
+
+        it('ignores a disabled row of another type', () => {
+            expect(
+                util.resolveChannels(EnumNotificationKind.workspaceInvite, [
+                    marketingEmailOff,
+                ])
+            ).toContain(EnumNotificationChannel.email);
         });
     });
 });

@@ -1,15 +1,16 @@
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import {
     EnumNotificationKind,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationEmailSendPayload,
+    INotificationEmailSendEncryptedPayload,
     INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
-    INotificationSendPushPayload,
+    INotificationRecipientEncryptedPayload,
+    INotificationSendPushEncryptedPayload,
     INotificationStepFailure,
     INotificationStepResult,
     INotificationTemporaryPasswordEncryptedPayload,
@@ -18,7 +19,6 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 
 /** Writes and fans out the password, two-factor and new-device login notifications. */
@@ -26,8 +26,6 @@ import { Injectable } from '@nestjs/common';
 export class NotificationSecurityDomain {
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly userDomain: UserDomain,
-        private readonly deviceDomain: DeviceDomain,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
         private readonly notificationUtil: NotificationUtil,
@@ -38,25 +36,21 @@ export class NotificationSecurityDomain {
     async processTemporaryPasswordByAdmin(
         userId: string,
         proceedBy: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationTemporaryPasswordEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping temporary password by admin notification',
-                completedSteps,
+                    'Temporary password by admin notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             const passwordExpiredAt = this.helperDateService.createFromIso(
                 data.passwordExpiredAt
@@ -69,12 +63,13 @@ export class NotificationSecurityDomain {
                         kind: EnumNotificationKind.temporaryPasswordByAdmin,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
+                            userId,
                             metadata: {
-                                username: user.username,
+                                username: recipient.username,
                                 passwordExpiredAt,
                             },
                             createdBy: proceedBy,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -95,11 +90,14 @@ export class NotificationSecurityDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -114,16 +112,16 @@ export class NotificationSecurityDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent =
                 this.notificationPushQueue.sendTemporaryPasswordByAdmin(
@@ -163,21 +161,20 @@ export class NotificationSecurityDomain {
 
     async processChangePassword(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const user = await this.userDomain.getOneActive(userId);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping change password notification',
-                completedSteps,
+                    'Change password notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -186,9 +183,10 @@ export class NotificationSecurityDomain {
                         kind: EnumNotificationKind.changePassword,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
-                            createdBy: user.id,
+                            userId,
+                            metadata: { username: recipient.username },
+                            createdBy: userId,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -209,11 +207,14 @@ export class NotificationSecurityDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -250,25 +251,21 @@ export class NotificationSecurityDomain {
 
     async processForgotPassword(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationForgotPasswordEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping forgot password notification',
-                completedSteps,
+                    'Forgot password notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -277,9 +274,10 @@ export class NotificationSecurityDomain {
                         kind: EnumNotificationKind.forgotPassword,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
-                            createdBy: user.id,
+                            userId,
+                            metadata: { username: recipient.username },
+                            createdBy: userId,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -300,11 +298,14 @@ export class NotificationSecurityDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -318,16 +319,16 @@ export class NotificationSecurityDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent =
                 this.notificationPushQueue.sendForgotPassword(pushPayload);
@@ -361,23 +362,20 @@ export class NotificationSecurityDomain {
 
     async processResetPassword(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
-                message: 'User not found, skipping reset password notification',
-                completedSteps,
+                message:
+                    'Reset password notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -386,9 +384,10 @@ export class NotificationSecurityDomain {
                         kind: EnumNotificationKind.resetPassword,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
-                            createdBy: user.id,
+                            userId,
+                            metadata: { username: recipient.username },
+                            createdBy: userId,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -409,11 +408,14 @@ export class NotificationSecurityDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -425,16 +427,16 @@ export class NotificationSecurityDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent =
                 this.notificationPushQueue.sendResetPassword(pushPayload);
@@ -469,24 +471,20 @@ export class NotificationSecurityDomain {
     async processResetTwoFactorByAdmin(
         userId: string,
         proceedBy: string,
+        recipient: INotificationRecipientEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping reset two factor by admin notification',
-                completedSteps,
+                    'Reset two factor by admin notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             try {
                 // Sequential by design: gate before the work it guards
@@ -495,9 +493,10 @@ export class NotificationSecurityDomain {
                         kind: EnumNotificationKind.resetTwoFactorByAdmin,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
-                            metadata: { username: user.username },
+                            userId,
+                            metadata: { username: recipient.username },
                             createdBy: proceedBy,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -518,11 +517,14 @@ export class NotificationSecurityDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -536,16 +538,16 @@ export class NotificationSecurityDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent =
                 this.notificationPushQueue.sendResetTwoFactorByAdmin(
@@ -581,25 +583,21 @@ export class NotificationSecurityDomain {
 
     async processNewDeviceLogin(
         userId: string,
+        recipient: INotificationRecipientEncryptedPayload,
         data: INotificationNewDeviceLoginPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
-            this.deviceDomain.getOwnershipsWithNotificationToken(userId),
-        ]);
-
-        if (!user) {
+        const done = [...completedSteps];
+        if (recipient.channels.length === 0) {
             return {
                 message:
-                    'User not found, skipping new device login notification',
-                completedSteps,
+                    'New device login notification skipped, no channel enabled',
+                completedSteps: done,
                 failedSteps: [],
             };
         }
 
-        const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.createNotification)) {
             const device = this.requestContextService.resolveDevice(
                 data.requestLog.userAgent
@@ -616,16 +614,17 @@ export class NotificationSecurityDomain {
                         kind: EnumNotificationKind.newDeviceLogin,
                         payload: {
                             id: notificationId,
-                            userId: user.id,
+                            userId,
                             metadata: {
-                                username: user.username,
+                                username: recipient.username,
                                 loginFrom: data.loginFrom,
                                 loginWith: data.loginWith,
                                 device,
                                 city,
                                 loginAt,
                             },
-                            createdBy: user.id,
+                            createdBy: userId,
+                            channels: recipient.channels,
                         },
                     },
                 ]);
@@ -646,11 +645,14 @@ export class NotificationSecurityDomain {
 
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
-        if (!done.includes(EnumNotificationStep.sendEmail)) {
-            const emailPayload: INotificationEmailSendPayload = {
-                userId: user.id,
-                email: user.email,
-                username: user.username,
+        if (
+            recipient.channels.includes(EnumNotificationChannel.email) &&
+            !done.includes(EnumNotificationStep.sendEmail)
+        ) {
+            const emailPayload: INotificationEmailSendEncryptedPayload = {
+                userId,
+                encryptedEmail: recipient.encryptedEmail,
+                username: recipient.username,
                 notificationId,
                 cc: [],
                 bcc: [],
@@ -664,16 +666,16 @@ export class NotificationSecurityDomain {
         }
 
         if (
-            devices.length > 0 &&
+            recipient.channels.includes(EnumNotificationChannel.push) &&
+            recipient.encryptedNotificationTokens.length > 0 &&
             !done.includes(EnumNotificationStep.sendPush)
         ) {
-            const pushPayload: INotificationSendPushPayload = {
+            const pushPayload: INotificationSendPushEncryptedPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices
-                    .map(d => d.device.notificationToken)
-                    .filter((t): t is string => t !== null),
-                username: user.username,
+                encryptedNotificationTokens:
+                    recipient.encryptedNotificationTokens,
+                username: recipient.username,
             };
             const pushSent = this.notificationPushQueue.sendNewDeviceLogin(
                 pushPayload,

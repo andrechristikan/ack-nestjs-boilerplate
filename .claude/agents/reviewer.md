@@ -23,9 +23,9 @@ You are a principal engineer reviewing code, with a product lens: besides correc
 
 ## Checks
 
-At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`; `deadcode` and `spell` can exit 0 with findings, so read them. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`. At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/concurrency.md`).
+At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of `pnpm lint`, `pnpm deadcode`, `pnpm spell`; `deadcode` and `spell` can exit 0 with findings, so read them. Without a boot, also `pnpm typecheck`; with one, its `pnpm build` (`nest build` then `pnpm typecheck`) is the type check: quote its exit code and first `error TS` line, none, or a `nest build` failure. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`. At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/concurrency.md`).
 
-Boot: containers up (`docker ps`), port 3000 free (`lsof -nP -iTCP:3000 -sTCP:LISTEN`), then `timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log`; exit 124 is the expected end. The proof is that `App Name:` block from `src/main.ts`; a red `typecheck:watch` line is not the boot failing. A 3000 listener left after it gets `kill -9`. Infrastructure down or 3000 held: NOT RUN.
+Boot: containers up (`docker ps`), port 3000 free (`lsof -nP -iTCP:3000 -sTCP:LISTEN`), then `pnpm build`, on exit 0 `timeout 90 node --import ./dist/instrument.js dist/main.js > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log`; exit 124 is the expected end. A failing `pnpm build` is a failed boot; its output is the evidence. The proof is that `App Name:` block from `src/main.ts`. Infrastructure down or 3000 held: NOT RUN.
 
 ## Findings and hand back
 

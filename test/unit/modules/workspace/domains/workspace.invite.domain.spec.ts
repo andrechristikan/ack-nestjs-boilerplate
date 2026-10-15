@@ -36,6 +36,9 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
@@ -63,6 +66,7 @@ import type {
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('WorkspaceInviteDomain', () => {
     const workspaceInviteRepository: MockProxy<WorkspaceInviteRepository> =
@@ -95,6 +99,8 @@ describe('WorkspaceInviteDomain', () => {
     });
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
+        mock<NotificationRecipientDomain>();
     const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
         mock<NotificationEmailQueue>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
@@ -237,6 +243,10 @@ describe('WorkspaceInviteDomain', () => {
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: ConfigService, useValue: configService },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationRecipientDomain,
+                    useValue: notificationRecipientDomain,
+                },
                 {
                     provide: NotificationEmailQueue,
                     useValue: notificationEmailQueue,
@@ -641,6 +651,10 @@ describe('WorkspaceInviteDomain', () => {
         it('creates the invite with two activity logs in order and notifies the existing user when it differs from the actor', async () => {
             const existingUser = { ...baseUser, id: 'user-9' };
             userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
+            notificationRecipientDomain.getRecipient.mockResolvedValue({
+                ...TestRecipient,
+                userId: existingUser.id,
+            });
             const createdActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
@@ -743,6 +757,36 @@ describe('WorkspaceInviteDomain', () => {
             expect(callOrder).toEqual(['createPending', 'stagePrepared']);
         });
 
+        it('creates nothing and stages nothing when the inviter name read rejects', async () => {
+            const error = new Error('inviter-unavailable');
+            userDomain.getNameById.mockRejectedValue(error);
+
+            const call = domain.createInvite(workspace, 'user-1', create);
+
+            await expect(call).rejects.toBe(error);
+            expect(
+                workspaceInviteRepository.createPending
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('creates nothing and stages nothing when the invitee recipient read rejects', async () => {
+            userDomain.getOneActiveByEmail.mockResolvedValue(baseUser);
+            userDomain.getNameById.mockResolvedValue(null);
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.createInvite(workspace, 'user-1', create);
+
+            await expect(call).rejects.toBe(error);
+            expect(
+                workspaceInviteRepository.createPending
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
         it('looks up the active project when a project id and role are given', async () => {
             const project = baseProject;
             projectDomain.getActiveByIdAndWorkspace.mockResolvedValue(project);
@@ -837,6 +881,111 @@ describe('WorkspaceInviteDomain', () => {
                     ],
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
+        });
+
+        it('rotates nothing when the invitee read rejects', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const error = new Error('invitee-unavailable');
+            userDomain.getOneActiveByEmail.mockRejectedValue(error);
+
+            const call = domain.resendInvite(
+                workspace,
+                'user-1',
+                'invite-1',
+                null
+            );
+
+            await expect(call).rejects.toBe(error);
+            expect(
+                workspaceInviteRepository.rotateForResend
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rotates nothing when the inviter name read rejects', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const error = new Error('inviter-unavailable');
+            userDomain.getNameById.mockRejectedValue(error);
+
+            const call = domain.resendInvite(
+                workspace,
+                'user-1',
+                'invite-1',
+                null
+            );
+
+            await expect(call).rejects.toBe(error);
+            expect(
+                workspaceInviteRepository.rotateForResend
+            ).not.toHaveBeenCalled();
+        });
+
+        it('starts the inviter name read before the invitee lookup resolves', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const lookup = Promise.withResolvers<User | null>();
+            userDomain.getOneActiveByEmail.mockReturnValue(lookup.promise);
+            userDomain.getNameById.mockResolvedValue(null);
+            workspaceInviteRepository.rotateForResend.mockResolvedValue(
+                baseInvite
+            );
+
+            const pending = domain.resendInvite(
+                workspace,
+                'user-1',
+                'invite-1',
+                null
+            );
+
+            await new Promise(setImmediate);
+
+            expect(userDomain.getOneActiveByEmail).toHaveBeenCalledWith(
+                baseInvite.email
+            );
+            expect(userDomain.getNameById).toHaveBeenCalledWith('user-1');
+            expect(
+                workspaceInviteRepository.rotateForResend
+            ).not.toHaveBeenCalled();
+
+            lookup.resolve(null);
+            await pending;
+
+            expect(
+                workspaceInviteRepository.rotateForResend
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('notifies the in-app recipient of an existing invitee', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const recipient: INotificationRecipient = {
+                ...TestRecipient,
+                userId: baseUser.id,
+            };
+            userDomain.getOneActiveByEmail.mockResolvedValue(baseUser);
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
+            workspaceInviteRepository.rotateForResend.mockResolvedValue(
+                baseInvite
+            );
+
+            await domain.resendInvite(workspace, 'user-1', 'invite-1', null);
+
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.workspaceInvite
+            );
+            expect(
+                notificationEmailQueue.sendWorkspaceInviteUnregistered
+            ).not.toHaveBeenCalled();
         });
 
         it('rotates the token, notifies, and returns the rotated invite', async () => {
@@ -1359,6 +1508,144 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
+    describe('getNotificationTarget', () => {
+        it('returns the inviter name and the awaited recipient', async () => {
+            const recipient: INotificationRecipient = {
+                ...TestRecipient,
+                userId: baseUser.id,
+            };
+            userDomain.getNameById.mockResolvedValue({
+                name: 'Jane Doe',
+                username: 'jane',
+            });
+
+            const result = await domain['getNotificationTarget'](
+                workspace,
+                'user-1',
+                Promise.resolve(recipient)
+            );
+
+            expect(userDomain.getNameById).toHaveBeenCalledWith('user-1');
+            expect(result).toEqual({ inviterName: 'Jane Doe', recipient });
+        });
+
+        it('falls back to the workspace name and a null recipient for an unregistered invitee', async () => {
+            userDomain.getNameById.mockResolvedValue(null);
+
+            const result = await domain['getNotificationTarget'](
+                workspace,
+                'user-1',
+                Promise.resolve(null)
+            );
+
+            expect(result).toEqual({
+                inviterName: workspace.name,
+                recipient: null,
+            });
+        });
+
+        it('falls back to the inviter username when the inviter has no name', async () => {
+            userDomain.getNameById.mockResolvedValue({
+                name: null,
+                username: 'jane',
+            });
+
+            const result = await domain['getNotificationTarget'](
+                workspace,
+                'user-1',
+                Promise.resolve(null)
+            );
+
+            expect(result.inviterName).toBe('jane');
+        });
+
+        it('starts the inviter name read while the recipient is pending', async () => {
+            const recipient =
+                Promise.withResolvers<INotificationRecipient | null>();
+            userDomain.getNameById.mockResolvedValue(null);
+
+            const pending = domain['getNotificationTarget'](
+                workspace,
+                'user-1',
+                recipient.promise
+            );
+
+            expect(userDomain.getNameById).toHaveBeenCalledWith('user-1');
+
+            recipient.resolve(null);
+            await pending;
+        });
+    });
+
+    describe('getInviteeRecipient', () => {
+        it('returns the in-app recipient of an existing user', async () => {
+            const recipient: INotificationRecipient = {
+                ...TestRecipient,
+                userId: baseUser.id,
+            };
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
+
+            const result = await domain['getInviteeRecipient'](baseUser);
+
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.workspaceInvite
+            );
+            expect(result).toBe(recipient);
+        });
+
+        it('returns null without a recipient read for an unregistered invitee', async () => {
+            const result = await domain['getInviteeRecipient'](null);
+
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).not.toHaveBeenCalled();
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('getInviteeRecipientByEmail', () => {
+        it('looks the user up by email and returns the in-app recipient', async () => {
+            const recipient: INotificationRecipient = {
+                ...TestRecipient,
+                userId: baseUser.id,
+            };
+            userDomain.getOneActiveByEmail.mockResolvedValue(baseUser);
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
+
+            const result = await domain['getInviteeRecipientByEmail'](
+                'invitee@example.com'
+            );
+
+            expect(userDomain.getOneActiveByEmail).toHaveBeenCalledWith(
+                'invitee@example.com'
+            );
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.workspaceInvite
+            );
+            expect(result).toBe(recipient);
+        });
+
+        it('returns null when no active user has the email', async () => {
+            userDomain.getOneActiveByEmail.mockResolvedValue(null);
+
+            const result = await domain['getInviteeRecipientByEmail'](
+                'invitee@example.com'
+            );
+
+            expect(result).toBeNull();
+        });
+    });
+
     describe('sendInviteNotification', () => {
         const invite = baseInvite;
         const tokenData = {
@@ -1376,23 +1663,22 @@ describe('WorkspaceInviteDomain', () => {
             );
         });
 
-        it('sends the in-app invite to an existing user', async () => {
-            const existingUser = baseUser;
-            userDomain.getNameById.mockResolvedValue({
-                name: 'Jane Doe',
-                username: 'jane',
-            });
+        it('sends the in-app invite when the target carries a recipient', async () => {
+            const recipient: INotificationRecipient = {
+                ...TestRecipient,
+                userId: baseUser.id,
+            };
 
             await domain['sendInviteNotification'](
                 workspace,
                 invite,
                 tokenData,
                 'user-1',
-                existingUser
+                { inviterName: 'Jane Doe', recipient }
             );
 
             expect(notificationQueue.sendWorkspaceInvite).toHaveBeenCalledWith(
-                existingUser.id,
+                recipient,
                 expect.objectContaining({
                     inviteAcceptLink: tokenData.claimLink,
                     inviterName: 'Jane Doe',
@@ -1404,15 +1690,13 @@ describe('WorkspaceInviteDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('falls back to the inviter username, then the workspace name, and emails the unregistered invitee', async () => {
-            userDomain.getNameById.mockResolvedValue(null);
-
+        it('emails the unregistered invitee when the target carries no recipient', async () => {
             await domain['sendInviteNotification'](
                 workspace,
                 invite,
                 tokenData,
                 'user-1',
-                null
+                { inviterName: workspace.name, recipient: null }
             );
 
             expect(
@@ -1427,28 +1711,6 @@ describe('WorkspaceInviteDomain', () => {
             expect(
                 notificationQueue.sendWorkspaceInvite
             ).not.toHaveBeenCalled();
-        });
-
-        it('falls back to the inviter username when the inviter has no name', async () => {
-            userDomain.getNameById.mockResolvedValue({
-                name: null,
-                username: 'jane',
-            });
-
-            await domain['sendInviteNotification'](
-                workspace,
-                invite,
-                tokenData,
-                'user-1',
-                null
-            );
-
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).toHaveBeenCalledWith(
-                invite.email,
-                expect.objectContaining({ inviterName: 'jane' })
-            );
         });
     });
 });
