@@ -155,7 +155,7 @@ Publishing is the one admin action that fans out to every user. It ends in one `
 - The job targets every non-deleted user created at or before the publish, whatever the user's status.
     - `recipientCutoffAt` rides in the job payload as the ISO form of the policy's `publishedAt`, so a retry or a repeat publish request keeps the same cutoff.
     - A user created after `publishedAt` is outside the recipient set.
-    - The `User` index on `[deletedAt, createdAt]` serves this filter.
+    - The `User` index on `[deletedAt, createdAt desc, id desc]` serves this filter.
     - Each user gets one marker per term policy, which stops a duplicate `Notification` row and a second batch.
     - A repeat send is possible at the SES boundary when the `sentAt` update fails or the worker stalls after the send. See [Notification Documentation][ref-doc-notification].
     - A user's notification setting does not apply.

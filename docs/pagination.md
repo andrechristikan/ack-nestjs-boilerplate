@@ -22,7 +22,7 @@ Ordering support is split across three levels:
     - `ResponsePaginationInterceptor` performs the conversion.
     - It holds the order `PaginationQueryUtil` resolved: the requested order, or the default `createdAt:desc` (`PaginationDefaultOrderBy`) when the request gives no `orderBy` or an empty one.
     - A list with no sort allow-list declares no `orderBy`, so it always reports `["createdAt:desc"]`.
-    - The cursor tiebreaker is not part of it (see [Ordering](#ordering)).
+    - The tiebreaker `offset()` and `cursor()` append is not part of it (see [Ordering](#ordering)).
     - An empty order renders `[]` only when the HTTP service merged no pagination state into the request store.
 
 List query parsing is zod on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service.
@@ -148,6 +148,7 @@ async offset<TReturn, TArgsWhere = unknown>(
 **`args.orderBy` Support:**
 
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
+- Before it queries, `offset()` appends `{ id: <direction> }` to the resolved `orderBy`, unless a term already names `id` (see the Ordering Tiebreaker in [Ordering](#ordering)).
 
 **Default Values:**
 
@@ -254,12 +255,9 @@ The encoded cursor is URL-safe base64 over exactly two fields, and nothing else:
 
 **Cursor Field Tiebreaker:**
 
-- Before it queries and before it fingerprints, `cursor()` appends `{ [cursorField]: <direction> }` to the resolved `orderBy`.
-    - The direction is copied from the last ordering term, so the tiebreaker never fights the primary sort.
-    - It is skipped when the client already sorts on `cursorField`.
+- Before it queries and before it fingerprints, `cursor()` appends `{ [cursorField]: <direction> }` to the resolved `orderBy`, unless a term already names `cursorField` (see the Ordering Tiebreaker in [Ordering](#ordering)).
 - The tiebreaker is what makes the position stable.
     - When the sort key is not unique (several rows sharing one `createdAt`), the cursor row has no deterministic place in the result set, and pages can repeat or skip records.
-    - `offset()` does not do this, because it anchors on a row count, not on a row.
 - Because the tiebreaker is part of the `orderBy` that gets fingerprinted, it is also part of what a cursor is bound to.
 
 **Returns:**
@@ -507,6 +505,7 @@ Cursor routes also constrain what they will sort on:
 - Slower with large offsets
 - Predictable page numbers
 - Affected by inserts/deletes during pagination
+- The appended `id` tiebreaker keeps rows that share a sort key in one order from page to page
 
 **Constraints:**
 
@@ -548,7 +547,7 @@ The pagination fields sit inside the `metadata` block of the standard response e
 **How It Works:**
 
 1. The service resolves `orderBy`, appends the `cursorField` tiebreaker, and hashes the canonicalized `{ where, orderBy }` into a 16-hex-character fingerprint
-2. It reads `limit + 1` rows to decide `hasNext`, then encodes the last returned row's id and that fingerprint as `{ cursor, fingerprint }`
+2. It reads `limit + 1` rows to decide `hasNext`, then encodes the last returned row's `cursorField` value and that fingerprint as `{ cursor, fingerprint }`
 3. On the next request it recomputes the fingerprint and compares it to the `fingerprint` in the supplied cursor
 4. A mismatch throws `PaginationInvalidCursorPaginationParamsException`, so a client cannot page on with a filter or an ordering that has since changed
 
@@ -706,8 +705,8 @@ orderBy: [{ createdAt: 'desc' }, { name: 'asc' }];
 - All `orderBy` values passed to the service are arrays.
 - The single-element array `[{ createdAt: 'desc' }]` is the typical default.
 - Cursors do not carry the `orderBy` itself, only a fingerprint of it.
-- With no `orderBy` in the request, or an empty one, the util resolves `PaginationDefaultOrderBy` and stores it, so the default is both applied and reported.
-- On a cursor route the util stores the resolved order before `PaginationService.cursor` appends the `cursorField` tiebreaker, so `metadata.orderBy` never includes the tiebreaker, while the query and the fingerprint do.
+- On the HTTP path, `PaginationQueryUtil` resolves the order from the request: with no `orderBy`, or an empty one, it resolves `PaginationDefaultOrderBy` and stores it, so the default is both applied and reported.
+- The util stores the resolved order before `PaginationService.offset` or `PaginationService.cursor` appends the tiebreaker, so `metadata.orderBy` never includes it on either route. The query carries it on both routes, and the cursor fingerprint covers it.
 
 **Response Metadata Format:**
 
@@ -715,13 +714,22 @@ orderBy: [{ createdAt: 'desc' }, { name: 'asc' }];
 "orderBy": ["createdAt:desc", "name:asc"]
 ```
 
-- The response reports the applied ordering back in the same `field:direction` format the query accepts, not in the internal object form.
+- The response reports the resolved ordering, without the tiebreaker, in the same `field:direction` format the query accepts, not in the internal object form.
 - A client can echo `metadata.orderBy` back as repeated `?orderBy=` params only when the list's allow-list names every reported field.
     - The reported default `createdAt:desc` is accepted only where `createdAt` is in the allow-list.
     - A list with no sort allow-list reports `["createdAt:desc"]` and declares no `orderBy`, so echoing it answers 422.
-    - The cursor tiebreaker is not reported, so it never blocks an echo.
+    - The tiebreaker is not reported, so it never blocks an echo.
 - An empty order renders `[]` only when the HTTP service merged no pagination state into the request store.
 - `metadata.availableOrderBy` lists the fields the route accepts, so a client reads the allowed sorts from any page. It is a required metadata field: a list with no sort allow-list reports `[]`.
+
+**Ordering Tiebreaker:**
+
+- `PaginationService` resolves the order for `offset()` and `cursor()` through one private `resolveOrderBy(orderBy, tiebreakField)`.
+    1. An empty `orderBy` becomes `PaginationDefaultOrderBy`. The HTTP path has already resolved the default in `PaginationQueryUtil`, so this step applies when a caller passes an empty `orderBy` straight to `offset()` or `cursor()`.
+    2. Unless a term already names `tiebreakField`, it appends `{ [tiebreakField]: <direction> }`.
+    3. The direction is copied from the last ordering term.
+- The tiebreak field is `id` (`PaginationDefaultCursorField`) for `offset()` and the route's `cursorField` for `cursor()`.
+- Rows that share a sort key come back in one order on every request.
 
 **Field Allow-list:**
 

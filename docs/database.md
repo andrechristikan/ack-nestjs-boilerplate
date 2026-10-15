@@ -390,23 +390,24 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
     - `sentAt` is `null` until SES reports `Success`.
     - `createdAt`, `createdBy`, `updatedAt`, and `updatedBy` are the audit fields.
 - `@@unique([termPolicyId, userId])` allows one marker per user and term policy.
-- `@@index([termPolicyId, batchId])` serves the reads of one batch.
+- `@@index([termPolicyId, batchId, userId])` serves the reads of one batch.
+- `@@index([userId])` serves the markers of one user.
 - `user` relates the row to `User` through `userId`.
 - `User.termPolicyRecipients` is the back relation.
 - The publication flow that reads and writes the markers: [Notification Documentation][ref-doc-notification].
 
 **`User` indexes** besides the unique `username` and `email`:
 
-- `[id, deletedAt]`
-- `[email, deletedAt]`
-- `[status, deletedAt, createdAt desc]`
-- `[roleId, status, deletedAt]`
-- `[countryId, status, signUpAt desc]`
+- `[deletedAt, createdAt desc, id desc]`
+- `[deletedAt, name, id]`
+- `[status, deletedAt, createdAt desc, id desc]`
+- `[roleId, deletedAt, createdAt desc, id desc]`
+- `[countryId, deletedAt, createdAt desc, id desc]`
 - `[signUpAt desc]`
 - `[deletedAt, signUpAt desc]`
-- `[deletedAt, createdAt]`
+- `[deletedAt, passwordAttempt]`
 
-`[deletedAt, createdAt]` serves the term-policy recipient cursor, which reads live users created at or before the publication cutoff.
+`[deletedAt, createdAt desc, id desc]` serves the term-policy recipient cursor, which reads live users created at or before the publication cutoff.
 
 ## Composite Types
 

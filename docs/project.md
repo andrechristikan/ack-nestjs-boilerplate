@@ -60,6 +60,7 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 
 - `@@unique([workspaceId, slug])`
 - `@@index([workspaceId, deletedAt, createdAt desc, id desc])`
+- `@@index([createdAt desc, id desc])`
 
 `ProjectResponseSchema` declares every audit column, `deletedBy` included, so each project row in a response carries it.
 

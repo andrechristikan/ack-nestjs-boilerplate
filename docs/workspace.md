@@ -68,9 +68,10 @@ The module covers four things:
 
 - `@@unique([slug])`
 - Indexes:
-    - `[isPublic, deletedAt, createdAt desc]`
-    - `[deletedAt, createdAt desc, id desc]`
-    - `[deletedAt, name]`
+    - `[isPublic, createdAt desc, id desc]` serves the admin list filtered by `isPublic` in the default `createdAt` order.
+    - `[deletedAt, createdAt desc, id desc]` serves the live-row reads in `createdAt` order: the user's workspace list, which reads `Workspace` with `members: { some: { userId } }` under the active filter, and the analytic counts.
+    - `[name, id]` serves the admin list sorted by `name`.
+    - `[createdAt desc, id desc]` serves the admin list in the default order with no filter.
 
 `WorkspaceResponseSchema` declares every audit column, `deletedBy` included, so each workspace row in a response carries it.
 
@@ -84,7 +85,14 @@ Fields:
 - `workspaceId`, `userId`, `role` (`EnumWorkspaceMemberRole`), `joinedAt`
 - plus the audit columns
 
+Constraints:
+
 - `@@unique([workspaceId, userId])`
+- Indexes:
+    - `[userId, role]` serves the per-user member reads: the count of workspaces a user owns, and the `userId` match in the user's workspace list.
+    - `[workspaceId, role, createdAt desc, id desc]` serves the member list filtered by `role` in the default order, and the owner count and reviewer lookups of one workspace.
+    - `[workspaceId, createdAt desc, id desc]` serves the member list of one workspace in the default order.
+    - `[workspaceId, joinedAt, id]` serves the member list sorted by `joinedAt`.
 - No soft-delete columns: removing a member is a hard delete.
 
 A member row is created with `createdBy` and `updatedBy` set to the same user:
@@ -101,8 +109,16 @@ Fields:
 - `token`, `reference`, `expiredAt`, `status`
 - `invitedByUserId`, `acceptedAt`, `acceptedByUserId`
 
+Constraints:
+
 - `@@unique([token])`
 - `@@unique([reference])`
+- Indexes:
+    - `[workspaceId, status, createdAt desc, id desc]` serves the invite list filtered by `status` in the default order, and the bulk expiry of a workspace's pending invites.
+    - `[workspaceId, createdAt desc, id desc]` serves the invite list of one workspace in the default order.
+    - `[email, status]` serves the pending-invite check by invitee `email` and `status`.
+    - `[status, expiredAt]` serves the expiry sweep that flips pending invites past `expiredAt` to `expired`.
+    - `[projectId]` backs the `projectId` foreign key; no current query filters on it.
 
 **`token` stores the SHA-256 hash, never the plain token.**
 
@@ -112,6 +128,12 @@ Fields:
 ### `WorkspaceJoinRequest` (`WorkspaceJoinRequests`)
 
 `workspaceId`, `userId`, `status`, optional `message`, `rejectReasonCode`, `reviewedByUserId`, `reviewedAt`.
+
+Indexes:
+
+- `[workspaceId, status, createdAt desc, id desc]` serves the join-request list filtered by `status` in the default order, and the bulk cancel of a workspace's pending requests.
+- `[workspaceId, createdAt desc, id desc]` serves the join-request list of one workspace in the default order.
+- `[userId, status]` serves the pending-request check by `userId` and `status`.
 
 ### Enums
 
