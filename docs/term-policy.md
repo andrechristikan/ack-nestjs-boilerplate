@@ -178,7 +178,11 @@ Publish:
 - The status update matches the policy only while it is `draft`, so one of two concurrent publishes commits.
     - The losing publish queues nothing. Its initial read still saw a `draft`, so it has already copied the content to the public bucket when the guarded update runs inside the transaction.
     - It answers `400` (`statusInvalid`) from that update when the update runs after the winner commits.
-    - It answers `409` (`DatabaseWriteConflictException`, `51801`) instead when the two transactions overlap: MongoDB raises a write conflict (`P2034`) and nothing retries it.
+    - It answers `400` (`statusInvalid`) as well when the two transactions overlap: MongoDB raises a write conflict (`P2034`), nothing retries it, and `publishByAdmin` maps `DatabaseWriteConflictException` to `TermPolicyStatusInvalidException`, never `409`.
+- A write conflict inside the publish transaction can also come from a concurrent write to a user, because the acceptance reset updates every non-deleted user.
+    - The transaction rolls back, the policy stays `draft`, and nothing is staged or queued.
+    - The request answers `400` (`statusInvalid`), and the admin publishes again.
+    - Any other database error keeps its mapping: an unavailable database answers `503` through `AppUnknownException` and the general filter.
 - The copy to the public bucket must return a file for every language of the draft.
     - A copy that matches no content, or a language with no copy, throws before the transaction and the request answers `500`.
     - The policy stays `draft`, so a partial copy set never publishes.
@@ -433,6 +437,7 @@ Publishing a draft:
 - a policy with no content returns `400` (`contentEmpty`)
 - a stored content with an unknown language or access returns `500` (`contentInvalid`)
 - a copy set that misses a language returns `500` and leaves the policy `draft`
+- a write conflict in the publish transaction returns `400` (`statusInvalid`), leaves the policy `draft`, and queues nothing: publish again
 - a failed enqueue returns `500` after the commit: the policy stays `published`, the acceptances stay reset, and the `adminTermPolicyPublish` row is written. [Resend Email](#resend-email) recovers it
 
 Publishing a policy that is already published returns `400` (`statusInvalid`) and changes nothing.

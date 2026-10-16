@@ -519,9 +519,10 @@ The enqueue is a plain `add`:
 What the publish guarantees:
 
 - The `updateMany` separates two concurrent publishes of one draft: one commits.
-- The losing publish answers one of two ways:
-    - `400` (`statusInvalid`) when its `updateMany` runs after the winner commits.
-    - `409` (`DatabaseWriteConflictException`, `51801`) when the two transactions overlap. MongoDB raises a write conflict (`P2034`) and nothing retries it (see [Database][ref-doc-database]).
+- The losing publish answers `400` (`statusInvalid`) in both cases:
+    - when its `updateMany` runs after the winner commits.
+    - when the two transactions overlap. MongoDB raises a write conflict (`P2034`), nothing retries it, and `TermPolicyDomain` maps `DatabaseWriteConflictException` to `TermPolicyStatusInvalidException` (see [Database][ref-doc-database]).
+- A write conflict from a concurrent user write during the acceptance reset gets the same answer: the policy stays `draft`, nothing is queued, and the admin publishes again.
 - A copy set that misses a language of the draft throws before the transaction. The request answers `500` and the policy stays `draft`, so a partial copy set never publishes.
 - A failed queue call answers `500`.
 - The marker unique on `termPolicyId` and `userId` stops a duplicate `Notification` row and a second batch for one user.

@@ -16,6 +16,8 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { FileService } from '@common/file/services/file.service';
@@ -956,7 +958,7 @@ describe('TermPolicyDomain', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('wraps a write conflict in AppUnknownException so the filter answers 409', async () => {
+        it('throws TermPolicyStatusInvalidException and stages and queues nothing when the transaction hits a write conflict', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
@@ -968,14 +970,24 @@ describe('TermPolicyDomain', () => {
                 { code: 'P2034', clientVersion: 'test' }
             );
             databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
 
             await expect(
                 domain.publishByAdmin('term-policy-1', 'user-1')
             ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: conflict,
+                constructor: TermPolicyStatusInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.statusInvalid
+                    ],
+                messagePath: 'termPolicy.error.statusInvalid',
             });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy
             ).not.toHaveBeenCalled();
@@ -993,6 +1005,7 @@ describe('TermPolicyDomain', () => {
                 clientVersion: 'test',
             });
             databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 domain.publishByAdmin('term-policy-1', 'user-1')
@@ -1001,6 +1014,36 @@ describe('TermPolicyDomain', () => {
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: cause,
             });
+        });
+
+        it('wraps a mapped database error that is not a write conflict in AppUnknownException and queues nothing', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentPublicPath.mockReturnValue(
+                'public/term-policies/privacy/1'
+            );
+            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
+            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+            const cause = new Prisma.PrismaClientKnownRequestError(
+                'unavailable',
+                { code: 'P2024', clientVersion: 'test' }
+            );
+            databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseUnavailableException()
+            );
+
+            await expect(
+                domain.publishByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: cause,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(cause);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendPublishTermPolicy
+            ).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyNotFoundException and queues nothing when the published row cannot be read back', async () => {

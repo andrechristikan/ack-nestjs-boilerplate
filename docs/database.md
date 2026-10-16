@@ -695,8 +695,8 @@ The module also owns three typed errors (`enums/database.status-code.enum.ts`):
 
 - `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 409, message `database.error.uniqueValueGenerationFailed`) is thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
 - `DatabaseWriteConflictException` (`51801`, HTTP 409, message `database.error.writeConflict`) is the mapped form of a Prisma `P2034` write conflict. A write conflict is not retried.
-    - A guarded state transition inside a transaction can lose to a concurrent winner as a write conflict, so the loser answers the guard's own 4xx or this 409.
-    - A term policy publish is the example: `400` (`statusInvalid`) or `409`.
+    - A guarded state transition inside a transaction can lose to a concurrent winner as a write conflict, so the loser answers the guard's own 4xx or this 409, unless the domain maps the conflict to its own exception.
+    - A term policy publish is the example: `TermPolicyDomain.publishByAdmin` maps the conflict to `TermPolicyStatusInvalidException`, so the loser answers `400` (`statusInvalid`), never `409`. Every other write conflict answers `409`.
 - `DatabaseUnavailableException` (`51802`, HTTP 503, message `database.error.unavailable`) is the mapped form of a Prisma initialization error or a connection-failure code.
 
 `DatabaseUtil.toException(error)` returns the mapped exception or `null`, and `AppGeneralFilter` renders it, also when a layer has wrapped the Prisma error in `AppUnknownException`. See [Handling Error](handling-error.md).
