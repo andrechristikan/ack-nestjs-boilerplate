@@ -36,7 +36,7 @@ Code lives in two places:
     - [Adding Jobs to Queue](#adding-jobs-to-queue)
     - [Producer Decisions in Job Data](#producer-decisions-in-job-data)
     - [Job Options](#job-options)
-    - [Re-adding a Job by Id](#re-adding-a-job-by-id)
+    - [Fixed Job Ids](#fixed-job-ids)
 - [Creating New Queue](#creating-new-queue)
 - [Creating New Processor](#creating-new-processor)
 - [QueueProcessorBase](#queueprocessorbase)
@@ -202,12 +202,16 @@ export class NotificationPushQueue {
 }
 ```
 
-A deduplication id is a `{token}` pattern from `src/modules/notification/constants/notification.constant.ts`, filled by `HelperStringService.fillPattern`.
+A deduplication id or a `jobId` is a `{token}` pattern from `src/modules/notification/constants/notification.constant.ts`, filled by `HelperStringService.fillPattern`.
 
 - `NotificationUserJobIdPattern` is `{process}-{userId}`.
 - The other patterns key by invite reference, workspace and user, or user and term policy.
-- The two term-policy publication patterns, `{process}-{termPolicyId}` and `{process}-{termPolicyId}-{batchId}`, fill a BullMQ `jobId` instead and carry no deduplication TTL.
-- `NotificationStepJobIdPattern` is `{notificationId}-{step}`. It fills the `jobId` of a push job, of a cleanup job, and of an email job for a recipient with an account, so one notification enqueues each step once.
+- The term-policy publication patterns fill a BullMQ `jobId` instead and carry no deduplication TTL:
+    - `{process}-{termPolicyId}` for the publication job.
+    - `{process}-{termPolicyId}-{batchId}` for an email batch job.
+    - `{process}-{termPolicyId}-{resendNonce}` for the resend job.
+    - `{process}-{termPolicyId}-{batchId}-{resendNonce}` for an email batch job of a resend.
+- `NotificationStepJobIdPattern` is `{notificationId}-{step}`. It fills the `jobId` of a push job, of a cleanup job, and of an email job for a recipient with an account, so one notification enqueues each step once while the job keeps its id (7 days after completion, 14 days after failure).
 
 A sensitive payload field is sealed by the queue class with `HelperEncryptionService` and named `encrypted<Field>`: a generated password, a link, a recipient email address, and device notification tokens.
 
@@ -239,16 +243,16 @@ A recipient set too large for a payload carries a fixed bound taken from a store
 
 1. The publication processor is the producer of its batch jobs, so its user paging is the enqueue-time read for them, not a consumer re-read.
     - It takes no recipient snapshot.
-    - It reads users a page of `email.batchSize` (`src/configs/email.config.ts`, 50) at a time in id order.
+    - It reads active users a page of `email.batchSize` (`src/configs/email.config.ts`, 50) at a time in id order.
 2. The processor applies no notification settings. Each `Notification` row it creates carries every channel of the kind.
 3. For each page it creates the `Notification` rows and the `TermPolicyRecipient` markers for users without a marker, and it seals the address of each recipient into an email batch job.
     - The new rows of one page form one batch job of at most `email.batchSize` recipients.
-    - A retry also re-adds each batch of that page whose markers still lack `enqueuedAt`.
+    - A later attempt or a resend also adds each batch of that page that still has sendable markers (`sentAt` and `claimedAt` null).
     - A batch job carries its recipients, so the email processor does not read users.
 4. The bound is `recipientCutoffAt`, the policy's stored `publishedAt`.
     - `TermPolicyDomain` writes it into the publication job data when it enqueues the job.
     - The processor takes it from the job data and does not read the policy, so every attempt uses the same value.
-    - `publishedAt` is written once, when a draft is published, and a re-publish of a published policy writes nothing.
+    - `publishedAt` is written once, when a draft is published. A published policy cannot be published again, and a resend job carries the stored value.
 5. The cutoff is inclusive: a user qualifies when `createdAt` is at or before it. A user created after `publishedAt` never qualifies for that policy's publication.
 
 The job also reads and updates state at run time, and that state is not a decision field:
@@ -257,7 +261,7 @@ The job also reads and updates state at run time, and that state is not a decisi
     - In a push job the two token fields are the only step state that may be `null`: each holds progress, so it has no value at enqueue, while the decision fields are always set.
     - An orchestration job holds `completedSteps` alone, always an array. The bulk publication job holds no step state.
     - An email job carries no step state.
-- Step state on the `TermPolicyRecipient` marker: the publication processor stamps `enqueuedAt`, and the email processor reads `sentAt` to skip a recipient already sent and stamps it after a successful send.
+- Step state on the `TermPolicyRecipient` marker: the email processor claims the sendable markers (`claimedAt`, `claimNonce`), stamps `sentAt` after a successful send, and releases the claim after a definite SES failure. A claimed marker is never claimed again.
 
 Two jobs read at run time by design, because they decide from the current time or purge idempotently:
 
@@ -306,36 +310,33 @@ For example, the `notificationEmail` queue:
 - A single `add()` call overrides any of these options for that job.
 - `keepLogs` retains the BullMQ `job.log` lines the base writes for that retention window.
 
-### Re-adding a Job by Id
+### Fixed Job Ids
 
-BullMQ ignores an `add` whose `jobId` still exists in the queue. A queue method that must re-run a job under a stable id reads the existing job first and decides by its state.
+A fixed `jobId` enqueue is a plain `add`:
 
-`NotificationQueue.sendPublishTermPolicy` is the one such method. It uses the `jobId` `publishTermPolicy-{termPolicyId}`:
+- BullMQ ignores the `add` while a job holds that id and raises no error.
+- A completed job keeps its id for `removeOnCompleteAgeInSeconds` (7 days) and a failed job for `removeOnFailAgeInSeconds` (14 days), from `queue.job.*` in `src/configs/queue.config.ts`. After that age the id can be added again.
+- No producer calls `getJob`, `getState`, `retry`, or `remove`, and no caller branches on the result of an `add`.
 
-1. `getJob(jobId)` returns the existing job, or none.
-2. With no job, it adds one.
-3. With a job, `getState()` is switched on `EnumQueueJobState`:
-    - `failed`: `retry(EnumQueueJobState.failed, { resetAttemptsMade: true })` puts the job back with its attempt count reset. A `JobNotInState` error from BullMQ means the job left `failed` in the meantime and is treated as in progress.
-    - `waiting`, `prioritized`, `delayed`, `active`, `waitingChildren`: the method throws `TermPolicyPublishInProgressException` (`409`, `51510`) and adds nothing. The `term-policy` module owns that exception and its code (`EnumTermPolicyStatusCodeError.publishInProgress`).
-    - `completed`, `unknown`: `remove()` deletes the old job, then a new one is added under the same id.
+`NotificationQueue.sendPublishTermPolicy` adds the publication job under the `jobId` `publishTermPolicy-{termPolicyId}`. A second add for the same term policy is ignored while the first job exists.
 
-Any other error from the retry is wrapped in `AppUnknownException` and answers `500`. The effect on users and markers is in [Notification][ref-doc-notification].
+**Resend.** An operator-triggered re-run puts a fresh nonce in every job id it adds, so no id collides with an earlier run:
 
-The read and the add are two separate Redis calls with no lock around them:
+1. `NotificationQueue.sendResendPublishTermPolicy` mints the nonce with `DatabaseUtil.createId()`.
+2. It adds the `resendPublishTermPolicy` job under `resendPublishTermPolicy-{termPolicyId}-{resendNonce}` (`NotificationTermPolicyResendJobIdPattern`).
+3. The nonce rides in the job data as `resendNonce`, which is `null` for a publication.
+4. The fan-out adds each email batch job under `publishTermPolicy-{termPolicyId}-{batchId}-{resendNonce}` (`NotificationTermPolicyBatchResendJobIdPattern`). The job name stays `publishTermPolicy`.
 
-- Two simultaneous first publishes both see no job, and both call `add` with the same `jobId`.
-- BullMQ ignores the second `add` because the `jobId` already exists, and raises no error.
-- The second caller therefore gets a success answer, not `TermPolicyPublishInProgressException`, although its own `add` created nothing.
-- The same window exists between `remove()` and the new `add` of a completed job.
+**Per-batch email jobs.** `NotificationEmailQueue.sendPublishTermPolicyBatch` adds one job per recipient batch under the `jobId` `publishTermPolicy-{termPolicyId}-{batchId}`, or the resend id above when `resendNonce` is set, with a `delay` of `index * email.batchDelayInMs`. It checks no job state:
 
-**Per-batch email jobs.** `NotificationEmailQueue.sendPublishTermPolicyBatch` adds one job per recipient batch under the `jobId` `publishTermPolicy-{termPolicyId}-{batchId}`, with a `delay` of `index * email.batchDelayInMs`. It checks no job state, so BullMQ's duplicate rule decides a re-publish:
-
-1. A re-publish runs `processPublishTermPolicy` again, and users that already hold a recipient marker are skipped.
-2. A batch whose markers carry no `enqueuedAt` is added again under its stored `batchId`, with its recipients rebuilt from the users and sealed again.
+1. A later attempt of the fan-out job runs `processPublishTermPolicy` again, and users that already hold a recipient marker are skipped.
+2. A batch with sendable markers is added again under its stored `batchId`, with its recipients rebuilt from the active users and sealed again.
     - BullMQ ignores that `add` while a job with the id still exists in the email queue (waiting, delayed, active, or kept after completion or failure).
     - Once the old job has expired, the same `add` creates a new job.
-3. A batch already marked enqueued is not added again.
+3. A batch whose markers are all claimed or sent is not added again.
 4. Users with no marker form a new batch with a new `batchId`, so they get a new job.
+
+The `jobId` does not decide delivery. A job that runs twice sends to a recipient at most once, because the email job claims the marker before the send (see [Notification][ref-doc-notification]).
 
 ## Creating New Queue
 
@@ -435,7 +436,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 `handle` is the dispatcher:
 
 - It switches on `job.name` and awaits a `*.processor.service.ts` method.
-- Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` and `NotificationPushProcessor` map `HelperDecryptFailedException` to BullMQ `UnrecoverableError`).
+- Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` and `NotificationPushProcessor` map `HelperDecryptFailedException` to BullMQ `UnrecoverableError`, and `NotificationEmailProcessor` does the same for `NotificationEmailDeliveryUnknownException`).
 - The subclass implements `handle` only. `QueueProcessorBase` owns `process`, Nest failure logging, and `job.log`.
 
 The second argument of `@QueueProcessor` is `IQueueProcessorOptions`:

@@ -208,9 +208,9 @@ export class LoggerUtil {
         };
     }
 
-    serializeError(error: Error): Record<string, unknown> {
+    serializeError(error: Error, depth = 0): Record<string, unknown> {
         const message = this.sanitizeMessage(error.message);
-        const defaultError = {
+        const defaultError: Record<string, unknown> = {
             type: error.name,
             message,
             code: (error as unknown as { status?: number })?.status,
@@ -222,12 +222,20 @@ export class LoggerUtil {
 
         if (error instanceof HttpException) {
             const response = error.getResponse() as { _error?: unknown };
-            return {
-                ...defaultError,
-                stack: response._error
-                    ? String(response._error)
-                    : defaultError.stack,
-            };
+            defaultError.stack = response._error
+                ? String(response._error)
+                : defaultError.stack;
+        }
+
+        if (error.cause !== undefined && depth < LoggerRedactMaxDepth) {
+            const cause: unknown = error.cause;
+            if (cause instanceof Error) {
+                const serializedCause = this.serializeError(cause, depth + 1);
+                defaultError.cause = serializedCause;
+            } else {
+                const redactedCause = this.redactValue(cause);
+                defaultError.cause = redactedCause;
+            }
         }
 
         return defaultError;

@@ -25,5 +25,9 @@ export abstract class AppBaseException extends Error {
         this.messageProperties = options?.messageProperties ?? null;
         this.metadata = options?.metadata ?? null;
         this.rawError = options?.rawError ?? null;
+
+        if (this.rawError !== null) {
+            this.cause = this.rawError;
+        }
     }
 }

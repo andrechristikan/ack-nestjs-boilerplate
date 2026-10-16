@@ -91,6 +91,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                     >
                 );
             case EnumNotificationProcess.publishTermPolicy:
+            case EnumNotificationProcess.resendPublishTermPolicy:
                 return await this.notificationProcessorService.processPublishTermPolicy(
                     job as Job<
                         INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>,

@@ -43,6 +43,7 @@ describe('NotificationTermPolicyDomain', () => {
         type: EnumTermPolicyType.privacy,
         version: 2,
         recipientCutoffAt: '2024-01-01T00:00:00.000Z',
+        resendNonce: null,
     };
     const cutoff = new Date('2024-01-01T00:00:00.000Z');
     const u1 = { id: 'u1', email: 'u1@example.com', username: 'name-u1' };
@@ -65,7 +66,6 @@ describe('NotificationTermPolicyDomain', () => {
         updatedBy: null,
     };
 
-    const now = new Date('2024-01-03T00:00:00.000Z');
     const publishChannels = [
         ...NotificationKindContract.publishTermPolicy.pendingChannels,
         ...NotificationKindContract.publishTermPolicy.deliveredChannels,
@@ -73,7 +73,6 @@ describe('NotificationTermPolicyDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
         helperDateService.createFromIso.mockReturnValue(cutoff);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, number> = { 'email.batchSize': 3 };
@@ -105,7 +104,7 @@ describe('NotificationTermPolicyDomain', () => {
     });
 
     describe('processPublishTermPolicy', () => {
-        const enqueuedAt = new Date('2024-01-02T00:00:00.000Z');
+        const sentAt = new Date('2024-01-02T00:00:00.000Z');
 
         const entryBase: INotificationCreateEntry = {
             kind: EnumNotificationKind.publishTermPolicy,
@@ -139,8 +138,8 @@ describe('NotificationTermPolicyDomain', () => {
             payload: { ...entryBase.payload, userId: 'u3' },
         };
 
-        it('pages users created at or before the cutoff, creating, enqueuing and marking one batch per page', async () => {
-            userDomain.getListRecipientCursor
+        it('pages users created at or before the cutoff, creating and enqueuing one batch per page', async () => {
+            userDomain.getListActiveRecipientCursor
                 .mockResolvedValueOnce([u1, u2, u3])
                 .mockResolvedValueOnce([u4]);
             notificationRepository.findTermPolicyRecipients.mockResolvedValue(
@@ -155,11 +154,6 @@ describe('NotificationTermPolicyDomain', () => {
             notificationEmailQueue.sendPublishTermPolicyBatch.mockImplementation(
                 async () => {
                     calls.push('send');
-                }
-            );
-            notificationRepository.markTermPolicyRecipientsEnqueued.mockImplementation(
-                async () => {
-                    calls.push('mark');
                 }
             );
             databaseUtil.createId
@@ -178,19 +172,15 @@ describe('NotificationTermPolicyDomain', () => {
             expect(helperDateService.createFromIso).toHaveBeenCalledWith(
                 data.recipientCutoffAt
             );
-            expect(userDomain.getListRecipientCursor).toHaveBeenNthCalledWith(
-                1,
-                null,
-                3,
-                cutoff
-            );
-            expect(userDomain.getListRecipientCursor).toHaveBeenNthCalledWith(
-                2,
-                'u3',
-                3,
-                cutoff
-            );
-            expect(userDomain.getListRecipientCursor).toHaveBeenCalledTimes(2);
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenNthCalledWith(1, null, 3, cutoff);
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenNthCalledWith(2, 'u3', 3, cutoff);
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenCalledTimes(2);
             expect(
                 notificationRepository.createTermPolicyRecipients
             ).toHaveBeenNthCalledWith(
@@ -247,32 +237,7 @@ describe('NotificationTermPolicyDomain', () => {
                     username: u4.username,
                 },
             ]);
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenNthCalledWith(
-                1,
-                data.termPolicyId,
-                ['batch-1'],
-                now,
-                'admin-id'
-            );
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenNthCalledWith(
-                2,
-                data.termPolicyId,
-                ['batch-2'],
-                now,
-                'admin-id'
-            );
-            expect(calls).toEqual([
-                'create',
-                'send',
-                'mark',
-                'create',
-                'send',
-                'mark',
-            ]);
+            expect(calls).toEqual(['create', 'send', 'create', 'send']);
             expect(result).toEqual({
                 message: 'Publish term policy notification processed',
                 candidateCounts: 4,
@@ -281,14 +246,72 @@ describe('NotificationTermPolicyDomain', () => {
             });
         });
 
-        it('skips a candidate whose marker is already enqueued, creating and re-adding nothing', async () => {
-            userDomain.getListRecipientCursor.mockResolvedValueOnce([u1, u2]);
+        it('passes the resend nonce in data to the fresh batch and to a pending batch', async () => {
+            const resendData = { ...data, resendNonce: 'nonce-1' };
+            userDomain.getListActiveRecipientCursor
+                .mockResolvedValueOnce([u1, u2])
+                .mockResolvedValueOnce([]);
+            notificationRepository.findTermPolicyRecipients.mockResolvedValue([
+                {
+                    userId: 'u1',
+                    notificationId: 'n-b1',
+                    batchId: 'B1',
+                    sentAt: null,
+                    claimedAt: null,
+                },
+            ]);
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
+                [
+                    {
+                        userId: 'u1',
+                        notificationId: 'n-b1',
+                        batchId: 'B1',
+                        sentAt: null,
+                        claimedAt: null,
+                    },
+                ]
+            );
+            databaseUtil.createId
+                .mockReturnValueOnce('batch-1')
+                .mockReturnValueOnce('n-1');
+
+            await domain.processPublishTermPolicy('admin-id', resendData);
+
+            expect(
+                notificationEmailQueue.sendPublishTermPolicyBatch
+            ).toHaveBeenCalledTimes(2);
+            expect(
+                notificationEmailQueue.sendPublishTermPolicyBatch
+            ).toHaveBeenCalledWith(
+                resendData,
+                'B1',
+                'admin-id',
+                0,
+                expect.anything()
+            );
+            expect(
+                notificationEmailQueue.sendPublishTermPolicyBatch
+            ).toHaveBeenCalledWith(
+                resendData,
+                'batch-1',
+                'admin-id',
+                1,
+                expect.anything()
+            );
+        });
+
+        it('skips a candidate whose marker is already sent, creating and re-adding nothing', async () => {
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([
+                u1,
+                u2,
+            ]);
             notificationRepository.findTermPolicyRecipients.mockResolvedValue([
                 {
                     userId: 'u1',
                     notificationId: 'n-0',
                     batchId: 'B0',
-                    enqueuedAt,
+                    sentAt,
+                    claimedAt: sentAt,
                 },
             ]);
             databaseUtil.createId
@@ -322,14 +345,6 @@ describe('NotificationTermPolicyDomain', () => {
                     username: u2.username,
                 },
             ]);
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenCalledWith(
-                data.termPolicyId,
-                ['batch-1'],
-                now,
-                'admin-id'
-            );
             expect(result).toEqual({
                 message: 'Publish term policy notification processed',
                 candidateCounts: 2,
@@ -338,8 +353,8 @@ describe('NotificationTermPolicyDomain', () => {
             });
         });
 
-        it('re-adds every stored pending batch with recipients from its markers and the page users, then the new batch, and marks all of them', async () => {
-            userDomain.getListRecipientCursor
+        it('re-adds every stored pending batch with recipients from its markers and the page users, then the new batch', async () => {
+            userDomain.getListActiveRecipientCursor
                 .mockResolvedValueOnce([u1, u2, u3])
                 .mockResolvedValueOnce([]);
             notificationRepository.findTermPolicyRecipients.mockResolvedValue([
@@ -347,28 +362,32 @@ describe('NotificationTermPolicyDomain', () => {
                     userId: 'u1',
                     notificationId: 'n-b1',
                     batchId: 'B1',
-                    enqueuedAt: null,
+                    sentAt: null,
+                    claimedAt: null,
                 },
                 {
                     userId: 'u2',
                     notificationId: 'n-b2',
                     batchId: 'B2',
-                    enqueuedAt: null,
+                    sentAt: null,
+                    claimedAt: null,
                 },
             ]);
-            notificationRepository.findTermPolicyRecipientsByBatchIds.mockResolvedValue(
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
                 [
                     {
                         userId: 'u1',
                         notificationId: 'n-b1',
                         batchId: 'B1',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                     {
                         userId: 'u2',
                         notificationId: 'n-b2',
                         batchId: 'B2',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                 ]
             );
@@ -382,9 +401,11 @@ describe('NotificationTermPolicyDomain', () => {
             );
 
             expect(
-                notificationRepository.findTermPolicyRecipientsByBatchIds
+                notificationRepository.findTermPolicyRecipientsSendableByBatchIds
             ).toHaveBeenCalledWith(data.termPolicyId, ['B1', 'B2']);
-            expect(userDomain.getManyRecipientsByIds).not.toHaveBeenCalled();
+            expect(
+                userDomain.getManyActiveRecipientsByIds
+            ).not.toHaveBeenCalled();
             expect(
                 notificationRepository.createTermPolicyRecipients
             ).toHaveBeenCalledTimes(1);
@@ -430,17 +451,6 @@ describe('NotificationTermPolicyDomain', () => {
                     username: u3.username,
                 },
             ]);
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenCalledWith(
-                data.termPolicyId,
-                ['B1', 'B2', 'batch-1'],
-                now,
-                'admin-id'
-            );
             expect(result).toEqual({
                 message: 'Publish term policy notification processed',
                 candidateCounts: 3,
@@ -449,40 +459,65 @@ describe('NotificationTermPolicyDomain', () => {
             });
         });
 
+        it('reads only sendable rows of the pending batches', async () => {
+            const marker = {
+                userId: 'u1',
+                notificationId: 'n-b1',
+                batchId: 'batch-1',
+                sentAt: null,
+                claimedAt: null,
+            };
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([u1]);
+            notificationRepository.findTermPolicyRecipients.mockResolvedValue([
+                marker,
+            ]);
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
+                [marker]
+            );
+
+            await domain.processPublishTermPolicy('admin-id', data);
+
+            expect(
+                notificationRepository.findTermPolicyRecipientsSendableByBatchIds
+            ).toHaveBeenCalledWith(data.termPolicyId, ['batch-1']);
+        });
+
         it('omits a pending marker whose user is deleted before the batch is enqueued', async () => {
-            userDomain.getListRecipientCursor.mockResolvedValueOnce([u1]);
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([u1]);
             notificationRepository.findTermPolicyRecipients.mockResolvedValue([
                 {
                     userId: 'u1',
                     notificationId: 'n-b1',
                     batchId: 'B',
-                    enqueuedAt: null,
+                    sentAt: null,
+                    claimedAt: null,
                 },
             ]);
-            notificationRepository.findTermPolicyRecipientsByBatchIds.mockResolvedValue(
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
                 [
                     {
                         userId: 'u1',
                         notificationId: 'n-b1',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                     {
                         userId: 'deleted-user',
                         notificationId: 'n-b2',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                 ]
             );
-            userDomain.getManyRecipientsByIds.mockResolvedValue([]);
+            userDomain.getManyActiveRecipientsByIds.mockResolvedValue([]);
 
             await domain.processPublishTermPolicy('admin-id', data);
 
-            expect(userDomain.getManyRecipientsByIds).toHaveBeenCalledWith(
-                ['deleted-user'],
-                cutoff
-            );
+            expect(
+                userDomain.getManyActiveRecipientsByIds
+            ).toHaveBeenCalledWith(['deleted-user'], cutoff);
             expect(
                 notificationEmailQueue.sendPublishTermPolicyBatch
             ).toHaveBeenCalledTimes(1);
@@ -499,26 +534,28 @@ describe('NotificationTermPolicyDomain', () => {
         });
 
         it('enqueues a pending batch with no recipients when none of its markers resolves a user', async () => {
-            userDomain.getListRecipientCursor.mockResolvedValueOnce([u1]);
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([u1]);
             notificationRepository.findTermPolicyRecipients.mockResolvedValue([
                 {
                     userId: 'u1',
                     notificationId: 'n-b1',
                     batchId: 'B',
-                    enqueuedAt: null,
+                    sentAt: null,
+                    claimedAt: null,
                 },
             ]);
-            notificationRepository.findTermPolicyRecipientsByBatchIds.mockResolvedValue(
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
                 [
                     {
                         userId: 'deleted-user',
                         notificationId: 'n-b2',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                 ]
             );
-            userDomain.getManyRecipientsByIds.mockResolvedValue([]);
+            userDomain.getManyActiveRecipientsByIds.mockResolvedValue([]);
 
             const result = await domain.processPublishTermPolicy(
                 'admin-id',
@@ -531,9 +568,6 @@ describe('NotificationTermPolicyDomain', () => {
             expect(
                 notificationEmailQueue.sendPublishTermPolicyBatch
             ).toHaveBeenCalledWith(data, 'B', 'admin-id', 0, []);
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenCalledWith(data.termPolicyId, ['B'], now, 'admin-id');
             expect(result).toEqual({
                 message: 'Publish term policy notification processed',
                 candidateCounts: 1,
@@ -543,7 +577,7 @@ describe('NotificationTermPolicyDomain', () => {
         });
 
         it('carries every eligible member of a batch spanning two pages after a deletion shifts the page', async () => {
-            userDomain.getListRecipientCursor
+            userDomain.getListActiveRecipientCursor
                 .mockResolvedValueOnce([u1, u2, u3])
                 .mockResolvedValueOnce([u4]);
             notificationRepository.findTermPolicyRecipients
@@ -552,7 +586,8 @@ describe('NotificationTermPolicyDomain', () => {
                         userId: 'u3',
                         notificationId: 'n-b3',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                 ])
                 .mockResolvedValueOnce([
@@ -560,26 +595,29 @@ describe('NotificationTermPolicyDomain', () => {
                         userId: 'u4',
                         notificationId: 'n-b4',
                         batchId: 'B',
-                        enqueuedAt,
+                        sentAt,
+                        claimedAt: sentAt,
                     },
                 ]);
-            notificationRepository.findTermPolicyRecipientsByBatchIds.mockResolvedValue(
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
                 [
                     {
                         userId: 'u3',
                         notificationId: 'n-b3',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                     {
                         userId: 'u4',
                         notificationId: 'n-b4',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                 ]
             );
-            userDomain.getManyRecipientsByIds.mockResolvedValue([u4]);
+            userDomain.getManyActiveRecipientsByIds.mockResolvedValue([u4]);
             databaseUtil.createId
                 .mockReturnValueOnce('batch-1')
                 .mockReturnValueOnce('n-1')
@@ -587,10 +625,9 @@ describe('NotificationTermPolicyDomain', () => {
 
             await domain.processPublishTermPolicy('admin-id', data);
 
-            expect(userDomain.getManyRecipientsByIds).toHaveBeenCalledWith(
-                ['u4'],
-                cutoff
-            );
+            expect(
+                userDomain.getManyActiveRecipientsByIds
+            ).toHaveBeenCalledWith(['u4'], cutoff);
             expect(
                 notificationEmailQueue.sendPublishTermPolicyBatch
             ).toHaveBeenCalledWith(data, 'B', 'admin-id', 0, [
@@ -607,36 +644,30 @@ describe('NotificationTermPolicyDomain', () => {
                     username: u4.username,
                 },
             ]);
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenCalledWith(
-                data.termPolicyId,
-                expect.arrayContaining(['B']),
-                now,
-                'admin-id'
-            );
         });
 
         it('builds identical pending batch recipients on two runs over the same page data', async () => {
-            userDomain.getListRecipientCursor.mockResolvedValue([u1, u2]);
+            userDomain.getListActiveRecipientCursor.mockResolvedValue([u1, u2]);
             const markers = [
                 {
                     userId: 'u1',
                     notificationId: 'n-b1',
                     batchId: 'B',
-                    enqueuedAt: null,
+                    sentAt: null,
+                    claimedAt: null,
                 },
                 {
                     userId: 'u2',
                     notificationId: 'n-b2',
                     batchId: 'B',
-                    enqueuedAt: null,
+                    sentAt: null,
+                    claimedAt: null,
                 },
             ];
             notificationRepository.findTermPolicyRecipients
                 .mockResolvedValueOnce(markers)
                 .mockResolvedValueOnce([...markers].reverse());
-            notificationRepository.findTermPolicyRecipientsByBatchIds.mockResolvedValue(
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
                 markers
             );
             const sent: INotificationTermPolicyBatchRecipient[][] = [];
@@ -654,7 +685,7 @@ describe('NotificationTermPolicyDomain', () => {
         });
 
         it('adds a stored batch split across two pages exactly once', async () => {
-            userDomain.getListRecipientCursor
+            userDomain.getListActiveRecipientCursor
                 .mockResolvedValueOnce([u1, u2, u3])
                 .mockResolvedValueOnce([u4]);
             notificationRepository.findTermPolicyRecipients
@@ -663,19 +694,22 @@ describe('NotificationTermPolicyDomain', () => {
                         userId: 'u1',
                         notificationId: 'n-b1',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                     {
                         userId: 'u2',
                         notificationId: 'n-b2',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                     {
                         userId: 'u3',
                         notificationId: 'n-b3',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                 ])
                 .mockResolvedValueOnce([
@@ -683,38 +717,43 @@ describe('NotificationTermPolicyDomain', () => {
                         userId: 'u4',
                         notificationId: 'n-b4',
                         batchId: 'B',
-                        enqueuedAt,
+                        sentAt,
+                        claimedAt: sentAt,
                     },
                 ]);
-            notificationRepository.findTermPolicyRecipientsByBatchIds.mockResolvedValue(
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
                 [
                     {
                         userId: 'u1',
                         notificationId: 'n-b1',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                     {
                         userId: 'u2',
                         notificationId: 'n-b2',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                     {
                         userId: 'u3',
                         notificationId: 'n-b3',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                     {
                         userId: 'u4',
                         notificationId: 'n-b4',
                         batchId: 'B',
-                        enqueuedAt: null,
+                        sentAt: null,
+                        claimedAt: null,
                     },
                 ]
             );
-            userDomain.getManyRecipientsByIds.mockResolvedValue([u4]);
+            userDomain.getManyActiveRecipientsByIds.mockResolvedValue([u4]);
             databaseUtil.createId.mockReturnValue('unused-id');
 
             const result = await domain.processPublishTermPolicy(
@@ -754,12 +793,6 @@ describe('NotificationTermPolicyDomain', () => {
                 },
             ]);
             expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
-            ).toHaveBeenCalledWith(data.termPolicyId, ['B'], now, 'admin-id');
-            expect(
                 notificationRepository.createTermPolicyRecipients
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
@@ -770,8 +803,8 @@ describe('NotificationTermPolicyDomain', () => {
             });
         });
 
-        it('advances the cursor past a full page whose candidates are all enqueued and writes nothing', async () => {
-            userDomain.getListRecipientCursor
+        it('advances the cursor past a full page whose candidates are all sent and writes nothing', async () => {
+            userDomain.getListActiveRecipientCursor
                 .mockResolvedValueOnce([u1, u2, u3])
                 .mockResolvedValueOnce([]);
             notificationRepository.findTermPolicyRecipients.mockResolvedValue([
@@ -779,19 +812,22 @@ describe('NotificationTermPolicyDomain', () => {
                     userId: 'u1',
                     notificationId: 'n-b1',
                     batchId: 'B',
-                    enqueuedAt,
+                    sentAt,
+                    claimedAt: sentAt,
                 },
                 {
                     userId: 'u2',
                     notificationId: 'n-b2',
                     batchId: 'B',
-                    enqueuedAt,
+                    sentAt,
+                    claimedAt: sentAt,
                 },
                 {
                     userId: 'u3',
                     notificationId: 'n-b3',
                     batchId: 'B',
-                    enqueuedAt,
+                    sentAt,
+                    claimedAt: sentAt,
                 },
             ]);
             databaseUtil.createId.mockReturnValue('unused-id');
@@ -801,21 +837,17 @@ describe('NotificationTermPolicyDomain', () => {
                 data
             );
 
-            expect(userDomain.getListRecipientCursor).toHaveBeenNthCalledWith(
-                2,
-                'u3',
-                3,
-                cutoff
-            );
-            expect(userDomain.getListRecipientCursor).toHaveBeenCalledTimes(2);
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenNthCalledWith(2, 'u3', 3, cutoff);
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenCalledTimes(2);
             expect(
                 notificationRepository.createTermPolicyRecipients
             ).not.toHaveBeenCalled();
             expect(
                 notificationEmailQueue.sendPublishTermPolicyBatch
-            ).not.toHaveBeenCalled();
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'Publish term policy notification processed',
@@ -825,8 +857,125 @@ describe('NotificationTermPolicyDomain', () => {
             });
         });
 
+        it('re-enqueues a batch with one unsent unclaimed row while the rest are sent, carrying the whole batch', async () => {
+            userDomain.getListActiveRecipientCursor
+                .mockResolvedValueOnce([u1, u2, u3])
+                .mockResolvedValueOnce([]);
+            const rows = [
+                {
+                    userId: 'u1',
+                    notificationId: 'n-b1',
+                    batchId: 'B',
+                    sentAt: null,
+                    claimedAt: null,
+                },
+                {
+                    userId: 'u2',
+                    notificationId: 'n-b2',
+                    batchId: 'B',
+                    sentAt,
+                    claimedAt: sentAt,
+                },
+                {
+                    userId: 'u3',
+                    notificationId: 'n-b3',
+                    batchId: 'B',
+                    sentAt,
+                    claimedAt: sentAt,
+                },
+            ];
+            notificationRepository.findTermPolicyRecipients.mockResolvedValue(
+                rows
+            );
+            notificationRepository.findTermPolicyRecipientsSendableByBatchIds.mockResolvedValue(
+                rows
+            );
+            databaseUtil.createId.mockReturnValue('unused-id');
+
+            const result = await domain.processPublishTermPolicy(
+                'admin-id',
+                data
+            );
+
+            expect(
+                notificationEmailQueue.sendPublishTermPolicyBatch
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                notificationEmailQueue.sendPublishTermPolicyBatch
+            ).toHaveBeenCalledWith(data, 'B', 'admin-id', 0, [
+                {
+                    userId: 'u1',
+                    notificationId: 'n-b1',
+                    email: u1.email,
+                    username: u1.username,
+                },
+                {
+                    userId: 'u2',
+                    notificationId: 'n-b2',
+                    email: u2.email,
+                    username: u2.username,
+                },
+                {
+                    userId: 'u3',
+                    notificationId: 'n-b3',
+                    email: u3.email,
+                    username: u3.username,
+                },
+            ]);
+            expect(
+                notificationRepository.createTermPolicyRecipients
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Publish term policy notification processed',
+                candidateCounts: 3,
+                createdCounts: 0,
+                batches: 1,
+            });
+        });
+
+        it('treats a batch whose unsent rows are all claimed as not pending, enqueuing and creating nothing', async () => {
+            userDomain.getListActiveRecipientCursor
+                .mockResolvedValueOnce([u1, u2])
+                .mockResolvedValueOnce([]);
+            notificationRepository.findTermPolicyRecipients.mockResolvedValue([
+                {
+                    userId: 'u1',
+                    notificationId: 'n-b1',
+                    batchId: 'B',
+                    sentAt: null,
+                    claimedAt: sentAt,
+                },
+                {
+                    userId: 'u2',
+                    notificationId: 'n-b2',
+                    batchId: 'B',
+                    sentAt: null,
+                    claimedAt: sentAt,
+                },
+            ]);
+            databaseUtil.createId.mockReturnValue('unused-id');
+
+            const result = await domain.processPublishTermPolicy(
+                'admin-id',
+                data
+            );
+
+            expect(
+                notificationEmailQueue.sendPublishTermPolicyBatch
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationRepository.createTermPolicyRecipients
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Publish term policy notification processed',
+                candidateCounts: 2,
+                createdCounts: 0,
+                batches: 0,
+            });
+        });
+
         it('returns zero counts and writes nothing when there is no candidate', async () => {
-            userDomain.getListRecipientCursor.mockResolvedValueOnce([]);
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([]);
 
             const result = await domain.processPublishTermPolicy(
                 'admin-id',
@@ -841,9 +990,6 @@ describe('NotificationTermPolicyDomain', () => {
             ).not.toHaveBeenCalled();
             expect(
                 notificationEmailQueue.sendPublishTermPolicyBatch
-            ).not.toHaveBeenCalled();
-            expect(
-                notificationRepository.markTermPolicyRecipientsEnqueued
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'Publish term policy notification processed',

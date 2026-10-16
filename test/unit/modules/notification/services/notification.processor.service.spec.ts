@@ -933,6 +933,7 @@ describe('NotificationProcessorService', () => {
                 type: EnumTermPolicyType.privacy,
                 version: 2,
                 recipientCutoffAt: '2024-01-01T00:00:00.000Z',
+                resendNonce: null,
             };
             notificationTermPolicyDomain.processPublishTermPolicy.mockResolvedValue(
                 response

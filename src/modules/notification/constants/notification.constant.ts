@@ -33,6 +33,20 @@ export const NotificationTermPolicyBatchJobIdPattern =
     '{process}-{termPolicyId}-{batchId}';
 
 /**
+ * Job id pattern for a resent term policy batch keyed by process name, term policy id, batch id and resend nonce.
+ * @public
+ */
+export const NotificationTermPolicyBatchResendJobIdPattern =
+    '{process}-{termPolicyId}-{batchId}-{resendNonce}';
+
+/**
+ * Job id pattern for a term policy resend job keyed by process name, term policy id and resend nonce.
+ * @public
+ */
+export const NotificationTermPolicyResendJobIdPattern =
+    '{process}-{termPolicyId}-{resendNonce}';
+
+/**
  * Job id pattern for a job keyed by process name and term policy id.
  * @public
  */
@@ -53,12 +67,13 @@ export const NotificationUserTermPolicyJobIdPattern =
 export const NotificationStepJobIdPattern = '{notificationId}-{step}';
 
 /**
- * Prisma where of a term policy recipient row not yet emailed.
- * Spread with the term policy id and batch id.
+ * Prisma where of a term policy recipient row neither emailed nor claimed.
+ * Spread with the term policy id and a batch id filter.
  * @public
  */
 export const NotificationTermPolicyRecipientSendWhere = {
     sentAt: null,
+    claimedAt: null,
 } satisfies Prisma.TermPolicyRecipientWhereInput;
 
 /**
@@ -69,7 +84,8 @@ export const NotificationTermPolicyRecipientStateSelect = {
     userId: true,
     notificationId: true,
     batchId: true,
-    enqueuedAt: true,
+    sentAt: true,
+    claimedAt: true,
 } satisfies Prisma.TermPolicyRecipientSelect;
 
 /**

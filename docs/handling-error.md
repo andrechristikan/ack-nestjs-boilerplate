@@ -396,6 +396,8 @@ A caught error leaves the `catch` as a typed exception.
 - `throw new Error(...)` is rejected by ESLint. Code throws a typed exception: `AppBaseException` when the error answers a request, `AppUnknownException` or a subclass otherwise.
 - A bare `throw err` is allowed only inside an `if` branch whose `instanceof` check names a class of ours. Everything else is wrapped as `throw new AppUnknownException(err)`.
 - The cause rides in `rawError`. It is reported to Sentry for 5xx errors and never serialized into the response body.
+- `AppBaseException` also assigns a non-null `rawError` to the standard `cause` of the `Error`, so every subclass carries the chain, `HelperDecryptFailedException(error)` included. A subclass assigns `cause` nowhere itself.
+- The logger writes the `cause` chain into the error record (see [Logger][ref-doc-logger]), and Sentry's `linkedErrors` integration follows it, so one report shows the chain.
 - An `instanceof` check that rethrows a typed exception first keeps a domain exception raised inside the `try` on its own status code.
 
 ```typescript
@@ -424,7 +426,7 @@ try {
 `AppUnknownException` extends `AppBaseException` and fixes the status code `50000` and the HTTP status 500.
 
 - The constructor is `AppUnknownException(rawError, description = null)`.
-- `rawError` carries the cause.
+- `rawError` carries the cause, and the base class exposes it as `cause` too.
 - `description` replaces only the `message` of the `Error` object, which is what logs and Sentry show.
 - `description` never reaches the response. The response message always resolves from the message path `http.serverError.internalServerError`.
 - A runtime error with no request to answer is a subclass that names the failure through `description`.

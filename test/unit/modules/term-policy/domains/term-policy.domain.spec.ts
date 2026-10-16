@@ -28,14 +28,14 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import type { Prisma, TermPolicy } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
-import { TermPolicyPublishInProgressException } from '@modules/term-policy/exceptions/term-policy.publish-in-progress.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
@@ -632,78 +632,214 @@ describe('TermPolicyDomain', () => {
             });
         });
 
-        it('re-adds the job when already published and recipients exist, leaving the decision to the job state', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                publishedTermPolicy
-            );
-            notificationQueue.sendPublishTermPolicy.mockResolvedValue(
-                undefined
-            );
+        describe('with a publishable draft', () => {
+            beforeEach(() => {
+                termPolicyRepository.findOneById.mockResolvedValue(
+                    draftTermPolicy
+                );
+                termPolicyUtil.getContentPublicPath.mockReturnValue(
+                    'public/term-policies/privacy/1'
+                );
+                awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
+                fileService.extractFilenameFromPath.mockImplementation(
+                    (path: string) => path.split('/').pop() ?? ''
+                );
+                databaseService.withTransaction.mockImplementation(async fn =>
+                    fn(tx)
+                );
+                termPolicyRepository.publishInTx.mockResolvedValue(true);
+                termPolicyRepository.findOneByIdInTx.mockResolvedValue(
+                    publishedTermPolicy
+                );
+                userDomain.resetTermPolicyInTx.mockResolvedValue(undefined);
+                notificationQueue.sendPublishTermPolicy.mockResolvedValue(
+                    undefined
+                );
+            });
 
-            await domain.publishByAdmin('term-policy-1', 'user-1');
+            it('throws TermPolicyStatusInvalidException for a published policy before any S3 or write', async () => {
+                termPolicyRepository.findOneById.mockResolvedValue(
+                    publishedTermPolicy
+                );
 
-            expect(
-                notificationQueue.sendPublishTermPolicy
-            ).toHaveBeenCalledWith(
-                {
-                    termPolicyId: 'term-policy-1',
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    recipientCutoffAt: timestamp.toISOString(),
-                },
-                'user-1'
-            );
-        });
+                await expect(
+                    domain.publishByAdmin('term-policy-1', 'user-1')
+                ).rejects.toMatchObject({
+                    constructor: TermPolicyStatusInvalidException,
+                    module: 'termPolicy',
+                    statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                    statusCodeKey:
+                        EnumTermPolicyStatusCodeError[
+                            EnumTermPolicyStatusCodeError.statusInvalid
+                        ],
+                    messagePath: 'termPolicy.error.statusInvalid',
+                });
+                expect(awsS3Service.copyItems).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
+                expect(
+                    notificationQueue.sendPublishTermPolicy
+                ).not.toHaveBeenCalled();
+            });
 
-        it('re-adds the job without copying, publishing, or logging when already published and no recipients exist', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                publishedTermPolicy
-            );
-            notificationQueue.sendPublishTermPolicy.mockResolvedValue(
-                undefined
-            );
+            it('throws TermPolicyStatusInvalidException when publishInTx loses the race', async () => {
+                termPolicyRepository.publishInTx.mockResolvedValue(false);
 
-            await domain.publishByAdmin('term-policy-1', 'user-1');
+                await expect(
+                    domain.publishByAdmin('term-policy-1', 'user-1')
+                ).rejects.toMatchObject({
+                    constructor: TermPolicyStatusInvalidException,
+                    module: 'termPolicy',
+                    statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                    statusCodeKey:
+                        EnumTermPolicyStatusCodeError[
+                            EnumTermPolicyStatusCodeError.statusInvalid
+                        ],
+                    messagePath: 'termPolicy.error.statusInvalid',
+                });
+                expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
+                expect(
+                    notificationQueue.sendPublishTermPolicy
+                ).not.toHaveBeenCalled();
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            });
 
-            expect(awsS3Service.copyItems).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendPublishTermPolicy
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                notificationQueue.sendPublishTermPolicy
-            ).toHaveBeenCalledWith(
-                {
-                    termPolicyId: 'term-policy-1',
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    recipientCutoffAt: timestamp.toISOString(),
-                },
-                'user-1'
-            );
-        });
+            it('stages the activity log after the commit and before enqueueing', async () => {
+                const calls: string[] = [];
+                userDomain.resetTermPolicyInTx.mockImplementation(() => {
+                    calls.push('reset');
 
-        it('wraps a failure of the re-added job in AppUnknownException', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                publishedTermPolicy
-            );
-            const cause = new Error('queue failed');
-            notificationQueue.sendPublishTermPolicy.mockRejectedValue(cause);
+                    return Promise.resolve();
+                });
+                notificationQueue.sendPublishTermPolicy.mockImplementation(
+                    () => {
+                        calls.push('enqueue');
 
-            await expect(
-                domain.publishByAdmin('term-policy-1', 'user-1')
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: cause,
-                description:
-                    'Enqueueing the term policy publish notification failed',
+                        return Promise.resolve();
+                    }
+                );
+                activityLogDomain.stagePrepared.mockImplementation(() => {
+                    calls.push('stage');
+                });
+                databaseService.withTransaction.mockImplementation(async fn => {
+                    const result = await fn(tx);
+                    calls.push('commit');
+
+                    return result;
+                });
+
+                await domain.publishByAdmin('term-policy-1', 'user-1');
+
+                expect(
+                    notificationQueue.sendPublishTermPolicy
+                ).toHaveBeenCalledWith(
+                    {
+                        termPolicyId: 'term-policy-1',
+                        type: EnumTermPolicyType.privacy,
+                        version: 1,
+                        recipientCutoffAt: timestamp.toISOString(),
+                        resendNonce: null,
+                    },
+                    'user-1'
+                );
+                expect(calls).toEqual(['reset', 'commit', 'stage', 'enqueue']);
+                expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(
+                    1
+                );
+            });
+
+            it('enqueues nothing when the transaction fails after the reset', async () => {
+                const cause = new Error('commit failed');
+                databaseService.withTransaction.mockImplementation(async fn => {
+                    await fn(tx);
+
+                    throw cause;
+                });
+
+                await expect(
+                    domain.publishByAdmin('term-policy-1', 'user-1')
+                ).rejects.toMatchObject({
+                    constructor: AppUnknownException,
+                    module: 'app',
+                    statusCode: EnumAppStatusCodeError.unknown,
+                    statusCodeKey:
+                        EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
+                    messagePath: 'http.serverError.internalServerError',
+                    rawError: cause,
+                });
+                expect(userDomain.resetTermPolicyInTx).toHaveBeenCalled();
+                expect(
+                    notificationQueue.sendPublishTermPolicy
+                ).not.toHaveBeenCalled();
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            });
+
+            it('publishes the term policy, resets user acceptance, and stages the activity log', async () => {
+                await domain.publishByAdmin('term-policy-1', 'user-1');
+
+                expect(awsS3Service.copyItems).toHaveBeenCalledWith(
+                    [contentEn],
+                    'public/term-policies/privacy/1',
+                    { access: EnumAwsS3Accessibility.public }
+                );
+                expect(termPolicyRepository.publishInTx).toHaveBeenCalledWith(
+                    tx,
+                    'term-policy-1',
+                    [{ ...publicEnItem, language: contentEn.language }]
+                );
+                expect(
+                    termPolicyRepository.findOneByIdInTx
+                ).toHaveBeenCalledWith(tx, 'term-policy-1');
+                expect(userDomain.resetTermPolicyInTx).toHaveBeenCalledWith(
+                    tx,
+                    EnumTermPolicyType.privacy
+                );
+                expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        action: EnumActivityLogAction.adminTermPolicyPublish,
+                        onError: true,
+                    })
+                );
+                expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                    preparedActivityLog,
+                ]);
+            });
+
+            it('stages the activity log and throws when the enqueue fails after the commit', async () => {
+                const cause = new Error('redis down');
+                notificationQueue.sendPublishTermPolicy.mockRejectedValue(
+                    cause
+                );
+
+                await expect(
+                    domain.publishByAdmin('term-policy-1', 'user-1')
+                ).rejects.toMatchObject({
+                    constructor: AppUnknownException,
+                    module: 'app',
+                    statusCode: EnumAppStatusCodeError.unknown,
+                    statusCodeKey:
+                        EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
+                    messagePath: 'http.serverError.internalServerError',
+                    rawError: cause,
+                    description:
+                        'Enqueueing the term policy publish notification failed',
+                });
+                expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                    preparedActivityLog,
+                ]);
+            });
+
+            it('stages the activity log and rethrows an AppBaseException raised by the enqueue unchanged', async () => {
+                const error = new TermPolicyNotFoundException();
+                notificationQueue.sendPublishTermPolicy.mockRejectedValue(
+                    error
+                );
+
+                await expect(
+                    domain.publishByAdmin('term-policy-1', 'user-1')
+                ).rejects.toBe(error);
+                expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                    preparedActivityLog,
+                ]);
             });
         });
 
@@ -771,71 +907,6 @@ describe('TermPolicyDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('publishes the term policy, resets user acceptance, and queues the notification', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentPublicPath.mockReturnValue(
-                'public/term-policies/privacy/1'
-            );
-            const publicItem: IAwsS3 = {
-                ...contentEn,
-                access: EnumAwsS3Accessibility.public,
-            };
-            awsS3Service.copyItems.mockResolvedValue([publicItem]);
-            fileService.extractFilenameFromPath.mockImplementation(
-                (path: string) => path.split('/').pop() ?? ''
-            );
-            const publishedRow: TermPolicy = {
-                ...publishedTermPolicy,
-                updatedAt: timestamp,
-            };
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
-            termPolicyRepository.publishInTx.mockResolvedValue(true);
-            termPolicyRepository.findOneByIdInTx.mockResolvedValue(
-                publishedRow
-            );
-            userDomain.resetTermPolicyInTx.mockResolvedValue(undefined);
-            notificationQueue.sendPublishTermPolicy.mockResolvedValue(
-                undefined
-            );
-
-            await domain.publishByAdmin('term-policy-1', 'user-1');
-
-            expect(awsS3Service.copyItems).toHaveBeenCalledWith(
-                [contentEn],
-                'public/term-policies/privacy/1',
-                { access: EnumAwsS3Accessibility.public }
-            );
-            expect(termPolicyRepository.publishInTx).toHaveBeenCalledWith(
-                tx,
-                'term-policy-1',
-                [{ ...publicItem, language: contentEn.language }]
-            );
-            expect(termPolicyRepository.findOneByIdInTx).toHaveBeenCalledWith(
-                tx,
-                'term-policy-1'
-            );
-            expect(userDomain.resetTermPolicyInTx).toHaveBeenCalledWith(
-                tx,
-                EnumTermPolicyType.privacy
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedActivityLog,
-            ]);
-            expect(
-                notificationQueue.sendPublishTermPolicy
-            ).toHaveBeenCalledWith(
-                {
-                    termPolicyId: 'term-policy-1',
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    recipientCutoffAt: timestamp.toISOString(),
-                },
-                'user-1'
-            );
-        });
-
         it('throws AppUnknownException and commits nothing when a language copy failed', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentPublicPath.mockReturnValue(
@@ -885,36 +956,43 @@ describe('TermPolicyDomain', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('rethrows the in-progress exception the queue raises without wrapping it', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                publishedTermPolicy
-            );
-            const error = new TermPolicyPublishInProgressException();
-            notificationQueue.sendPublishTermPolicy.mockRejectedValue(error);
-
-            await expect(
-                domain.publishByAdmin('term-policy-1', 'user-1')
-            ).rejects.toBe(error);
-        });
-
-        it('wraps a job add failure after publishing in AppUnknownException', async () => {
+        it('wraps a write conflict in AppUnknownException so the filter answers 409', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
             awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
             fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'write conflict',
+                { code: 'P2034', clientVersion: 'test' }
             );
-            termPolicyRepository.publishInTx.mockResolvedValue(true);
-            termPolicyRepository.findOneByIdInTx.mockResolvedValue({
-                ...publishedTermPolicy,
-                updatedAt: timestamp,
+            databaseService.withTransaction.mockRejectedValue(conflict);
+
+            await expect(
+                domain.publishByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: conflict,
             });
-            userDomain.resetTermPolicyInTx.mockResolvedValue(undefined);
-            const cause = new Error('connection closed');
-            notificationQueue.sendPublishTermPolicy.mockRejectedValue(cause);
+            expect(
+                notificationQueue.sendPublishTermPolicy
+            ).not.toHaveBeenCalled();
+        });
+
+        it('wraps another database error in AppUnknownException when the transaction fails', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentPublicPath.mockReturnValue(
+                'public/term-policies/privacy/1'
+            );
+            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
+            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+            const cause = new Prisma.PrismaClientKnownRequestError('other', {
+                code: 'P2002',
+                clientVersion: 'test',
+            });
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 domain.publishByAdmin('term-policy-1', 'user-1')
@@ -923,78 +1001,6 @@ describe('TermPolicyDomain', () => {
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: cause,
             });
-        });
-
-        it('stages the publish activity log with onError true so it flushes when the enqueue fails after the commit', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentPublicPath.mockReturnValue(
-                'public/term-policies/privacy/1'
-            );
-            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
-            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
-            termPolicyRepository.publishInTx.mockResolvedValue(true);
-            termPolicyRepository.findOneByIdInTx.mockResolvedValue({
-                ...publishedTermPolicy,
-                updatedAt: timestamp,
-            });
-            userDomain.resetTermPolicyInTx.mockResolvedValue(undefined);
-            notificationQueue.sendPublishTermPolicy.mockRejectedValue(
-                new Error('connection closed')
-            );
-
-            await expect(
-                domain.publishByAdmin('term-policy-1', 'user-1')
-            ).rejects.toBeInstanceOf(AppUnknownException);
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    action: EnumActivityLogAction.adminTermPolicyPublish,
-                    onError: true,
-                })
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedActivityLog,
-            ]);
-        });
-
-        it('throws TermPolicyStatusInvalidException and queues nothing when the guarded publish matches no draft row', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentPublicPath.mockReturnValue(
-                'public/term-policies/privacy/1'
-            );
-            const publicItem: IAwsS3 = {
-                ...contentEn,
-                access: EnumAwsS3Accessibility.public,
-            };
-            awsS3Service.copyItems.mockResolvedValue([publicItem]);
-            fileService.extractFilenameFromPath.mockImplementation(
-                (path: string) => path.split('/').pop() ?? ''
-            );
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
-            termPolicyRepository.publishInTx.mockResolvedValue(false);
-
-            await expect(
-                domain.publishByAdmin('term-policy-1', 'user-1')
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                statusCodeKey:
-                    EnumTermPolicyStatusCodeError[
-                        EnumTermPolicyStatusCodeError.statusInvalid
-                    ],
-                messagePath: 'termPolicy.error.statusInvalid',
-            });
-            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendPublishTermPolicy
-            ).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyNotFoundException and queues nothing when the published row cannot be read back', async () => {
@@ -1072,6 +1078,122 @@ describe('TermPolicyDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: cause,
             });
+        });
+    });
+
+    describe('resendEmailByAdmin', () => {
+        it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(null);
+
+            await expect(
+                domain.resendEmailByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: TermPolicyNotFoundException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.notFound
+                    ],
+                messagePath: 'termPolicy.error.notFound',
+            });
+            expect(
+                notificationQueue.sendResendPublishTermPolicy
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws TermPolicyStatusInvalidException for a draft and enqueues nothing', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+
+            await expect(
+                domain.resendEmailByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: TermPolicyStatusInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.statusInvalid
+                    ],
+                messagePath: 'termPolicy.error.statusInvalid',
+            });
+            expect(
+                notificationQueue.sendResendPublishTermPolicy
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('enqueues the resend for a published policy and stages the activity log once', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(
+                publishedTermPolicy
+            );
+            notificationQueue.sendResendPublishTermPolicy.mockResolvedValue(
+                undefined
+            );
+
+            await domain.resendEmailByAdmin('term-policy-1', 'user-1');
+
+            expect(
+                notificationQueue.sendResendPublishTermPolicy
+            ).toHaveBeenCalledWith(
+                {
+                    termPolicyId: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                    recipientCutoffAt: timestamp.toISOString(),
+                },
+                'user-1'
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: EnumActivityLogAction.adminTermPolicyResendEmail,
+                    onError: false,
+                })
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                preparedActivityLog,
+            ]);
+        });
+
+        it('wraps a non-AppBaseException enqueue failure in AppUnknownException and stages nothing', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(
+                publishedTermPolicy
+            );
+            const cause = new Error('redis down');
+            notificationQueue.sendResendPublishTermPolicy.mockRejectedValue(
+                cause
+            );
+
+            await expect(
+                domain.resendEmailByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                statusCodeKey:
+                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
+                messagePath: 'http.serverError.internalServerError',
+                rawError: cause,
+                description:
+                    'Enqueueing the term policy resend notification failed',
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('rethrows an AppBaseException raised by the enqueue unchanged without staging the activity log', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(
+                publishedTermPolicy
+            );
+            const error = new TermPolicyNotFoundException();
+            notificationQueue.sendResendPublishTermPolicy.mockRejectedValue(
+                error
+            );
+
+            await expect(
+                domain.resendEmailByAdmin('term-policy-1', 'user-1')
+            ).rejects.toBe(error);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 

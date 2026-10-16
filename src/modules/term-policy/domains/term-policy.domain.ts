@@ -86,6 +86,7 @@ export class TermPolicyDomain {
                     type: termPolicy.type,
                     version: termPolicy.version,
                     recipientCutoffAt,
+                    resendNonce: null,
                 },
                 updatedBy
             );
@@ -278,9 +279,7 @@ export class TermPolicyDomain {
             throw new TermPolicyNotFoundException();
         }
         if (termPolicy.status === EnumTermPolicyStatus.published) {
-            await this.enqueuePublishNotification(termPolicy, updatedBy);
-
-            return;
+            throw new TermPolicyStatusInvalidException();
         }
 
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
@@ -310,15 +309,18 @@ export class TermPolicyDomain {
             const newContents = this.mapPublicContent(newItems, contents);
 
             // Sequential by design: write must not run if an earlier step throws
-            const { publishedRow, activityLogs } =
-                await this.databaseService.withTransaction(async tx => {
-                    const published =
+            const { published, activityLogs } =
+                await this.databaseService.withTransaction<{
+                    published: TermPolicy;
+                    activityLogs: IActivityLogStaged[];
+                }>(async tx => {
+                    const isPublished =
                         await this.termPolicyRepository.publishInTx(
                             tx,
                             termPolicyId,
                             newContents
                         );
-                    if (!published) {
+                    if (!isPublished) {
                         throw new TermPolicyStatusInvalidException();
                     }
 
@@ -336,7 +338,7 @@ export class TermPolicyDomain {
                     );
 
                     return {
-                        publishedRow: row,
+                        published: row,
                         activityLogs: [
                             this.prepareActivityLog(
                                 EnumActivityLogAction.adminTermPolicyPublish,
@@ -350,10 +352,7 @@ export class TermPolicyDomain {
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
-            // Sequential by design: the job must not be enqueued if an earlier step throws
-            await this.enqueuePublishNotification(publishedRow, updatedBy);
-
-            return;
+            await this.enqueuePublishNotification(published, updatedBy);
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -361,5 +360,53 @@ export class TermPolicyDomain {
 
             throw new AppUnknownException(err);
         }
+    }
+
+    async resendEmailByAdmin(
+        termPolicyId: string,
+        updatedBy: string
+    ): Promise<void> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new TermPolicyNotFoundException();
+        }
+        if (termPolicy.status !== EnumTermPolicyStatus.published) {
+            throw new TermPolicyStatusInvalidException();
+        }
+
+        const timestamp = this.helperDateService.create();
+        const activityLog = this.prepareActivityLog(
+            EnumActivityLogAction.adminTermPolicyResendEmail,
+            termPolicy,
+            timestamp,
+            false
+        );
+
+        try {
+            const recipientCutoffAt = this.helperDateService.formatToIso(
+                termPolicy.publishedAt!
+            );
+            await this.notificationQueue.sendResendPublishTermPolicy(
+                {
+                    termPolicyId: termPolicy.id,
+                    type: termPolicy.type,
+                    version: termPolicy.version,
+                    recipientCutoffAt,
+                },
+                updatedBy
+            );
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(
+                err,
+                'Enqueueing the term policy resend notification failed'
+            );
+        }
+
+        this.activityLogDomain.stagePrepared([activityLog]);
     }
 }

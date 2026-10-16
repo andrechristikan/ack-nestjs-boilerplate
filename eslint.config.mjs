@@ -138,9 +138,15 @@ const baseSyntaxRestrictions = [
     },
 ];
 
+const forEachRestriction = {
+    selector: 'CallExpression[callee.property.name="forEach"]',
+    message: 'Use for...of, not .forEach.',
+};
+
 const codeStyleSyntaxRestrictions = [
     ...baseSyntaxRestrictions,
     ...undefinedSyntaxRestrictions,
+    forEachRestriction,
 ];
 
 const newDateRestriction = {
@@ -343,6 +349,7 @@ const testSyntaxRestrictions = [
         message:
             'A spec declares no class; apply the decorator to a plain object and read the metadata',
     },
+    forEachRestriction,
 ];
 
 export default [

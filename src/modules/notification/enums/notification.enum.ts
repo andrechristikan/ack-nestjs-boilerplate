@@ -16,6 +16,7 @@ export enum EnumNotificationProcess {
     newDeviceLogin = 'newDeviceLogin',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
     publishTermPolicy = 'publishTermPolicy',
+    resendPublishTermPolicy = 'resendPublishTermPolicy',
     userAcceptTermPolicy = 'userAcceptTermPolicy',
     workspaceInvite = 'workspaceInvite',
     workspaceInviteUnregistered = 'workspaceInviteUnregistered',

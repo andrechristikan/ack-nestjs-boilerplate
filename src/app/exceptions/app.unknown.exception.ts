@@ -16,7 +16,6 @@ export class AppUnknownException extends AppBaseException {
     constructor(rawError: unknown, description: string | null = null) {
         super('http.serverError.internalServerError', { rawError });
 
-        this.cause = rawError;
         this.description = description;
 
         if (description !== null) {

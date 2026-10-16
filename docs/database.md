@@ -385,9 +385,10 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 - `NotificationRepository` owns the model.
 - Fields:
     - `id`, `termPolicyId`, `userId`, `notificationId`, and `batchId` are ObjectIds.
-    - `enqueuedAt` and `sentAt` are optional `DateTime` values.
-    - `enqueuedAt` is `null` until the batch email job is added.
+    - `sentAt` and `claimedAt` are optional `DateTime` values.
+    - `claimNonce` is an optional ObjectId.
     - `sentAt` is `null` until SES reports `Success`.
+    - `claimedAt` and `claimNonce` are `null` until a batch email job claims the row, and the job clears them when SES reports a definite failure.
     - `createdAt`, `createdBy`, `updatedAt`, and `updatedBy` are the audit fields.
 - `@@unique([termPolicyId, userId])` allows one marker per user and term policy.
 - `@@index([termPolicyId, batchId, userId])` serves the reads of one batch.
@@ -407,7 +408,7 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 - `[deletedAt, signUpAt desc]`
 - `[deletedAt, passwordAttempt]`
 
-`[deletedAt, createdAt desc, id desc]` serves the term-policy recipient cursor, which reads live users created at or before the publication cutoff.
+`[status, deletedAt, createdAt desc, id desc]` covers the filter of the term-policy recipient cursor, which reads active, non-deleted users created at or before the publication cutoff.
 
 ## Composite Types
 
@@ -694,6 +695,8 @@ The module also owns three typed errors (`enums/database.status-code.enum.ts`):
 
 - `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 409, message `database.error.uniqueValueGenerationFailed`) is thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
 - `DatabaseWriteConflictException` (`51801`, HTTP 409, message `database.error.writeConflict`) is the mapped form of a Prisma `P2034` write conflict. A write conflict is not retried.
+    - A guarded state transition inside a transaction can lose to a concurrent winner as a write conflict, so the loser answers the guard's own 4xx or this 409.
+    - A term policy publish is the example: `400` (`statusInvalid`) or `409`.
 - `DatabaseUnavailableException` (`51802`, HTTP 503, message `database.error.unavailable`) is the mapped form of a Prisma initialization error or a connection-failure code.
 
 `DatabaseUtil.toException(error)` returns the mapped exception or `null`, and `AppGeneralFilter` renders it, also when a layer has wrapped the Prisma error in `AppUnknownException`. See [Handling Error](handling-error.md).

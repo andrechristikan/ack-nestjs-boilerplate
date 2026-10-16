@@ -103,12 +103,12 @@ export class NotificationAccountDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -116,7 +116,7 @@ export class NotificationAccountDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Welcome by admin notification processed',
@@ -227,12 +227,12 @@ export class NotificationAccountDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -240,7 +240,7 @@ export class NotificationAccountDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Welcome notification processed',
@@ -317,12 +317,12 @@ export class NotificationAccountDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -330,7 +330,7 @@ export class NotificationAccountDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Welcome social notification processed',
@@ -410,12 +410,12 @@ export class NotificationAccountDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -423,7 +423,7 @@ export class NotificationAccountDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Verified email notification processed',
@@ -503,12 +503,12 @@ export class NotificationAccountDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -516,7 +516,7 @@ export class NotificationAccountDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Verification email notification processed',
@@ -604,12 +604,12 @@ export class NotificationAccountDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -617,7 +617,7 @@ export class NotificationAccountDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Mobile number verified notification processed',

@@ -105,7 +105,7 @@ export class UserRepository implements IUserRepository {
         );
     }
 
-    async findRecipientsCursor(
+    async findActiveRecipientsCursor(
         cursor: string | null,
         take: number,
         createdBefore: Date
@@ -113,6 +113,7 @@ export class UserRepository implements IUserRepository {
         return this.databaseService.client.user.findMany({
             where: {
                 ...UserNotDeletedWhere,
+                status: EnumUserStatus.active,
                 createdAt: { lte: createdBefore },
                 ...(cursor !== null && { id: { gt: cursor } }),
             },
@@ -122,13 +123,14 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findRecipientsByIds(
+    async findActiveRecipientsByIds(
         ids: string[],
         createdBefore: Date
     ): Promise<IUserRecipient[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 ...UserNotDeletedWhere,
+                status: EnumUserStatus.active,
                 id: { in: ids },
                 createdAt: { lte: createdBefore },
             },

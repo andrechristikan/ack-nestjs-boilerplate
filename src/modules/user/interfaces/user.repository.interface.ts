@@ -36,12 +36,12 @@ export interface IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IUserList>>;
-    findRecipientsCursor(
+    findActiveRecipientsCursor(
         cursor: string | null,
         take: number,
         createdBefore: Date
     ): Promise<IUserRecipient[]>;
-    findRecipientsByIds(
+    findActiveRecipientsByIds(
         ids: string[],
         createdBefore: Date
     ): Promise<IUserRecipient[]>;

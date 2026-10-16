@@ -53,6 +53,7 @@ Environment behavior:
         - [Array Truncation](#array-truncation)
         - [Buffer Handling](#buffer-handling)
         - [Object Depth Limitation](#object-depth-limitation)
+    - [Error Serialization](#error-serialization)
 - [File Logging](#file-logging)
     - [Configuration](#configuration-1)
     - [File Rotation Settings](#file-rotation-settings)
@@ -430,6 +431,19 @@ The cap also bounds:
 - Log size
 
 `LoggerUtil.sanitizeMessage` processes string leaves: it strips ANSI codes and collapses whitespace.
+
+### Error Serialization
+
+`LoggerUtil.serializeError` builds the `err` record of a log entry: `type`, the sanitized `message`, `code`, `statusCode`, and `stack`.
+
+- A framework `HttpException` takes its `stack` from the response `_error` when it has one.
+- Any `Error` whose `cause` is set also writes a `cause` field.
+- `AppBaseException` sets its `cause` from `rawError`, so a wrapped error appears in the log through the same field.
+- An `Error` cause is serialized the same way, recursively.
+- Any other cause value goes through `LoggerUtil.redactValue`:
+    - A primitive such as a string comes back unchanged. It is neither sanitized nor redacted.
+    - An object has its sensitive keys replaced with `[REDACTED]`, its string leaves sanitized, and any value nested past `LoggerRedactMaxDepth` replaced whole.
+- The top error is depth 0, and the chain writes at most `LoggerRedactMaxDepth` (**5**) nested causes. The `cause` of the fifth nested cause is left out, with no `[REDACTED]` placeholder.
 
 ## File Logging
 
@@ -831,7 +845,7 @@ Forwarded levels are environment-aware:
 **Exceptions (Sentry Issues).** Exception reporting goes through `SentryService.captureException`:
 
 - `AppGeneralFilter`: logs and reports only when the resolved exception answers HTTP status >= 500. An `AppBaseException` below 500 produces neither a log line nor a report.
-    - An `AppUnknownException` with a `description` is reported as itself, so Sentry shows the description with the cause chained.
+    - An `AppUnknownException` with a `description` is reported as itself, so Sentry shows the description with the cause chained through Sentry's `linkedErrors` integration, which follows `cause`. The cause travels inside that one report.
     - Any other `AppBaseException` is reported as its `rawError` when it has one, otherwise as itself.
 - `AppHttpFilter`: logs and reports the `HttpException` for framework errors with HTTP status >= 500
 - `QueueProcessorBase`:

@@ -264,23 +264,26 @@ export class UserDomain {
         await this.userRepository.touchUpdatedByInTx(tx, userId);
     }
 
-    async getListRecipientCursor(
+    async getListActiveRecipientCursor(
         cursor: string | null,
         take: number,
         createdBefore: Date
     ): Promise<IUserRecipient[]> {
-        return this.userRepository.findRecipientsCursor(
+        return this.userRepository.findActiveRecipientsCursor(
             cursor,
             take,
             createdBefore
         );
     }
 
-    async getManyRecipientsByIds(
+    async getManyActiveRecipientsByIds(
         ids: string[],
         createdBefore: Date
     ): Promise<IUserRecipient[]> {
-        return this.userRepository.findRecipientsByIds(ids, createdBefore);
+        return this.userRepository.findActiveRecipientsByIds(
+            ids,
+            createdBefore
+        );
     }
 
     async getOne(id: string): Promise<IUserProfile> {

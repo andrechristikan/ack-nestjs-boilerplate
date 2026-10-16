@@ -117,4 +117,13 @@ export class TermPolicyHttpService {
 
         return {};
     }
+
+    async resendEmailByAdmin(
+        termPolicyId: string,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        await this.termPolicyDomain.resendEmailByAdmin(termPolicyId, updatedBy);
+
+        return {};
+    }
 }

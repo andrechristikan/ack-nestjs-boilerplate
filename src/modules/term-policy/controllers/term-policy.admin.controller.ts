@@ -265,9 +265,9 @@ export class TermPolicyAdminController {
 
     @Doc({ summary: 'publish a term or policy by ID' })
     @Response('termPolicy.publish')
-    @DocErrors(HttpStatus.CONFLICT, {
-        statusCode: EnumTermPolicyStatusCodeError.publishInProgress,
-        messagePath: 'termPolicy.error.publishInProgress',
+    @DocErrors(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+        messagePath: 'termPolicy.error.statusInvalid',
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -286,6 +286,35 @@ export class TermPolicyAdminController {
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyHttpService.publishByAdmin(
+            termPolicyId,
+            updatedBy
+        );
+    }
+
+    @Doc({ summary: 'resend the publish email of a term or policy by ID' })
+    @Response('termPolicy.resendEmail')
+    @DocErrors(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+        messagePath: 'termPolicy.error.statusInvalid',
+    })
+    @TermPolicyAcceptanceProtected()
+    @PolicyProtected({
+        subject: EnumPolicySubject.termPolicy,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @HttpCode(HttpStatus.OK)
+    @Post('/resend/:termPolicyId/email')
+    async resendEmail(
+        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        termPolicyId: string,
+        @AuthJwtPayload('userId') updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.termPolicyHttpService.resendEmailByAdmin(
             termPolicyId,
             updatedBy
         );

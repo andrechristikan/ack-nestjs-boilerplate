@@ -62,7 +62,8 @@ export interface INotificationTermPolicyRecipientState {
     userId: string;
     notificationId: string;
     batchId: string;
-    enqueuedAt: Date | null;
+    sentAt: Date | null;
+    claimedAt: Date | null;
 }
 
 export interface INotificationTermPolicyRecipientCreate {
@@ -161,6 +162,7 @@ export interface INotificationAcceptTermPolicyPayload {
 
 export interface INotificationPublishTermPolicyPayload extends INotificationAcceptTermPolicyPayload {
     recipientCutoffAt: string;
+    resendNonce: string | null;
 }
 
 export interface INotificationWorkspaceInvitePayload {

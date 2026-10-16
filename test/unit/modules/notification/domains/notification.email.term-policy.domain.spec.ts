@@ -1,15 +1,19 @@
 import { Test } from '@nestjs/testing';
+import { BulkEmailStatus } from '@aws-sdk/client-ses';
 import type { SendBulkTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { NotificationEmailTermPolicyDomain } from '@modules/notification/domains/notification.email.term-policy.domain';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import type { INotificationTermPolicyBatchRecipientEncryptedPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { QueueException } from '@queues/exceptions/queue.exception';
@@ -24,11 +28,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
         mock<HelperDateService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let domain: NotificationEmailTermPolicyDomain;
 
     const now = new Date('2024-05-01T00:00:00.000Z');
     const batchId = 'batch-id';
     const proceedBy = 'admin-id';
+    const claimNonce = 'claim-id';
     const recipients: INotificationTermPolicyBatchRecipientEncryptedPayload[] =
         [
             {
@@ -49,6 +55,7 @@ describe('NotificationEmailTermPolicyDomain', () => {
         type: EnumTermPolicyType.privacy,
         version: 3,
         recipientCutoffAt: '2024-05-01T00:00:00.000Z',
+        resendNonce: null,
     };
 
     beforeEach(async () => {
@@ -65,6 +72,8 @@ describe('NotificationEmailTermPolicyDomain', () => {
             return values[key];
         });
         helperDateService.create.mockReturnValue(now);
+        databaseUtil.createId.mockReturnValue(claimNonce);
+        awsSESService.isInitialized.mockReturnValue(true);
         stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
@@ -80,19 +89,26 @@ describe('NotificationEmailTermPolicyDomain', () => {
                     provide: HelperEncryptionService,
                     useValue: helperEncryptionService,
                 },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         domain = module.get(NotificationEmailTermPolicyDomain);
     });
 
     describe('processPublishTermPolicy', () => {
+        const processed = { message: 'Publish term policy email processed' };
+
         it('sends one bulk email from the payload recipients alone, reading no user, and marks both sent', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
             awsSESService.sendBulk.mockResolvedValue({
                 $metadata: {},
-                Status: [{ Status: 'Success' }, { Status: 'Success' }],
+                Status: [
+                    { Status: BulkEmailStatus.Success },
+                    { Status: BulkEmailStatus.Success },
+                ],
             });
 
             const result = await domain.processPublishTermPolicy(
@@ -102,9 +118,6 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 recipients
             );
 
-            expect(
-                notificationRepository.findTermPolicyRecipientsUnsent
-            ).toHaveBeenCalledWith(data.termPolicyId, batchId);
             expect(awsSESService.sendBulk).toHaveBeenCalledTimes(1);
             expect(awsSESService.sendBulk).toHaveBeenCalledWith({
                 templateName: EnumNotificationProcess.publishTermPolicy,
@@ -127,24 +140,14 @@ describe('NotificationEmailTermPolicyDomain', () => {
                     version: '3',
                 },
             });
-            expect(
-                notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(
-                data.termPolicyId,
-                batchId,
-                ['user-1', 'user-2'],
-                now,
-                proceedBy
-            );
-            expect(result).toMatchObject({
-                message: 'Publish term policy email processed',
-            });
+            expect(result).toMatchObject(processed);
         });
 
         it('decrypts each payload email with its own user id before the SES call', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
             const order: string[] = [];
             helperEncryptionService.aes256Decrypt.mockImplementation(
                 (encrypted: string) => {
@@ -158,7 +161,10 @@ describe('NotificationEmailTermPolicyDomain', () => {
 
                 return {
                     $metadata: {},
-                    Status: [{ Status: 'Success' }, { Status: 'Success' }],
+                    Status: [
+                        { Status: BulkEmailStatus.Success },
+                        { Status: BulkEmailStatus.Success },
+                    ],
                 };
             });
 
@@ -184,13 +190,92 @@ describe('NotificationEmailTermPolicyDomain', () => {
             expect(order).toEqual(['decrypt', 'decrypt', 'send']);
         });
 
-        it('skips a payload recipient whose marker is already sent', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-2']
+        it('resolves without claiming, decrypting, or sending when SES is uninitialized', async () => {
+            awsSESService.isInitialized.mockReturnValue(false);
+
+            await expect(
+                domain.processPublishTermPolicy(
+                    data,
+                    batchId,
+                    proceedBy,
+                    recipients
+                )
+            ).resolves.toMatchObject(processed);
+            expect(
+                notificationRepository.claimTermPolicyRecipients
+            ).not.toHaveBeenCalled();
+            expect(awsSESService.sendBulk).not.toHaveBeenCalled();
+            expect(
+                helperEncryptionService.aes256Decrypt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rethrows a decryption failure without claiming', async () => {
+            const error = new HelperDecryptFailedException();
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                throw error;
+            });
+
+            await expect(
+                domain.processPublishTermPolicy(
+                    data,
+                    batchId,
+                    proceedBy,
+                    recipients
+                )
+            ).rejects.toBe(error);
+            expect(
+                notificationRepository.claimTermPolicyRecipients
+            ).not.toHaveBeenCalled();
+        });
+
+        it('sends nothing when the claim returns no recipient', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue(
+                []
             );
+
+            await expect(
+                domain.processPublishTermPolicy(
+                    data,
+                    batchId,
+                    proceedBy,
+                    recipients
+                )
+            ).resolves.toMatchObject(processed);
+            expect(awsSESService.sendBulk).not.toHaveBeenCalled();
+        });
+
+        it('claims every payload recipient under one claim id and the current time', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue(
+                []
+            );
+
+            await domain.processPublishTermPolicy(
+                data,
+                batchId,
+                proceedBy,
+                recipients
+            );
+
+            expect(
+                notificationRepository.claimTermPolicyRecipients
+            ).toHaveBeenCalledWith(
+                data.termPolicyId,
+                batchId,
+                ['user-1', 'user-2'],
+                claimNonce,
+                now,
+                proceedBy
+            );
+        });
+
+        it('sends and marks only the recipients this attempt read back as claimed', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-2',
+            ]);
             awsSESService.sendBulk.mockResolvedValue({
                 $metadata: {},
-                Status: [{ Status: 'Success' }],
+                Status: [{ Status: BulkEmailStatus.Success }],
             });
 
             await domain.processPublishTermPolicy(
@@ -212,176 +297,232 @@ describe('NotificationEmailTermPolicyDomain', () => {
             );
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(
-                data.termPolicyId,
-                batchId,
-                ['user-2'],
-                now,
-                proceedBy
-            );
+            ).toHaveBeenCalledWith(claimNonce, ['user-2'], now, proceedBy);
         });
 
-        it('ignores an unsent marker the payload does not carry', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-3']
-            );
-            awsSESService.sendBulk.mockResolvedValue({
-                $metadata: {},
-                Status: [{ Status: 'Success' }],
-            });
-
-            await domain.processPublishTermPolicy(
-                data,
-                batchId,
-                proceedBy,
-                recipients
-            );
-
-            expect(
-                notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(
-                data.termPolicyId,
-                batchId,
-                ['user-1'],
-                now,
-                proceedBy
-            );
-        });
-
-        it('rethrows a decryption failure without calling SES or marking', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
-            const error = new HelperDecryptFailedException();
-            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
-                throw error;
-            });
-
-            await expect(
-                domain.processPublishTermPolicy(
-                    data,
-                    batchId,
-                    proceedBy,
-                    recipients
-                )
-            ).rejects.toBe(error);
-            expect(awsSESService.sendBulk).not.toHaveBeenCalled();
-            expect(
-                notificationRepository.markTermPolicyRecipientsSent
-            ).not.toHaveBeenCalled();
-        });
-
-        it('sends and marks nothing when no recipient is unsent', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                []
-            );
-
-            const result = await domain.processPublishTermPolicy(
-                data,
-                batchId,
-                proceedBy,
-                recipients
-            );
-
-            expect(awsSESService.sendBulk).not.toHaveBeenCalled();
-            expect(
-                notificationRepository.markTermPolicyRecipientsSent
-            ).not.toHaveBeenCalled();
-            expect(result).toMatchObject({
-                message: 'Publish term policy email processed',
-            });
-        });
-
-        it('rethrows when SES rejects and marks nothing', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
-            const error = new Error('ses down');
-            awsSESService.sendBulk.mockRejectedValue(error);
-
-            await expect(
-                domain.processPublishTermPolicy(
-                    data,
-                    batchId,
-                    proceedBy,
-                    recipients
-                )
-            ).rejects.toBe(error);
-            expect(
-                notificationRepository.markTermPolicyRecipientsSent
-            ).not.toHaveBeenCalled();
-        });
-
-        it('marks only the delivered recipient and throws a fatal-flagged QueueException on a partial SES result', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
-            awsSESService.sendBulk.mockResolvedValue({
-                $metadata: {},
-                Status: [{ Status: 'Success' }, { Status: 'TransientFailure' }],
-            });
-
-            const run = domain.processPublishTermPolicy(
-                data,
-                batchId,
-                proceedBy,
-                recipients
-            );
-
-            await expect(run).rejects.toBeInstanceOf(QueueException);
-            await expect(run).rejects.toMatchObject({
-                isFatal: true,
-                message: expect.stringContaining(batchId),
-            });
-            await expect(run).rejects.toThrow(/1 of 2/);
-            expect(
-                notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(
-                data.termPolicyId,
-                batchId,
-                ['user-1'],
-                now,
-                proceedBy
-            );
-        });
-
-        it('marks nothing and throws a fatal-flagged QueueException when every recipient fails', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
+        it('matches statuses to the claim order when it differs from the payload order', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-2',
+                'user-1',
+            ]);
             awsSESService.sendBulk.mockResolvedValue({
                 $metadata: {},
                 Status: [
-                    { Status: 'TransientFailure' },
-                    { Status: 'TransientFailure' },
+                    { Status: BulkEmailStatus.Success },
+                    { Status: BulkEmailStatus.MessageRejected },
                 ],
             });
 
-            const run = domain.processPublishTermPolicy(
+            await expect(
+                domain.processPublishTermPolicy(
+                    data,
+                    batchId,
+                    proceedBy,
+                    recipients
+                )
+            ).rejects.toBeInstanceOf(QueueException);
+            expect(awsSESService.sendBulk).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    recipients: [
+                        {
+                            recipient: 'omar@example.com',
+                            templateData: { username: 'omar' },
+                        },
+                        {
+                            recipient: 'nadia@example.com',
+                            templateData: { username: 'nadia' },
+                        },
+                    ],
+                })
+            );
+            expect(
+                notificationRepository.markTermPolicyRecipientsSent
+            ).toHaveBeenCalledWith(claimNonce, ['user-2'], now, proceedBy);
+            expect(
+                notificationRepository.releaseTermPolicyRecipients
+            ).toHaveBeenCalledWith(claimNonce, ['user-1'], proceedBy);
+        });
+
+        it('marks both sent and releases none when every recipient succeeds', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
+            awsSESService.sendBulk.mockResolvedValue({
+                $metadata: {},
+                Status: [
+                    { Status: BulkEmailStatus.Success },
+                    { Status: BulkEmailStatus.Success },
+                ],
+            });
+
+            await expect(
+                domain.processPublishTermPolicy(
+                    data,
+                    batchId,
+                    proceedBy,
+                    recipients
+                )
+            ).resolves.toMatchObject(processed);
+            expect(
+                notificationRepository.markTermPolicyRecipientsSent
+            ).toHaveBeenCalledWith(
+                claimNonce,
+                ['user-1', 'user-2'],
+                now,
+                proceedBy
+            );
+            expect(
+                notificationRepository.releaseTermPolicyRecipients
+            ).not.toHaveBeenCalled();
+        });
+
+        it('marks the delivered recipient, releases the rejected one, and throws a fatal QueueException on a definite failure', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
+            awsSESService.sendBulk.mockResolvedValue({
+                $metadata: {},
+                Status: [
+                    { Status: BulkEmailStatus.Success },
+                    { Status: BulkEmailStatus.MessageRejected },
+                ],
+            });
+
+            const attempt = domain.processPublishTermPolicy(
                 data,
                 batchId,
                 proceedBy,
                 recipients
             );
 
-            await expect(run).rejects.toBeInstanceOf(QueueException);
-            await expect(run).rejects.toMatchObject({
+            await expect(attempt).rejects.toBeInstanceOf(QueueException);
+            await expect(attempt).rejects.toMatchObject({
                 isFatal: true,
                 message: expect.stringContaining(batchId),
             });
-            await expect(run).rejects.toThrow(/2 of 2/);
+            await expect(attempt).rejects.toThrow(/1 of 2/);
+            expect(
+                notificationRepository.markTermPolicyRecipientsSent
+            ).toHaveBeenCalledWith(claimNonce, ['user-1'], now, proceedBy);
+            expect(
+                notificationRepository.releaseTermPolicyRecipients
+            ).toHaveBeenCalledWith(claimNonce, ['user-2'], proceedBy);
+        });
+
+        it('marks and releases nothing and throws the unknown-delivery exception when sendBulk throws', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
+            const error = new Error('socket hang up');
+            awsSESService.sendBulk.mockRejectedValue(error);
+
+            const attempt = domain.processPublishTermPolicy(
+                data,
+                batchId,
+                proceedBy,
+                recipients
+            );
+
+            await expect(attempt).rejects.toBeInstanceOf(
+                NotificationEmailDeliveryUnknownException
+            );
+            await expect(attempt).rejects.toMatchObject({
+                message: expect.stringMatching(/batch-id.* 2 recipients/),
+                rawError: error,
+            });
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
             ).not.toHaveBeenCalled();
+            expect(
+                notificationRepository.releaseTermPolicyRecipients
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws a QueueException when the SES status list is shorter than the recipients', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
+        it.each([
+            ['an empty status list', { $metadata: {}, Status: [] }],
+            [
+                'no status list',
+                { $metadata: {} } as SendBulkTemplatedEmailCommandOutput,
+            ],
+            [
+                'a status list shorter than the claim',
+                {
+                    $metadata: {},
+                    Status: [{ Status: BulkEmailStatus.Success }],
+                },
+            ],
+        ])(
+            'marks and releases nothing and throws the unknown-delivery exception on %s',
+            async (_label, output) => {
+                notificationRepository.claimTermPolicyRecipients.mockResolvedValue(
+                    ['user-1', 'user-2']
+                );
+                awsSESService.sendBulk.mockResolvedValue(output);
+
+                const attempt = domain.processPublishTermPolicy(
+                    data,
+                    batchId,
+                    proceedBy,
+                    recipients
+                );
+
+                await expect(attempt).rejects.toBeInstanceOf(
+                    NotificationEmailDeliveryUnknownException
+                );
+                await expect(attempt).rejects.toMatchObject({
+                    message: expect.stringContaining(' 2 recipients'),
+                });
+                expect(
+                    notificationRepository.markTermPolicyRecipientsSent
+                ).not.toHaveBeenCalled();
+                expect(
+                    notificationRepository.releaseTermPolicyRecipients
+                ).not.toHaveBeenCalled();
+            }
+        );
+
+        it('marks the delivered recipient and throws the unknown-delivery exception for an entry with no status', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
             awsSESService.sendBulk.mockResolvedValue({
                 $metadata: {},
-                Status: [{ Status: 'Success' }],
+                Status: [{ Status: BulkEmailStatus.Success }, {}],
+            });
+
+            const attempt = domain.processPublishTermPolicy(
+                data,
+                batchId,
+                proceedBy,
+                recipients
+            );
+
+            await expect(attempt).rejects.toBeInstanceOf(
+                NotificationEmailDeliveryUnknownException
+            );
+            await expect(attempt).rejects.toMatchObject({
+                message: expect.stringContaining(' 1 recipients'),
+            });
+            expect(
+                notificationRepository.markTermPolicyRecipientsSent
+            ).toHaveBeenCalledWith(claimNonce, ['user-1'], now, proceedBy);
+            expect(
+                notificationRepository.releaseTermPolicyRecipients
+            ).not.toHaveBeenCalled();
+        });
+
+        it('releases the rejected recipient and throws a QueueException when a failure meets an unknown entry', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
+            awsSESService.sendBulk.mockResolvedValue({
+                $metadata: {},
+                Status: [{ Status: BulkEmailStatus.MessageRejected }, {}],
             });
 
             await expect(
@@ -393,24 +534,29 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 )
             ).rejects.toBeInstanceOf(QueueException);
             expect(
+                notificationRepository.releaseTermPolicyRecipients
+            ).toHaveBeenCalledWith(claimNonce, ['user-1'], proceedBy);
+            expect(
                 notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(
-                data.termPolicyId,
-                batchId,
-                ['user-1'],
-                now,
-                proceedBy
-            );
+            ).not.toHaveBeenCalled();
         });
 
-        it('completes without marking when SES is not configured and returns an empty status list', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
+        it('releases the rejected recipient and wraps the mark error in AppUnknownException when the mark fails', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
             awsSESService.sendBulk.mockResolvedValue({
                 $metadata: {},
-                Status: [],
+                Status: [
+                    { Status: BulkEmailStatus.Success },
+                    { Status: BulkEmailStatus.MessageRejected },
+                ],
             });
+            const error = new Error('db down');
+            notificationRepository.markTermPolicyRecipientsSent.mockRejectedValue(
+                error
+            );
 
             await expect(
                 domain.processPublishTermPolicy(
@@ -419,21 +565,31 @@ describe('NotificationEmailTermPolicyDomain', () => {
                     proceedBy,
                     recipients
                 )
-            ).resolves.toMatchObject({
-                message: 'Publish term policy email processed',
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
             });
             expect(
-                notificationRepository.markTermPolicyRecipientsSent
-            ).not.toHaveBeenCalled();
+                notificationRepository.releaseTermPolicyRecipients
+            ).toHaveBeenCalledWith(claimNonce, ['user-2'], proceedBy);
         });
 
-        it('completes without marking when SES returns no status', async () => {
-            notificationRepository.findTermPolicyRecipientsUnsent.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
+        it('marks the delivered recipient and wraps the release error in AppUnknownException when the release fails', async () => {
+            notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
             awsSESService.sendBulk.mockResolvedValue({
                 $metadata: {},
-            } as SendBulkTemplatedEmailCommandOutput);
+                Status: [
+                    { Status: BulkEmailStatus.Success },
+                    { Status: BulkEmailStatus.MessageRejected },
+                ],
+            });
+            const error = new Error('db down');
+            notificationRepository.releaseTermPolicyRecipients.mockRejectedValue(
+                error
+            );
 
             await expect(
                 domain.processPublishTermPolicy(
@@ -442,12 +598,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
                     proceedBy,
                     recipients
                 )
-            ).resolves.toMatchObject({
-                message: 'Publish term policy email processed',
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
             });
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
-            ).not.toHaveBeenCalled();
+            ).toHaveBeenCalledWith(claimNonce, ['user-1'], now, proceedBy);
         });
     });
 });

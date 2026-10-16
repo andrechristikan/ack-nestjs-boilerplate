@@ -137,12 +137,12 @@ export class NotificationSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -150,7 +150,7 @@ export class NotificationSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Temporary password by admin notification processed',
@@ -227,12 +227,12 @@ export class NotificationSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -240,7 +240,7 @@ export class NotificationSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Change password notification processed',
@@ -338,12 +338,12 @@ export class NotificationSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -351,7 +351,7 @@ export class NotificationSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Forgot password notification processed',
@@ -446,12 +446,12 @@ export class NotificationSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -459,7 +459,7 @@ export class NotificationSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Reset password notification processed',
@@ -559,12 +559,12 @@ export class NotificationSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -572,7 +572,7 @@ export class NotificationSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Reset two factor by admin notification processed',
@@ -687,12 +687,12 @@ export class NotificationSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -700,7 +700,7 @@ export class NotificationSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'New device login notification processed',

@@ -5,6 +5,7 @@ import {
     NotificationReferenceJobIdPattern,
     NotificationStepJobIdPattern,
     NotificationTermPolicyBatchJobIdPattern,
+    NotificationTermPolicyBatchResendJobIdPattern,
     NotificationUserJobIdPattern,
     NotificationWorkspaceUserJobIdPattern,
 } from '@modules/notification/constants/notification.constant';
@@ -771,14 +772,18 @@ export class NotificationEmailQueue {
         const payload: INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload> =
             { data, batchId, proceedBy, recipients: encryptedRecipients };
 
-        const jobId = this.helperStringService.fillPattern(
-            NotificationTermPolicyBatchJobIdPattern,
-            {
-                process: EnumNotificationProcess.publishTermPolicy,
-                termPolicyId: data.termPolicyId,
-                batchId,
-            }
-        );
+        const jobIdPattern =
+            data.resendNonce === null
+                ? NotificationTermPolicyBatchJobIdPattern
+                : NotificationTermPolicyBatchResendJobIdPattern;
+        const jobId = this.helperStringService.fillPattern(jobIdPattern, {
+            process: EnumNotificationProcess.publishTermPolicy,
+            termPolicyId: data.termPolicyId,
+            batchId,
+            ...(data.resendNonce !== null && {
+                resendNonce: data.resendNonce,
+            }),
+        });
 
         await this.emailQueue.add(
             EnumNotificationProcess.publishTermPolicy,

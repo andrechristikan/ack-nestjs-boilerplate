@@ -250,7 +250,7 @@ describe('TermPolicyHttpService', () => {
     });
 
     describe('publishByAdmin', () => {
-        it('returns an empty response after publishing', async () => {
+        it('returns an empty response when the term policy was published', async () => {
             termPolicyDomain.publishByAdmin.mockResolvedValue(undefined);
 
             const result = await service.publishByAdmin(
@@ -260,6 +260,23 @@ describe('TermPolicyHttpService', () => {
 
             expect(result).toEqual({});
             expect(termPolicyDomain.publishByAdmin).toHaveBeenCalledWith(
+                'term-policy-1',
+                'user-1'
+            );
+        });
+    });
+
+    describe('resendEmailByAdmin', () => {
+        it('returns an empty response when the resend was enqueued', async () => {
+            termPolicyDomain.resendEmailByAdmin.mockResolvedValue(undefined);
+
+            const result = await service.resendEmailByAdmin(
+                'term-policy-1',
+                'user-1'
+            );
+
+            expect(result).toEqual({});
+            expect(termPolicyDomain.resendEmailByAdmin).toHaveBeenCalledWith(
                 'term-policy-1',
                 'user-1'
             );

@@ -331,6 +331,11 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogTermPolicyMetadataSchema,
     },
+    [EnumActivityLogAction.adminTermPolicyResendEmail]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogTermPolicyMetadataSchema,
+    },
     [EnumActivityLogAction.adminUserCreate]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,

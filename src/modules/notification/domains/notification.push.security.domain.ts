@@ -210,12 +210,12 @@ export class NotificationPushSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -223,7 +223,7 @@ export class NotificationPushSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'New login notification processed',
@@ -330,12 +330,12 @@ export class NotificationPushSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -343,7 +343,7 @@ export class NotificationPushSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Reset two-factor notification processed',
@@ -457,12 +457,12 @@ export class NotificationPushSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -470,7 +470,7 @@ export class NotificationPushSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Temporary password notification processed',
@@ -577,12 +577,12 @@ export class NotificationPushSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -590,7 +590,7 @@ export class NotificationPushSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Reset password notification processed',
@@ -697,12 +697,12 @@ export class NotificationPushSecurityDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -710,7 +710,7 @@ export class NotificationPushSecurityDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Forgot password notification processed',

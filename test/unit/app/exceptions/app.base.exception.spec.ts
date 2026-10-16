@@ -54,5 +54,27 @@ describe('AppBaseException', () => {
             expect(exception.messageProperties).toBeNull();
             expect(exception.rawError).toBeNull();
         });
+
+        it('sets cause from an Error rawError', () => {
+            const rawError = new Error('boom');
+
+            const exception = new ResponseSerializationException({ rawError });
+
+            expect(exception.cause).toBe(rawError);
+        });
+
+        it('sets cause from a non-Error rawError', () => {
+            const rawError = [{ code: 'invalid_type' }];
+
+            const exception = new ResponseSerializationException({ rawError });
+
+            expect(exception.cause).toBe(rawError);
+        });
+
+        it('leaves cause unset without a rawError', () => {
+            const exception = new ResponseSerializationException();
+
+            expect(Object.hasOwn(exception, 'cause')).toBe(false);
+        });
     });
 });

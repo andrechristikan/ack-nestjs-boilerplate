@@ -118,6 +118,7 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
     - It runs the unit suite under `test/unit/`.
     - The integration and e2e suites are held, so none exists: `package.json` defines no `test:integration` or `test:e2e` script, and `test/` holds `unit/` and `helpers/`.
 - `any` is a lint error in `src/` (`@typescript-eslint/no-explicit-any`).
+- `.forEach` is a lint error in `src/` and `test/`; iterate with `for...of`.
 - Every public method and function carries explicit types (`explicit-function-return-type`, `explicit-module-boundary-types`).
 
 ### Strict null convention

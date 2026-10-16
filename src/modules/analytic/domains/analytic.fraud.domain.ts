@@ -285,7 +285,7 @@ export class AnalyticFraudDomain {
             });
             // Sequential by design: bounded chunks, concurrent within a chunk
             const devicesPerChange = await Promise.all(devicePromises);
-            batch.forEach((change, index) => {
+            for (const [index, change] of batch.entries()) {
                 const forUser = devicesPerChange[index]!.filter(
                     d => d.userId === change.userId
                 );
@@ -296,7 +296,7 @@ export class AnalyticFraudDomain {
                         passwordChangedAt: change.createdAt,
                     });
                 }
-            });
+            }
         }
         return flagged;
     }
@@ -382,7 +382,7 @@ export class AnalyticFraudDomain {
             });
             // Sequential by design: bounded chunks, concurrent within a chunk
             const loginsPerRevoke = await Promise.all(loginPromises);
-            batch.forEach((revoke, index) => {
+            for (const [index, revoke] of batch.entries()) {
                 const hit = loginsPerRevoke[index]!.find(
                     l => l.userId === revoke.userId
                 );
@@ -393,7 +393,7 @@ export class AnalyticFraudDomain {
                         loginAt: hit.createdAt,
                     });
                 }
-            });
+            }
         }
         return flagged;
     }
@@ -473,7 +473,7 @@ export class AnalyticFraudDomain {
             });
             // Sequential by design: bounded chunks, concurrent within a chunk
             const devicesPerRegeneration = await Promise.all(devicePromises);
-            batch.forEach((regeneration, index) => {
+            for (const [index, regeneration] of batch.entries()) {
                 if (
                     devicesPerRegeneration[index]!.some(
                         d => d.userId === regeneration.userId
@@ -484,7 +484,7 @@ export class AnalyticFraudDomain {
                         regeneratedAt: regeneration.createdAt,
                     });
                 }
-            });
+            }
         }
         return flagged;
     }

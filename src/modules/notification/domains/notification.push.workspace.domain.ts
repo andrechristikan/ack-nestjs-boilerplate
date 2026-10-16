@@ -202,12 +202,12 @@ export class NotificationPushWorkspaceDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -215,7 +215,7 @@ export class NotificationPushWorkspaceDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Workspace invite notification processed',
@@ -327,12 +327,12 @@ export class NotificationPushWorkspaceDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -340,7 +340,7 @@ export class NotificationPushWorkspaceDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Workspace join request notification processed',
@@ -451,12 +451,12 @@ export class NotificationPushWorkspaceDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -464,7 +464,7 @@ export class NotificationPushWorkspaceDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Workspace join accepted notification processed',
@@ -579,12 +579,12 @@ export class NotificationPushWorkspaceDomain {
 
         const outcomes = await Promise.allSettled(promises);
         const failedSteps: INotificationStepFailure[] = [];
-        outcomes.forEach((outcome, index) => {
+        for (const [index, outcome] of outcomes.entries()) {
             const step = steps[index]!;
             if (outcome.status === 'fulfilled') {
                 done.push(step);
 
-                return;
+                continue;
             }
 
             const failure = this.notificationUtil.toStepFailure(
@@ -592,7 +592,7 @@ export class NotificationPushWorkspaceDomain {
                 outcome.reason
             );
             failedSteps.push(failure);
-        });
+        }
 
         return {
             message: 'Workspace join rejected notification processed',

@@ -42,7 +42,7 @@ This page is the human catalog.
 | `51200` | `notification` | `51200`–`51203` | 4       |
 | `51300` | `device`       | `51300`         | 1       |
 | `51400` | `aws`          | `51400`–`51406` | 7       |
-| `51500` | `term-policy`  | `51500`–`51510` | 11      |
+| `51500` | `term-policy`  | `51500`–`51509` | 10      |
 | `51600` | `workspace`    | `51600`–`51623` | 24      |
 | `51700` | `project`      | `51700`–`51709` | 10      |
 | `51800` | `database`     | `51800`–`51802` | 3       |
@@ -330,14 +330,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `contentExist` | `51507` | `contentExist` | 409 (`CONFLICT`) | `termPolicy.error.contentExist` | This content already exists in the term policy. |
 | `contentEmpty` | `51508` | `contentEmpty` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentEmpty` | Term policy content cannot be empty. |
 | `contentInvalid` | `51509` | `contentInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `termPolicy.error.contentInvalid` | Term policy content is invalid. |
-| `publishInProgress` | `51510` | `publishInProgress` | 409 (`CONFLICT`) | `termPolicy.error.publishInProgress` | Term policy publish is already in progress. |
 
 - `contentInvalid` is raised by `TermPolicyContentDomain` and `TermPolicyDomain` when `TermPolicyUtil.toContents` finds a stored content whose language or access is not a known enum value.
-- `publishInProgress` is raised by `NotificationQueue.sendPublishTermPolicy`, which keys the publish job by term policy and follows the job's BullMQ state (`EnumQueueJobState`):
-    - `failed`: the job is retried with its attempts reset.
-    - `waiting`, `prioritized`, `delayed`, `active`, or `waitingChildren`: `publishInProgress`.
-    - `completed` or `unknown`: the old job is removed and a new one is added.
-    - A failed job that left the `failed` state before the retry also answers `publishInProgress`.
 
 ## `workspace`
 

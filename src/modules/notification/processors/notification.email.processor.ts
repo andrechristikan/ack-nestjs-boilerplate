@@ -27,6 +27,7 @@ import type {
     INotificationWorkspaceJoinRequestEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import { NotificationEmailProcessorService } from '@modules/notification/services/notification.email.processor.service';
 import {
     AwsSESRateLimitDurationInMs,
@@ -225,8 +226,14 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     };
             }
         } catch (error: unknown) {
-            if (error instanceof HelperDecryptFailedException) {
-                throw new UnrecoverableError(error.message);
+            if (
+                error instanceof HelperDecryptFailedException ||
+                error instanceof NotificationEmailDeliveryUnknownException
+            ) {
+                const unrecoverable = new UnrecoverableError(error.message);
+                unrecoverable.cause = error;
+
+                throw unrecoverable;
             }
 
             if (

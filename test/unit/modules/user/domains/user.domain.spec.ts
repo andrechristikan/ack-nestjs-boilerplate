@@ -473,21 +473,20 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('getManyRecipientsByIds', () => {
+    describe('getManyActiveRecipientsByIds', () => {
         it('delegates to the repository with the creation bound', async () => {
             const rows = [
                 { id: 'user-a', email: 'a@example.com', username: 'a' },
             ];
             const createdBefore = new Date('2026-01-01T00:00:00.000Z');
-            userRepository.findRecipientsByIds.mockResolvedValue(rows);
+            userRepository.findActiveRecipientsByIds.mockResolvedValue(rows);
 
             await expect(
-                domain.getManyRecipientsByIds(['user-a'], createdBefore)
+                domain.getManyActiveRecipientsByIds(['user-a'], createdBefore)
             ).resolves.toBe(rows);
-            expect(userRepository.findRecipientsByIds).toHaveBeenCalledWith(
-                ['user-a'],
-                createdBefore
-            );
+            expect(
+                userRepository.findActiveRecipientsByIds
+            ).toHaveBeenCalledWith(['user-a'], createdBefore);
         });
     });
 
@@ -649,7 +648,7 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('getListRecipientCursor', () => {
+    describe('getListActiveRecipientCursor', () => {
         it('forwards the cursor, take, and creation bound to the repository', async () => {
             const rows = [
                 {
@@ -664,16 +663,18 @@ describe('UserDomain', () => {
                 },
             ];
             const createdBefore = new Date('2026-01-01T00:00:00.000Z');
-            userRepository.findRecipientsCursor.mockResolvedValue(rows);
+            userRepository.findActiveRecipientsCursor.mockResolvedValue(rows);
 
             await expect(
-                domain.getListRecipientCursor('user-amber', 2, createdBefore)
+                domain.getListActiveRecipientCursor(
+                    'user-amber',
+                    2,
+                    createdBefore
+                )
             ).resolves.toBe(rows);
-            expect(userRepository.findRecipientsCursor).toHaveBeenCalledWith(
-                'user-amber',
-                2,
-                createdBefore
-            );
+            expect(
+                userRepository.findActiveRecipientsCursor
+            ).toHaveBeenCalledWith('user-amber', 2, createdBefore);
         });
     });
 

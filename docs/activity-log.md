@@ -212,7 +212,7 @@ Activity logs prepared inside a transaction callback, after a write whose return
 - `userLoginFailed`
 - `userReachMaxPasswordAttempt` and `userRevokeAllSessions` on the lockout path
 - the five API key admin writes (status, name, dates, reset, delete)
-- `adminTermPolicyPublish`, which stays recorded when the publication job fails to queue after the commit
+- `adminTermPolicyPublish`, which stays recorded when the publication job fails to queue
 
 - An API key admin write stages its row after the database write and before the cache delete, so a cache delete that fails and answers 500 still records the change.
 - Every other activity log is success-only.

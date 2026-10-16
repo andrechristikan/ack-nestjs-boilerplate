@@ -97,6 +97,7 @@
     "adminTermPolicyAddContent": "Terms and policy content has been added",
     "adminTermPolicyRemoveContent": "Terms and policy content has been removed",
     "adminTermPolicyPublish": "Terms and policy has been published",
+    "adminTermPolicyResendEmail": "Terms and policy email has been resent",
     "adminUserCreate": "Account of user {targetUsername} has been created",
     "adminUserUpdateStatus": "Status of user {targetUsername} has been updated",
     "adminUserUpdatePassword": "Password of user {targetUsername} has been updated",

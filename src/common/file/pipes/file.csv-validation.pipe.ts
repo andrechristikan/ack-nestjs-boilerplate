@@ -58,18 +58,18 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
                     batch.map(row => schema['~standard'].validate(row))
                 );
 
-                results.forEach((result, index) => {
+                for (const [index, result] of results.entries()) {
                     if (result.issues) {
                         errors.push({
                             row: offset + index,
                             errors: result.issues,
                         });
 
-                        return;
+                        continue;
                     }
 
                     rows.push(result.value);
-                });
+                }
                 offset += batch.length;
             }
 

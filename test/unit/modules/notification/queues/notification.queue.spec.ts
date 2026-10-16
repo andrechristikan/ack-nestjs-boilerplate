@@ -1,8 +1,7 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { ErrorCode } from 'bullmq';
-import type { Job, Queue } from 'bullmq';
+import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -34,15 +33,8 @@ import type {
     INotificationWorkspaceJoinRejectedPayload,
     INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { TermPolicyPublishInProgressException } from '@modules/term-policy/exceptions/term-policy.publish-in-progress.exception';
-import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
-import {
-    EnumQueue,
-    EnumQueueJobState,
-    EnumQueuePriority,
-} from '@queues/enums/queue.enum';
+import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 describe('NotificationQueue', () => {
     const notificationQueue: MockProxy<Queue> = mock<Queue>();
@@ -491,12 +483,13 @@ describe('NotificationQueue', () => {
     });
 
     describe('sendPublishTermPolicy', () => {
-        it('enqueues the publishTermPolicy job under a job id built from the term policy id, medium priority, without deduplication', async () => {
+        it('adds the publish job with the fixed job id', async () => {
             const payload = {
                 termPolicyId: 'term-policy-id',
                 type: EnumTermPolicyType.privacy,
                 version: 3,
                 recipientCutoffAt: '2024-01-01T00:00:00.000Z',
+                resendNonce: null,
             };
 
             await queue.sendPublishTermPolicy(payload, 'admin-id');
@@ -509,126 +502,49 @@ describe('NotificationQueue', () => {
                     jobId: 'publishTermPolicy-term-policy-id',
                 }
             );
-            expect(notificationQueue.getJob).toHaveBeenCalledWith(
-                'publishTermPolicy-term-policy-id'
+            expect(notificationQueue.getJob).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('sendResendPublishTermPolicy', () => {
+        const proceedBy = 'admin-id';
+        const basePayload = {
+            termPolicyId: 'term-policy-id',
+            type: EnumTermPolicyType.privacy,
+            version: 3,
+            recipientCutoffAt: '2024-01-01T00:00:00.000Z',
+        };
+
+        it('adds the resend job with a nonce job id and the nonce in the payload', async () => {
+            databaseUtil.createId.mockReturnValue('nonce-1');
+
+            await queue.sendResendPublishTermPolicy(basePayload, proceedBy);
+
+            expect(notificationQueue.add).toHaveBeenCalledWith(
+                EnumNotificationProcess.resendPublishTermPolicy,
+                { proceedBy, data: { ...basePayload, resendNonce: 'nonce-1' } },
+                {
+                    priority: EnumQueuePriority.medium,
+                    jobId: `resendPublishTermPolicy-${basePayload.termPolicyId}-nonce-1`,
+                }
             );
         });
 
-        describe('with an existing job', () => {
-            const payload = {
-                termPolicyId: 'term-policy-id',
-                type: EnumTermPolicyType.privacy,
-                version: 3,
-                recipientCutoffAt: '2024-01-01T00:00:00.000Z',
-            };
-            const job: MockProxy<Job> = mock<Job>();
+        it('draws a new nonce per call', async () => {
+            databaseUtil.createId
+                .mockReturnValueOnce('nonce-1')
+                .mockReturnValueOnce('nonce-2');
 
-            beforeEach(() => {
-                notificationQueue.getJob.mockResolvedValue(job);
-            });
+            await queue.sendResendPublishTermPolicy(basePayload, proceedBy);
+            await queue.sendResendPublishTermPolicy(basePayload, proceedBy);
 
-            it('retries a failed job with attempts reset and neither removes nor adds', async () => {
-                job.getState.mockResolvedValue(EnumQueueJobState.failed);
-
-                await queue.sendPublishTermPolicy(payload, 'admin-id');
-
-                expect(job.retry).toHaveBeenCalledWith(
-                    EnumQueueJobState.failed,
-                    {
-                        resetAttemptsMade: true,
-                    }
-                );
-                expect(job.remove).not.toHaveBeenCalled();
-                expect(notificationQueue.add).not.toHaveBeenCalled();
-            });
-
-            it('throws TermPolicyPublishInProgressException when a concurrent retry already moved the failed job', async () => {
-                job.getState.mockResolvedValue(EnumQueueJobState.failed);
-                const raced = Object.assign(
-                    new Error(
-                        'Job publishTermPolicy is not in the failed state'
-                    ),
-                    { code: ErrorCode.JobNotInState }
-                );
-                job.retry.mockRejectedValue(raced);
-
-                await expect(
-                    queue.sendPublishTermPolicy(payload, 'admin-id')
-                ).rejects.toMatchObject({
-                    constructor: TermPolicyPublishInProgressException,
-                    statusCode: EnumTermPolicyStatusCodeError.publishInProgress,
-                    httpStatus: 409,
-                });
-                expect(notificationQueue.add).not.toHaveBeenCalled();
-            });
-
-            it('wraps any other retry failure in AppUnknownException with the raw error', async () => {
-                job.getState.mockResolvedValue(EnumQueueJobState.failed);
-                const failure = new Error('redis down');
-                job.retry.mockRejectedValue(failure);
-
-                await expect(
-                    queue.sendPublishTermPolicy(payload, 'admin-id')
-                ).rejects.toMatchObject({
-                    constructor: AppUnknownException,
-                    rawError: failure,
-                    description:
-                        'Retrying the failed term policy publish job failed',
-                });
-            });
-
-            it.each([
-                EnumQueueJobState.waiting,
-                EnumQueueJobState.prioritized,
-                EnumQueueJobState.delayed,
-                EnumQueueJobState.active,
-                EnumQueueJobState.waitingChildren,
-            ])(
-                'throws TermPolicyPublishInProgressException and never removes, retries, or adds while the job is %s',
-                async state => {
-                    job.getState.mockResolvedValue(state);
-
-                    await expect(
-                        queue.sendPublishTermPolicy(payload, 'admin-id')
-                    ).rejects.toMatchObject({
-                        constructor: TermPolicyPublishInProgressException,
-                        statusCode:
-                            EnumTermPolicyStatusCodeError.publishInProgress,
-                        httpStatus: 409,
-                    });
-                    expect(job.remove).not.toHaveBeenCalled();
-                    expect(job.retry).not.toHaveBeenCalled();
-                    expect(notificationQueue.add).not.toHaveBeenCalled();
-                }
-            );
-
-            it.each([EnumQueueJobState.completed, EnumQueueJobState.unknown])(
-                'removes a %s job then adds a fresh one',
-                async state => {
-                    job.getState.mockResolvedValue(state);
-                    const order: string[] = [];
-                    job.remove.mockImplementation(async () => {
-                        order.push('remove');
-                    });
-                    notificationQueue.add.mockImplementation(async () => {
-                        order.push('add');
-
-                        return mock<Job>();
-                    });
-
-                    await queue.sendPublishTermPolicy(payload, 'admin-id');
-
-                    expect(order).toEqual(['remove', 'add']);
-                    expect(job.retry).not.toHaveBeenCalled();
-                    expect(notificationQueue.add).toHaveBeenCalledWith(
-                        EnumNotificationProcess.publishTermPolicy,
-                        { proceedBy: 'admin-id', data: payload },
-                        {
-                            priority: EnumQueuePriority.medium,
-                            jobId: 'publishTermPolicy-term-policy-id',
-                        }
-                    );
-                }
+            expect(notificationQueue.add).toHaveBeenNthCalledWith(
+                2,
+                EnumNotificationProcess.resendPublishTermPolicy,
+                expect.anything(),
+                expect.objectContaining({
+                    jobId: `resendPublishTermPolicy-${basePayload.termPolicyId}-nonce-2`,
+                })
             );
         });
     });

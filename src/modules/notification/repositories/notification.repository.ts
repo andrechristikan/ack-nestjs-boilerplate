@@ -146,12 +146,16 @@ export class NotificationRepository implements INotificationRepository {
         });
     }
 
-    async findTermPolicyRecipientsByBatchIds(
+    async findTermPolicyRecipientsSendableByBatchIds(
         termPolicyId: string,
         batchIds: string[]
     ): Promise<INotificationTermPolicyRecipientState[]> {
         return this.databaseService.client.termPolicyRecipient.findMany({
-            where: { termPolicyId, batchId: { in: batchIds } },
+            where: {
+                ...NotificationTermPolicyRecipientSendWhere,
+                termPolicyId,
+                batchId: { in: batchIds },
+            },
             select: NotificationTermPolicyRecipientStateSelect,
             orderBy: { userId: EnumPaginationOrderDirectionType.asc },
         });
@@ -178,6 +182,9 @@ export class NotificationRepository implements INotificationRepository {
                     userId,
                     notificationId,
                     batchId,
+                    sentAt: null,
+                    claimedAt: null,
+                    claimNonce: null,
                     createdBy: proceedBy,
                     updatedBy: proceedBy,
                 })),
@@ -185,33 +192,27 @@ export class NotificationRepository implements INotificationRepository {
         });
     }
 
-    async markTermPolicyRecipientsEnqueued(
+    async claimTermPolicyRecipients(
         termPolicyId: string,
-        batchIds: string[],
-        enqueuedAt: Date,
+        batchId: string,
+        userIds: string[],
+        claimNonce: string,
+        claimedAt: Date,
         updatedBy: string
-    ): Promise<void> {
+    ): Promise<string[]> {
         await this.databaseService.client.termPolicyRecipient.updateMany({
             where: {
+                ...NotificationTermPolicyRecipientSendWhere,
                 termPolicyId,
-                batchId: { in: batchIds },
-                enqueuedAt: null,
+                batchId,
+                userId: { in: userIds },
             },
-            data: { enqueuedAt, updatedBy },
+            data: { claimedAt, claimNonce, updatedBy },
         });
-    }
 
-    async findTermPolicyRecipientsUnsent(
-        termPolicyId: string,
-        batchId: string
-    ): Promise<string[]> {
         const rows =
             await this.databaseService.client.termPolicyRecipient.findMany({
-                where: {
-                    ...NotificationTermPolicyRecipientSendWhere,
-                    termPolicyId,
-                    batchId,
-                },
+                where: { termPolicyId, batchId, claimNonce },
                 select: NotificationTermPolicyRecipientSendSelect,
             });
 
@@ -219,20 +220,25 @@ export class NotificationRepository implements INotificationRepository {
     }
 
     async markTermPolicyRecipientsSent(
-        termPolicyId: string,
-        batchId: string,
+        claimNonce: string,
         userIds: string[],
         sentAt: Date,
         updatedBy: string
     ): Promise<void> {
         await this.databaseService.client.termPolicyRecipient.updateMany({
-            where: {
-                termPolicyId,
-                batchId,
-                userId: { in: userIds },
-                sentAt: null,
-            },
+            where: { claimNonce, userId: { in: userIds }, sentAt: null },
             data: { sentAt, updatedBy },
+        });
+    }
+
+    async releaseTermPolicyRecipients(
+        claimNonce: string,
+        userIds: string[],
+        updatedBy: string
+    ): Promise<void> {
+        await this.databaseService.client.termPolicyRecipient.updateMany({
+            where: { claimNonce, userId: { in: userIds }, sentAt: null },
+            data: { claimedAt: null, claimNonce: null, updatedBy },
         });
     }
 

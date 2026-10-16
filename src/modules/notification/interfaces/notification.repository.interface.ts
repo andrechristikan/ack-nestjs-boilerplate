@@ -28,7 +28,7 @@ export interface INotificationRepository {
         termPolicyId: string,
         userIds: string[]
     ): Promise<INotificationTermPolicyRecipientState[]>;
-    findTermPolicyRecipientsByBatchIds(
+    findTermPolicyRecipientsSendableByBatchIds(
         termPolicyId: string,
         batchIds: string[]
     ): Promise<INotificationTermPolicyRecipientState[]>;
@@ -39,21 +39,23 @@ export interface INotificationRepository {
         entries: INotificationCreateEntry[],
         recipients: INotificationTermPolicyRecipientCreate[]
     ): Promise<void>;
-    markTermPolicyRecipientsEnqueued(
-        termPolicyId: string,
-        batchIds: string[],
-        enqueuedAt: Date,
-        updatedBy: string
-    ): Promise<void>;
-    findTermPolicyRecipientsUnsent(
-        termPolicyId: string,
-        batchId: string
-    ): Promise<string[]>;
-    markTermPolicyRecipientsSent(
+    claimTermPolicyRecipients(
         termPolicyId: string,
         batchId: string,
         userIds: string[],
+        claimNonce: string,
+        claimedAt: Date,
+        updatedBy: string
+    ): Promise<string[]>;
+    markTermPolicyRecipientsSent(
+        claimNonce: string,
+        userIds: string[],
         sentAt: Date,
+        updatedBy: string
+    ): Promise<void>;
+    releaseTermPolicyRecipients(
+        claimNonce: string,
+        userIds: string[],
         updatedBy: string
     ): Promise<void>;
     markAsRead(userId: string, notificationId: string): Promise<Notification>;

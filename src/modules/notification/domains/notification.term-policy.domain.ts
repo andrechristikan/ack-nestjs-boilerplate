@@ -48,7 +48,10 @@ export class NotificationTermPolicyDomain {
     ): string[] {
         const batchIdByUserId = new Map(
             pageMarkers
-                .filter(marker => marker.enqueuedAt === null)
+                .filter(
+                    marker =>
+                        marker.sentAt === null && marker.claimedAt === null
+                )
                 .map(marker => [marker.userId, marker.batchId])
         );
 
@@ -68,7 +71,7 @@ export class NotificationTermPolicyDomain {
         createdBefore: Date
     ): Promise<void> {
         const markers =
-            await this.notificationRepository.findTermPolicyRecipientsByBatchIds(
+            await this.notificationRepository.findTermPolicyRecipientsSendableByBatchIds(
                 data.termPolicyId,
                 batchIds
             );
@@ -78,7 +81,7 @@ export class NotificationTermPolicyDomain {
             .filter(userId => !pageUserIds.has(userId));
         const offPageUsers: IUserRecipient[] = [];
         if (offPageUserIds.length > 0) {
-            const found = await this.userDomain.getManyRecipientsByIds(
+            const found = await this.userDomain.getManyActiveRecipientsByIds(
                 offPageUserIds,
                 createdBefore
             );
@@ -184,11 +187,12 @@ export class NotificationTermPolicyDomain {
 
         while (hasNextPage) {
             // Sequential by design: bounded chunks, the chunks in turn
-            const pageUsers = await this.userDomain.getListRecipientCursor(
-                cursor,
-                this.emailBatchSize,
-                createdBefore
-            );
+            const pageUsers =
+                await this.userDomain.getListActiveRecipientCursor(
+                    cursor,
+                    this.emailBatchSize,
+                    createdBefore
+                );
             const lastUserId = pageUsers.at(-1)?.id ?? null;
             if (lastUserId === null) {
                 break;
@@ -208,7 +212,6 @@ export class NotificationTermPolicyDomain {
                 markers
             );
             const newBatchId = this.databaseUtil.createId();
-            const now = this.helperDateService.create();
             const batchIds =
                 freshUsers.length > 0
                     ? [...pendingBatchIds, newBatchId]
@@ -243,13 +246,6 @@ export class NotificationTermPolicyDomain {
             if (work.length > 0) {
                 await Promise.all(work);
 
-                // Sequential by design: write must not run if an earlier step throws
-                await this.notificationRepository.markTermPolicyRecipientsEnqueued(
-                    data.termPolicyId,
-                    batchIds,
-                    now,
-                    proceedBy
-                );
                 index += batchIds.length;
             }
 

@@ -387,6 +387,7 @@ describe('NotificationEmailQueue', () => {
             type: EnumTermPolicyType.privacy,
             version: 3,
             recipientCutoffAt: '2024-01-01T00:00:00.000Z',
+            resendNonce: null,
         };
         const recipients: INotificationTermPolicyBatchRecipient[] = [
             {
@@ -475,6 +476,24 @@ describe('NotificationEmailQueue', () => {
             );
         });
 
+        it('uses the nonce batch job id when resendNonce is set', async () => {
+            await queue.sendPublishTermPolicyBatch(
+                { ...data, resendNonce: 'nonce-1' },
+                'batch-id',
+                'admin-id',
+                0,
+                recipients
+            );
+
+            expect(emailQueue.add).toHaveBeenCalledWith(
+                EnumNotificationProcess.publishTermPolicy,
+                expect.anything(),
+                expect.objectContaining({
+                    jobId: `publishTermPolicy-${data.termPolicyId}-batch-id-nonce-1`,
+                })
+            );
+        });
+
         it('delays the job by index times the email batch delay', async () => {
             await queue.sendPublishTermPolicyBatch(
                 data,
@@ -489,6 +508,25 @@ describe('NotificationEmailQueue', () => {
                 expect.objectContaining({ batchId: 'batch-id' }),
                 expect.objectContaining({ delay: 2000 })
             );
+        });
+
+        it('adds the batch job with the fixed job id and never reads an existing job', async () => {
+            await queue.sendPublishTermPolicyBatch(
+                data,
+                'batch-id',
+                'admin-id',
+                0,
+                recipients
+            );
+
+            expect(emailQueue.add).toHaveBeenCalledWith(
+                EnumNotificationProcess.publishTermPolicy,
+                expect.objectContaining({ batchId: 'batch-id' }),
+                expect.objectContaining({
+                    jobId: 'publishTermPolicy-term-policy-id-batch-id',
+                })
+            );
+            expect(emailQueue.getJob).not.toHaveBeenCalled();
         });
     });
 

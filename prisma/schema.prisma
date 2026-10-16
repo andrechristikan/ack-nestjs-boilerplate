@@ -360,12 +360,12 @@ model TwoFactor {
 }
 
 model TermPolicy {
-  id          String               @id @default(auto()) @map("_id") @db.ObjectId
-  type        EnumTermPolicyType
-  contents    TermPolicyContent[]
-  version     Int                  @default(1)
-  status      EnumTermPolicyStatus @default(draft)
-  publishedAt DateTime?
+  id                 String               @id @default(auto()) @map("_id") @db.ObjectId
+  type               EnumTermPolicyType
+  contents           TermPolicyContent[]
+  version            Int                  @default(1)
+  status             EnumTermPolicyStatus @default(draft)
+  publishedAt        DateTime?
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -385,8 +385,9 @@ model TermPolicyRecipient {
   userId         String    @db.ObjectId
   notificationId String    @db.ObjectId
   batchId        String    @db.ObjectId
-  enqueuedAt     DateTime?
   sentAt         DateTime?
+  claimedAt      DateTime?
+  claimNonce     String?   @db.ObjectId
 
   user User @relation("UserTermPolicyRecipients", fields: [userId], references: [id])
 
@@ -902,6 +903,7 @@ enum EnumActivityLogAction {
   adminTermPolicyAddContent
   adminTermPolicyRemoveContent
   adminTermPolicyPublish
+  adminTermPolicyResendEmail
   adminUserCreate
   adminUserUpdateStatus
   adminUserUpdatePassword

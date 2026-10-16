@@ -14,6 +14,7 @@ import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
 import {
     LoggerRedactedValue,
     LoggerRedactMaxArrayLength,
+    LoggerRedactMaxDepth,
 } from '@common/logger/constants/logger.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 
@@ -224,6 +225,45 @@ describe('LoggerUtil', () => {
             const result = util.serializeError(error);
 
             expect(result.stack).toBe(error.stack);
+        });
+
+        it('serializes an Error cause recursively', () => {
+            const root = new Error('root');
+            const error = new Error('outer', { cause: root });
+
+            const result = util.serializeError(error);
+
+            expect(result.cause).toMatchObject({
+                type: 'Error',
+                message: 'root',
+            });
+        });
+
+        it('redacts a non-Error cause', () => {
+            const error = new Error('outer', {
+                cause: { password: 'secret' },
+            });
+
+            const result = util.serializeError(error);
+
+            expect(result.cause).toEqual(
+                util.redactValue({ password: 'secret' })
+            );
+        });
+
+        it('stops at LoggerRedactMaxDepth', () => {
+            const error = new Error('loop');
+            error.cause = error;
+
+            const result = util.serializeError(error);
+
+            let depth = 0;
+            let current: Record<string, unknown> = result;
+            while (current.cause) {
+                current = current.cause as Record<string, unknown>;
+                depth += 1;
+            }
+            expect(depth).toBe(LoggerRedactMaxDepth);
         });
     });
 
