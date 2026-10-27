@@ -37,10 +37,10 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        const stored = await this.termPolicyDomain.getOne(termPolicyId);
-        this.policyAbilityDomain.assertCan(
+        const termPolicy = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.TermPolicy, stored)
+            subject(EnumPolicySubject.TermPolicy, termPolicy)
         );
         await this.termPolicyContentDomain.updateContentByAdmin(
             termPolicyId,
@@ -54,10 +54,10 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        const stored = await this.termPolicyDomain.getOne(termPolicyId);
-        this.policyAbilityDomain.assertCan(
+        const termPolicy = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.TermPolicy, stored)
+            subject(EnumPolicySubject.TermPolicy, termPolicy)
         );
         await this.termPolicyContentDomain.addContentByAdmin(
             termPolicyId,
@@ -71,10 +71,10 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         { language }: TermPolicyRemoveContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        const stored = await this.termPolicyDomain.getOne(termPolicyId);
-        this.policyAbilityDomain.assertCan(
+        const termPolicy = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.TermPolicy, stored)
+            subject(EnumPolicySubject.TermPolicy, termPolicy)
         );
         await this.termPolicyContentDomain.removeContentByAdmin(
             termPolicyId,
@@ -88,10 +88,10 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         language: EnumMessageLanguage
     ): Promise<IResponseReturn<IAwsS3Presign>> {
-        const stored = await this.termPolicyDomain.getOne(termPolicyId);
-        this.policyAbilityDomain.assertCan(
+        const termPolicy = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.read,
-            subject(EnumPolicySubject.TermPolicy, stored)
+            subject(EnumPolicySubject.TermPolicy, termPolicy)
         );
         const presign = await this.termPolicyContentDomain.getContentByAdmin(
             termPolicyId,

@@ -4,7 +4,6 @@ import {
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import { UserDomain } from '@modules/user/domains/user.domain';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
@@ -20,6 +19,7 @@ import type {
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
@@ -125,7 +125,7 @@ export class UserTwoFactorHttpService {
         updatedBy: string
     ): Promise<void> {
         const user = await this.userDomain.getOne(userId);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.User, user)
         );

@@ -207,19 +207,19 @@ describe('ApiKeyDomain', () => {
             apiKeyRepository.findWithPagination.mockResolvedValue(page);
 
             await expect(
-                service.getListByAdmin(pagination, isActive, type)
+                service.getListByAdmin(pagination, isActive, type, {})
             ).resolves.toBe(page);
             expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
                 pagination,
                 isActive,
                 type,
-                undefined
+                {}
             );
         });
 
         it('forwards the accessible where as the trailing repository argument of the administrator list', async () => {
             const pagination = { limit: 20, page: 1, skip: 0 };
-            const accessibleWhere = { isActive: true };
+            const scopeWhere = { isActive: true };
             const page = mock<IResponsePaginationReturn<never>>();
             apiKeyRepository.findWithPagination.mockResolvedValue(page);
 
@@ -228,14 +228,14 @@ describe('ApiKeyDomain', () => {
                     pagination,
                     undefined,
                     undefined,
-                    accessibleWhere
+                    scopeWhere
                 )
             ).resolves.toBe(page);
             expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
                 pagination,
                 undefined,
                 undefined,
-                accessibleWhere
+                scopeWhere
             );
         });
 
@@ -380,9 +380,9 @@ describe('ApiKeyDomain', () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
             apiKeyUtil.isActive.mockReturnValue(true);
 
-            await expect(service.updateByAdmin(apiKey.id)).resolves.toBe(
-                apiKey
-            );
+            await expect(
+                service.updateByAdmin(apiKey.id, undefined)
+            ).resolves.toBe(apiKey);
             expect(apiKeyRepository.updateName).not.toHaveBeenCalled();
         });
 
@@ -470,6 +470,107 @@ describe('ApiKeyDomain', () => {
             await expect(
                 service.deleteByAdmin('unknown')
             ).rejects.toBeInstanceOf(ApiKeyNotFoundException);
+        });
+    });
+
+    describe('scoped lookups and mutations', () => {
+        const startAt = new Date('2026-02-01T12:00:00.000Z');
+        const endAt = new Date('2026-03-01T12:00:00.000Z');
+
+        beforeEach(() => {
+            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
+            apiKeyUtil.isExpired.mockReturnValue(false);
+            apiKeyUtil.isActive.mockReturnValue(true);
+            apiKeyCredentialUtil.createSecret.mockReturnValue('new-secret');
+            apiKeyCredentialUtil.createHash.mockReturnValue('new-hash');
+        });
+
+        describe('getOne', () => {
+            it('calls findOneById', async () => {
+                await service.getOne(apiKey.id);
+
+                expect(apiKeyRepository.findOneById).toHaveBeenCalledWith(
+                    apiKey.id
+                );
+            });
+
+            it('calls findOneById and returns the same result', async () => {
+                await expect(service.getOne(apiKey.id)).resolves.toBe(apiKey);
+                expect(apiKeyRepository.findOneById).toHaveBeenCalledWith(
+                    apiKey.id
+                );
+            });
+
+            it('throws ApiKeyNotFoundException when findOneById returns null', async () => {
+                apiKeyRepository.findOneById.mockResolvedValue(null);
+
+                await expect(service.getOne(apiKey.id)).rejects.toBeInstanceOf(
+                    ApiKeyNotFoundException
+                );
+            });
+        });
+
+        describe.each([
+            {
+                method: 'updateStatusByAdmin',
+                write: 'updateStatus',
+                call: () => service.updateStatusByAdmin(apiKey.id, false),
+                args: [apiKey.id, { isActive: false }],
+            },
+            {
+                method: 'updateByAdmin',
+                write: 'updateName',
+                call: () => service.updateByAdmin(apiKey.id, 'Renamed'),
+                args: [apiKey.id, 'Renamed'],
+            },
+            {
+                method: 'updateDatesByAdmin',
+                write: 'updateDates',
+                call: () =>
+                    service.updateDatesByAdmin(apiKey.id, startAt, endAt),
+                args: [apiKey.id, { startAt: now, endAt: now }],
+            },
+            {
+                method: 'resetByAdmin',
+                write: 'updateHash',
+                call: () => service.resetByAdmin(apiKey.id),
+                args: [apiKey.id, 'new-hash'],
+            },
+            {
+                method: 'deleteByAdmin',
+                write: 'delete',
+                call: () => service.deleteByAdmin(apiKey.id),
+                args: [apiKey.id],
+            },
+        ] as const)('$method', ({ write, call, args }) => {
+            it(`loads the key and calls ${write}`, async () => {
+                apiKeyRepository[write].mockResolvedValue(apiKey);
+
+                await call();
+
+                expect(apiKeyRepository.findOneById).toHaveBeenCalledWith(
+                    apiKey.id
+                );
+                expect(apiKeyRepository[write]).toHaveBeenCalledWith(...args);
+            });
+
+            it(`calls ${write} and returns the same result`, async () => {
+                apiKeyRepository[write].mockResolvedValue(apiKey);
+
+                await call();
+
+                expect(apiKeyRepository[write]).toHaveBeenCalledWith(...args);
+            });
+
+            it(`throws ApiKeyNotFoundException and does not touch the cache when ${write} returns null`, async () => {
+                apiKeyRepository[write].mockResolvedValue(null);
+
+                await expect(call()).rejects.toBeInstanceOf(
+                    ApiKeyNotFoundException
+                );
+                expect(apiKeyCache.deleteCacheByKey).not.toHaveBeenCalled();
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            });
         });
     });
 

@@ -167,12 +167,12 @@ describe('ProjectDomain', () => {
                 page
             );
 
-            await expect(domain.getListForAdmin(pagination)).resolves.toBe(
-                page
-            );
+            await expect(
+                domain.getListForAdmin(pagination, undefined, {})
+            ).resolves.toBe(page);
             expect(
                 projectRepository.findWithPaginationOffsetForAdmin
-            ).toHaveBeenCalledWith(pagination, undefined, undefined);
+            ).toHaveBeenCalledWith(pagination, undefined, {});
         });
     });
 
@@ -282,6 +282,253 @@ describe('ProjectDomain', () => {
             ).rejects.toBeInstanceOf(
                 DatabaseUniqueValueGenerationFailedException
             );
+        });
+    });
+
+    describe('getActiveByIdAndWorkspace', () => {
+        it('calls findActiveByIdAndWorkspace and returns the nullable row', async () => {
+            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                domain.getActiveByIdAndWorkspace('project-id', 'workspace-id')
+            ).resolves.toBeNull();
+            expect(
+                projectRepository.findActiveByIdAndWorkspace
+            ).toHaveBeenCalledWith('project-id', 'workspace-id');
+        });
+
+        it('calls findActiveByIdAndWorkspace and returns the same result', async () => {
+            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
+                project
+            );
+
+            await expect(
+                domain.getActiveByIdAndWorkspace('project-id', 'workspace-id')
+            ).resolves.toBe(project);
+            expect(
+                projectRepository.findActiveByIdAndWorkspace
+            ).toHaveBeenCalledWith('project-id', 'workspace-id');
+        });
+    });
+
+    describe('getCurrentProject', () => {
+        it('calls findActiveByIdAndWorkspace', async () => {
+            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
+                project
+            );
+
+            await expect(
+                domain.getCurrentProject('project-id', 'workspace-id')
+            ).resolves.toBe(project);
+            expect(
+                projectRepository.findActiveByIdAndWorkspace
+            ).toHaveBeenCalledWith('project-id', 'workspace-id');
+        });
+
+        it('calls findActiveByIdAndWorkspace and returns the same result', async () => {
+            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
+                project
+            );
+
+            await expect(
+                domain.getCurrentProject('project-id', 'workspace-id')
+            ).resolves.toBe(project);
+            expect(
+                projectRepository.findActiveByIdAndWorkspace
+            ).toHaveBeenCalledWith('project-id', 'workspace-id');
+        });
+
+        it('throws ProjectNotFoundException when findActiveByIdAndWorkspace returns null', async () => {
+            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                domain.getCurrentProject('project-id', 'workspace-id')
+            ).rejects.toBeInstanceOf(ProjectNotFoundException);
+        });
+    });
+
+    describe('getByIdForAdmin', () => {
+        it('calls findByIdForAdmin', async () => {
+            projectRepository.findByIdForAdmin.mockResolvedValue(project);
+
+            await expect(domain.getByIdForAdmin('project-id')).resolves.toBe(
+                project
+            );
+            expect(projectRepository.findByIdForAdmin).toHaveBeenCalledWith(
+                'project-id'
+            );
+        });
+
+        it('calls findByIdForAdmin and returns the same result', async () => {
+            projectRepository.findByIdForAdmin.mockResolvedValue(project);
+
+            await expect(domain.getByIdForAdmin('project-id')).resolves.toBe(
+                project
+            );
+            expect(projectRepository.findByIdForAdmin).toHaveBeenCalledWith(
+                'project-id'
+            );
+        });
+
+        it('throws ProjectNotFoundException when findByIdForAdmin returns null', async () => {
+            projectRepository.findByIdForAdmin.mockResolvedValue(null);
+
+            await expect(
+                domain.getByIdForAdmin('project-id')
+            ).rejects.toBeInstanceOf(ProjectNotFoundException);
+        });
+    });
+
+    describe('updateProject', () => {
+        const update = { name: 'Renamed' };
+
+        it('calls updateDetails', async () => {
+            projectRepository.updateDetails.mockResolvedValue(project);
+
+            await expect(
+                domain.updateProject(project, 'actor-id', update)
+            ).resolves.toBe(project);
+            expect(projectRepository.updateDetails).toHaveBeenCalledWith(
+                'project-id',
+                update
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+        });
+
+        it('calls updateDetails and returns the same result', async () => {
+            projectRepository.updateDetails.mockResolvedValue(project);
+
+            await expect(
+                domain.updateProject(project, 'actor-id', update)
+            ).resolves.toBe(project);
+            expect(projectRepository.updateDetails).toHaveBeenCalledWith(
+                'project-id',
+                update
+            );
+        });
+
+        it('throws ProjectNotFoundException when updateDetails returns null and stages no activity', async () => {
+            projectRepository.updateDetails.mockResolvedValue(null);
+
+            await expect(
+                domain.updateProject(project, 'actor-id', update)
+            ).rejects.toBeInstanceOf(ProjectNotFoundException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('updateProjectSlug write', () => {
+        beforeEach(() => {
+            projectRepository.existsBySlugInWorkspace.mockResolvedValue(false);
+        });
+
+        it('calls updateSlug', async () => {
+            projectRepository.updateSlug.mockResolvedValue(project);
+
+            await expect(
+                domain.updateProjectSlug(project, 'actor-id', 'valid-slug')
+            ).resolves.toBe(project);
+            expect(projectRepository.updateSlug).toHaveBeenCalledWith(
+                'project-id',
+                'valid-slug'
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+        });
+
+        it('calls updateSlug and returns the same result', async () => {
+            projectRepository.updateSlug.mockResolvedValue(project);
+
+            await expect(
+                domain.updateProjectSlug(project, 'actor-id', 'valid-slug')
+            ).resolves.toBe(project);
+            expect(projectRepository.updateSlug).toHaveBeenCalledWith(
+                'project-id',
+                'valid-slug'
+            );
+        });
+
+        it('throws ProjectNotFoundException when updateSlug returns null and stages no activity', async () => {
+            projectRepository.updateSlug.mockResolvedValue(null);
+
+            await expect(
+                domain.updateProjectSlug(project, 'actor-id', 'valid-slug')
+            ).rejects.toBeInstanceOf(ProjectNotFoundException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a slug P2002 from the scoped write to ProjectSlugAlreadyExistsException', async () => {
+            projectRepository.updateSlug.mockRejectedValue(new Error('unique'));
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await expect(
+                domain.updateProjectSlug(project, 'actor-id', 'valid-slug')
+            ).rejects.toBeInstanceOf(ProjectSlugAlreadyExistsException);
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                expect.any(Error),
+                'slug'
+            );
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('rethrows a non-slug failure from the scoped write', async () => {
+            const failure = new Error('boom');
+            projectRepository.updateSlug.mockRejectedValue(failure);
+
+            await expect(
+                domain.updateProjectSlug(project, 'actor-id', 'valid-slug')
+            ).rejects.toBe(failure);
+        });
+    });
+
+    describe('softDeleteProject', () => {
+        const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+
+        beforeEach(() => {
+            helperDateService.create.mockReturnValue(deletedAt);
+        });
+
+        it('calls softDelete and stages activity', async () => {
+            projectRepository.softDelete.mockResolvedValue(project);
+
+            await domain.softDeleteProject(project, 'actor-id');
+
+            expect(projectRepository.softDelete).toHaveBeenCalledWith(
+                'project-id',
+                deletedAt,
+                'actor-id'
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+        });
+
+        it('throws ProjectNotFoundException when softDelete returns null and stages no activity', async () => {
+            projectRepository.softDelete.mockResolvedValue(null);
+
+            await expect(
+                domain.softDeleteProject(project, 'actor-id')
+            ).rejects.toBeInstanceOf(ProjectNotFoundException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('softDeleteByWorkspaceInTx', () => {
+        it('forwards the workspace delete to the repository', async () => {
+            const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+
+            await domain.softDeleteByWorkspaceInTx(
+                tx,
+                'workspace-id',
+                deletedAt,
+                'actor-id'
+            );
+
+            expect(domain.softDeleteByWorkspaceInTx).toHaveLength(4);
+            expect(
+                projectRepository.softDeleteByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-id', deletedAt, 'actor-id');
         });
     });
 

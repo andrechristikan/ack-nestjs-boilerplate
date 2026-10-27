@@ -32,11 +32,12 @@ model ApiKey {
 }
 
 model Role {
-  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  scope       EnumRoleScope
-  key         String
-  name        String
-  description String?
+  id             String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  scope          EnumRoleScope
+  key            String
+  name           String
+  description    String?
+  policyRevision Int           @default(0)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid

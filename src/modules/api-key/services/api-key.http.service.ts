@@ -42,7 +42,7 @@ export class ApiKeyHttpService {
     async getListByAdmin(
         query: ApiKeyListRequestDto
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.ApiKey
         );
@@ -73,7 +73,7 @@ export class ApiKeyHttpService {
             params,
             isActive?.where,
             type?.where,
-            accessibleWhere
+            scopeWhere
         );
 
         return {
@@ -95,10 +95,10 @@ export class ApiKeyHttpService {
         id: string,
         { isActive }: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<ApiKey>> {
-        const stored = await this.apiKeyDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        const apiKey = await this.apiKeyDomain.getOne(id);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.ApiKey, stored)
+            subject(EnumPolicySubject.ApiKey, apiKey)
         );
         const updated = await this.apiKeyDomain.updateStatusByAdmin(
             id,
@@ -114,10 +114,10 @@ export class ApiKeyHttpService {
         id: string,
         { name }: ApiKeyUpdateRequestDto
     ): Promise<IResponseReturn<ApiKey>> {
-        const stored = await this.apiKeyDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        const apiKey = await this.apiKeyDomain.getOne(id);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.ApiKey, stored)
+            subject(EnumPolicySubject.ApiKey, apiKey)
         );
         const updated = await this.apiKeyDomain.updateByAdmin(id, name);
 
@@ -130,10 +130,10 @@ export class ApiKeyHttpService {
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<IResponseReturn<ApiKey>> {
-        const stored = await this.apiKeyDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        const apiKey = await this.apiKeyDomain.getOne(id);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.ApiKey, stored)
+            subject(EnumPolicySubject.ApiKey, apiKey)
         );
         const updated = await this.apiKeyDomain.updateDatesByAdmin(
             id,
@@ -149,22 +149,23 @@ export class ApiKeyHttpService {
     async resetByAdmin(
         id: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        const stored = await this.apiKeyDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        const apiKey = await this.apiKeyDomain.getOne(id);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.ApiKey, stored)
+            subject(EnumPolicySubject.ApiKey, apiKey)
         );
-        const { apiKey, secret } = await this.apiKeyDomain.resetByAdmin(id);
-        const reset = this.apiKeyUtil.mapCreate(apiKey, secret);
+        const { apiKey: resetKey, secret } =
+            await this.apiKeyDomain.resetByAdmin(id);
+        const reset = this.apiKeyUtil.mapCreate(resetKey, secret);
 
         return { data: reset };
     }
 
     async deleteByAdmin(id: string): Promise<IResponseReturn<ApiKey>> {
-        const stored = await this.apiKeyDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        const apiKey = await this.apiKeyDomain.getOne(id);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
-            subject(EnumPolicySubject.ApiKey, stored)
+            subject(EnumPolicySubject.ApiKey, apiKey)
         );
         const deleted = await this.apiKeyDomain.deleteByAdmin(id);
 

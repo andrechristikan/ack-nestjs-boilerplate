@@ -27,7 +27,7 @@ import {
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
-import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
@@ -47,13 +47,13 @@ export class DeviceAdminController {
         schema: DeviceOwnershipResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PlatformPolicyProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.Device,
+            subject: EnumPolicySubject.DeviceOwnership,
             action: [EnumPolicyAction.read],
         }
     )
@@ -74,13 +74,13 @@ export class DeviceAdminController {
     @Doc({ summary: 'admin remove user Device' })
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
-    @PlatformPolicyProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.Device,
+            subject: EnumPolicySubject.DeviceOwnership,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )

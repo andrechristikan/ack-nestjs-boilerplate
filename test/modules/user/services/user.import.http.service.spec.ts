@@ -37,12 +37,12 @@ describe('UserImportHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const accessibleWhere = { roleId: 'role-id' };
+    const scopeWhere = { roleId: 'role-id' };
     let service: UserImportHttpService;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyAbilityDomain.accessibleWhere.mockReturnValue(accessibleWhere);
+        policyAbilityDomain.scope.mockReturnValue(scopeWhere);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -96,7 +96,7 @@ describe('UserImportHttpService', () => {
                 countryId: 'country-id',
             });
 
-            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.User
             );
@@ -119,7 +119,7 @@ describe('UserImportHttpService', () => {
                 statusWhere,
                 roleWhere,
                 countryWhere,
-                accessibleWhere
+                scopeWhere
             );
             expect(result).toEqual({
                 data: 'csv',
@@ -128,7 +128,7 @@ describe('UserImportHttpService', () => {
         });
 
         it('throws PolicyForbiddenException and never exports when the ability has no read rule', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.scope.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
@@ -139,7 +139,7 @@ describe('UserImportHttpService', () => {
         });
 
         it('throws RequestContextMissingException and never exports when no ability is stored', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.scope.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 

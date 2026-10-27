@@ -133,10 +133,13 @@ export class TermPolicyContentDomain {
                     timestamp
                 ),
             ];
-            await this.termPolicyRepository.updateContent(
+            const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
                 mappedContent
             );
+            if (!updated) {
+                throw new TermPolicyNotFoundException();
+            }
 
             this.activityLogDomain.stagePrepared(events);
 
@@ -181,10 +184,13 @@ export class TermPolicyContentDomain {
                     timestamp
                 ),
             ];
-            await this.termPolicyRepository.addContent(
+            const added = await this.termPolicyRepository.addContent(
                 termPolicyId,
                 mappedContent
             );
+            if (!added) {
+                throw new TermPolicyNotFoundException();
+            }
 
             this.activityLogDomain.stagePrepared(events);
 
@@ -221,9 +227,13 @@ export class TermPolicyContentDomain {
                     timestamp
                 ),
             ];
-            await this.termPolicyRepository.removeContent(termPolicyId, {
-                language,
-            });
+            const removed = await this.termPolicyRepository.removeContent(
+                termPolicyId,
+                { language }
+            );
+            if (!removed) {
+                throw new TermPolicyNotFoundException();
+            }
 
             this.activityLogDomain.stagePrepared(events);
 

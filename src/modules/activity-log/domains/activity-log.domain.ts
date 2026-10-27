@@ -273,27 +273,26 @@ export class ActivityLogDomain {
         this.requestStoreService.set(ActivityLogStageStoreKey, []);
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListOffset(
         scope: IActivityLogScope,
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        where?: Prisma.ActivityLogWhereInput
+        additionalWhere: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogRepository.findWithPaginationOffset(
             scope,
             pagination,
-            where
+            additionalWhere
         );
     }
 
     async getListCursor(
         scope: IActivityLogScope,
-        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
-        where?: Prisma.ActivityLogWhereInput
+        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogRepository.findWithPaginationCursor(
             scope,
-            pagination,
-            where
+            pagination
         );
     }
 }

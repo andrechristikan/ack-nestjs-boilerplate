@@ -416,10 +416,15 @@ export class UserTwoFactorDomain {
             const now = this.helperDateService.create();
             await Promise.all([
                 this.databaseService.withTransaction(async tx => {
-                    await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
-                        tx,
-                        userId
-                    );
+                    const reset =
+                        await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
+                            tx,
+                            userId
+                        );
+                    if (!reset) {
+                        throw new UserNotFoundException();
+                    }
+
                     await this.sessionDomain.revokeActiveByUserInTx(
                         tx,
                         userId,

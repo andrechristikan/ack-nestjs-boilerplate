@@ -297,11 +297,12 @@ export class WorkspaceInviteDomain {
         return this.workspaceInviteRepository.expireStalePending();
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getInvitesList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        where?: Prisma.WorkspaceInviteWhereInput
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceInviteWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         await this.assertInvitationAllowed();
 
@@ -309,7 +310,7 @@ export class WorkspaceInviteDomain {
             workspaceId,
             pagination,
             status,
-            where
+            additionalWhere
         );
     }
 
@@ -417,10 +418,10 @@ export class WorkspaceInviteDomain {
         return invite;
     }
 
-    /** Loads the invite the route addresses within the workspace, so a record outside it reads as not found. */
-    async getInvite(
-        workspaceId: string,
-        workspaceInviteId: string
+    /** Loads the invite in the workspace. */
+    async getByIdAndWorkspace(
+        workspaceInviteId: string,
+        workspaceId: string
     ): Promise<WorkspaceInvite> {
         const invite =
             await this.workspaceInviteRepository.findByIdAndWorkspace(
@@ -438,7 +439,7 @@ export class WorkspaceInviteDomain {
         workspace: Workspace,
         actorId: string,
         workspaceInviteId: string,
-        expiryDuration?: EnumWorkspaceInviteExpiry
+        expiryDuration: EnumWorkspaceInviteExpiry | undefined
     ): Promise<IWorkspaceInviteWithRole> {
         await this.assertInvitationAllowed();
 
@@ -464,6 +465,9 @@ export class WorkspaceInviteDomain {
             ),
             this.userDomain.getOneActiveByEmail(existing.email),
         ]);
+        if (!invite) {
+            throw new WorkspaceInviteNotFoundException();
+        }
 
         await this.sendInviteNotification(
             workspace,
@@ -524,7 +528,11 @@ export class WorkspaceInviteDomain {
             events.push(workspaceInviteRevokedByAdminEvent);
         }
 
-        await this.workspaceInviteRepository.revoke(workspaceInviteId);
+        const revoked =
+            await this.workspaceInviteRepository.revoke(workspaceInviteId);
+        if (!revoked) {
+            throw new WorkspaceInviteNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
     }

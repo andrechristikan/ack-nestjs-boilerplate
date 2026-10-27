@@ -20,12 +20,31 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         private readonly paginationService: PaginationService
     ) {}
 
+    private async updateScoped(
+        id: string,
+        data: Prisma.FeatureFlagUpdateManyMutationInput
+    ): Promise<FeatureFlag | null> {
+        const { count } =
+            await this.databaseService.client.featureFlag.updateMany({
+                where: { id },
+                data,
+            });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.databaseService.client.featureFlag.findUnique({
+            where: { id },
+        });
+    }
+
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetByAdmin(
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
-        additionalWhere?: Prisma.FeatureFlagWhereInput
+        additionalWhere: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.offset<
             FeatureFlag,
@@ -33,7 +52,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         >(this.databaseService.client.featureFlag, {
             ...others,
             where: {
-                AND: [where ?? {}, additionalWhere ?? {}],
+                AND: [additionalWhere, where ?? {}],
             },
         });
     }
@@ -62,38 +81,21 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
 
     async findOneById(id: string): Promise<FeatureFlag | null> {
         return this.databaseService.client.featureFlag.findFirst({
-            where: {
-                id,
-            },
+            where: { id },
         });
     }
 
     async updateStatus(
         id: string,
         { isEnable, rolloutPercent }: FeatureFlagUpdateStatusRequestDto
-    ): Promise<FeatureFlag> {
-        return this.databaseService.client.featureFlag.update({
-            where: {
-                id,
-            },
-            data: {
-                isEnable,
-                rolloutPercent,
-            },
-        });
+    ): Promise<FeatureFlag | null> {
+        return this.updateScoped(id, { isEnable, rolloutPercent });
     }
 
     async updateMetadata(
         id: string,
         { metadata }: FeatureFlagUpdateMetadataRequestDto
-    ): Promise<FeatureFlag> {
-        return this.databaseService.client.featureFlag.update({
-            where: {
-                id,
-            },
-            data: {
-                metadata,
-            },
-        });
+    ): Promise<FeatureFlag | null> {
+        return this.updateScoped(id, { metadata });
     }
 }

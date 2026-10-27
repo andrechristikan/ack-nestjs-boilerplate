@@ -126,23 +126,23 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         deviceOwnershipId: string,
         removedBy: string,
         now: Date
-    ): Promise<IDeviceOwnership> {
-        const ownershipInclude = this.ownershipInclude(now);
-
-        return tx.deviceOwnership.update({
-            where: {
-                id: deviceOwnershipId,
-                userId,
-            },
+    ): Promise<IDeviceOwnership | null> {
+        const { count } = await tx.deviceOwnership.updateMany({
+            where: { id: deviceOwnershipId, userId },
             data: {
                 isRevoked: true,
                 revokedAt: now,
-                revokedBy: {
-                    connect: {
-                        id: removedBy,
-                    },
-                },
+                revokedById: removedBy,
             },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        const ownershipInclude = this.ownershipInclude(now);
+
+        return tx.deviceOwnership.findUnique({
+            where: { id: deviceOwnershipId },
             include: ownershipInclude,
         });
     }
@@ -183,14 +183,15 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         return ownerships.map(ownership => ownership.deviceId);
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>,
-        additionalWhere?: Prisma.DeviceOwnershipWhereInput
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const today = this.helperDateService.create();
 
@@ -201,12 +202,12 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             ...others,
             where: {
                 AND: [
+                    additionalWhere,
                     {
                         ...where,
                         ...isRevoked,
                         userId,
                     },
-                    additionalWhere ?? {},
                 ],
             },
             include: {

@@ -82,15 +82,16 @@ export class UserRepository implements IUserRepository {
         };
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffset(
         {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>,
-        additionalWhere?: Prisma.UserWhereInput
+        status: Record<string, IPaginationIn> | undefined,
+        roleId: Record<string, IPaginationEqual> | undefined,
+        countryId: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
@@ -98,6 +99,7 @@ export class UserRepository implements IUserRepository {
                 ...params,
                 where: {
                     AND: [
+                        additionalWhere,
                         {
                             ...where,
                             ...status,
@@ -105,7 +107,6 @@ export class UserRepository implements IUserRepository {
                             ...roleId,
                             deletedAt: null,
                         },
-                        additionalWhere ?? {},
                     ],
                 },
                 select: UserAdminListSelect,
@@ -128,7 +129,7 @@ export class UserRepository implements IUserRepository {
     }
 
     async findOneById(id: string): Promise<User | null> {
-        return this.databaseService.client.user.findUnique({
+        return this.databaseService.client.user.findFirst({
             where: { id, deletedAt: null },
         });
     }
@@ -162,7 +163,7 @@ export class UserRepository implements IUserRepository {
     }
 
     async findOneProfileById(id: string): Promise<IUserProfile | null> {
-        return this.databaseService.client.user.findUnique({
+        return this.databaseService.client.user.findFirst({
             where: { id, deletedAt: null },
             include: {
                 ...UserWithRoleInclude,
@@ -194,7 +195,7 @@ export class UserRepository implements IUserRepository {
     }
 
     async findOneWithRoleById(id: string): Promise<IUser | null> {
-        return this.databaseService.client.user.findUnique({
+        return this.databaseService.client.user.findFirst({
             where: { id, deletedAt: null },
             include: UserWithRoleInclude,
         });
@@ -218,23 +219,24 @@ export class UserRepository implements IUserRepository {
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findExport(
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
         take: number,
-        where?: Prisma.UserWhereInput
+        additionalWhere: Prisma.UserWhereInput
     ): Promise<IUserExport[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 AND: [
+                    additionalWhere,
                     {
                         ...status,
                         ...countryId,
                         ...roleId,
                         deletedAt: null,
                     },
-                    where ?? {},
                 ],
             },
             include: {
@@ -287,13 +289,18 @@ export class UserRepository implements IUserRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         { status }: UserUpdateStatusRequestDto
-    ): Promise<User> {
-        return tx.user.update({
+    ): Promise<User | null> {
+        const { count } = await tx.user.updateMany({
             where: { id, deletedAt: null },
             data: {
                 status,
             },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.user.findUnique({ where: { id } });
     }
 
     async updateProfile(
@@ -389,8 +396,8 @@ export class UserRepository implements IUserRepository {
         userId: string,
         { passwordCreated, passwordExpired, passwordHash }: IAuthPassword,
         updatedBy: string
-    ): Promise<User> {
-        return tx.user.update({
+    ): Promise<User | null> {
+        const { count } = await tx.user.updateMany({
             where: { id: userId, deletedAt: null },
             data: {
                 password: passwordHash,
@@ -400,6 +407,11 @@ export class UserRepository implements IUserRepository {
                 updatedBy,
             },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.user.findUnique({ where: { id: userId } });
     }
 
     async increasePasswordAttempt(userId: string): Promise<User> {

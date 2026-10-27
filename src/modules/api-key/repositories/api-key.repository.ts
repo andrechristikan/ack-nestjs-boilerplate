@@ -23,14 +23,34 @@ export class ApiKeyRepository implements IApiKeyRepository {
         private readonly paginationService: PaginationService
     ) {}
 
+    private async updateScoped(
+        id: string,
+        data: Prisma.ApiKeyUpdateManyMutationInput
+    ): Promise<ApiKey | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.apiKey.updateMany({
+                where: { id },
+                data,
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.apiKey.findUnique({
+                where: { id },
+            });
+        });
+    }
+
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPagination(
         {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
-        isActive?: Record<string, IPaginationEqual>,
-        type?: Record<string, IPaginationIn>,
-        additionalWhere?: Prisma.ApiKeyWhereInput
+        isActive: Record<string, IPaginationEqual> | undefined,
+        type: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.ApiKeyWhereInput
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
         return this.paginationService.offset<
             IApiKeyList,
@@ -39,12 +59,12 @@ export class ApiKeyRepository implements IApiKeyRepository {
             ...params,
             where: {
                 AND: [
+                    additionalWhere,
                     {
                         ...where,
                         ...isActive,
                         ...type,
                     },
-                    additionalWhere ?? {},
                 ],
             },
             select: ApiKeyAdminListSelect,
@@ -72,69 +92,44 @@ export class ApiKeyRepository implements IApiKeyRepository {
     }
 
     async findOneById(id: string): Promise<ApiKey | null> {
-        return this.databaseService.client.apiKey.findUnique({
-            where: {
-                id,
-            },
+        return this.databaseService.client.apiKey.findFirst({
+            where: { id },
         });
     }
 
     async updateStatus(
         id: string,
         { isActive }: ApiKeyUpdateStatusRequestDto
-    ): Promise<ApiKey> {
-        return this.databaseService.client.apiKey.update({
-            where: {
-                id,
-            },
-            data: {
-                isActive,
-            },
-        });
+    ): Promise<ApiKey | null> {
+        return this.updateScoped(id, { isActive });
     }
 
-    async updateName(id: string, name: string): Promise<ApiKey> {
-        return this.databaseService.client.apiKey.update({
-            where: {
-                id,
-            },
-            data: {
-                name,
-            },
-        });
+    async updateName(id: string, name: string): Promise<ApiKey | null> {
+        return this.updateScoped(id, { name });
     }
 
     async updateDates(
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
-    ): Promise<ApiKey> {
-        return this.databaseService.client.apiKey.update({
-            where: {
-                id,
-            },
-            data: {
-                startAt,
-                endAt,
-            },
-        });
+    ): Promise<ApiKey | null> {
+        return this.updateScoped(id, { startAt, endAt });
     }
 
-    async updateHash(id: string, hash: string): Promise<ApiKey> {
-        return this.databaseService.client.apiKey.update({
-            where: {
-                id,
-            },
-            data: {
-                hash,
-            },
-        });
+    async updateHash(id: string, hash: string): Promise<ApiKey | null> {
+        return this.updateScoped(id, { hash });
     }
 
-    async delete(id: string): Promise<ApiKey> {
-        return this.databaseService.client.apiKey.delete({
-            where: {
-                id,
-            },
+    async delete(id: string): Promise<ApiKey | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const where: Prisma.ApiKeyWhereInput = { id };
+            const existing = await tx.apiKey.findFirst({ where });
+            if (!existing) {
+                return null;
+            }
+
+            const { count } = await tx.apiKey.deleteMany({ where });
+
+            return count > 0 ? existing : null;
         });
     }
 

@@ -137,6 +137,7 @@ describe('UserPasswordDomain', () => {
             id: 'role-id',
             name: 'User',
             description: null,
+            policyRevision: 0,
             scope: EnumRoleScope.platform,
             key: EnumRolePlatformKey.user,
             createdAt: now,
@@ -405,6 +406,37 @@ describe('UserPasswordDomain', () => {
                 createdBy: 'admin-id',
                 metadata: { actorUserId: 'admin-id' },
             });
+        });
+
+        it('calls the preliminary read and the scoped password write', async () => {
+            await service.updatePasswordByAdmin(user.id, 'admin-id');
+
+            expect(userRepository.findOneById).toHaveBeenCalledWith(user.id);
+            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
+                expect.any(Object),
+                user.id,
+                password,
+                'admin-id'
+            );
+        });
+
+        it('reads and returns the same result', async () => {
+            await expect(
+                service.updatePasswordByAdmin(user.id, 'admin-id')
+            ).resolves.toBeUndefined();
+            expect(userRepository.findOneById).toHaveBeenCalledWith(user.id);
+        });
+
+        it('throws UserNotFoundException when the read is missing', async () => {
+            userRepository.findOneById.mockResolvedValue(null);
+
+            await expect(
+                service.updatePasswordByAdmin(user.id, 'admin-id')
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+            expect(userDomain.updatePasswordInTx).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendTemporaryPasswordByAdmin
+            ).not.toHaveBeenCalled();
         });
 
         it('throws UserNotSelfException when an admin updates their own password', async () => {

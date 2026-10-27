@@ -15,14 +15,15 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 
 export interface ISessionRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>,
-        additionalWhere?: Prisma.SessionWhereInput
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.SessionWhereInput
     ): Promise<IResponsePaginationReturn<ISessionList>>;
     findActiveWithPaginationCursor(
         userId: string,

@@ -10,9 +10,10 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 
 export interface IFeatureFlagRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
-        additionalWhere?: Prisma.FeatureFlagWhereInput
+        additionalWhere: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>>;
     findWithPaginationCursor(
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
@@ -22,9 +23,9 @@ export interface IFeatureFlagRepository {
     updateStatus(
         id: string,
         { isEnable, rolloutPercent }: FeatureFlagUpdateStatusRequestDto
-    ): Promise<FeatureFlag>;
+    ): Promise<FeatureFlag | null>;
     updateMetadata(
         id: string,
         { metadata }: FeatureFlagUpdateMetadataRequestDto
-    ): Promise<FeatureFlag>;
+    ): Promise<FeatureFlag | null>;
 }

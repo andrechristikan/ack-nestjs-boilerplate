@@ -30,6 +30,7 @@ import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/p
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 
 describe('ProjectHttpService', () => {
@@ -63,7 +64,7 @@ describe('ProjectHttpService', () => {
             perPage: 20,
         } satisfies Partial<IPaginationQuery>,
     };
-    const accessibleWhere: Prisma.ProjectWhereInput = {
+    const scopeWhere: Prisma.ProjectWhereInput = {
         workspaceId: 'workspace-id',
     };
     let service: ProjectHttpService;
@@ -96,9 +97,7 @@ describe('ProjectHttpService', () => {
         const query = {} satisfies ProjectUserListRequestDto;
 
         it('passes the read predicate of Project to the domain', async () => {
-            policyAbilityDomain.accessibleWhere.mockReturnValue(
-                accessibleWhere
-            );
+            policyAbilityDomain.scope.mockReturnValue(scopeWhere);
             projectDomain.getListForMember.mockResolvedValue(page);
 
             const result = await service.getListForMember(
@@ -106,7 +105,7 @@ describe('ProjectHttpService', () => {
                 query
             );
 
-            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Project
             );
@@ -117,13 +116,13 @@ describe('ProjectHttpService', () => {
             expect(projectDomain.getListForMember).toHaveBeenCalledWith(
                 'workspace-id',
                 cursorResult.params,
-                accessibleWhere
+                scopeWhere
             );
             expect(result).toEqual(page);
         });
 
         it('propagates PolicyForbiddenException and never lists when the ability has no Project read rule', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.scope.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
@@ -134,7 +133,7 @@ describe('ProjectHttpService', () => {
         });
 
         it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.scope.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
@@ -156,7 +155,7 @@ describe('ProjectHttpService', () => {
             await expect(
                 service.createProject('workspace-id', 'actor-id', dto)
             ).resolves.toEqual({ data: project });
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.create,
                 subject(EnumPolicySubject.Project, {
                     workspaceId: 'workspace-id',
@@ -171,41 +170,131 @@ describe('ProjectHttpService', () => {
     });
 
     describe('getProject', () => {
-        it('authorizes and wraps the guarded project', () => {
-            expect(service.getProject(project)).toEqual({ data: project });
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+        const fresh = mock<Project>({
+            id: 'project-id',
+            workspaceId: 'workspace-id',
+        });
+
+        it('re-reads by identity and authorizes read on that project', async () => {
+            projectDomain.getCurrentProject.mockResolvedValue(fresh);
+
+            await expect(service.getProject(project)).resolves.toEqual({
+                data: fresh,
+            });
+            expect(projectDomain.getCurrentProject).toHaveBeenCalledWith(
+                'project-id',
+                'workspace-id'
+            );
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
-                subject(EnumPolicySubject.Project, project)
+                subject(EnumPolicySubject.Project, fresh)
             );
         });
+
+        it('propagates ProjectNotFoundException and does not authorize when the re-read misses', async () => {
+            projectDomain.getCurrentProject.mockRejectedValue(
+                new ProjectNotFoundException()
+            );
+
+            await expect(service.getProject(project)).rejects.toBeInstanceOf(
+                ProjectNotFoundException
+            );
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize after the identity load',
+            async (_name, error) => {
+                projectDomain.getCurrentProject.mockResolvedValue(fresh);
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(service.getProject(project)).rejects.toThrow(
+                    error
+                );
+                expect(projectDomain.getCurrentProject).toHaveBeenCalledWith(
+                    'project-id',
+                    'workspace-id'
+                );
+            }
+        );
     });
 
     describe('getForAdmin', () => {
-        it('authorizes and wraps the project loaded for administration', async () => {
+        it('loads the project by id and authorizes read on that row', async () => {
             projectDomain.getByIdForAdmin.mockResolvedValue(project);
 
             await expect(service.getForAdmin('project-id')).resolves.toEqual({
                 data: project,
             });
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(projectDomain.getByIdForAdmin).toHaveBeenCalledWith(
+                'project-id'
+            );
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 subject(EnumPolicySubject.Project, project)
             );
         });
+
+        it('propagates ProjectNotFoundException and does not authorize when the load misses', async () => {
+            projectDomain.getByIdForAdmin.mockRejectedValue(
+                new ProjectNotFoundException()
+            );
+
+            await expect(
+                service.getForAdmin('project-id')
+            ).rejects.toBeInstanceOf(ProjectNotFoundException);
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize after the identity load',
+            async (_name, error) => {
+                projectDomain.getByIdForAdmin.mockResolvedValue(project);
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(service.getForAdmin('project-id')).rejects.toThrow(
+                    error
+                );
+                expect(projectDomain.getByIdForAdmin).toHaveBeenCalledWith(
+                    'project-id'
+                );
+            }
+        );
     });
 
     describe('updateProject', () => {
-        it('delegates the update and wraps the result', async () => {
-            const dto: ProjectUpdateRequestDto = {
-                name: 'Renamed',
-                description: 'New',
-            };
+        const dto: ProjectUpdateRequestDto = {
+            name: 'Renamed',
+            description: 'New',
+        };
+
+        it('authorizes update on the project and writes', async () => {
             projectDomain.updateProject.mockResolvedValue(project);
 
             await expect(
                 service.updateProject(project, 'actor-id', dto)
             ).resolves.toEqual({ data: project });
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Project, project)
             );
@@ -215,17 +304,39 @@ describe('ProjectHttpService', () => {
                 { name: 'Renamed', description: 'New' }
             );
         });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize and does not write',
+            async (_name, error) => {
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(
+                    service.updateProject(project, 'actor-id', dto)
+                ).rejects.toThrow(error);
+                expect(projectDomain.updateProject).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('updateProjectSlug', () => {
-        it('delegates the slug and wraps the result', async () => {
-            const dto: ProjectUpdateSlugRequestDto = { slug: 'new-slug' };
+        const dto: ProjectUpdateSlugRequestDto = { slug: 'new-slug' };
+
+        it('authorizes update on the project and writes', async () => {
             projectDomain.updateProjectSlug.mockResolvedValue(project);
 
             await expect(
                 service.updateProjectSlug(project, 'actor-id', dto)
             ).resolves.toEqual({ data: project });
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Project, project)
             );
@@ -235,13 +346,34 @@ describe('ProjectHttpService', () => {
                 'new-slug'
             );
         });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize and does not write',
+            async (_name, error) => {
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(
+                    service.updateProjectSlug(project, 'actor-id', dto)
+                ).rejects.toThrow(error);
+                expect(projectDomain.updateProjectSlug).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('softDeleteProject', () => {
-        it('delegates the delete', async () => {
+        it('authorizes delete on the project and writes', async () => {
             await service.softDeleteProject(project, 'actor-id');
 
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.delete,
                 subject(EnumPolicySubject.Project, project)
             );
@@ -250,6 +382,26 @@ describe('ProjectHttpService', () => {
                 'actor-id'
             );
         });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize and does not write',
+            async (_name, error) => {
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(
+                    service.softDeleteProject(project, 'actor-id')
+                ).rejects.toThrow(error);
+                expect(projectDomain.softDeleteProject).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('getListForAdmin', () => {
@@ -257,14 +409,12 @@ describe('ProjectHttpService', () => {
             const query: ProjectAdminListRequestDto = {
                 workspaceId: 'workspace-id',
             };
-            policyAbilityDomain.accessibleWhere.mockReturnValue(
-                accessibleWhere
-            );
+            policyAbilityDomain.scope.mockReturnValue(scopeWhere);
             projectDomain.getListForAdmin.mockResolvedValue(page);
 
             const result = await service.getListForAdmin(query);
 
-            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Project
             );
@@ -279,15 +429,13 @@ describe('ProjectHttpService', () => {
             expect(projectDomain.getListForAdmin).toHaveBeenCalledWith(
                 offsetResult.params,
                 'workspace-id',
-                accessibleWhere
+                scopeWhere
             );
             expect(result).toEqual(page);
         });
 
         it('lists without a workspace filter when the query carries none', async () => {
-            policyAbilityDomain.accessibleWhere.mockReturnValue(
-                accessibleWhere
-            );
+            policyAbilityDomain.scope.mockReturnValue(scopeWhere);
             projectDomain.getListForAdmin.mockResolvedValue(page);
 
             await service.getListForAdmin({});
@@ -295,12 +443,12 @@ describe('ProjectHttpService', () => {
             expect(projectDomain.getListForAdmin).toHaveBeenCalledWith(
                 offsetResult.params,
                 undefined,
-                accessibleWhere
+                scopeWhere
             );
         });
 
         it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.scope.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
@@ -311,7 +459,7 @@ describe('ProjectHttpService', () => {
         });
 
         it('propagates the policy rejection when the ability holds no read rule and never lists', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.scope.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
@@ -331,19 +479,14 @@ describe('ProjectHttpService', () => {
 
             const result = service.getEffectivePermissions(project);
 
-            const [targets] =
-                policyAbilityDomain.getEffectivePermissions.mock.calls[0];
             expect(
-                targets.map(target =>
-                    typeof target === 'string'
-                        ? target
-                        : target.__caslSubjectType__
-                )
-            ).toEqual([
-                EnumPolicySubject.Project,
-                EnumPolicySubject.ProjectMember,
+                policyAbilityDomain.getEffectivePermissions
+            ).toHaveBeenCalledWith([
+                subject(EnumPolicySubject.Project, project),
+                subject(EnumPolicySubject.ProjectMember, {
+                    projectId: project.id,
+                }),
             ]);
-            expect(targets).toEqual([project, { projectId: project.id }]);
             expect(result).toEqual({ data: { permissions } });
         });
 

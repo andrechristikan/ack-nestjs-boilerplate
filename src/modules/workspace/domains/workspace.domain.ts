@@ -485,7 +485,14 @@ export class WorkspaceDomain {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    getCurrentWorkspace(workspace: Workspace): Workspace {
+    /** Re-reads the active workspace. */
+    async getCurrentWorkspace(workspaceId: string): Promise<Workspace> {
+        const workspace =
+            await this.workspaceRepository.findActiveById(workspaceId);
+        if (!workspace) {
+            throw new WorkspaceNotFoundException();
+        }
+
         return workspace;
     }
 
@@ -507,6 +514,9 @@ export class WorkspaceDomain {
             workspaceId,
             update
         );
+        if (!row) {
+            throw new WorkspaceNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -531,6 +541,9 @@ export class WorkspaceDomain {
             workspaceId,
             isPublic
         );
+        if (!row) {
+            throw new WorkspaceNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -561,10 +574,24 @@ export class WorkspaceDomain {
             }),
         ];
 
-        const row = await this.workspaceRepository.updateSlug(
-            workspaceId,
-            slug
-        );
+        let row: Workspace | null;
+        try {
+            row = await this.workspaceRepository.updateSlug(workspaceId, slug);
+        } catch (error: unknown) {
+            const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                error,
+                'slug'
+            );
+            if (isSlugCollision) {
+                throw new WorkspaceSlugAlreadyExistsException();
+            }
+
+            throw error;
+        }
+
+        if (!row) {
+            throw new WorkspaceNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -607,11 +634,16 @@ export class WorkspaceDomain {
         const deletedAt = this.helperDateService.create();
 
         await this.databaseService.withTransaction(async tx => {
-            await this.workspaceRepository.softDeleteInTx(
+            const deleted = await this.workspaceRepository.softDeleteInTx(
                 tx,
                 workspaceId,
-                deletedAt
+                deletedAt,
+                actorId
             );
+            if (!deleted) {
+                throw new WorkspaceNotFoundException();
+            }
+
             await this.projectDomain.softDeleteByWorkspaceInTx(
                 tx,
                 workspaceId,
@@ -631,15 +663,16 @@ export class WorkspaceDomain {
         this.activityLogDomain.stagePrepared(events);
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>,
-        where?: Prisma.WorkspaceWhereInput
+        isPublic: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.WorkspaceWhereInput
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.workspaceRepository.findWithPaginationOffsetForAdmin(
             pagination,
             isPublic,
-            where
+            additionalWhere
         );
     }
 

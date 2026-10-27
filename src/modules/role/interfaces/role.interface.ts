@@ -8,6 +8,10 @@ export interface IRole {
     name: string;
 }
 
+export interface IRoleWithPolicyRevision extends IRole {
+    policyRevision: number;
+}
+
 export type IRoleWithPolicies = Role & {
     policies: Policy[];
 };

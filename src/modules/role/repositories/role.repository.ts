@@ -35,13 +35,14 @@ export class RoleRepository implements IRoleRepository {
         private readonly paginationService: PaginationService
     ) {}
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetByAdmin(
         {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        scope?: Record<string, IPaginationIn>,
-        additionalWhere?: Prisma.RoleWhereInput
+        scope: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.RoleWhereInput
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.offset<
             IRoleWithPolicyCount,
@@ -50,11 +51,11 @@ export class RoleRepository implements IRoleRepository {
             ...params,
             where: {
                 AND: [
+                    additionalWhere,
                     {
                         ...where,
                         ...scope,
                     },
-                    additionalWhere ?? {},
                 ],
             },
             include: { _count: { select: { policies: true } } },
@@ -104,14 +105,14 @@ export class RoleRepository implements IRoleRepository {
     async findOneWithPoliciesById(
         id: string
     ): Promise<IRoleWithPolicies | null> {
-        return this.databaseService.client.role.findUnique({
+        return this.databaseService.client.role.findFirst({
             where: { id },
             include: RolePoliciesInclude,
         });
     }
 
     async findOneById(id: string): Promise<IRole | null> {
-        return this.databaseService.client.role.findUnique({
+        return this.databaseService.client.role.findFirst({
             where: { id },
             select: RoleSelect,
         });
@@ -155,6 +156,16 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
+    async incrementPolicyRevisionInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string
+    ): Promise<void> {
+        await tx.role.update({
+            where: { id: roleId },
+            data: { policyRevision: { increment: 1 } },
+        });
+    }
+
     async existsByScopeAndKey(
         scope: EnumRoleScope,
         key: string
@@ -174,11 +185,23 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
-    async update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies> {
-        return this.databaseService.client.role.update({
-            where: { id },
-            data,
-            include: RolePoliciesInclude,
+    async update(
+        id: string,
+        data: IRoleUpdate
+    ): Promise<IRoleWithPolicies | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.role.updateMany({
+                where: { id },
+                data,
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.role.findUnique({
+                where: { id },
+                include: RolePoliciesInclude,
+            });
         });
     }
 
@@ -194,9 +217,17 @@ export class RoleRepository implements IRoleRepository {
         return Object.values(role._count).some(count => count > 0);
     }
 
-    async delete(id: string): Promise<Role> {
-        return this.databaseService.client.role.delete({
-            where: { id },
+    async delete(id: string): Promise<Role | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const where: Prisma.RoleWhereInput = { id };
+            const existing = await tx.role.findFirst({ where });
+            if (!existing) {
+                return null;
+            }
+
+            const { count } = await tx.role.deleteMany({ where });
+
+            return count > 0 ? existing : null;
         });
     }
 }

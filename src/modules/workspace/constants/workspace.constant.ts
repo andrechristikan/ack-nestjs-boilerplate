@@ -1,7 +1,10 @@
 import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
-import { RoleSelect } from '@modules/role/constants/role.constant';
+import {
+    RoleGuardSelect,
+    RoleSelect,
+} from '@modules/role/constants/role.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 /**
@@ -50,6 +53,15 @@ export const WorkspaceActiveFilter = {
  */
 export const WorkspaceMemberRoleInclude = {
     role: { select: RoleSelect },
+} as const satisfies Prisma.WorkspaceMemberInclude;
+
+/**
+ * Relations the workspace member guard read loads: the workspace role identity and its
+ * `policyRevision`.
+ * @public
+ */
+export const WorkspaceMemberGuardRoleInclude = {
+    role: { select: RoleGuardSelect },
 } as const satisfies Prisma.WorkspaceMemberInclude;
 
 /**

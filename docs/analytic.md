@@ -69,7 +69,7 @@ flowchart LR
 - `@ApiKeyProtected`
 - `@AuthJwtAccessProtected`
 - `@UserProtected`
-- `@PlatformPolicyProtected({ subject: EnumPolicySubject.Analytic, action: [EnumPolicyAction.read] })`
+- `@PolicyProtected({ subject: EnumPolicySubject.Analytic, action: [EnumPolicyAction.read] })`
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
@@ -83,11 +83,11 @@ Admin scope carries no workspace header.
 - `@UserProtected`
 - `@WorkspaceProtected`
 - `@WorkspaceMemberProtected`
-- `@WorkspacePolicyProtected({ subject: EnumPolicySubject.WorkspaceAnalytic, action: [EnumPolicyAction.read] })` on every route
+- `@PolicyProtected({ subject: EnumPolicySubject.WorkspaceAnalytic, action: [EnumPolicyAction.read] })` on every route
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
-The workspace comes from `x-workspace-id`. The policy is evaluated against the caller's workspace role: the seeded `owner` and `admin` hold `workspaceAnalytic:[read]`, the `member` does not.
+The workspace comes from `x-workspace-id`. The seeded `owner` and `admin` hold `WorkspaceAnalytic` `read` limited to that workspace, and the HTTP service authorizes the active workspace record. A workspace `member` holds no such rule.
 
 ### Admin dashboard
 
@@ -271,7 +271,7 @@ Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRa
 
 ## Authorization
 
-Admin analytic routes require `EnumPolicySubject.analytic` with `EnumPolicyAction.read` from the caller's platform role (`admin` and `superAdmin` hold it). User workspace analytic routes other than the summary require the same policy from the caller's workspace role (`owner` and `admin` hold it); the summary needs workspace membership only. Details: [Authorization](authorization.md).
+Admin analytic routes require `EnumPolicySubject.Analytic` with `EnumPolicyAction.read` from the caller's platform role (`admin` and `superAdmin` hold it). User workspace analytic routes require `EnumPolicySubject.WorkspaceAnalytic` with `EnumPolicyAction.read` from the caller's workspace role. The seeded `owner` and `admin` rules are limited to the active workspace, and the HTTP service authorizes that workspace record. A workspace `member` holds no such rule. Details: [Authorization](authorization.md).
 
 ## Status codes
 

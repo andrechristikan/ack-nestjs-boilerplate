@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { detectSubjectType } from '@casl/ability';
+import { subject } from '@casl/ability';
 
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -29,8 +29,10 @@ import type {
     ISession,
     ISessionList,
 } from '@modules/session/interfaces/session.interface';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
@@ -45,40 +47,10 @@ describe('SessionHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const accessibleWhere = { userId: 'user-id' };
+    const scopeWhere = { userId: 'user-id' };
     const item = mock<ISessionList>();
+    const session = mock<ISession>();
     const now = new Date('2026-01-01T00:00:00.000Z');
-    const userRef = {
-        id: 'user-id',
-        name: 'User',
-        username: 'user',
-        photo: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-    };
-    const storedSession = {
-        id: 'session-id',
-        userId: 'user-id',
-        deviceOwnershipId: 'ownership-id',
-        jti: 'jti',
-        ipAddress: null,
-        userAgent: {},
-        geoLocation: null,
-        expiredAt: now,
-        revokedAt: null,
-        isRevoked: false,
-        revokedById: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        user: userRef,
-        revokedBy: null,
-    } satisfies ISession;
     const storedUser = {
         id: 'user-id',
         name: 'User',
@@ -117,6 +89,7 @@ describe('SessionHttpService', () => {
             id: 'role-id',
             name: 'User',
             description: null,
+            policyRevision: 0,
             scope: EnumRoleScope.platform,
             key: EnumRolePlatformKey.user,
             createdAt: now,
@@ -193,8 +166,9 @@ describe('SessionHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyAbilityDomain.accessibleWhere.mockReturnValue(accessibleWhere);
+        policyAbilityDomain.scope.mockReturnValue(scopeWhere);
         userDomain.getOne.mockResolvedValue(storedUser);
+        sessionDomain.validateActive.mockResolvedValue(session);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -211,6 +185,54 @@ describe('SessionHttpService', () => {
     });
 
     describe('getListOffsetByAdmin', () => {
+        it('loads the parent user, authorizes read, then lists under the Session scope', async () => {
+            const callOrder: string[] = [];
+            paginationQueryUtil.offset.mockReturnValue({
+                params: offsetParams,
+                storePatch: offsetStorePatch,
+            } as never);
+            userDomain.getOne.mockImplementation(async () => {
+                callOrder.push('parent');
+                return storedUser;
+            });
+            policyAbilityDomain.authorize.mockImplementation(() => {
+                callOrder.push('authorize');
+            });
+            sessionDomain.getListOffsetByAdmin.mockImplementation(async () => {
+                callOrder.push('list');
+                return offsetPage;
+            });
+
+            await service.getListOffsetByAdmin('user-id', {});
+
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.User, storedUser)
+            );
+            expect(policyAbilityDomain.scope).toHaveBeenCalledWith(
+                EnumPolicyAction.read,
+                EnumPolicySubject.Session
+            );
+            expect(sessionDomain.getListOffsetByAdmin).toHaveBeenCalledWith(
+                'user-id',
+                offsetParams,
+                undefined,
+                scopeWhere
+            );
+            expect(callOrder).toEqual(['parent', 'authorize', 'list']);
+        });
+
+        it('throws UserNotFoundException and never lists when the parent lookup misses', async () => {
+            userDomain.getOne.mockRejectedValue(new UserNotFoundException());
+
+            await expect(
+                service.getListOffsetByAdmin('user-id', {})
+            ).rejects.toThrow(UserNotFoundException);
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+            expect(sessionDomain.getListOffsetByAdmin).not.toHaveBeenCalled();
+        });
+
         it('passes the revoke filter and the read predicate of Session to the domain list', async () => {
             const query = { isRevoked: true };
             const isRevokedWhere = { isRevoked: true };
@@ -226,9 +248,12 @@ describe('SessionHttpService', () => {
 
             const result = await service.getListOffsetByAdmin('user-id', query);
 
-            expect(userDomain.getOne).not.toHaveBeenCalled();
-            expect(policyAbilityDomain.assertCan).not.toHaveBeenCalled();
-            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.User, storedUser)
+            );
+            expect(policyAbilityDomain.scope).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Session
             );
@@ -247,7 +272,7 @@ describe('SessionHttpService', () => {
                 'user-id',
                 offsetParams,
                 isRevokedWhere,
-                accessibleWhere
+                scopeWhere
             );
             expect(result).toEqual(offsetPage);
         });
@@ -270,29 +295,31 @@ describe('SessionHttpService', () => {
                 'user-id',
                 offsetParams,
                 undefined,
-                accessibleWhere
+                scopeWhere
             );
         });
 
         it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
             await expect(
                 service.getListOffsetByAdmin('user-id', {})
             ).rejects.toThrow(PolicyForbiddenException);
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
             expect(sessionDomain.getListOffsetByAdmin).not.toHaveBeenCalled();
         });
 
         it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
                 service.getListOffsetByAdmin('user-id', {})
             ).rejects.toThrow(RequestContextMissingException);
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
             expect(sessionDomain.getListOffsetByAdmin).not.toHaveBeenCalled();
         });
     });
@@ -319,7 +346,8 @@ describe('SessionHttpService', () => {
                 'user-id',
                 cursorParams
             );
-            expect(policyAbilityDomain.accessibleWhere).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
             expect(result).toEqual(cursorPage);
         });
     });
@@ -335,12 +363,13 @@ describe('SessionHttpService', () => {
                 'user-id',
                 'session-id'
             );
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
         });
     });
 
     describe('revokeByAdmin', () => {
-        it('checks delete on the active session of the route user, delegates to the domain and answers an empty envelope', async () => {
-            sessionDomain.validateActive.mockResolvedValue(storedSession);
+        it('loads the active session, authorizes delete, and revokes by id', async () => {
             sessionDomain.revokeByAdmin.mockResolvedValue(undefined);
 
             await expect(
@@ -350,14 +379,11 @@ describe('SessionHttpService', () => {
                 'user-id',
                 'session-id'
             );
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledTimes(1);
-            const [action, record] =
-                policyAbilityDomain.assertCan.mock.calls[0];
-            expect(action).toBe(EnumPolicyAction.delete);
-            expect(record).toBe(storedSession);
-            expect(detectSubjectType(record as never)).toBe(
-                EnumPolicySubject.Session
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.delete,
+                subject(EnumPolicySubject.Session, session)
             );
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
             expect(sessionDomain.revokeByAdmin).toHaveBeenCalledWith(
                 'user-id',
                 'session-id',
@@ -365,73 +391,98 @@ describe('SessionHttpService', () => {
             );
         });
 
-        it('throws PolicyForbiddenException and never revokes when the record is denied', async () => {
-            sessionDomain.validateActive.mockResolvedValue(storedSession);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('throws PolicyForbiddenException and never revokes when the ability has no delete rule', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
             await expect(
                 service.revokeByAdmin('user-id', 'session-id', 'admin-id')
             ).rejects.toThrow(PolicyForbiddenException);
+            expect(sessionDomain.validateActive).toHaveBeenCalledWith(
+                'user-id',
+                'session-id'
+            );
             expect(sessionDomain.revokeByAdmin).not.toHaveBeenCalled();
         });
 
         it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
                 service.revokeByAdmin('user-id', 'session-id', 'admin-id')
             ).rejects.toThrow(RequestContextMissingException);
+            expect(sessionDomain.validateActive).toHaveBeenCalledWith(
+                'user-id',
+                'session-id'
+            );
             expect(sessionDomain.revokeByAdmin).not.toHaveBeenCalled();
         });
     });
 
     describe('revokeAllByAdmin', () => {
-        it('checks update on the target user, delegates to the domain and answers an empty envelope', async () => {
-            userDomain.getOne.mockResolvedValue(storedUser);
+        it('loads the user, authorizes update, and revokes every active session', async () => {
             sessionDomain.revokeAllByAdmin.mockResolvedValue(undefined);
 
             await expect(
                 service.revokeAllByAdmin('user-id', 'admin-id')
             ).resolves.toEqual({});
             expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledTimes(1);
-            const [action, record] =
-                policyAbilityDomain.assertCan.mock.calls[0];
-            expect(action).toBe(EnumPolicyAction.update);
-            expect(record).toBe(storedUser);
-            expect(detectSubjectType(record as never)).toBe(
-                EnumPolicySubject.User
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.User, storedUser)
             );
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
             expect(sessionDomain.revokeAllByAdmin).toHaveBeenCalledWith(
                 'user-id',
                 'admin-id'
             );
         });
 
-        it('throws PolicyForbiddenException and never revokes when the user is denied', async () => {
+        it('excluded user: UserNotFoundException propagates and the revoke is not called', async () => {
+            userDomain.getOne.mockRejectedValue(new UserNotFoundException());
+
+            await expect(
+                service.revokeAllByAdmin('user-id', 'admin-id')
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+            expect(sessionDomain.revokeAllByAdmin).not.toHaveBeenCalled();
+        });
+
+        it('readable user with zero active sessions: SessionNotFoundException propagates, not UserNotFoundException', async () => {
             userDomain.getOne.mockResolvedValue(storedUser);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+            sessionDomain.revokeAllByAdmin.mockRejectedValue(
+                new SessionNotFoundException()
+            );
+
+            await expect(
+                service.revokeAllByAdmin('user-id', 'admin-id')
+            ).rejects.toBeInstanceOf(SessionNotFoundException);
+        });
+
+        it('throws PolicyForbiddenException and never revokes when the ability has no update rule', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
             await expect(
                 service.revokeAllByAdmin('user-id', 'admin-id')
             ).rejects.toThrow(PolicyForbiddenException);
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
             expect(sessionDomain.revokeAllByAdmin).not.toHaveBeenCalled();
         });
 
         it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
                 service.revokeAllByAdmin('user-id', 'admin-id')
             ).rejects.toThrow(RequestContextMissingException);
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
             expect(sessionDomain.revokeAllByAdmin).not.toHaveBeenCalled();
         });
     });

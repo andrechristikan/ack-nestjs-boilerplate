@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { subject } from '@casl/ability';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -25,17 +26,22 @@ import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/devic
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 
 describe('DeviceHttpService', () => {
     const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
         mock<PolicyAbilityDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const accessibleWhere = { userId: 'user-id' };
+    const scopeWhere = { userId: 'user-id' };
+    const user = mock<IUserProfile>();
     const ownership = mock<IDeviceOwnership>({ _count: { sessions: 2 } });
     const ownershipWithSession = mock<IDeviceOwnershipWithSession>({
         _count: { sessions: 3 },
@@ -89,12 +95,15 @@ describe('DeviceHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyAbilityDomain.accessibleWhere.mockReturnValue(accessibleWhere);
+        policyAbilityDomain.scope.mockReturnValue(scopeWhere);
+        userDomain.getOne.mockResolvedValue(user);
+        deviceDomain.getOneActive.mockResolvedValue(ownership);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceHttpService,
                 { provide: DeviceDomain, useValue: deviceDomain },
+                { provide: UserDomain, useValue: userDomain },
                 { provide: PolicyAbilityDomain, useValue: policyAbilityDomain },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
@@ -105,6 +114,54 @@ describe('DeviceHttpService', () => {
     });
 
     describe('getListOffsetByAdmin', () => {
+        it('loads the parent user, authorizes read, then lists under the DeviceOwnership scope', async () => {
+            const callOrder: string[] = [];
+            paginationQueryUtil.offset.mockReturnValue({
+                params: offsetParams,
+                storePatch: offsetStorePatch,
+            } as never);
+            userDomain.getOne.mockImplementation(async () => {
+                callOrder.push('parent');
+                return user;
+            });
+            policyAbilityDomain.authorize.mockImplementation(() => {
+                callOrder.push('authorize');
+            });
+            deviceDomain.getListOffsetByAdmin.mockImplementation(async () => {
+                callOrder.push('list');
+                return offsetPage;
+            });
+
+            await service.getListOffsetByAdmin('user-id', {});
+
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.User, user)
+            );
+            expect(policyAbilityDomain.scope).toHaveBeenCalledWith(
+                EnumPolicyAction.read,
+                EnumPolicySubject.DeviceOwnership
+            );
+            expect(deviceDomain.getListOffsetByAdmin).toHaveBeenCalledWith(
+                'user-id',
+                offsetParams,
+                undefined,
+                scopeWhere
+            );
+            expect(callOrder).toEqual(['parent', 'authorize', 'list']);
+        });
+
+        it('throws UserNotFoundException and never lists when the parent lookup misses', async () => {
+            userDomain.getOne.mockRejectedValue(new UserNotFoundException());
+
+            await expect(
+                service.getListOffsetByAdmin('user-id', {})
+            ).rejects.toThrow(UserNotFoundException);
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+            expect(deviceDomain.getListOffsetByAdmin).not.toHaveBeenCalled();
+        });
+
         it('passes the revoke filter and the read predicate of DeviceOwnership to the domain and counts active sessions', async () => {
             const query = { isRevoked: true };
             const isRevokedWhere = { isRevoked: true };
@@ -120,7 +177,12 @@ describe('DeviceHttpService', () => {
 
             const result = await service.getListOffsetByAdmin('user-id', query);
 
-            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.User, user)
+            );
+            expect(policyAbilityDomain.scope).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.DeviceOwnership
             );
@@ -139,7 +201,7 @@ describe('DeviceHttpService', () => {
                 'user-id',
                 offsetParams,
                 isRevokedWhere,
-                accessibleWhere
+                scopeWhere
             );
             expect(result.data).toEqual([
                 {
@@ -168,29 +230,31 @@ describe('DeviceHttpService', () => {
                 'user-id',
                 offsetParams,
                 undefined,
-                accessibleWhere
+                scopeWhere
             );
         });
 
         it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
             await expect(
                 service.getListOffsetByAdmin('user-id', {})
             ).rejects.toThrow(PolicyForbiddenException);
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
             expect(deviceDomain.getListOffsetByAdmin).not.toHaveBeenCalled();
         });
 
         it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
                 service.getListOffsetByAdmin('user-id', {})
             ).rejects.toThrow(RequestContextMissingException);
+            expect(userDomain.getOne).toHaveBeenCalledWith('user-id');
             expect(deviceDomain.getListOffsetByAdmin).not.toHaveBeenCalled();
         });
     });
@@ -229,7 +293,8 @@ describe('DeviceHttpService', () => {
                 'session-id',
                 cursorParams
             );
-            expect(policyAbilityDomain.accessibleWhere).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
             expect(result.data).toEqual([
                 {
                     ...ownershipWithSession,
@@ -274,12 +339,13 @@ describe('DeviceHttpService', () => {
                 'user-id',
                 'ownership-id'
             );
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
         });
     });
 
     describe('removeByAdmin', () => {
-        it('checks delete on the active ownership of the route user, delegates to the domain and answers an empty envelope', async () => {
-            deviceDomain.getOneActive.mockResolvedValue(ownership);
+        it('loads the active ownership, authorizes delete, and removes by id', async () => {
             deviceDomain.removeByAdmin.mockResolvedValue(undefined);
 
             await expect(
@@ -289,10 +355,11 @@ describe('DeviceHttpService', () => {
                 'user-id',
                 'ownership-id'
             );
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.delete,
-                ownership
+                subject(EnumPolicySubject.DeviceOwnership, ownership)
             );
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
             expect(deviceDomain.removeByAdmin).toHaveBeenCalledWith(
                 'user-id',
                 'ownership-id',
@@ -300,27 +367,33 @@ describe('DeviceHttpService', () => {
             );
         });
 
-        it('throws PolicyForbiddenException and never removes when the record is denied', async () => {
-            deviceDomain.getOneActive.mockResolvedValue(ownership);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('throws PolicyForbiddenException and never removes when the ability has no delete rule', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
             await expect(
                 service.removeByAdmin('user-id', 'ownership-id', 'admin-id')
             ).rejects.toThrow(PolicyForbiddenException);
+            expect(deviceDomain.getOneActive).toHaveBeenCalledWith(
+                'user-id',
+                'ownership-id'
+            );
             expect(deviceDomain.removeByAdmin).not.toHaveBeenCalled();
         });
 
         it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            deviceDomain.getOneActive.mockResolvedValue(ownership);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
                 service.removeByAdmin('user-id', 'ownership-id', 'admin-id')
             ).rejects.toThrow(RequestContextMissingException);
+            expect(deviceDomain.getOneActive).toHaveBeenCalledWith(
+                'user-id',
+                'ownership-id'
+            );
             expect(deviceDomain.removeByAdmin).not.toHaveBeenCalled();
         });
     });

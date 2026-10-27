@@ -129,6 +129,8 @@ describe('WorkspaceJoinRequestDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         roleDomain.getByScopeAndKeyInTx.mockResolvedValue(memberRole);
+        joinRepository.acceptInTx.mockResolvedValue(joinRequest);
+        joinRepository.reject.mockResolvedValue(joinRequest);
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );
@@ -302,24 +304,40 @@ describe('WorkspaceJoinRequestDomain', () => {
         }
     );
 
-    it('loads the join request the route addresses within the workspace', async () => {
-        joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+    describe('getByIdAndWorkspace', () => {
+        it('returns the join request found for the workspace', async () => {
+            joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
 
-        await expect(
-            domain.getJoinRequest('workspace-id', 'join-id')
-        ).resolves.toBe(joinRequest);
-        expect(joinRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
-            'join-id',
-            'workspace-id'
-        );
-    });
+            await expect(
+                domain.getByIdAndWorkspace('join-id', 'workspace-id')
+            ).resolves.toBe(joinRequest);
+            expect(joinRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                'join-id',
+                'workspace-id'
+            );
+        });
 
-    it('reports a join request outside the workspace as not found', async () => {
-        joinRepository.findByIdAndWorkspace.mockResolvedValue(null);
+        it('returns an already processed request', async () => {
+            const accepted = buildJoinRequest({
+                id: 'join-id',
+                workspaceId: 'workspace-id',
+                userId: 'requester-id',
+                status: EnumWorkspaceJoinRequestStatus.accepted,
+            });
+            joinRepository.findByIdAndWorkspace.mockResolvedValue(accepted);
 
-        await expect(
-            domain.getJoinRequest('workspace-id', 'join-id')
-        ).rejects.toBeInstanceOf(WorkspaceJoinRequestNotFoundException);
+            await expect(
+                domain.getByIdAndWorkspace('join-id', 'workspace-id')
+            ).resolves.toBe(accepted);
+        });
+
+        it('throws WorkspaceJoinRequestNotFoundException when the repository returns null', async () => {
+            joinRepository.findByIdAndWorkspace.mockResolvedValue(null);
+
+            await expect(
+                domain.getByIdAndWorkspace('join-id', 'workspace-id')
+            ).rejects.toBeInstanceOf(WorkspaceJoinRequestNotFoundException);
+        });
     });
 
     it.each([
@@ -402,6 +420,88 @@ describe('WorkspaceJoinRequestDomain', () => {
         expect(
             notificationQueue.sendWorkspaceJoinAccepted
         ).not.toHaveBeenCalled();
+    });
+
+    describe('acceptJoinRequest read and accept', () => {
+        it('calls the pre-read and to acceptInTx', async () => {
+            joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+            helperDateService.create.mockReturnValue(now);
+
+            await domain.acceptJoinRequest(workspace, 'reviewer-id', 'join-id');
+
+            expect(joinRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                'join-id',
+                'workspace-id'
+            );
+            expect(joinRepository.acceptInTx).toHaveBeenCalledWith(
+                expect.anything(),
+                'join-id',
+                'reviewer-id',
+                now
+            );
+        });
+
+        it('throws WorkspaceJoinRequestNotFoundException inside the transaction when acceptInTx returns null, staging and notifying nothing', async () => {
+            joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+            helperDateService.create.mockReturnValue(now);
+            joinRepository.acceptInTx.mockResolvedValue(null);
+
+            await expect(
+                domain.acceptJoinRequest(workspace, 'reviewer-id', 'join-id')
+            ).rejects.toBeInstanceOf(WorkspaceJoinRequestNotFoundException);
+            expect(memberDomain.createInTx).toHaveBeenCalledBefore(
+                joinRepository.acceptInTx
+            );
+            expect(databaseService.withTransaction).toHaveBeenCalledOnce();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('rejectJoinRequest read and reject', () => {
+        it('calls the pre-read and to reject', async () => {
+            joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+            helperDateService.create.mockReturnValue(now);
+
+            await domain.rejectJoinRequest(
+                workspace,
+                'reviewer-id',
+                'join-id',
+                EnumWorkspaceJoinRejectReason.other
+            );
+
+            expect(joinRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                'join-id',
+                'workspace-id'
+            );
+            expect(joinRepository.reject).toHaveBeenCalledWith(
+                'join-id',
+                'reviewer-id',
+                EnumWorkspaceJoinRejectReason.other,
+                now
+            );
+        });
+
+        it('throws WorkspaceJoinRequestNotFoundException and stages and notifies nothing when reject returns null', async () => {
+            joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+            helperDateService.create.mockReturnValue(now);
+            joinRepository.reject.mockResolvedValue(null);
+
+            await expect(
+                domain.rejectJoinRequest(
+                    workspace,
+                    'reviewer-id',
+                    'join-id',
+                    EnumWorkspaceJoinRejectReason.other
+                )
+            ).rejects.toBeInstanceOf(WorkspaceJoinRequestNotFoundException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinRejected
+            ).not.toHaveBeenCalled();
+        });
     });
 
     it('checks the join-request feature before loading the request to reject', async () => {
@@ -510,7 +610,7 @@ describe('WorkspaceJoinRequestDomain', () => {
             orderBy: [],
         };
         const status = { status: { in: ['pending'] } };
-        const accessibleWhere = { workspaceId: 'workspace-id' };
+        const scopeWhere = { workspaceId: 'workspace-id' };
         const page = {
             type: EnumPaginationType.cursor as const,
             count: 0,
@@ -528,7 +628,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                     'workspace-id',
                     pagination,
                     status as never,
-                    accessibleWhere
+                    scopeWhere
                 )
             ).resolves.toBe(page);
             expect(
@@ -537,23 +637,23 @@ describe('WorkspaceJoinRequestDomain', () => {
                 'workspace-id',
                 pagination,
                 status,
-                accessibleWhere
+                scopeWhere
             );
         });
 
         it('passes undefined filters to the repository when none are given', async () => {
             joinRepository.findWithPaginationCursor.mockResolvedValue(page);
 
-            await domain.getJoinRequestsList('workspace-id', pagination);
-
-            expect(
-                joinRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith(
+            await domain.getJoinRequestsList(
                 'workspace-id',
                 pagination,
                 undefined,
-                undefined
+                {}
             );
+
+            expect(
+                joinRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith('workspace-id', pagination, undefined, {});
         });
 
         it('does not list when the join-request feature is disabled', async () => {
@@ -563,7 +663,12 @@ describe('WorkspaceJoinRequestDomain', () => {
             );
 
             await expect(
-                domain.getJoinRequestsList('workspace-id', pagination)
+                domain.getJoinRequestsList(
+                    'workspace-id',
+                    pagination,
+                    undefined,
+                    {}
+                )
             ).rejects.toBe(error);
             expect(
                 joinRepository.findWithPaginationCursor

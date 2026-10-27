@@ -15,7 +15,7 @@ import {
 } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
-import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceMemberWithGuardRole } from '@modules/workspace/interfaces/workspace.interface';
 
 describe('WorkspaceMemberGuard', () => {
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
@@ -24,7 +24,7 @@ describe('WorkspaceMemberGuard', () => {
         mock<RequestStoreService>();
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     const joinedAt = new Date('2026-01-01T00:00:00.000Z');
-    const member: IWorkspaceMemberWithRole = {
+    const member: IWorkspaceMemberWithGuardRole = {
         id: 'member-id',
         workspaceId: 'workspace-id',
         userId: 'user-id',
@@ -34,6 +34,7 @@ describe('WorkspaceMemberGuard', () => {
             scope: EnumRoleScope.workspace,
             key: EnumRoleWorkspaceKey.member,
             name: 'Member',
+            policyRevision: 2,
         },
         joinedAt,
         createdAt: joinedAt,

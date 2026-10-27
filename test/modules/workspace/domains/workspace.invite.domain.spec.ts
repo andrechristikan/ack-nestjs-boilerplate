@@ -305,34 +305,31 @@ describe('WorkspaceInviteDomain', () => {
         const status = {
             status: { in: [EnumWorkspaceInviteStatus.pending] },
         } as never;
-        const accessibleWhere = { workspaceId: workspace.id };
+        const scopeWhere = { workspaceId: workspace.id };
         const result = { data: [], pagination: {} } as never;
         inviteRepository.findWithPaginationCursor.mockResolvedValue(result);
 
         await expect(
-            domain.getInvitesList(
-                workspace.id,
-                pagination,
-                status,
-                accessibleWhere
-            )
+            domain.getInvitesList(workspace.id, pagination, status, scopeWhere)
         ).resolves.toBe(result);
         expect(inviteRepository.findWithPaginationCursor).toHaveBeenCalledWith(
             workspace.id,
             pagination,
             status,
-            accessibleWhere
+            scopeWhere
         );
 
-        await domain.getInvitesList(workspace.id, pagination);
+        await domain.getInvitesList(workspace.id, pagination, undefined, {});
         expect(
             inviteRepository.findWithPaginationCursor
-        ).toHaveBeenLastCalledWith(
-            workspace.id,
-            pagination,
-            undefined,
-            undefined
-        );
+        ).toHaveBeenLastCalledWith(workspace.id, pagination, undefined, {});
+    });
+
+    it('expires stale invitations through the repository', async () => {
+        inviteRepository.expireStalePending.mockResolvedValue(3);
+
+        await expect(domain.expireStalePending()).resolves.toBe(3);
+        expect(inviteRepository.expireStalePending).toHaveBeenCalledWith();
     });
 
     it('expires stale invitations and lists invitations', async () => {
@@ -342,9 +339,14 @@ describe('WorkspaceInviteDomain', () => {
         inviteRepository.findWithPaginationCursor.mockResolvedValue(result);
         await expect(domain.expireStalePending()).resolves.toBe(3);
         await expect(
-            domain.getInvitesList(workspace.id, pagination, {
-                status: { in: [EnumWorkspaceInviteStatus.pending] },
-            } as never)
+            domain.getInvitesList(
+                workspace.id,
+                pagination,
+                {
+                    status: { in: [EnumWorkspaceInviteStatus.pending] },
+                } as never,
+                {}
+            )
         ).resolves.toBe(result);
     });
 
@@ -502,24 +504,26 @@ describe('WorkspaceInviteDomain', () => {
         expect(payload).not.toHaveProperty('workspaceMemberRole');
     });
 
-    it('loads the invite the route addresses within the workspace', async () => {
-        inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+    describe('getByIdAndWorkspace', () => {
+        it('returns the invite found for the workspace', async () => {
+            inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
 
-        await expect(domain.getInvite('workspace-id', invite.id)).resolves.toBe(
-            invite
-        );
-        expect(inviteRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
-            invite.id,
-            'workspace-id'
-        );
-    });
+            await expect(
+                domain.getByIdAndWorkspace(invite.id, workspace.id)
+            ).resolves.toBe(invite);
+            expect(inviteRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                invite.id,
+                workspace.id
+            );
+        });
 
-    it('reports an invite outside the workspace as not found', async () => {
-        inviteRepository.findByIdAndWorkspace.mockResolvedValue(null);
+        it('throws WorkspaceInviteNotFoundException when the repository returns null', async () => {
+            inviteRepository.findByIdAndWorkspace.mockResolvedValue(null);
 
-        await expect(
-            domain.getInvite('workspace-id', invite.id)
-        ).rejects.toBeInstanceOf(WorkspaceInviteNotFoundException);
+            await expect(
+                domain.getByIdAndWorkspace(invite.id, workspace.id)
+            ).rejects.toBeInstanceOf(WorkspaceInviteNotFoundException);
+        });
     });
 
     it.each([
@@ -531,7 +535,7 @@ describe('WorkspaceInviteDomain', () => {
     ])('rejects resending an unavailable invite', async (row, expected) => {
         inviteRepository.findByIdAndWorkspace.mockResolvedValue(row);
         await expect(
-            domain.resendInvite(workspace, 'actor-id', invite.id)
+            domain.resendInvite(workspace, 'actor-id', invite.id, undefined)
         ).rejects.toBeInstanceOf(expected);
     });
 
@@ -561,6 +565,62 @@ describe('WorkspaceInviteDomain', () => {
         );
     });
 
+    describe('resendInvite read and rotate', () => {
+        it('calls the pre-read and to rotateForResend', async () => {
+            inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+            userDomain.getOneActiveByEmail.mockResolvedValue(null);
+
+            await expect(
+                domain.resendInvite(workspace, 'actor-id', invite.id, undefined)
+            ).resolves.toBe(invite);
+            expect(inviteRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                invite.id,
+                workspace.id
+            );
+            expect(inviteRepository.rotateForResend).toHaveBeenCalledWith(
+                invite.id,
+                'hashed-token',
+                'INV-REF',
+                expiredAt
+            );
+        });
+
+        it('calls the repository and returns the same result', async () => {
+            inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+            userDomain.getOneActiveByEmail.mockResolvedValue(null);
+
+            await expect(
+                domain.resendInvite(workspace, 'actor-id', invite.id, undefined)
+            ).resolves.toBe(invite);
+            expect(inviteRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                invite.id,
+                workspace.id
+            );
+            expect(inviteRepository.rotateForResend).toHaveBeenCalledWith(
+                invite.id,
+                'hashed-token',
+                'INV-REF',
+                expiredAt
+            );
+        });
+
+        it('throws WorkspaceInviteNotFoundException and sends nothing when rotateForResend returns null', async () => {
+            inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+            userDomain.getOneActiveByEmail.mockResolvedValue(null);
+            inviteRepository.rotateForResend.mockResolvedValue(null);
+
+            await expect(
+                domain.resendInvite(workspace, 'actor-id', invite.id, undefined)
+            ).rejects.toBeInstanceOf(WorkspaceInviteNotFoundException);
+            expect(
+                notificationQueue.sendWorkspaceInvite
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceInviteUnregistered
+            ).not.toHaveBeenCalled();
+        });
+    });
+
     it.each([
         [null, WorkspaceInviteNotFoundException],
         [
@@ -582,12 +642,41 @@ describe('WorkspaceInviteDomain', () => {
         'revokes a pending invite and stages its audience activities',
         async (user, actorId, count) => {
             inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+            inviteRepository.revoke.mockResolvedValue(invite);
             userDomain.getOneActiveByEmail.mockResolvedValue(user);
             await domain.revokeInvite(workspace.id, actorId, invite.id);
             expect(activityLogDomain.prepare).toHaveBeenCalledTimes(count);
             expect(inviteRepository.revoke).toHaveBeenCalledWith(invite.id);
         }
     );
+
+    describe('revokeInvite read and revoke', () => {
+        it('calls the pre-read and to revoke', async () => {
+            inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+            inviteRepository.revoke.mockResolvedValue(invite);
+            userDomain.getOneActiveByEmail.mockResolvedValue(null);
+
+            await domain.revokeInvite(workspace.id, 'actor-id', invite.id);
+
+            expect(inviteRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                invite.id,
+                workspace.id
+            );
+            expect(inviteRepository.revoke).toHaveBeenCalledWith(invite.id);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+        });
+
+        it('throws WorkspaceInviteNotFoundException and stages nothing when revoke returns null', async () => {
+            inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+            inviteRepository.revoke.mockResolvedValue(null);
+            userDomain.getOneActiveByEmail.mockResolvedValue(null);
+
+            await expect(
+                domain.revokeInvite(workspace.id, 'actor-id', invite.id)
+            ).rejects.toBeInstanceOf(WorkspaceInviteNotFoundException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+    });
 
     const signUpContext = {
         type: EnumUserSignUpWorkspaceContextType.invite as const,

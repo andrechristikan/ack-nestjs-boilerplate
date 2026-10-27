@@ -5,9 +5,13 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
-import { ProjectMemberRoleInclude } from '@modules/project/constants/project.constant';
+import {
+    ProjectMemberGuardRoleInclude,
+    ProjectMemberRoleInclude,
+} from '@modules/project/constants/project.constant';
 import type {
     IProjectMember,
+    IProjectMemberWithGuardRole,
     IProjectMemberWithRole,
 } from '@modules/project/interfaces/project.interface';
 import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
@@ -38,24 +42,23 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     async findOneWithRoleByProjectAndUser(
         projectId: string,
         userId: string
-    ): Promise<IProjectMemberWithRole | null> {
+    ): Promise<IProjectMemberWithGuardRole | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
                 projectId,
                 userId,
             },
-            include: ProjectMemberRoleInclude,
+            include: ProjectMemberGuardRoleInclude,
         });
     }
 
     async findByIdAndProject(
         projectMemberId: string,
-        projectId: string,
-        where?: Prisma.ProjectMemberWhereInput
+        projectId: string
     ): Promise<IProjectMemberWithRole | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
-                AND: [{ id: projectMemberId }, { projectId }, where ?? {}],
+                AND: [{ id: projectMemberId }, { projectId }],
             },
             include: ProjectMemberRoleInclude,
         });
@@ -73,13 +76,14 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationCursor(
         projectId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
-        additionalWhere?: Prisma.ProjectMemberWhereInput
+        additionalWhere: Prisma.ProjectMemberWhereInput
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.paginationService.cursor<
             IProjectMember,
@@ -88,11 +92,11 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
             ...others,
             where: {
                 AND: [
+                    additionalWhere,
                     {
                         ...where,
                         projectId,
                     },
-                    additionalWhere ?? {},
                 ],
             },
             include: {
@@ -155,18 +159,40 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         });
     }
 
-    async updateRole(targetMemberId: string, roleId: string): Promise<void> {
-        await this.databaseService.client.projectMember.update({
-            where: { id: targetMemberId },
-            data: {
-                roleId,
-            },
+    async updateRole(
+        targetMemberId: string,
+        roleId: string
+    ): Promise<ProjectMember | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.projectMember.updateMany({
+                where: { id: targetMemberId },
+                data: {
+                    roleId,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.projectMember.findUnique({
+                where: { id: targetMemberId },
+            });
         });
     }
 
-    async removeMember(targetMemberId: string): Promise<void> {
-        await this.databaseService.client.projectMember.delete({
-            where: { id: targetMemberId },
+    async removeMember(targetMemberId: string): Promise<ProjectMember | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const where: Prisma.ProjectMemberWhereInput = {
+                id: targetMemberId,
+            };
+            const existing = await tx.projectMember.findFirst({ where });
+            if (!existing) {
+                return null;
+            }
+
+            const { count } = await tx.projectMember.deleteMany({ where });
+
+            return count > 0 ? existing : null;
         });
     }
 }

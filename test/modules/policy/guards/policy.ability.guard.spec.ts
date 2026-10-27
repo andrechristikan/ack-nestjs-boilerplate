@@ -27,11 +27,21 @@ describe('PolicyAbilityGuard', () => {
     const policies: IPolicyRule[] = [];
     const requestStoreService: MockProxy<RequestStoreService> = mock();
     const ability: MockProxy<PolicyAbility> = mock();
-    const user = { id: 'user-id', roleId: 'user-role-id' };
+    const user = {
+        id: 'user-id',
+        roleId: 'user-role-id',
+        role: { id: 'user-role-id', policyRevision: 2 },
+    };
     const workspace = { id: 'workspace-id' };
-    const workspaceMember = { roleId: 'workspace-member-role-id' };
+    const workspaceMember = {
+        roleId: 'workspace-member-role-id',
+        role: { id: 'workspace-member-role-id', policyRevision: 5 },
+    };
     const project = { id: 'project-id' };
-    const projectMember = { roleId: 'project-member-role-id' };
+    const projectMember = {
+        roleId: 'project-member-role-id',
+        role: { id: 'project-member-role-id', policyRevision: 7 },
+    };
     let guard: PolicyAbilityGuard;
 
     const stubStore = (store: Record<string, unknown>): void => {
@@ -49,7 +59,7 @@ describe('PolicyAbilityGuard', () => {
             requestStoreService
         );
         policyAbilityDomain.requireStored.mockReturnValue(user);
-        policyDomain.findManyByRoleIds.mockResolvedValue(policies);
+        policyDomain.findManyByRoleRevisions.mockResolvedValue(policies);
         policyAbilityFactory.build.mockReturnValue(ability);
     });
 
@@ -61,7 +71,7 @@ describe('PolicyAbilityGuard', () => {
             PolicyAbilityStoreKey
         );
         expect(policyAbilityDomain.requireStored).not.toHaveBeenCalled();
-        expect(policyDomain.findManyByRoleIds).not.toHaveBeenCalled();
+        expect(policyDomain.findManyByRoleRevisions).not.toHaveBeenCalled();
         expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 
@@ -76,11 +86,11 @@ describe('PolicyAbilityGuard', () => {
         expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
             UserStoreKey
         );
-        expect(policyDomain.findManyByRoleIds).not.toHaveBeenCalled();
+        expect(policyDomain.findManyByRoleRevisions).not.toHaveBeenCalled();
         expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 
-    it('loads user, workspace and project roles in order and builds with the placeholder map', async () => {
+    it('builds references from user.role, workspaceMember.role, projectMember.role with their policyRevision', async () => {
         stubStore({
             [WorkspaceStoreKey]: workspace,
             [WorkspaceMemberStoreKey]: workspaceMember,
@@ -89,11 +99,11 @@ describe('PolicyAbilityGuard', () => {
         });
 
         await expect(guard.canActivate()).resolves.toBe(true);
-        expect(policyDomain.findManyByRoleIds).toHaveBeenCalledWith(
-            'user-role-id',
-            'workspace-member-role-id',
-            'project-member-role-id'
-        );
+        expect(policyDomain.findManyByRoleRevisions).toHaveBeenCalledWith([
+            { roleId: 'user-role-id', policyRevision: 2 },
+            { roleId: 'workspace-member-role-id', policyRevision: 5 },
+            { roleId: 'project-member-role-id', policyRevision: 7 },
+        ]);
         expect(policyAbilityFactory.build).toHaveBeenCalledWith(policies, {
             '${userId}': 'user-id',
             '${workspaceId}': 'workspace-id',
@@ -105,14 +115,14 @@ describe('PolicyAbilityGuard', () => {
         );
     });
 
-    it('loads only the user role and leaves scope placeholders undefined when no scope is stored', async () => {
+    it('omits absent members: loads only the user role and leaves scope placeholders undefined when no scope is stored', async () => {
         stubStore({});
 
         await guard.canActivate();
 
-        expect(policyDomain.findManyByRoleIds).toHaveBeenCalledWith(
-            'user-role-id'
-        );
+        expect(policyDomain.findManyByRoleRevisions).toHaveBeenCalledWith([
+            { roleId: 'user-role-id', policyRevision: 2 },
+        ]);
         expect(policyAbilityFactory.build).toHaveBeenCalledWith(policies, {
             '${userId}': 'user-id',
             '${workspaceId}': undefined,
@@ -129,10 +139,10 @@ describe('PolicyAbilityGuard', () => {
 
         await guard.canActivate();
 
-        expect(policyDomain.findManyByRoleIds).toHaveBeenCalledWith(
-            'user-role-id',
-            'workspace-member-role-id'
-        );
+        expect(policyDomain.findManyByRoleRevisions).toHaveBeenCalledWith([
+            { roleId: 'user-role-id', policyRevision: 2 },
+            { roleId: 'workspace-member-role-id', policyRevision: 5 },
+        ]);
         expect(policyAbilityFactory.build).toHaveBeenCalledWith(
             policies,
             expect.objectContaining({ '${projectId}': 'project-id' })
@@ -142,7 +152,7 @@ describe('PolicyAbilityGuard', () => {
     it('propagates a policy load failure and stores nothing', async () => {
         stubStore({});
         const error = new Error('db down');
-        policyDomain.findManyByRoleIds.mockRejectedValue(error);
+        policyDomain.findManyByRoleRevisions.mockRejectedValue(error);
 
         await expect(guard.canActivate()).rejects.toBe(error);
         expect(policyAbilityFactory.build).not.toHaveBeenCalled();

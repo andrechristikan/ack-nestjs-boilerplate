@@ -7,7 +7,7 @@ Term Policy stores versioned legal documents (terms of service, privacy policy, 
 ## Related Documents
 
 - [Database Documentation][ref-doc-database] - Migration, seeding, and schema
-- [Authorization Documentation][ref-doc-authorization] - Admin RBAC on term-policy routes
+- [Authorization Documentation][ref-doc-authorization] - `TermPolicy` policy subject on admin routes
 - [Authentication Documentation][ref-doc-authentication] - JWT and session context
 - [File Upload Documentation][ref-doc-file-upload] - Content upload and admin content GET (presign)
 - [Analytic Documentation][ref-doc-analytic] - Admin acceptance-rate and time-to-accept metrics under `/admin/analytic/term-policies/*`

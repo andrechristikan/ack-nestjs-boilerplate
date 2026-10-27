@@ -38,7 +38,7 @@ Every DI collaborator is a double. The subject is the one class that is real
   `select` shape and does not prove the query against PostgreSQL. Those files sit outside the
   coverage set.
 - A controller and a processor are route or job delegation. They have no unit spec.
-- OpenAPI composition on runtime decorators (`@Doc`, `@Response*`, `*Protected`, `FileUpload*`) has no unit spec. The exception is a policy decorator (`*PolicyProtected`, `PolicyAbilityProtected`): its composition — the guards it stacks, their order, the fixed subject it sets — MAY and SHOULD have a unit spec that applies it and asserts that metadata, because guard order is a security-relevant contract. Every other `*Protected` decorator stays without a spec.
+- OpenAPI composition on runtime decorators (`@Doc`, `@Response*`, `*Protected`, `FileUpload*`) has no unit spec. The exception is a policy decorator (`PolicyProtected`, `PolicyAbility`): its composition — the guards it stacks, their order, the fixed subject it sets — MAY and SHOULD have a unit spec that applies it and asserts that metadata, because guard order is a security-relevant contract. Every other `*Protected` decorator stays without a spec.
 - A contract is a lookup table. The consumer's unit spec exercises it.
 
 TDD is this kind (`coder`). `/ack-spec` covers this kind against code that already exists,

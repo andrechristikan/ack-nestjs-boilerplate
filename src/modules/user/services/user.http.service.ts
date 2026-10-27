@@ -50,7 +50,7 @@ export class UserHttpService {
     async getListOffsetByAdmin(
         query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.User
         );
@@ -87,13 +87,13 @@ export class UserHttpService {
             status?.where,
             roleId?.where,
             countryId?.where,
-            accessibleWhere
+            scopeWhere
         );
     }
 
     async getOne(userId: string): Promise<IResponseReturn<IUserProfile>> {
         const user = await this.userDomain.getOne(userId);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.read,
             subject(EnumPolicySubject.User, user)
         );
@@ -137,7 +137,7 @@ export class UserHttpService {
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
         const user = await this.userDomain.getOne(userId);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.User, user)
         );

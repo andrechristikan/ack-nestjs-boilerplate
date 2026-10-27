@@ -20,15 +20,17 @@ export interface IProjectRepository {
         slug: string,
         excludeProjectId?: string
     ): Promise<boolean>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationCursorForWorkspace(
         workspaceId: string,
         params: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
-        where?: Prisma.ProjectWhereInput
+        additionalWhere: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetForAdmin(
         params: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string,
-        where?: Prisma.ProjectWhereInput
+        workspaceId: string | undefined,
+        additionalWhere: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>>;
     createInTx(
         tx: IDatabaseTransactionClient,
@@ -39,9 +41,13 @@ export interface IProjectRepository {
     updateDetails(
         projectId: string,
         { name, description }: ProjectUpdateRequestDto
-    ): Promise<Project>;
-    updateSlug(projectId: string, slug: string): Promise<Project>;
-    softDelete(projectId: string, deletedAt: Date): Promise<void>;
+    ): Promise<Project | null>;
+    updateSlug(projectId: string, slug: string): Promise<Project | null>;
+    softDelete(
+        projectId: string,
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<Project | null>;
     softDeleteByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,

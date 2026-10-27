@@ -40,7 +40,7 @@ export class ProjectHttpService {
         workspaceId: string,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.Project
         );
@@ -54,7 +54,7 @@ export class ProjectHttpService {
         const { data, ...others } = await this.projectDomain.getListForMember(
             workspaceId,
             params,
-            accessibleWhere
+            scopeWhere
         );
 
         return {
@@ -68,7 +68,7 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.create,
             subject(EnumPolicySubject.Project, { workspaceId })
         );
@@ -81,12 +81,17 @@ export class ProjectHttpService {
         return { data: project };
     }
 
-    getProject(project: Project): IResponseReturn<Project> {
-        this.policyAbilityDomain.assertCan(
-            EnumPolicyAction.read,
-            subject(EnumPolicySubject.Project, project)
+    async getProject(project: Project): Promise<IResponseReturn<Project>> {
+        const current = await this.projectDomain.getCurrentProject(
+            project.id,
+            project.workspaceId
         );
-        return { data: project };
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Project, current)
+        );
+
+        return { data: current };
     }
 
     async updateProject(
@@ -94,7 +99,7 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Project, project)
         );
@@ -112,7 +117,7 @@ export class ProjectHttpService {
         actorId: string,
         { slug }: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Project, project)
         );
@@ -126,7 +131,7 @@ export class ProjectHttpService {
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.Project, project)
         );
@@ -136,7 +141,7 @@ export class ProjectHttpService {
     async getListForAdmin(
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.Project
         );
@@ -158,7 +163,7 @@ export class ProjectHttpService {
         const { data, ...others } = await this.projectDomain.getListForAdmin(
             params,
             query.workspaceId as string | undefined,
-            accessibleWhere
+            scopeWhere
         );
 
         return {
@@ -169,7 +174,7 @@ export class ProjectHttpService {
 
     async getForAdmin(projectId: string): Promise<IResponseReturn<Project>> {
         const project = await this.projectDomain.getByIdForAdmin(projectId);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.read,
             subject(EnumPolicySubject.Project, project)
         );

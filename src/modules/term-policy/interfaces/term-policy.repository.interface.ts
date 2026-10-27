@@ -20,14 +20,15 @@ import {
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 export interface ITermPolicyRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     find(
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>,
-        additionalWhere?: Prisma.TermPolicyWhereInput
+        type: Record<string, IPaginationIn> | undefined,
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.TermPolicyWhereInput
     ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findPublished(
         {
@@ -77,22 +78,22 @@ export interface ITermPolicyRepository {
         { type, version }: TermPolicyCreateRequestDto,
         contents: ITermPolicyContentCreate[]
     ): Promise<TermPolicy>;
-    delete(termPolicyId: string): Promise<TermPolicy>;
+    delete(termPolicyId: string): Promise<TermPolicy | null>;
     updateContent(
         termPolicyId: string,
         content: ITermPolicyContentCreate
-    ): Promise<TermPolicy>;
+    ): Promise<TermPolicy | null>;
     addContent(
         termPolicyId: string,
         newContent: ITermPolicyContentCreate
-    ): Promise<TermPolicy>;
+    ): Promise<TermPolicy | null>;
     removeContent(
         termPolicyId: string,
         { language }: TermPolicyRemoveContentRequestDto
-    ): Promise<TermPolicy>;
+    ): Promise<TermPolicy | null>;
     publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContentCreate[]
-    ): Promise<TermPolicy>;
+    ): Promise<TermPolicy | null>;
 }

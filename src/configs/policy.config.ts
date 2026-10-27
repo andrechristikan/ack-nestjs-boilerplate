@@ -7,6 +7,6 @@ export interface IConfigPolicy {
 }
 
 export default registerAs('policy', (): IConfigPolicy => ({
-    keyPattern: 'Policy:Role:{roleId}',
+    keyPattern: 'Policy:Role:{roleId}:Rev:{policyRevision}',
     cacheTtlInMs: ms('5m'),
 }));

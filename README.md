@@ -65,7 +65,7 @@ A good fit when you are building:
     @Doc({ summary: '…' })
     @Response('example.get')          // or @ResponsePagination / @ResponseFile
     @TermPolicyAcceptanceProtected(...)
-    @PlatformPolicyProtected({...})   // or the workspace / project policy decorator that fits the route
+    @PolicyProtected({...})           // or @PolicyAbility() for a route whose HTTP service decides
     @ProjectMemberProtected(...)      // never on /admin; strict by default, { required: false } lets a workspace role that holds the policy through
     @ProjectProtected()               // never on /admin
     @WorkspaceMemberProtected(...)    // never on /admin

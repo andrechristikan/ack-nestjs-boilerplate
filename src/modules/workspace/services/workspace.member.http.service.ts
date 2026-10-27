@@ -1,7 +1,7 @@
+import { subject } from '@casl/ability';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { subject } from '@casl/ability';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumPolicyAction,
@@ -22,6 +22,7 @@ import type {
     IWorkspaceMember,
     IWorkspaceMemberWithRole,
 } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -29,6 +30,7 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceMemberHttpService {
     constructor(
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly workspaceDomain: WorkspaceDomain,
         private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -39,7 +41,7 @@ export class WorkspaceMemberHttpService {
         actorMember: IWorkspaceMemberWithRole,
         { targetUserId }: WorkspaceTransferOwnershipRequestDto
     ): Promise<void> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Workspace, workspace)
         );
@@ -61,7 +63,7 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.WorkspaceMember
         );
@@ -91,7 +93,7 @@ export class WorkspaceMemberHttpService {
                 workspaceId,
                 params,
                 role?.where,
-                accessibleWhere
+                scopeWhere
             );
 
         return {
@@ -111,7 +113,7 @@ export class WorkspaceMemberHttpService {
                 workspaceId,
                 targetMemberId
             );
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.WorkspaceMember, targetMember)
         );
@@ -133,7 +135,7 @@ export class WorkspaceMemberHttpService {
                 workspaceId,
                 targetMemberId
             );
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.WorkspaceMember, targetMember)
         );
@@ -148,7 +150,14 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const workspace =
+            await this.workspaceDomain.getByIdForAdmin(workspaceId);
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Workspace, workspace)
+        );
+
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.WorkspaceMember
         );
@@ -166,7 +175,7 @@ export class WorkspaceMemberHttpService {
             await this.workspaceMemberDomain.getMembersListForAdmin(
                 workspaceId,
                 params,
-                accessibleWhere
+                scopeWhere
             );
 
         return {

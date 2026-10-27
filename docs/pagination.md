@@ -613,7 +613,7 @@ A list route travels `Controller → HTTP Service → Domain → Repository`. Th
 @Doc({ summary: 'get all users' })
 @ResponsePagination('user.list', { schema: UserListResponseSchema })
 @TermPolicyAcceptanceProtected()
-@PlatformPolicyProtected({
+@PolicyProtected({
     subject: EnumPolicySubject.User,
     action: [EnumPolicyAction.read],
 })

@@ -27,15 +27,13 @@ export class ProjectRepository implements IProjectRepository {
     ): Promise<Project | null> {
         return this.databaseService.client.project.findFirst({
             where: {
-                id: projectId,
-                workspaceId,
-                ...ProjectActiveFilter,
+                AND: [{ id: projectId }, { workspaceId }, ProjectActiveFilter],
             },
         });
     }
 
     async findByIdForAdmin(projectId: string): Promise<Project | null> {
-        return this.databaseService.client.project.findUnique({
+        return this.databaseService.client.project.findFirst({
             where: { id: projectId },
         });
     }
@@ -57,13 +55,14 @@ export class ProjectRepository implements IProjectRepository {
         return count > 0;
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
         {
             where: filters,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
-        where?: Prisma.ProjectWhereInput
+        additionalWhere: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
@@ -71,23 +70,24 @@ export class ProjectRepository implements IProjectRepository {
                 ...others,
                 where: {
                     AND: [
+                        additionalWhere,
                         filters ?? {},
                         { workspaceId },
                         ProjectActiveFilter,
-                        where ?? {},
                     ],
                 },
             }
         );
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetForAdmin(
         {
             where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string,
-        where?: Prisma.ProjectWhereInput
+        workspaceId: string | undefined,
+        additionalWhere: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
@@ -95,9 +95,9 @@ export class ProjectRepository implements IProjectRepository {
                 ...others,
                 where: {
                     AND: [
+                        additionalWhere,
                         filters ?? {},
                         ...(workspaceId ? [{ workspaceId }] : []),
-                        where ?? {},
                     ],
                 },
             }
@@ -124,31 +124,65 @@ export class ProjectRepository implements IProjectRepository {
     async updateDetails(
         projectId: string,
         { name, description }: ProjectUpdateRequestDto
-    ): Promise<Project> {
-        return this.databaseService.client.project.update({
-            where: { id: projectId },
-            data: {
-                name,
-                description,
-            },
+    ): Promise<Project | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.project.updateMany({
+                where: { id: projectId },
+                data: {
+                    name,
+                    description,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.project.findUnique({
+                where: { id: projectId },
+            });
         });
     }
 
-    async updateSlug(projectId: string, slug: string): Promise<Project> {
-        return this.databaseService.client.project.update({
-            where: { id: projectId },
-            data: {
-                slug,
-            },
+    async updateSlug(projectId: string, slug: string): Promise<Project | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.project.updateMany({
+                where: { id: projectId },
+                data: {
+                    slug,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.project.findUnique({
+                where: { id: projectId },
+            });
         });
     }
 
-    async softDelete(projectId: string, deletedAt: Date): Promise<void> {
-        await this.databaseService.client.project.softDelete({
-            where: { id: projectId },
-            data: {
-                deletedAt,
-            },
+    async softDelete(
+        projectId: string,
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<Project | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.project.updateMany({
+                where: {
+                    AND: [{ id: projectId }, ProjectActiveFilter],
+                },
+                data: {
+                    deletedAt,
+                    deletedBy,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.project.findUnique({
+                where: { id: projectId },
+            });
         });
     }
 

@@ -37,7 +37,13 @@ export class SessionHttpService {
         userId: string,
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.User, user)
+        );
+
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.Session
         );
@@ -62,7 +68,7 @@ export class SessionHttpService {
                 userId,
                 params,
                 isRevoked?.where,
-                accessibleWhere
+                scopeWhere
             );
         return {
             data,
@@ -101,13 +107,13 @@ export class SessionHttpService {
         sessionId: string,
         revokedBy: string
     ): Promise<IResponseReturn<void>> {
-        const stored = await this.sessionDomain.validateActive(
+        const session = await this.sessionDomain.validateActive(
             userId,
             sessionId
         );
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
-            subject(EnumPolicySubject.Session, stored)
+            subject(EnumPolicySubject.Session, session)
         );
         await this.sessionDomain.revokeByAdmin(userId, sessionId, revokedBy);
 
@@ -119,7 +125,7 @@ export class SessionHttpService {
         revokedBy: string
     ): Promise<IResponseReturn<void>> {
         const user = await this.userDomain.getOne(userId);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.User, user)
         );

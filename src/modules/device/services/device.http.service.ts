@@ -4,6 +4,7 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -27,6 +28,7 @@ import { Injectable } from '@nestjs/common';
 export class DeviceHttpService {
     constructor(
         private readonly deviceDomain: DeviceDomain,
+        private readonly userDomain: UserDomain,
         private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -36,7 +38,13 @@ export class DeviceHttpService {
         userId: string,
         query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.User, user)
+        );
+
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.DeviceOwnership
         );
@@ -64,7 +72,7 @@ export class DeviceHttpService {
                 userId,
                 params,
                 isRevoked?.where,
-                accessibleWhere
+                scopeWhere
             );
         const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(
             deviceOwnership => ({
@@ -134,13 +142,13 @@ export class DeviceHttpService {
         deviceOwnershipId: string,
         removedBy: string
     ): Promise<IResponseReturn<void>> {
-        const stored = await this.deviceDomain.getOneActive(
+        const deviceOwnership = await this.deviceDomain.getOneActive(
             userId,
             deviceOwnershipId
         );
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
-            subject(EnumPolicySubject.DeviceOwnership, stored)
+            subject(EnumPolicySubject.DeviceOwnership, deviceOwnership)
         );
         await this.deviceDomain.removeByAdmin(
             userId,

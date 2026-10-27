@@ -15,6 +15,15 @@ export const RoleSelect = {
 } as const;
 
 /**
+ * Prisma select for the role a guard stores: the identity plus `policyRevision`, which keys the policy cache.
+ * @public
+ */
+export const RoleGuardSelect = {
+    ...RoleSelect,
+    policyRevision: true,
+} as const;
+
+/**
  * Prisma include loading a role's policies.
  * @public
  */

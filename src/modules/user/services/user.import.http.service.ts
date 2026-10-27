@@ -69,7 +69,7 @@ export class UserImportHttpService {
     async exportByAdmin(
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.User
         );
@@ -98,7 +98,7 @@ export class UserImportHttpService {
             status?.where as Record<string, IPaginationIn> | undefined,
             roleId?.where as Record<string, IPaginationEqual> | undefined,
             countryId?.where as Record<string, IPaginationEqual> | undefined,
-            accessibleWhere
+            scopeWhere
         );
 
         const users: UserExportResponseDto[] = data.map(user => ({

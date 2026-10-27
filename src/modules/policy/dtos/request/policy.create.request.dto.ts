@@ -1,9 +1,17 @@
 import { z } from 'zod';
-import {
-    EnumPolicyConditionPlaceholder,
-    isPolicyPlaceholder,
-} from '@modules/policy/constants/policy.constant';
+import type { Prisma } from '@generated/prisma-client/client';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
+
+const JsonValueSchema: z.ZodType<Prisma.JsonValue> = z.lazy(() =>
+    z.union([
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.null(),
+        z.array(JsonValueSchema),
+        z.record(z.string(), JsonValueSchema),
+    ])
+);
 
 /**
  * Request shape naming one rule: subject, actions and optional conditions and inversion.
@@ -17,25 +25,15 @@ export const PolicyCreateRequestSchema = PolicySchema.pick({
     .partial({ inverted: true })
     .extend({
         conditions: z
-            .record(
-                z.string(),
-                z.union([z.string(), z.number(), z.boolean(), z.null()])
-            )
-            .refine(
-                conditions =>
-                    Object.values(conditions).every(
-                        value =>
-                            !isPolicyPlaceholder(value) ||
-                            Object.values<string>(
-                                EnumPolicyConditionPlaceholder
-                            ).includes(value)
-                    ),
-                { message: 'Unknown condition placeholder' }
-            )
+            .record(z.string(), JsonValueSchema)
             .meta({
+                type: 'object',
                 description:
-                    'Flat scalar field conditions the rule applies to, or a known ${...} placeholder as a value; absent for the whole subject',
-                example: { workspaceId: '${workspaceId}' },
+                    'CASL Prisma where-input conditions; nested and relation filters allowed; ${userId} / ${workspaceId} / ${projectId} whole-value placeholders',
+                example: {
+                    workspaceId: '${workspaceId}',
+                    members: { some: { userId: '${userId}' } },
+                },
             })
             .optional(),
         reason: PolicySchema.shape.reason.unwrap().optional(),

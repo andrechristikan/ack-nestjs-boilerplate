@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -16,12 +17,16 @@ import type {
     IActivityLogScope,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ActivityLogHttpService {
     constructor(
         private readonly activityLogDomain: ActivityLogDomain,
+        private readonly userDomain: UserDomain,
+        private readonly workspaceDomain: WorkspaceDomain,
         private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -31,7 +36,23 @@ export class ActivityLogHttpService {
         scope: IActivityLogScope,
         query: ActivityLogAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+        const { workspaceId, userId } = scope;
+        if (workspaceId) {
+            const workspace =
+                await this.workspaceDomain.getByIdForAdmin(workspaceId);
+            this.policyAbilityDomain.authorize(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.Workspace, workspace)
+            );
+        } else if (userId) {
+            const user = await this.userDomain.getOne(userId);
+            this.policyAbilityDomain.authorize(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.User, user)
+            );
+        }
+
+        const scopeWhere = this.policyAbilityDomain.scope(
             EnumPolicyAction.read,
             EnumPolicySubject.ActivityLog
         );
@@ -47,7 +68,7 @@ export class ActivityLogHttpService {
         const { data, ...others } = await this.activityLogDomain.getListOffset(
             scope,
             params,
-            accessibleWhere
+            scopeWhere
         );
 
         return {

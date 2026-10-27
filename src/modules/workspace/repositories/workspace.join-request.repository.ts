@@ -44,21 +44,19 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         workspaceId: string
     ): Promise<WorkspaceJoinRequest | null> {
         return this.databaseService.client.workspaceJoinRequest.findFirst({
-            where: {
-                id: workspaceJoinRequestId,
-                workspaceId,
-            },
+            where: { id: workspaceJoinRequestId, workspaceId },
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationCursor(
         workspaceId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        additionalWhere?: Prisma.WorkspaceJoinRequestWhereInput
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>> {
         return this.paginationService.cursor<
             WorkspaceJoinRequest,
@@ -67,12 +65,12 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
             ...others,
             where: {
                 AND: [
+                    additionalWhere,
                     {
                         ...where,
                         ...(status ?? {}),
                         workspaceId,
                     },
-                    additionalWhere ?? {},
                 ],
             },
         });
@@ -97,14 +95,21 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         workspaceJoinRequestId: string,
         reviewerId: string,
         reviewedAt: Date
-    ): Promise<void> {
-        await tx.workspaceJoinRequest.update({
+    ): Promise<WorkspaceJoinRequest | null> {
+        const { count } = await tx.workspaceJoinRequest.updateMany({
             where: { id: workspaceJoinRequestId },
             data: {
                 status: EnumWorkspaceJoinRequestStatus.accepted,
                 reviewedByUserId: reviewerId,
                 reviewedAt,
             },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.workspaceJoinRequest.findUnique({
+            where: { id: workspaceJoinRequestId },
         });
     }
 
@@ -113,15 +118,23 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
-    ): Promise<void> {
-        await this.databaseService.client.workspaceJoinRequest.update({
+    ): Promise<WorkspaceJoinRequest | null> {
+        const { count } =
+            await this.databaseService.client.workspaceJoinRequest.updateMany({
+                where: { id: workspaceJoinRequestId },
+                data: {
+                    status: EnumWorkspaceJoinRequestStatus.rejected,
+                    rejectReasonCode,
+                    reviewedByUserId: reviewerId,
+                    reviewedAt,
+                },
+            });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.databaseService.client.workspaceJoinRequest.findUnique({
             where: { id: workspaceJoinRequestId },
-            data: {
-                status: EnumWorkspaceJoinRequestStatus.rejected,
-                rejectReasonCode,
-                reviewedByUserId: reviewerId,
-                reviewedAt,
-            },
         });
     }
 

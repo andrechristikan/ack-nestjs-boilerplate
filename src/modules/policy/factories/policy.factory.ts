@@ -100,8 +100,8 @@ export class PolicyAbilityFactory {
 
     /**
      * Builds the typed Prisma CASL ability from persisted policies. Placeholders resolve first
-     * with a fail-closed drop; inverted rules are then added after allows so a matching deny is
-     * authoritative.
+     * with a fail-closed drop. Input order is the priority: CASL stops at the last matching rule,
+     * so a later allow overrides an earlier cannot and a later cannot overrides an earlier allow.
      */
     build(
         policies: IPolicyRule[],
@@ -110,11 +110,7 @@ export class PolicyAbilityFactory {
         const rules = policies.flatMap(
             policy => this.toAbilityRule(policy, placeholders) ?? []
         );
-        const orderedRules = [
-            ...rules.filter(rule => !rule.inverted),
-            ...rules.filter(rule => rule.inverted),
-        ];
 
-        return createPrismaAbility<PolicyAbility>(orderedRules);
+        return createPrismaAbility<PolicyAbility>(rules);
     }
 }

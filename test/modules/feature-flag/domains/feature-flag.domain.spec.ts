@@ -253,29 +253,29 @@ describe('FeatureFlagDomain', () => {
         };
 
         it('forwards the accessible where as the trailing repository argument', async () => {
-            const accessibleWhere = { isEnable: true };
+            const scopeWhere = { isEnable: true };
             featureFlagRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
                 page
             );
 
             await expect(
-                service.getListByAdmin(pagination, accessibleWhere)
+                service.getListByAdmin(pagination, scopeWhere)
             ).resolves.toBe(page);
             expect(
                 featureFlagRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, accessibleWhere);
+            ).toHaveBeenCalledWith(pagination, scopeWhere);
         });
 
-        it('passes undefined to the repository when no where is given', async () => {
+        it('forwards an empty where to the repository', async () => {
             featureFlagRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
                 page
             );
 
-            await service.getListByAdmin(pagination);
+            await service.getListByAdmin(pagination, {});
 
             expect(
                 featureFlagRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenLastCalledWith(pagination, undefined);
+            ).toHaveBeenLastCalledWith(pagination, {});
         });
     });
 
@@ -307,7 +307,7 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('getOne', () => {
-        it('returns the stored flag without judging it', async () => {
+        it('calls findOneById', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
 
             await expect(service.getOne(featureFlag.id)).resolves.toEqual(
@@ -318,7 +318,18 @@ describe('FeatureFlagDomain', () => {
             );
         });
 
-        it('throws FeatureFlagNotFoundException when the flag is unknown', async () => {
+        it('calls findOneById and returns the same flag', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+
+            await expect(service.getOne(featureFlag.id)).resolves.toEqual(
+                featureFlag
+            );
+            expect(featureFlagRepository.findOneById).toHaveBeenCalledWith(
+                featureFlag.id
+            );
+        });
+
+        it('throws FeatureFlagNotFoundException when findOneById returns null', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(null);
 
             await expect(service.getOne('unknown')).rejects.toBeInstanceOf(
@@ -328,21 +339,105 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('updateStatusByAdmin', () => {
-        it('throws FeatureFlagNotFoundException when the flag is unknown', async () => {
+        const data = { isEnable: true, rolloutPercent: 50 };
+
+        it('calls the pre-read and the write, then invalidates the flag cache', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+            featureFlagRepository.updateStatus.mockResolvedValue(featureFlag);
+
+            await expect(
+                service.updateStatusByAdmin('flag-id', data)
+            ).resolves.toBe(featureFlag);
+            expect(featureFlagRepository.findOneById).toHaveBeenCalledWith(
+                'flag-id'
+            );
+            expect(featureFlagRepository.updateStatus).toHaveBeenCalledWith(
+                'flag-id',
+                data
+            );
+            expect(featureFlagCache.deleteCacheByKey).toHaveBeenCalledWith(
+                'new-home'
+            );
+        });
+
+        it('calls the pre-read and the write and returns the same result', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+            featureFlagRepository.updateStatus.mockResolvedValue(featureFlag);
+
+            await expect(
+                service.updateStatusByAdmin('flag-id', data)
+            ).resolves.toBe(featureFlag);
+            expect(featureFlagRepository.findOneById).toHaveBeenCalledWith(
+                'flag-id'
+            );
+            expect(featureFlagRepository.updateStatus).toHaveBeenCalledWith(
+                'flag-id',
+                data
+            );
+        });
+
+        it('throws FeatureFlagNotFoundException when the pre-read returns null', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(null);
 
             await expect(
-                service.updateStatusByAdmin('flag-id', {
-                    isEnable: true,
-                    rolloutPercent: 50,
-                })
+                service.updateStatusByAdmin('flag-id', data)
             ).rejects.toBeInstanceOf(FeatureFlagNotFoundException);
             expect(featureFlagRepository.updateStatus).not.toHaveBeenCalled();
+        });
+
+        it('does not touch the cache and throws FeatureFlagNotFoundException when the scoped write returns null', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+            featureFlagRepository.updateStatus.mockResolvedValue(null);
+
+            await expect(
+                service.updateStatusByAdmin('flag-id', data)
+            ).rejects.toBeInstanceOf(FeatureFlagNotFoundException);
+            expect(featureFlagCache.deleteCacheByKey).not.toHaveBeenCalled();
         });
     });
 
     describe('updateMetadataByAdmin', () => {
-        it('throws FeatureFlagNotFoundException when the flag is unknown', async () => {
+        it('calls the pre-read and the write, then invalidates the flag cache', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+            featureFlagUtil.checkMetadataKey.mockReturnValue(true);
+            featureFlagRepository.updateMetadata.mockResolvedValue(featureFlag);
+
+            await expect(
+                service.updateMetadataByAdmin('flag-id', {
+                    metadata: { color: 'red' },
+                })
+            ).resolves.toBe(featureFlag);
+            expect(featureFlagRepository.findOneById).toHaveBeenCalledWith(
+                'flag-id'
+            );
+            expect(featureFlagRepository.updateMetadata).toHaveBeenCalledWith(
+                'flag-id',
+                { metadata: { color: 'red' } }
+            );
+            expect(featureFlagCache.deleteCacheByKey).toHaveBeenCalledWith(
+                'new-home'
+            );
+        });
+
+        it('calls the pre-read and the write', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+            featureFlagUtil.checkMetadataKey.mockReturnValue(true);
+            featureFlagRepository.updateMetadata.mockResolvedValue(featureFlag);
+
+            await service.updateMetadataByAdmin('flag-id', {
+                metadata: { color: 'red' },
+            });
+
+            expect(featureFlagRepository.findOneById).toHaveBeenCalledWith(
+                'flag-id'
+            );
+            expect(featureFlagRepository.updateMetadata).toHaveBeenCalledWith(
+                'flag-id',
+                { metadata: { color: 'red' } }
+            );
+        });
+
+        it('throws FeatureFlagNotFoundException when the pre-read returns null', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(null);
 
             await expect(
@@ -367,43 +462,17 @@ describe('FeatureFlagDomain', () => {
             expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
         });
 
-        it('updates the metadata and invalidates the flag cache', async () => {
+        it('does not touch the cache and throws FeatureFlagNotFoundException when the scoped write returns null', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
             featureFlagUtil.checkMetadataKey.mockReturnValue(true);
-            featureFlagRepository.updateMetadata.mockResolvedValue(featureFlag);
+            featureFlagRepository.updateMetadata.mockResolvedValue(null);
 
             await expect(
                 service.updateMetadataByAdmin('flag-id', {
                     metadata: { color: 'red' },
                 })
-            ).resolves.toBe(featureFlag);
-            expect(featureFlagRepository.updateMetadata).toHaveBeenCalledWith(
-                'flag-id',
-                { metadata: { color: 'red' } }
-            );
-            expect(featureFlagCache.deleteCacheByKey).toHaveBeenCalledWith(
-                'new-home'
-            );
+            ).rejects.toBeInstanceOf(FeatureFlagNotFoundException);
+            expect(featureFlagCache.deleteCacheByKey).not.toHaveBeenCalled();
         });
-    });
-
-    it('updates status and invalidates the flag cache', async () => {
-        featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
-        featureFlagRepository.updateStatus.mockResolvedValue(featureFlag);
-
-        await expect(
-            service.updateStatusByAdmin('flag-id', {
-                isEnable: true,
-                rolloutPercent: 50,
-            })
-        ).resolves.toBe(featureFlag);
-
-        expect(featureFlagRepository.updateStatus).toHaveBeenCalledWith(
-            'flag-id',
-            { isEnable: true, rolloutPercent: 50 }
-        );
-        expect(featureFlagCache.deleteCacheByKey).toHaveBeenCalledWith(
-            'new-home'
-        );
     });
 });

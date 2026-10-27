@@ -5,6 +5,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import type {
     IProjectMember,
+    IProjectMemberWithGuardRole,
     IProjectMemberWithRole,
 } from '@modules/project/interfaces/project.interface';
 
@@ -16,20 +17,20 @@ export interface IProjectMemberRepository {
     findOneWithRoleByProjectAndUser(
         projectId: string,
         userId: string
-    ): Promise<IProjectMemberWithRole | null>;
+    ): Promise<IProjectMemberWithGuardRole | null>;
     findByIdAndProject(
         projectMemberId: string,
-        projectId: string,
-        where?: Prisma.ProjectMemberWhereInput
+        projectId: string
     ): Promise<IProjectMemberWithRole | null>;
     countAdmins(projectId: string): Promise<number>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationCursor(
         projectId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
-        additionalWhere?: Prisma.ProjectMemberWhereInput
+        additionalWhere: Prisma.ProjectMemberWhereInput
     ): Promise<IResponsePaginationReturn<IProjectMember>>;
     create(
         projectId: string,
@@ -44,6 +45,9 @@ export interface IProjectMemberRepository {
         roleId: string,
         createdBy: string
     ): Promise<IProjectMember>;
-    updateRole(targetMemberId: string, roleId: string): Promise<void>;
-    removeMember(targetMemberId: string): Promise<void>;
+    updateRole(
+        targetMemberId: string,
+        roleId: string
+    ): Promise<ProjectMember | null>;
+    removeMember(targetMemberId: string): Promise<ProjectMember | null>;
 }

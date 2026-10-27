@@ -140,16 +140,35 @@ export class ProjectDomain {
         );
     }
 
-    /** Lists projects in the workspace narrowed by the policy predicate from the HTTP layer; which projects a member sees is the policy's call. */
+    /** Re-reads the active project. */
+    async getCurrentProject(
+        projectId: string,
+        workspaceId: string
+    ): Promise<Project> {
+        const project = await this.getActiveByIdAndWorkspace(
+            projectId,
+            workspaceId
+        );
+        if (!project) {
+            throw new ProjectNotFoundException();
+        }
+
+        return project;
+    }
+
+    /**
+     * Lists projects in the workspace narrowed by the policy predicate from the HTTP layer; which projects a member sees is the policy's call.
+     * Extra caller-supplied constraint, AND-composed first.
+     */
     async getListForMember(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
-        where?: Prisma.ProjectWhereInput
+        additionalWhere: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
             pagination,
-            where
+            additionalWhere
         );
     }
 
@@ -226,6 +245,9 @@ export class ProjectDomain {
             project.id,
             update
         );
+        if (!row) {
+            throw new ProjectNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -257,7 +279,24 @@ export class ProjectDomain {
             }),
         ];
 
-        const row = await this.projectRepository.updateSlug(project.id, slug);
+        let row: Project | null;
+        try {
+            row = await this.projectRepository.updateSlug(project.id, slug);
+        } catch (error: unknown) {
+            const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                error,
+                'slug'
+            );
+            if (isSlugCollision) {
+                throw new ProjectSlugAlreadyExistsException();
+            }
+
+            throw error;
+        }
+
+        if (!row) {
+            throw new ProjectNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -275,7 +314,14 @@ export class ProjectDomain {
         ];
         const deletedAt = this.helperDateService.create();
 
-        await this.projectRepository.softDelete(project.id, deletedAt);
+        const deleted = await this.projectRepository.softDelete(
+            project.id,
+            deletedAt,
+            actorId
+        );
+        if (!deleted) {
+            throw new ProjectNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
     }
@@ -294,15 +340,16 @@ export class ProjectDomain {
         );
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string,
-        where?: Prisma.ProjectWhereInput
+        workspaceId: string | undefined,
+        additionalWhere: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationOffsetForAdmin(
             pagination,
             workspaceId,
-            where
+            additionalWhere
         );
     }
 

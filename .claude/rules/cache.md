@@ -66,20 +66,29 @@ a Redis failure rejects instead of passing silently, and each caller decides wha
 - **It fails the request** when the entry IS the authority for what follows: the session cache
   write on login and on refresh rotation, and the two-factor challenge write. A token the guards
   cannot read is worse than a failed login.
-- **It fails the request** when a stale entry would keep a revoked credential or grant working:
-  the API key cache delete and the policy cache delete (`PolicyCache.deleteCacheByRoleId`) run
-  after the database write, sequentially, so the change is audited and the failure is visible.
+- **It fails the request** when a stale entry would keep a revoked credential working: the API
+  key cache delete runs after the database write, sequentially, so the change is audited and
+  the failure is visible.
 - **It is caught and logged** where the entry expires on its own and the database still holds
-  the truth: every session purge after a commit, the challenge and lock clears, the API key
-  read-through write, and the policy read-through write (`setCacheByRoleIds`).
+  the truth: every session purge after a commit, the challenge and lock clears, and the API key
+  read-through write.
+- **The policy cache is revisioned and never deleted.** `PolicyCache` keys raw policy rows by
+  `{ roleId, policyRevision }` (`policy.keyPattern`), and every policy writer increments
+  `Role.policyRevision` in the same transaction as the policy mutation, so the next request
+  reads a new key. Old revision keys expire by TTL. A cache read failure is logged and the
+  requested revisions load from the database; a cache write failure is logged and the database
+  result is returned; a database load failure propagates and never falls back to an older
+  revision. Concurrent misses on one key share one in-process load, the entry leaves the
+  in-flight map when the load settles, and a failed load rejects every waiter and is never
+  cached. A role with no policies is cached as an empty list under its revision key.
 
 A whole-user session purge scans the user's key pattern (`SCAN` plus `UNLINK`, batched); a
 partial revoke deletes exactly the ids it revoked (`rules/security.md`).
 
 ## Invalidation is part of the write
 
-A write that makes a cached read stale invalidates it in the same operation. A cached value
-with no invalidation path is a bug with a delay on it — say which key a new write invalidates,
+A write that makes a cached read stale invalidates it in the same operation, or changes the key
+the read uses (the policy cache's revision). A cached value with no invalidation path is a bug with a delay on it — say which key a new write invalidates,
 or say why nothing caches that read.
 
 ## Keys

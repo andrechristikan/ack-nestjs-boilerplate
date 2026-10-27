@@ -7,11 +7,9 @@ import {
 } from '@generated/prisma-client/client';
 import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
 import {
-    PlatformPolicyProtected,
-    PolicyAbilityProtected,
+    PolicyAbility,
     PolicyProtected,
 } from '@modules/policy/decorators/policy.decorator';
-import { EnumPolicyPlatformSubject } from '@modules/policy/enums/policy.enum';
 import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 
@@ -39,9 +37,9 @@ describe('PolicyProtected', () => {
     });
 });
 
-describe('PolicyAbilityProtected', () => {
+describe('PolicyAbility', () => {
     it('stacks only the ability guard without requirements', () => {
-        const handler = apply(PolicyAbilityProtected());
+        const handler = apply(PolicyAbility());
 
         expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
             PolicyAbilityGuard,
@@ -49,23 +47,5 @@ describe('PolicyAbilityProtected', () => {
         expect(
             Reflect.getMetadata(PolicyRequiredMetaKey, handler)
         ).toBeUndefined();
-    });
-});
-
-describe('PlatformPolicyProtected', () => {
-    it('stacks the ability guard before the policy guard and sets the requirements', () => {
-        const requirement = {
-            subject: EnumPolicyPlatformSubject.User,
-            action: [EnumPolicyAction.read],
-        };
-        const handler = apply(PlatformPolicyProtected(requirement));
-
-        expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-            PolicyAbilityGuard,
-            PolicyGuard,
-        ]);
-        expect(Reflect.getMetadata(PolicyRequiredMetaKey, handler)).toEqual([
-            requirement,
-        ]);
     });
 });

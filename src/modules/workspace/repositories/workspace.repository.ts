@@ -26,8 +26,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async findActiveById(workspaceId: string): Promise<Workspace | null> {
         return this.databaseService.client.workspace.findFirst({
             where: {
-                id: workspaceId,
-                ...WorkspaceActiveFilter,
+                AND: [{ id: workspaceId }, WorkspaceActiveFilter],
             },
         });
     }
@@ -43,7 +42,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     }
 
     async findByIdForAdmin(workspaceId: string): Promise<Workspace | null> {
-        return this.databaseService.client.workspace.findUnique({
+        return this.databaseService.client.workspace.findFirst({
             where: { id: workspaceId },
         });
     }
@@ -87,13 +86,14 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetForAdmin(
         {
             where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>,
-        where?: Prisma.WorkspaceWhereInput
+        isPublic: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.WorkspaceWhereInput
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.paginationService.offset<
             Workspace,
@@ -101,7 +101,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         >(this.databaseService.client.workspace, {
             ...others,
             where: {
-                AND: [filters ?? {}, { ...isPublic }, where ?? {}],
+                AND: [additionalWhere, filters ?? {}, { ...isPublic }],
             },
         });
     }
@@ -129,47 +129,86 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async updateDetails(
         workspaceId: string,
         { name, description }: WorkspaceUpdateRequestDto
-    ): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
-            where: { id: workspaceId },
-            data: {
-                name,
-                description,
-            },
+    ): Promise<Workspace | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.workspace.updateMany({
+                where: { id: workspaceId },
+                data: {
+                    name,
+                    description,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.workspace.findUnique({
+                where: { id: workspaceId },
+            });
         });
     }
 
     async updateIsPublic(
         workspaceId: string,
         isPublic: boolean
-    ): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
-            where: { id: workspaceId },
-            data: {
-                isPublic,
-            },
+    ): Promise<Workspace | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.workspace.updateMany({
+                where: { id: workspaceId },
+                data: {
+                    isPublic,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.workspace.findUnique({
+                where: { id: workspaceId },
+            });
         });
     }
 
-    async updateSlug(workspaceId: string, slug: string): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
-            where: { id: workspaceId },
-            data: {
-                slug,
-            },
+    async updateSlug(
+        workspaceId: string,
+        slug: string
+    ): Promise<Workspace | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.workspace.updateMany({
+                where: { id: workspaceId },
+                data: {
+                    slug,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.workspace.findUnique({
+                where: { id: workspaceId },
+            });
         });
     }
 
     async softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        deletedAt: Date
-    ): Promise<void> {
-        await tx.workspace.softDelete({
-            where: { id: workspaceId },
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<Workspace | null> {
+        const { count } = await tx.workspace.updateMany({
+            where: {
+                AND: [{ id: workspaceId }, WorkspaceActiveFilter],
+            },
             data: {
                 deletedAt,
+                deletedBy,
             },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.workspace.findUnique({ where: { id: workspaceId } });
     }
 }

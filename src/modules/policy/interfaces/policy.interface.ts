@@ -11,7 +11,6 @@ import type {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
-export type { PolicySubject } from '@modules/policy/enums/policy.enum';
 
 export type IPolicyConditions = Prisma.JsonObject;
 
@@ -40,13 +39,15 @@ export interface IEffectivePermission<
 
 export type PolicyModelSubject = Extract<EnumPolicySubject, Prisma.ModelName>;
 
-type PolicyModelRecordMap = {
+type PolicyRecordMap = {
     [TSubject in PolicyModelSubject]: Partial<
         Prisma.TypeMap['model'][TSubject]['payload']['scalars']
     >;
+} & {
+    WorkspaceAnalytic: { workspaceId?: string };
 };
 
-type PolicyModelAbilitySubject = Subjects<PolicyModelRecordMap>;
+type PolicyRecordAbilitySubject = Subjects<PolicyRecordMap>;
 
 export type PolicyWhereInput<TSubject extends PolicyModelSubject> =
     WhereInputOf<Prisma.TypeMap, TSubject>;
@@ -56,7 +57,7 @@ export type PolicyAbilitySubject<
 > =
     | TSubject
     | Extract<
-          PolicyModelAbilitySubject,
+          PolicyRecordAbilitySubject,
           { readonly __caslSubjectType__: TSubject }
       >;
 
@@ -72,6 +73,12 @@ export type IPolicyRule = Pick<
     Policy,
     'subject' | 'action' | 'conditions' | 'inverted' | 'reason'
 >;
+
+/** A role at the policy revision a request read: the pair `{ roleId, policyRevision }` that keys the policy cache. */
+export interface IPolicyRoleRevision {
+    roleId: string;
+    policyRevision: number;
+}
 
 /** A policy rule tagged with the role that owns it, as the cache loads it. */
 export type IPolicyRuleWithRole = IPolicyRule & Pick<Policy, 'roleId'>;
