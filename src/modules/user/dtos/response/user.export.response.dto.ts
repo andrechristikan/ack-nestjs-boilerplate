@@ -8,7 +8,10 @@ import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.re
 export const UserExportResponseSchema = UserListResponseSchema.omit({
     role: true,
     photo: true,
-    termPolicy: true,
+    termsOfServiceAccepted: true,
+    privacyAccepted: true,
+    cookiesAccepted: true,
+    marketingAccepted: true,
 }).extend({
     photo: z.string().nullable().meta({
         description: 'User photo URL',

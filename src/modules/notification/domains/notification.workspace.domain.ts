@@ -87,7 +87,7 @@ export class NotificationWorkspaceDomain {
                     workspaceId: data.workspaceId,
                     workspaceName: data.workspaceName,
                     inviterName: data.inviterName,
-                    workspaceMemberRole: data.workspaceMemberRole,
+                    workspaceRoleName: data.workspaceRoleName,
                     reference: data.reference,
                     expiredAt: data.expiredAt,
                 }

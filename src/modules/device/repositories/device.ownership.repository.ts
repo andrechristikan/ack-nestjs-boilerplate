@@ -9,6 +9,7 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
+import type { DeviceOwnership } from '@generated/prisma-client/client';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
@@ -27,7 +28,12 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         private readonly paginationService: PaginationService
     ) {}
 
-    private ownershipInclude(today: Date): Prisma.DeviceOwnershipInclude {
+    private ownershipInclude(today: Date): {
+        device: true;
+        user: { select: typeof UserRefSelect };
+        revokedBy: { select: typeof UserRefSelect };
+        _count: { select: { sessions: { where: Prisma.SessionWhereInput } } };
+    } {
         return {
             device: true,
             user: {
@@ -120,23 +126,23 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         deviceOwnershipId: string,
         removedBy: string,
         now: Date
-    ): Promise<IDeviceOwnership> {
-        const ownershipInclude = this.ownershipInclude(now);
-
-        return tx.deviceOwnership.update({
-            where: {
-                id: deviceOwnershipId,
-                userId,
-            },
+    ): Promise<IDeviceOwnership | null> {
+        const { count } = await tx.deviceOwnership.updateMany({
+            where: { id: deviceOwnershipId, userId },
             data: {
                 isRevoked: true,
                 revokedAt: now,
-                revokedBy: {
-                    connect: {
-                        id: removedBy,
-                    },
-                },
+                revokedById: removedBy,
             },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        const ownershipInclude = this.ownershipInclude(now);
+
+        return tx.deviceOwnership.findUnique({
+            where: { id: deviceOwnershipId },
             include: ownershipInclude,
         });
     }
@@ -177,13 +183,15 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         return ownerships.map(ownership => ownership.deviceId);
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const today = this.helperDateService.create();
 
@@ -193,9 +201,14 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         >(this.databaseService.client.deviceOwnership, {
             ...others,
             where: {
-                ...where,
-                ...isRevoked,
-                userId,
+                AND: [
+                    additionalWhere,
+                    {
+                        ...where,
+                        ...isRevoked,
+                        userId,
+                    },
+                ],
             },
             include: {
                 device: true,
@@ -287,6 +300,19 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             },
             include: {
                 device: true,
+            },
+        });
+    }
+
+    async findOneActive(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<DeviceOwnership | null> {
+        return this.databaseService.client.deviceOwnership.findFirst({
+            where: {
+                id: deviceOwnershipId,
+                userId,
+                isRevoked: false,
             },
         });
     }

@@ -7,7 +7,6 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumWorkspaceJoinRejectReason,
-    EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -120,7 +119,7 @@ export interface INotificationWorkspaceInvitePayload {
     workspaceId: string;
     workspaceName: string;
     inviterName: string;
-    workspaceMemberRole: EnumWorkspaceMemberRole;
+    workspaceRoleName: string;
     inviteAcceptLink: string;
     reference: string;
     expiredAt: string;

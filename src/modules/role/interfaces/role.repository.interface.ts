@@ -1,4 +1,6 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
+    IPaginationEqual,
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -11,31 +13,59 @@ import type {
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import type { Role } from '@generated/prisma-client/client';
+import type {
+    EnumRoleScope,
+    Prisma,
+    Role,
+} from '@generated/prisma-client/client';
 
 export interface IRoleRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetByAdmin(
         {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
+        scope: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.RoleWhereInput
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findWithPaginationCursorBySystem(
         {
             where,
             ...params
         }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
+        scope?: Record<string, IPaginationIn>
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
+    findWithPaginationOffsetByShared(
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
+        scope?: Record<string, IPaginationEqual>
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findOneWithPoliciesById(id: string): Promise<IRoleWithPolicies | null>;
     findOneById(id: string): Promise<IRole | null>;
-    findOneByName(name: string): Promise<IRole | null>;
-    existsById(id: string): Promise<boolean>;
-    existsByName(name: string): Promise<boolean>;
+    findManyByIds(ids: string[]): Promise<IRole[]>;
+    findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IRole | null>;
+    findOneByScopeAndKey(
+        scope: EnumRoleScope,
+        key: string
+    ): Promise<IRole | null>;
+    findOneByScopeAndKeyInTx(
+        tx: IDatabaseTransactionClient,
+        scope: EnumRoleScope,
+        key: string
+    ): Promise<IRole | null>;
+    incrementPolicyRevisionInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string
+    ): Promise<void>;
+    existsByScopeAndKey(scope: EnumRoleScope, key: string): Promise<boolean>;
+    create(data: IRoleCreate): Promise<IRoleWithPolicies>;
+    update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies | null>;
     isUsedById(id: string): Promise<boolean>;
-    create(roleId: string, data: IRoleCreate): Promise<IRoleWithPolicies>;
-    update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies>;
-    delete(id: string): Promise<Role>;
+    delete(id: string): Promise<Role | null>;
 }

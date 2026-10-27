@@ -4,7 +4,7 @@ Inline suggestion rules for **ack-nestjs-boilerplate**, digested from `.claude/r
 surrounding files; keep suggestions short. When this file and a rule disagree, the rule wins.
 
 **Stack:** NestJS 12 · TypeScript 6 strict · native ESM (`"type": "module"`, `verbatimModuleSyntax`) ·
-Node ≥ 24.15 · PNPM only · Prisma 6 → MongoDB (replica set) · Redis (cache `db:0`, BullMQ `db:1`) ·
+Node ≥ 24.15 · PNPM only · Prisma 6 → PostgreSQL · Redis (cache `db:0`, BullMQ `db:1`) ·
 zod 4 + `zod-openapi` · nestjs-i18n · Pino · Sentry · Vitest.
 
 ---
@@ -66,7 +66,7 @@ Prisma from `@generated/prisma-client/client`, never `…/internal`. Node built-
 
 - A DTO is a **zod schema + `z.infer` type**. **One `*.dto.ts` file = exactly one schema** and its type; nested shapes inline; shared checks from `src/common/request/validations/`.
 - Request schema: `z.strictObject`, every field constrained and `.meta({ description, example })`. Response schema: `z.object` (undeclared keys are stripped).
-- `@Body({ schema })`, `@Param('id', { schema: RequestMongoIdSchema })`. A route returning data declares `@Response(path, { schema })`.
+- `@Body({ schema })`, `@Param('id', { schema: RequestUuidSchema })`. A route returning data declares `@Response(path, { schema })`.
 
 ## Nulls
 
@@ -81,7 +81,7 @@ Prisma from `@generated/prisma-client/client`, never `…/internal`. Node built-
 @Doc({ summary: '…' })                 // 1. OpenAPI operation + global error kit
 @Response('example.action')            // 2. @Response / @ResponsePagination / @ResponseFile
 @TermPolicyAcceptanceProtected(...)    // 3
-@PolicyProtected({...})                // 4  admin
+@PolicyProtected({...})                // 4  one policy decorator per route: `@PolicyProtected({ subject, action[] }, …)` or `@PolicyAbility()`
 @RoleProtected(...)                    // 5  admin
 @ProjectMemberProtected()              // 6
 @ProjectProtected()                    // 7
@@ -95,7 +95,10 @@ Prisma from `@generated/prisma-client/client`, never `…/internal`. Node built-
 @Get('/endpoint')                      // 15 always last
 ```
 
-Guards run bottom-up. Admin routes never carry workspace/project guards. Return `IResponseReturn<T>` / `IResponsePaginationReturn<T>` / `IResponseFileReturn`. Scopes: `admin` · `public` · `user` · `system` · `shared`.
+Guards run bottom-up. Admin routes never carry workspace/project membership guards (`@Workspace*Protected` / `@Project*Protected`); an admin route addressing one workspace or project carries `:workspaceId` / `:projectId` validated with `RequestUuidSchema`, and its HTTP service scopes the lookup with the request ability, so a record outside the caller's scope answers the feature's 404. `WorkspaceGuard` prefers a validated `:workspaceId` over the header; `WorkspaceMemberGuard` still enforces membership.
+
+- **Policy decorators:** exactly one per route that needs authorization, at slot #4, `subject` typed `EnumPolicySubject` (the persisted Prisma enum). `@PolicyProtected({ subject, action[] }, …)` chains `PolicyAbilityGuard` then `PolicyGuard`; `@PolicyAbility()` declares no requirement and chains `PolicyAbilityGuard` only, for a route whose HTTP service decides. `PolicyAbilityGuard` builds ONE ability per request from the platform, workspace-member and project-member roles, each a `{ roleId, policyRevision }` reference loaded through the policy cache, and stores it under `PolicyAbilityStoreKey`; a placeholder the request has not resolved fails closed. `PolicyGuard` checks every required `{ subject, action }` pair type-level and answers one `PolicyForbiddenException` listing the missing pairs; it never loads a record. A route with no policy decorator loads no ability; `UserGuard` and the member guards never build or merge one. A policy decorator sits above the `@Workspace*Protected` / `@Project*Protected` decorators it depends on.
+- **Authorization in the HTTP service:** record-level decisions use `PolicyAbilityDomain.scope(action, ModelSubject)` (a plain `Prisma.<Model>WhereInput`; 403 when the ability holds no rule) and `authorize(action, target)` (subject name, loaded or prospective record; 403 on denial). Every list, lookup, update and delete passes `scope(...)` down as the trailing `additionalWhere?: Prisma.<Model>WhereInput` of the domain method, which forwards it unchanged to the repository; the repository AND-composes it first. A mutation is one scoped statement, and a record the caller cannot reach answers the feature's own 404. `authorize` covers prospective creates and policy writes. **Layer boundary:** `PolicyAbilityDomain` is called only from HTTP services, `PolicyAbilityGuard` and `PolicyGuard`; repositories, feature domains, processors, seeds, `/system` routes and crons import no `@casl/*` and no policy ability type, and call domains without `additionalWhere`. A seeded policy condition uses only fields on the subject's real record (`{ id: '${workspaceId}' }` for `Workspace`); a role meant to act on every project of its workspace keys its `Project` rule on `workspaceId`, not `projectId`/`id`. **Policy cache:** keyed by `{ roleId, policyRevision }`, never deleted; every policy writer increments `Role.policyRevision` in the same transaction. Return `IResponseReturn<T>` / `IResponsePaginationReturn<T>` / `IResponseFileReturn`. Scopes: `admin` · `public` · `user` · `system` · `shared`.
 
 - **Every JWT-protected handler** (`@AuthJwtAccessProtected` / `@AuthJwtRefreshProtected`) carries `@RequestThrottle({ user: true })`. One call per handler; a sensitive route adds `route:` in that same call. `public` and `system` omit it. Method decorator only; class-level does not compile.
 - **OpenAPI is co-located.** `@Doc` + `@DocErrors` (escape hatch) on the controller; success/errors on `@Response` / `@ResponsePagination` / `@ResponseFile`; auth/guard kits on matching `*Protected`; list queries from zod `@Query({ schema })`; multipart from `FileUpload*`; guard-owned `projectId` from `ProjectProtected` (`ApiParam`). No module `*.doc.ts` factories. `DocResponseError` (internal) merges entries per HTTP status via `DocResponseEntryMetaKey` so stacked kits compose. Paginated success uses `baseSchema: ResponsePaginationSchema`.
@@ -141,5 +144,5 @@ One class per file under `exceptions/`, extends `AppBaseException`; enum `Enum<M
 - `prisma/schema.prisma` may be edited; never run `db:migrate`, `db:studio` or `migration:*`.
 - Never stage or commit unless asked. PNPM only.
 - No backward compatibility — correct shape, update every call site, including CI, docker, compose, and `package.json` scripts when those name the change.
-- Specs under `test/**/*.spec.ts` are **unit** (Vitest, `vitest-mock-extended`): every collaborator is a double. A domain spec mocks the repository; a repository is not a unit subject. Integration (real Prisma/Mongo) and e2e (running app) are not this suite. Controllers, processors, repositories, and contracts are outside the coverage set; the doc kit in `src/common/doc/` is inside it. `isolate: false`, `fsModuleCache: true`, `pool: forks`. Nest `Logger` is muted in `test/setup.ts` (no-ops on the class; not `vi.mock('@nestjs/common')` and not a `console` spy). A behaviour lands red-first. `.github/workflows/test.yml` is `workflow_dispatch`.
+- Specs under `test/**/*.spec.ts` are **unit** (Vitest, `vitest-mock-extended`): every collaborator is a double. A domain spec mocks the repository; a repository is not a unit subject. Integration (real Prisma/PostgreSQL) and e2e (running app) are not this suite. Controllers, processors, repositories, and contracts are outside the coverage set; the doc kit in `src/common/doc/` is inside it. `isolate: false`, `fsModuleCache: true`, `pool: forks`. Nest `Logger` is muted in `test/setup.ts` (no-ops on the class; not `vi.mock('@nestjs/common')` and not a `console` spy). A behaviour lands red-first. `.github/workflows/test.yml` is `workflow_dispatch`.
 - English for code, comments, commits, docs. Verify with `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`.

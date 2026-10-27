@@ -1,7 +1,6 @@
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -13,11 +12,16 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { UserAdminListSelect } from '@modules/user/constants/user.constant';
+import {
+    UserAdminListSelect,
+    UserWithRoleInclude,
+} from '@modules/user/constants/user.constant';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
+    IUserExport,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -38,7 +42,6 @@ import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/work
 export class UserRepository implements IUserRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -61,7 +64,11 @@ export class UserRepository implements IUserRepository {
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
             lastWorkspaceChangedAt,
-            termPolicy: input.termPolicy,
+            termsOfServiceAccepted:
+                input.termPolicy[EnumTermPolicyType.termsOfService],
+            privacyAccepted: input.termPolicy[EnumTermPolicyType.privacy],
+            cookiesAccepted: input.termPolicy[EnumTermPolicyType.cookies],
+            marketingAccepted: input.termPolicy[EnumTermPolicyType.marketing],
             createdBy: input.createdBy,
             deletedAt: null,
             ...(input.password
@@ -75,25 +82,32 @@ export class UserRepository implements IUserRepository {
         };
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffset(
         {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | undefined,
+        roleId: Record<string, IPaginationEqual> | undefined,
+        countryId: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
             {
                 ...params,
                 where: {
-                    ...where,
-                    ...status,
-                    ...countryId,
-                    ...roleId,
-                    deletedAt: null,
+                    AND: [
+                        additionalWhere,
+                        {
+                            ...where,
+                            ...status,
+                            ...countryId,
+                            ...roleId,
+                            deletedAt: null,
+                        },
+                    ],
                 },
                 select: UserAdminListSelect,
             }
@@ -115,7 +129,7 @@ export class UserRepository implements IUserRepository {
     }
 
     async findOneById(id: string): Promise<User | null> {
-        return this.databaseService.client.user.findUnique({
+        return this.databaseService.client.user.findFirst({
             where: { id, deletedAt: null },
         });
     }
@@ -144,20 +158,17 @@ export class UserRepository implements IUserRepository {
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
+            include: UserWithRoleInclude,
         });
     }
 
     async findOneProfileById(id: string): Promise<IUserProfile | null> {
-        return this.databaseService.client.user.findUnique({
+        return this.databaseService.client.user.findFirst({
             where: { id, deletedAt: null },
             include: {
-                role: { include: { policies: true } },
+                ...UserWithRoleInclude,
                 country: true,
-                twoFactor: true,
+                photo: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -171,9 +182,9 @@ export class UserRepository implements IUserRepository {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
             include: {
-                role: { include: { policies: true } },
+                ...UserWithRoleInclude,
                 country: true,
-                twoFactor: true,
+                photo: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -184,12 +195,9 @@ export class UserRepository implements IUserRepository {
     }
 
     async findOneWithRoleById(id: string): Promise<IUser | null> {
-        return this.databaseService.client.user.findUnique({
+        return this.databaseService.client.user.findFirst({
             where: { id, deletedAt: null },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -198,10 +206,7 @@ export class UserRepository implements IUserRepository {
             where: {
                 email: { in: emails },
             },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -210,29 +215,33 @@ export class UserRepository implements IUserRepository {
             where: {
                 username: { in: usernames },
             },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
+            include: UserWithRoleInclude,
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findExport(
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
-        take: number
-    ): Promise<IUser[]> {
+        take: number,
+        additionalWhere: Prisma.UserWhereInput
+    ): Promise<IUserExport[]> {
         return this.databaseService.client.user.findMany({
             where: {
-                ...status,
-                ...countryId,
-                ...roleId,
-                deletedAt: null,
+                AND: [
+                    additionalWhere,
+                    {
+                        ...status,
+                        ...countryId,
+                        ...roleId,
+                        deletedAt: null,
+                    },
+                ],
             },
             include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
+                role: { select: { name: true } },
+                photo: true,
             },
             take,
         });
@@ -262,7 +271,7 @@ export class UserRepository implements IUserRepository {
         const user = await tx.user.create({
             data: createData,
             include: {
-                role: { include: { policies: true } },
+                role: true,
             },
         });
 
@@ -280,13 +289,18 @@ export class UserRepository implements IUserRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         { status }: UserUpdateStatusRequestDto
-    ): Promise<User> {
-        return tx.user.update({
+    ): Promise<User | null> {
+        const { count } = await tx.user.updateMany({
             where: { id, deletedAt: null },
             data: {
                 status,
             },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.user.findUnique({ where: { id } });
     }
 
     async updateProfile(
@@ -303,12 +317,22 @@ export class UserRepository implements IUserRepository {
     }
 
     async updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User> {
-        const plainPhoto = this.databaseUtil.toPlainObject(photo);
+        const photoData: Prisma.UserPhotoUncheckedCreateWithoutUserInput = {
+            bucket: photo.bucket,
+            key: photo.key,
+            cdnUrl: photo.cdnUrl,
+            completedUrl: photo.completedUrl,
+            mime: photo.mime,
+            extension: photo.extension,
+            access: photo.access,
+        };
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                photo: plainPhoto,
+                photo: {
+                    upsert: { create: photoData, update: photoData },
+                },
             },
         });
     }
@@ -372,8 +396,8 @@ export class UserRepository implements IUserRepository {
         userId: string,
         { passwordCreated, passwordExpired, passwordHash }: IAuthPassword,
         updatedBy: string
-    ): Promise<User> {
-        return tx.user.update({
+    ): Promise<User | null> {
+        const { count } = await tx.user.updateMany({
             where: { id: userId, deletedAt: null },
             data: {
                 password: passwordHash,
@@ -383,6 +407,11 @@ export class UserRepository implements IUserRepository {
                 updatedBy,
             },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.user.findUnique({ where: { id: userId } });
     }
 
     async increasePasswordAttempt(userId: string): Promise<User> {
@@ -476,9 +505,7 @@ export class UserRepository implements IUserRepository {
                 status: EnumUserStatus.active,
             },
             data: {
-                termPolicy: {
-                    [type]: true,
-                },
+                [UserTermPolicyContract.columns[type]]: true,
             },
         });
     }
@@ -493,9 +520,7 @@ export class UserRepository implements IUserRepository {
                 status: EnumUserStatus.active,
             },
             data: {
-                termPolicy: {
-                    [type]: false,
-                },
+                [UserTermPolicyContract.columns[type]]: false,
             },
         });
     }

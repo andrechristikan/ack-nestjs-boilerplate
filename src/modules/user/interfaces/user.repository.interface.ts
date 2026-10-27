@@ -13,6 +13,7 @@ import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
+    IUserExport,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -27,14 +28,16 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IUserRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffset(
         {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | undefined,
+        roleId: Record<string, IPaginationEqual> | undefined,
+        countryId: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>>;
     findActive(): Promise<IUserContact[]>;
     findOneById(id: string): Promise<User | null>;
@@ -47,12 +50,14 @@ export interface IUserRepository {
     findOneWithRoleById(id: string): Promise<IUser | null>;
     findByEmails(emails: string[]): Promise<IUser[]>;
     findByUsernames(usernames: string[]): Promise<IUser[]>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findExport(
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
-        take: number
-    ): Promise<IUser[]>;
+        take: number,
+        additionalWhere: Prisma.UserWhereInput
+    ): Promise<IUserExport[]>;
     existsByEmail(email: string): Promise<boolean>;
     existsByUsername(username: string): Promise<boolean>;
     createInTx(
@@ -67,7 +72,7 @@ export interface IUserRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         { status }: UserUpdateStatusRequestDto
-    ): Promise<User>;
+    ): Promise<User | null>;
     updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto
@@ -93,7 +98,7 @@ export interface IUserRepository {
         userId: string,
         { passwordCreated, passwordExpired, passwordHash }: IAuthPassword,
         updatedBy: string
-    ): Promise<User>;
+    ): Promise<User | null>;
     increasePasswordAttempt(userId: string): Promise<User>;
     resetPasswordAttempt(userId: string): Promise<User>;
     deactivateForMaxPasswordAttemptInTx(

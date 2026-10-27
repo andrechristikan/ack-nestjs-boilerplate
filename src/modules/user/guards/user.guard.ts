@@ -9,7 +9,7 @@ import {
 } from '@modules/user/constants/user.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/** Validates the authenticated user and stores it in the request context for `UserCurrent`. */
+/** Validates the authenticated user and stores it. Authenticates only; it loads no policies and builds no ability. */
 @Injectable()
 export class UserGuard implements CanActivate {
     constructor(

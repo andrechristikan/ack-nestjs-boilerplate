@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -32,11 +32,9 @@ import { RoleCreateRequestSchema } from '@modules/role/dtos/request/role.create.
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.request.dto';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -59,10 +57,9 @@ export class RoleAdminController {
     @ResponsePagination('role.list', { schema: RoleListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -79,30 +76,49 @@ export class RoleAdminController {
     @Response('role.get', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Get('/get/:roleId')
     async get(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
         return this.roleHttpService.getOne(roleId);
+    }
+
+    @Doc({ summary: 'update data a role' })
+    @Response('role.update', { schema: RoleSchema })
+    @TermPolicyAcceptanceProtected()
+    @PolicyProtected({
+        subject: EnumPolicySubject.Role,
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Put('/update/:roleId')
+    async update(
+        @Param('roleId', { schema: RequestUuidSchema })
+        roleId: string,
+        @Body({ schema: RoleUpdateRequestSchema })
+        body: RoleUpdateRequestDto
+    ): Promise<IResponseReturn<RoleDto>> {
+        return this.roleHttpService.updateByAdmin(roleId, body);
     }
 
     @Doc({ summary: 'create a role' })
     @Response('role.create', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -115,43 +131,20 @@ export class RoleAdminController {
         return this.roleHttpService.createByAdmin(body);
     }
 
-    @Doc({ summary: 'update data a role' })
-    @Response('role.update', { schema: RoleSchema })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.role,
-        action: [EnumPolicyAction.read, EnumPolicyAction.update],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @RequestThrottle({ user: true })
-    @Put('/update/:roleId')
-    async update(
-        @Param('roleId', { schema: RequestMongoIdSchema })
-        roleId: string,
-        @Body({ schema: RoleUpdateRequestSchema })
-        body: RoleUpdateRequestDto
-    ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleHttpService.updateByAdmin(roleId, body);
-    }
-
-    @Doc({ summary: 'delete data a role' })
+    @Doc({ summary: 'delete a role' })
     @Response('role.delete')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Delete('/delete/:roleId')
     async delete(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<void>> {
         return this.roleHttpService.deleteByAdmin(roleId);

@@ -10,6 +10,7 @@ import type {
     IUserAnalyticRef,
     IUserAnalyticSignUp,
 } from '@modules/user/interfaces/user.interface';
+import { RoleDomain } from '@modules/role/domains/role.domain';
 import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic.repository';
 import { Injectable } from '@nestjs/common';
 import {
@@ -22,7 +23,8 @@ import {
 @Injectable()
 export class UserAnalyticDomain {
     constructor(
-        private readonly userAnalyticRepository: UserAnalyticRepository
+        private readonly userAnalyticRepository: UserAnalyticRepository,
+        private readonly roleDomain: RoleDomain
     ) {}
 
     countRegistrations(startDate: Date, endDate: Date): Promise<number> {
@@ -79,8 +81,18 @@ export class UserAnalyticDomain {
         return this.userAnalyticRepository.groupByCountry();
     }
 
-    groupByRole(): Promise<IAnalyticCountBucket[]> {
-        return this.userAnalyticRepository.groupByRole();
+    async groupByRole(): Promise<IAnalyticCountBucket[]> {
+        const rows = await this.userAnalyticRepository.groupByRole();
+        const roles = await this.roleDomain.getByIds(
+            rows.map(({ key }) => key)
+        );
+        const roleKeyById = new Map(roles.map(role => [role.id, role.key]));
+
+        return rows.flatMap(({ key, count }) => {
+            const roleKey = roleKeyById.get(key);
+
+            return roleKey === undefined ? [] : [{ key: roleKey, count }];
+        });
     }
 
     async emailVerificationRate(): Promise<IAnalyticMetricRate> {

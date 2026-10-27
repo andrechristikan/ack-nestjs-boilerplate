@@ -10,7 +10,11 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumRoleScope,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -18,6 +22,9 @@ import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.do
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import {
     EnumUserCreateMode,
@@ -81,7 +88,8 @@ export class WorkspaceDomain {
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
-        private readonly featureFlagDomain: FeatureFlagDomain
+        private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly roleDomain: RoleDomain
     ) {
         this.maxWorkspacesPerUser = this.configService.get<number>(
             'workspace.maxWorkspacesPerUser'
@@ -112,6 +120,46 @@ export class WorkspaceDomain {
         if (slug.length > this.slugMaxLength || !isSlugPatternValid) {
             throw new WorkspaceSlugInvalidException();
         }
+    }
+
+    private async resolveOwnerRoleIdInTx(
+        tx: IDatabaseTransactionClient
+    ): Promise<string> {
+        const ownerRole = await this.roleDomain.getByScopeAndKeyInTx(
+            tx,
+            EnumRoleScope.workspace,
+            EnumRoleWorkspaceKey.owner
+        );
+        if (!ownerRole) {
+            throw new RoleNotFoundException();
+        }
+
+        return ownerRole.id;
+    }
+
+    private async createWithOwnerRoleInTx(
+        tx: IDatabaseTransactionClient,
+        ownerRoleId: string,
+        ownerId: string,
+        create: IWorkspaceCreate,
+        slug: string,
+        workspaceId: string
+    ): Promise<Workspace> {
+        const workspace = await this.workspaceRepository.createInTx(
+            tx,
+            ownerId,
+            create,
+            slug,
+            workspaceId
+        );
+        await this.workspaceMemberRepository.createOwnerInTx(
+            tx,
+            workspace.id,
+            ownerId,
+            ownerRoleId
+        );
+
+        return workspace;
     }
 
     private async assertJoinRequestAllowed(): Promise<void> {
@@ -177,20 +225,16 @@ export class WorkspaceDomain {
         slug: string,
         workspaceId: string
     ): Promise<Workspace> {
-        const workspace = await this.workspaceRepository.createInTx(
+        const ownerRoleId = await this.resolveOwnerRoleIdInTx(tx);
+
+        return this.createWithOwnerRoleInTx(
             tx,
+            ownerRoleId,
             ownerId,
             create,
             slug,
             workspaceId
         );
-        await this.workspaceMemberRepository.createOwnerInTx(
-            tx,
-            workspace.id,
-            ownerId
-        );
-
-        return workspace;
     }
 
     async createPersonalInTx(
@@ -207,11 +251,17 @@ export class WorkspaceDomain {
         tx: IDatabaseTransactionClient,
         users: IWorkspaceOwnedUser[]
     ): Promise<void> {
+        if (users.length === 0) {
+            return;
+        }
+
+        const ownerRoleId = await this.resolveOwnerRoleIdInTx(tx);
         for (const user of users) {
-            await this.createPersonalInTx(
+            await this.createWithOwnerRoleInTx(
                 tx,
+                ownerRoleId,
                 user.userId,
-                user.name,
+                { name: user.name },
                 user.slug,
                 user.workspaceId
             );
@@ -435,7 +485,14 @@ export class WorkspaceDomain {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    getCurrentWorkspace(workspace: Workspace): Workspace {
+    /** Re-reads the active workspace. */
+    async getCurrentWorkspace(workspaceId: string): Promise<Workspace> {
+        const workspace =
+            await this.workspaceRepository.findActiveById(workspaceId);
+        if (!workspace) {
+            throw new WorkspaceNotFoundException();
+        }
+
         return workspace;
     }
 
@@ -457,6 +514,9 @@ export class WorkspaceDomain {
             workspaceId,
             update
         );
+        if (!row) {
+            throw new WorkspaceNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -481,6 +541,9 @@ export class WorkspaceDomain {
             workspaceId,
             isPublic
         );
+        if (!row) {
+            throw new WorkspaceNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -511,10 +574,24 @@ export class WorkspaceDomain {
             }),
         ];
 
-        const row = await this.workspaceRepository.updateSlug(
-            workspaceId,
-            slug
-        );
+        let row: Workspace | null;
+        try {
+            row = await this.workspaceRepository.updateSlug(workspaceId, slug);
+        } catch (error: unknown) {
+            const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                error,
+                'slug'
+            );
+            if (isSlugCollision) {
+                throw new WorkspaceSlugAlreadyExistsException();
+            }
+
+            throw error;
+        }
+
+        if (!row) {
+            throw new WorkspaceNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -557,11 +634,16 @@ export class WorkspaceDomain {
         const deletedAt = this.helperDateService.create();
 
         await this.databaseService.withTransaction(async tx => {
-            await this.workspaceRepository.softDeleteInTx(
+            const deleted = await this.workspaceRepository.softDeleteInTx(
                 tx,
                 workspaceId,
-                deletedAt
+                deletedAt,
+                actorId
             );
+            if (!deleted) {
+                throw new WorkspaceNotFoundException();
+            }
+
             await this.projectDomain.softDeleteByWorkspaceInTx(
                 tx,
                 workspaceId,
@@ -581,13 +663,16 @@ export class WorkspaceDomain {
         this.activityLogDomain.stagePrepared(events);
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+        isPublic: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.WorkspaceWhereInput
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.workspaceRepository.findWithPaginationOffsetForAdmin(
             pagination,
-            isPublic
+            isPublic,
+            additionalWhere
         );
     }
 

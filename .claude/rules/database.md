@@ -1,4 +1,4 @@
-# Database — Prisma + MongoDB
+# Database — Prisma + PostgreSQL
 
 This file is the code rule set. Flow narrative: `docs/database.md` — explorer or planner.
 
@@ -13,8 +13,8 @@ This file is the code rule set. Flow narrative: `docs/database.md` — explorer 
 - **Soft delete and restore are `client.<model>.softDelete({ where, data? })` / `restore({ where, data? })`.** They stamp `deletedAt`, `deletedBy`, and `updatedBy`; `data` carries any co-mutated business fields and nested writes, and `data.deletedAt` overrides the timestamp when a caller needs several rows to share one. `deletedBy` comes from the CLS actor, and an explicit override must originate server-side, never from a request DTO. Hard delete (`delete` / `deleteMany`) writes no audit. `restore` is the peer API when a row must come back — prefer it over hand-clearing `deletedAt`. A delete that must be atomic with other writes is `tx.<model>.softDelete(...)` inside `withTransaction`.
 - **Many rows at once cannot use `softDelete`.** There is no `softDeleteMany`. `ProjectRepository.softDeleteByWorkspaceInTx` is the reference: one `updateMany` on the model this repository owns, filtered to rows that are still live, with `deletedAt` in `data`. Filter to live rows (`OR: <Model>ActiveFilter`) — an unfiltered `updateMany` rewrites `deletedAt` on rows deleted earlier and destroys their real deletion time. The `updateMany` hook stamps `updatedBy` from the CLS actor; it never stamps `deletedBy`, so a model carrying `deletedBy` gets it in `data` explicitly.
 - `DatabaseModule` is global through `CommonModule` (imported once at the app root; `DatabaseModule.forRoot()` is composed inside it). A feature module does not import it.
-- `DatabaseUtil` (`src/common/database/utils/database.util.ts`) holds the Mongo `ObjectId` helpers, built on `bson` (`checkIdIsValid` accepts a 24-character hex string only, `createId` returns one). Use it rather than hand-rolling id validation.
-- **ID dialect is the repository's job.** Domain and HTTP pass `string` IDs. Mapping ObjectId versus UUID — and any Prisma engine type that comes with it — happens inside the repository class that `implements I*Repository`, never by leaking that type into a domain signature (`rules/architecture.md`).
+- `DatabaseUtil` (`src/common/database/utils/database.util.ts`) holds the UUID helpers, built on the `uuid` package (`checkIdIsValid` validates any UUID string, `createId` draws a UUIDv7 via `v7()`). Use it rather than hand-rolling id validation.
+- **IDs are UUID strings end to end.** Domain, repository, and the Prisma `@db.Uuid` column all use the same `string` representation, so a repository has no id-dialect mapping to own. What stays behind the repository class that `implements I*Repository` is the Prisma `where` shape, never leaked into a domain signature (`rules/architecture.md`).
 
 ## Queries
 
@@ -41,7 +41,8 @@ This is the one exception to "a repository never throws a typed exception". It i
 
 ## Transactions
 
-MongoDB transactions require the replica set — that is why `docker-compose` runs one.
+Postgres transactions need no special topology — a single instance is enough, and the
+`docker-compose` `postgres` service is one.
 
 **Every transaction opens through `DatabaseService.withTransaction`.** That method is Prisma's interactive (callback) `$transaction`. A repository, a domain, or a seed never calls `client.$transaction` itself. Array-form `$transaction` is not used.
 
@@ -54,10 +55,11 @@ MongoDB transactions require the replica set — that is why `docker-compose` ru
 
 A repository never injects or calls another repository. Same-feature siblings are composed by the domain.
 
-A write of ONE statement opens no transaction. MongoDB is atomic per document, so wrapping a
-single `update` adds a round trip and a write-conflict surface for nothing. A single statement
-that touches several documents (`updateMany`, `createMany`) does need one, because only the
-per-document write is atomic.
+A write of ONE statement opens no transaction — a single Postgres statement, including an
+`updateMany` or `createMany` that touches many rows, is already atomic on its own, and wrapping
+it only adds a round trip and a write-conflict surface for nothing. A transaction is for a
+write that spans MORE than one statement: a read whose result the following write depends on,
+or more than one model.
 
 `withTransaction(fn, options?)` takes Prisma's `IDatabaseTransactionOptions` (`maxWait`,
 `timeout`, …). A caller passes options only from its own `*TimeoutInMs` config key
@@ -70,7 +72,7 @@ A method that runs inside that caller-owned transaction is named `*InTx` and tak
 ## Schema edits, and the push that is not yours
 
 `prisma/schema.prisma` is editable and `db:generate` is yours to run; every command that opens
-a connection to MongoDB belongs to the owner. What the hand-back must state, and the
+a connection to PostgreSQL belongs to the owner. What the hand-back must state, and the
 conventions the schema already follows, are `rules/prisma-schema.md`.
 
 Prisma-owned enums are imported from `@generated/prisma-client/client` (or `/enums`), never

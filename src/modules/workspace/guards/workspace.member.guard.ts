@@ -12,7 +12,8 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 /**
  * Confirms the already-authenticated user (loaded by `UserGuard`, which must run before this guard)
- * is a member of the workspace resolved by `WorkspaceGuard`. Never re-fetches or re-authenticates.
+ * is a member of the workspace resolved by `WorkspaceGuard` and stores the membership with its
+ * role. It loads no policies and builds no ability. Never re-fetches or re-authenticates.
  */
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {

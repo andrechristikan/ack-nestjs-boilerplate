@@ -1,4 +1,4 @@
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
+import { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
 
 /**
  * Fields the role lists search.
@@ -9,8 +9,7 @@ export const RoleDefaultAvailableSearch = [
 ] as const satisfies ReadonlyArray<Prisma.RoleScalarFieldEnum>;
 
 /**
- * Sort fields the admin offset and system cursor role lists accept. `name` is set once at
- * creation and no update path writes it, so it is stable enough to order a cursor scroll by.
+ * Sort fields the admin offset role list accepts.
  * @public
  */
 export const RoleDefaultAvailableOrderBy = [
@@ -19,7 +18,16 @@ export const RoleDefaultAvailableOrderBy = [
 ] as const satisfies ReadonlyArray<Prisma.RoleScalarFieldEnum>;
 
 /**
- * Role types the role list filter accepts.
+ * Sort fields the cursor role lists accept. `name` is editable, so only the immutable
+ * `createdAt` is stable enough to order a cursor scroll by.
  * @public
  */
-export const RoleDefaultType = Object.values(EnumRoleType);
+export const RoleCursorAvailableOrderBy = [
+    Prisma.RoleScalarFieldEnum.createdAt,
+] as const satisfies ReadonlyArray<Prisma.RoleScalarFieldEnum>;
+
+/**
+ * Role scopes the role list filter accepts.
+ * @public
+ */
+export const RoleDefaultScope = Object.values(EnumRoleScope);

@@ -47,19 +47,14 @@ export class ApiKeyDomain {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    private validateApiKey(
-        apiKey?: ApiKey | null,
-        includeActive: boolean = false
-    ): asserts apiKey is ApiKey {
+    private validateApiKey(apiKey?: ApiKey | null): asserts apiKey is ApiKey {
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
 
-        if (includeActive) {
-            const isActive = this.apiKeyUtil.isActive(apiKey);
-            if (!isActive) {
-                throw new ApiKeyInactiveException();
-            }
+        const isActive = this.apiKeyUtil.isActive(apiKey);
+        if (!isActive) {
+            throw new ApiKeyInactiveException();
         }
 
         return;
@@ -92,15 +87,18 @@ export class ApiKeyDomain {
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
-        isActive?: Record<string, IPaginationEqual>,
-        type?: Record<string, IPaginationIn>
+        isActive: Record<string, IPaginationEqual> | undefined,
+        type: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.ApiKeyWhereInput
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
             isActive,
-            type
+            type,
+            additionalWhere
         );
     }
 
@@ -154,6 +152,16 @@ export class ApiKeyDomain {
         return { apiKey: created, secret };
     }
 
+    /** Returns the stored key; callers judge it, this method does not. */
+    async getOne(id: string): Promise<ApiKey> {
+        const apiKey = await this.apiKeyRepository.findOneById(id);
+        if (!apiKey) {
+            throw new ApiKeyNotFoundException();
+        }
+
+        return apiKey;
+    }
+
     async updateStatusByAdmin(id: string, isActive: boolean): Promise<ApiKey> {
         const today = this.helperDateService.create();
         const apiKey = await this.apiKeyRepository.findOneById(id);
@@ -183,15 +191,19 @@ export class ApiKeyDomain {
         const updated = await this.apiKeyRepository.updateStatus(id, {
             isActive,
         });
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return updated;
     }
 
-    async updateByAdmin(id: string, name?: string): Promise<ApiKey> {
+    async updateByAdmin(id: string, name: string | undefined): Promise<ApiKey> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        this.validateApiKey(apiKey);
 
         const updatedAt = this.helperDateService.create();
         const events = [
@@ -206,12 +218,16 @@ export class ApiKeyDomain {
                 true
             ),
         ];
-        let updated: ApiKey;
+        let updated: ApiKey | null;
         if (name) {
             updated = await this.apiKeyRepository.updateName(id, name);
         } else {
             updated = apiKey;
         }
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
@@ -226,7 +242,7 @@ export class ApiKeyDomain {
         this.validateStartAtIsFuture(startAt);
 
         const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        this.validateApiKey(apiKey);
 
         const newStartAt = this.helperDateService.create(startAt, {
             dayOf: EnumHelperDateDayOf.start,
@@ -248,6 +264,10 @@ export class ApiKeyDomain {
             startAt: newStartAt,
             endAt: newEndAt,
         });
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
@@ -256,7 +276,7 @@ export class ApiKeyDomain {
 
     async resetByAdmin(id: string): Promise<IApiKeyWithSecret> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        this.validateApiKey(apiKey);
 
         const secret: string = this.apiKeyCredentialUtil.createSecret();
         const hash: string = this.apiKeyCredentialUtil.createHash(
@@ -273,6 +293,10 @@ export class ApiKeyDomain {
             ),
         ];
         const updated = await this.apiKeyRepository.updateHash(id, hash);
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
@@ -295,6 +319,10 @@ export class ApiKeyDomain {
             ),
         ];
         const deleted = await this.apiKeyRepository.delete(id);
+        if (!deleted) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 

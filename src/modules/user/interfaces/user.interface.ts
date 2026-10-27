@@ -2,20 +2,20 @@ import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    EnumProjectMemberRole,
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumVerificationType,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     Country,
     Prisma,
+    Role,
     TwoFactor,
+    TwoFactorBackupCode,
     User,
     UserMobileNumber,
     UserPhoto,
@@ -30,12 +30,21 @@ import type {
     IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
+export interface IUserTwoFactor extends TwoFactor {
+    backupCodes: TwoFactorBackupCode[];
+}
+
 export interface IUser extends User {
-    role: IRoleWithPolicies;
-    twoFactor: TwoFactor | null;
+    role: Role;
+    twoFactor: IUserTwoFactor | null;
+}
+
+/** A user row flattened for CSV export: only the role name and the photo are joined. */
+export interface IUserExport extends User {
+    role: Pick<Role, 'name'>;
+    photo: UserPhoto | null;
 }
 
 export type IUserList = Prisma.UserGetPayload<{
@@ -68,6 +77,7 @@ export interface IUserMobileNumber extends UserMobileNumber {
 export interface IUserProfile extends IUser {
     mobileNumbers: IUserMobileNumber[];
     country: Country;
+    photo: UserPhoto | null;
 }
 
 export interface IUserForgotPasswordCreate {
@@ -115,10 +125,10 @@ export interface IUserSignUpWorkspaceInvite {
     type: EnumUserSignUpWorkspaceContextType.invite;
     workspaceId: string;
     workspaceInviteId: string;
-    invitedByUserId: string;
-    workspaceMemberRole: EnumWorkspaceMemberRole;
+    invitedByUserId: string | null;
+    workspaceRoleId: string;
     projectId: string | null;
-    projectMemberRole: EnumProjectMemberRole | null;
+    projectRoleId: string | null;
 }
 
 export type IUserSignUpWorkspaceContext =
@@ -150,8 +160,15 @@ export interface IUserCreateContract {
     logsActingAdmin: boolean;
 }
 
+export type IUserTermPolicyColumn =
+    | 'termsOfServiceAccepted'
+    | 'privacyAccepted'
+    | 'cookiesAccepted'
+    | 'marketingAccepted';
+
 export interface IUserTermPolicyContract {
     defaults: Record<EnumTermPolicyType, boolean>;
+    columns: Record<EnumTermPolicyType, IUserTermPolicyColumn>;
     requiredTypes: EnumTermPolicyType[];
 }
 

@@ -27,10 +27,14 @@ import {
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { Workspace } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    type Workspace,
+} from '@generated/prisma-client/client';
 
 @ApiTags('modules.user.analytic')
 @Controller({
@@ -47,6 +51,10 @@ export class AnalyticUserController {
         schema: AnalyticWorkspaceSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -72,7 +80,11 @@ export class AnalyticUserController {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -99,7 +111,11 @@ export class AnalyticUserController {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -124,7 +140,11 @@ export class AnalyticUserController {
         schema: AnalyticRoleCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -143,7 +163,11 @@ export class AnalyticUserController {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')

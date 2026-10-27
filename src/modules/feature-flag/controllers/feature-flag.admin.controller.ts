@@ -2,7 +2,7 @@ import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/
 import { FeatureFlagAdminListRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -23,7 +23,6 @@ import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dt
 import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -40,7 +39,6 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 import type { FeatureFlag } from '@generated/prisma-client/client';
@@ -61,10 +59,9 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -83,17 +80,16 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Patch('/update/:featureFlagId/status')
     async updateStatus(
-        @Param('featureFlagId', { schema: RequestMongoIdSchema })
+        @Param('featureFlagId', { schema: RequestUuidSchema })
         featureFlagId: string,
         @Body({ schema: FeatureFlagUpdateStatusRequestSchema })
         body: FeatureFlagUpdateStatusRequestDto
@@ -110,17 +106,16 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Put('/update/:featureFlagId/metadata')
     async update(
-        @Param('featureFlagId', { schema: RequestMongoIdSchema })
+        @Param('featureFlagId', { schema: RequestUuidSchema })
         featureFlagId: string,
         @Body({ schema: FeatureFlagUpdateMetadataRequestSchema })
         body: FeatureFlagUpdateMetadataRequestDto

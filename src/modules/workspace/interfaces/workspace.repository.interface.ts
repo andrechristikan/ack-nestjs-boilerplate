@@ -23,12 +23,11 @@ export interface IWorkspaceRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
     ): Promise<IPaginationCursorReturn<Workspace>>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetForAdmin(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+        params: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
+        isPublic: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.WorkspaceWhereInput
     ): Promise<IResponsePaginationReturn<Workspace>>;
     createInTx(
         tx: IDatabaseTransactionClient,
@@ -40,12 +39,16 @@ export interface IWorkspaceRepository {
     updateDetails(
         workspaceId: string,
         { name, description }: WorkspaceUpdateRequestDto
-    ): Promise<Workspace>;
-    updateIsPublic(workspaceId: string, isPublic: boolean): Promise<Workspace>;
-    updateSlug(workspaceId: string, slug: string): Promise<Workspace>;
+    ): Promise<Workspace | null>;
+    updateIsPublic(
+        workspaceId: string,
+        isPublic: boolean
+    ): Promise<Workspace | null>;
+    updateSlug(workspaceId: string, slug: string): Promise<Workspace | null>;
     softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        deletedAt: Date
-    ): Promise<void>;
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<Workspace | null>;
 }

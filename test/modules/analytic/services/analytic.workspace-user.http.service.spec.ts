@@ -1,19 +1,30 @@
+import { subject } from '@casl/ability';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { AnalyticWorkspaceUserDomain } from '@modules/analytic/domains/analytic.workspace-user.domain';
 import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/analytic.workspace-user.http.service';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 
 describe('AnalyticWorkspaceUserHttpService', () => {
     const analyticWorkspaceUserDomain: MockProxy<AnalyticWorkspaceUserDomain> =
         mock<AnalyticWorkspaceUserDomain>();
     const analyticDateDomain: MockProxy<AnalyticDateDomain> =
         mock<AnalyticDateDomain>();
+    const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
+        mock<PolicyAbilityDomain>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
+    const workspaceAnalytic = subject(EnumPolicySubject.WorkspaceAnalytic, {
+        workspaceId: 'workspace-1',
+    });
 
     let service: AnalyticWorkspaceUserHttpService;
 
@@ -28,11 +39,22 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                     useValue: analyticWorkspaceUserDomain,
                 },
                 { provide: AnalyticDateDomain, useValue: analyticDateDomain },
+                {
+                    provide: PolicyAbilityDomain,
+                    useValue: policyAbilityDomain,
+                },
             ],
         }).compile();
 
         service = module.get(AnalyticWorkspaceUserHttpService);
     });
+
+    const expectAuthorized = (): void => {
+        expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+            EnumPolicyAction.read,
+            workspaceAnalytic
+        );
+    };
 
     describe('summary', () => {
         it('wraps the domain result in the response envelope', async () => {
@@ -60,6 +82,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 startDate,
                 endDate
             );
+            expectAuthorized();
         });
 
         it('passes undefined dates when the optional range is empty', async () => {
@@ -84,6 +107,18 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 undefined,
                 undefined
             );
+            expectAuthorized();
+        });
+
+        it('does not call the domain when authorize denies', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
+                throw new Error('denied');
+            });
+
+            await expect(service.summary('workspace-1')).rejects.toThrow(
+                'denied'
+            );
+            expect(analyticWorkspaceUserDomain.summary).not.toHaveBeenCalled();
         });
     });
 
@@ -109,6 +144,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             expect(
                 analyticWorkspaceUserDomain.inviteFunnel
             ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
+            expectAuthorized();
         });
 
         it('passes null when dates are omitted', async () => {
@@ -124,6 +160,20 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 null,
                 null
             );
+            expectAuthorized();
+        });
+
+        it('does not call the domain when authorize denies', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
+                throw new Error('denied');
+            });
+
+            await expect(service.inviteFunnel('workspace-1')).rejects.toThrow(
+                'denied'
+            );
+            expect(
+                analyticWorkspaceUserDomain.inviteFunnel
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -149,6 +199,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             expect(
                 analyticWorkspaceUserDomain.joinOutcomes
             ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
+            expectAuthorized();
         });
 
         it('passes null when dates are omitted', async () => {
@@ -164,6 +215,20 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 null,
                 null
             );
+            expectAuthorized();
+        });
+
+        it('does not call the domain when authorize denies', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
+                throw new Error('denied');
+            });
+
+            await expect(service.joinOutcomes('workspace-1')).rejects.toThrow(
+                'denied'
+            );
+            expect(
+                analyticWorkspaceUserDomain.joinOutcomes
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -181,6 +246,20 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             expect(
                 analyticWorkspaceUserDomain.memberRoles
             ).toHaveBeenCalledWith('workspace-1');
+            expectAuthorized();
+        });
+
+        it('does not call the domain when authorize denies', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
+                throw new Error('denied');
+            });
+
+            await expect(service.memberRoles('workspace-1')).rejects.toThrow(
+                'denied'
+            );
+            expect(
+                analyticWorkspaceUserDomain.memberRoles
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -206,6 +285,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 startDate,
                 endDate
             );
+            expectAuthorized();
         });
 
         it('passes null when dates are omitted', async () => {
@@ -223,6 +303,18 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 null,
                 null
             );
+            expectAuthorized();
+        });
+
+        it('does not call the domain when authorize denies', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
+                throw new Error('denied');
+            });
+
+            await expect(service.activity('workspace-1')).rejects.toThrow(
+                'denied'
+            );
+            expect(analyticWorkspaceUserDomain.activity).not.toHaveBeenCalled();
         });
     });
 });

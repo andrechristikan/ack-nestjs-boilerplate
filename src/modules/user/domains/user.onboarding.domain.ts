@@ -146,9 +146,14 @@ export class UserOnboardingDomain {
             userId,
             workspaceId: workspaceContext.workspaceId,
             createdBy,
-            metadata: { targetUserId: workspaceContext.invitedByUserId },
+            metadata: workspaceContext.invitedByUserId
+                ? { targetUserId: workspaceContext.invitedByUserId }
+                : {},
         });
-        if (workspaceContext.invitedByUserId !== userId) {
+        if (
+            workspaceContext.invitedByUserId &&
+            workspaceContext.invitedByUserId !== userId
+        ) {
             activities.push({
                 action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                 userId: workspaceContext.invitedByUserId,

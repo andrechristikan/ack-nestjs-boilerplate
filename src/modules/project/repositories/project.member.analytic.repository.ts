@@ -5,8 +5,8 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type {
+    IAnalyticCountBucket,
     IAnalyticProjectCount,
-    IAnalyticRoleCount,
 } from '@modules/analytic/interfaces/analytic.interface';
 import type { IProjectMemberAnalyticRepository } from '@modules/project/interfaces/project.member-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -57,11 +57,11 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
         });
     }
 
-    async groupByRole(): Promise<IAnalyticRoleCount[]> {
+    async groupByRole(): Promise<IAnalyticCountBucket[]> {
         const rows = await this.databaseService.client.projectMember.groupBy({
-            by: ['role'],
+            by: ['roleId'],
             _count: { _all: true },
         });
-        return rows.map(r => ({ role: r.role, count: r._count._all }));
+        return rows.map(r => ({ key: r.roleId, count: r._count._all }));
     }
 }

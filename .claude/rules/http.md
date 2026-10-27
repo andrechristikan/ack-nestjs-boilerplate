@@ -15,7 +15,7 @@ NestJS evaluates stacked decorators bottom-up, so the HTTP method is always last
 @Doc({ summary: '…' })                 // 1.  OpenAPI operation + global error kit
 @Response('example.action')            // 2.  @Response / @ResponsePagination / @ResponseFile
 @TermPolicyAcceptanceProtected(...)    // 3.  Term policy
-@PolicyProtected({...})                // 4.  CASL policy         — admin routes
+@PolicyProtected({...})                // 4.  CASL policy         — one policy decorator per route (see "Policy decorators and the request ability")
 @RoleProtected(...)                    // 5.  Role                — admin routes
 @ProjectMemberProtected()              // 6.  Project membership
 @ProjectProtected()                    // 7.  Project exists
@@ -35,30 +35,45 @@ Reordering is a defect even when the app still boots: the order encodes which ga
 - **`@RequestThrottle({...})` sits OUTSIDE this order.** It mounts an interceptor, not a guard, and interceptors run after every guard regardless of declaration order or class-versus-method placement. Place it consistently and move on — no position silently degrades it.
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
 - **Activity is not a decorator.** A domain prepares an event with `ActivityLogDomain.prepare(...)` before the write and stages it with `stagePrepared(...)` after, and the global `ActivityLogInterceptor` flushes it; metadata is validated by the action's contract, returned through a typed response schema, and never carries a secret (`rules/security.md`).
-- `@Workspace*Protected()` / `@Project*Protected()` are composable decorators each wrapping one or two guards — stack the ones a route needs, do not assume one implies another. `@WorkspaceMemberProtected(...roles)` is ONE decorator: with no `roles` it stacks only `WorkspaceMemberGuard`; with `roles` it also stacks `WorkspaceRoleGuard` — there is no separate `@WorkspaceRoleProtected`. `WorkspaceMemberGuard`/`WorkspaceRoleGuard` read the loaded user from CLS, so the whole Workspace* family sits above `@UserProtected()`. `@Project*Protected()` sits above the whole Workspace* family — `ProjectGuard` reads the already-validated workspace from CLS to scope the project lookup (cross-workspace IDOR check). `@ProjectMemberProtected(...roles)` takes project roles the same way, but **stacks differently from its workspace twin**: with no roles it uses `ProjectMemberGuard` (a `ProjectMember` row is required), with roles it uses `ProjectRoleGuard` ALONE. `@ProjectMemberCurrent()` therefore belongs only on the role-less form: the role form stores no member row, and the decorator answers 500 when it finds none (`rules/security.md`). It must not stack both — a workspace `owner` legitimately has no `ProjectMember` row, and the strict membership guard would reject them before the owner bypass inside `ProjectRoleGuard` could run. Never on admin routes — admin read-only endpoints use `@RoleProtected` (+ `@PolicyProtected` once a route needs it) with no workspace/project scoping at all, since admin reads across every workspace.
+- `@Workspace*Protected()` / `@Project*Protected()` are composable decorators each wrapping one or two guards — stack the ones a route needs, do not assume one implies another. `@WorkspaceMemberProtected(...roles)` is ONE decorator: with no `roles` it stacks only `WorkspaceMemberGuard`; with `roles` it also stacks `WorkspaceRoleGuard` — there is no separate `@WorkspaceRoleProtected`. `WorkspaceMemberGuard`/`WorkspaceRoleGuard` read the loaded user from CLS, so the whole Workspace* family sits above `@UserProtected()`. `@Project*Protected()` sits above the whole Workspace* family — `ProjectGuard` reads the already-validated workspace from CLS to scope the project lookup (cross-workspace IDOR check). `@ProjectMemberProtected(...roles)` takes project roles the same way, but **stacks differently from its workspace twin**: with no roles it uses `ProjectMemberGuard` (a `ProjectMember` row is required), with roles it uses `ProjectRoleGuard` ALONE. `@ProjectMemberCurrent()` therefore belongs only on the role-less form: the role form stores no member row, and the decorator answers 500 when it finds none (`rules/security.md`). It must not stack both — a workspace `owner` legitimately has no `ProjectMember` row, and the strict membership guard would reject them before the owner bypass inside `ProjectRoleGuard` could run. Never on admin routes — an admin endpoint carries no workspace or project membership or context decorator, since admin reads across every workspace (next section).
 - A new `@<X>Protected()` follows the stack in this file. Flow narrative for the existing
   guards: `docs/authorization.md` — explorer or planner.
 
 ### Admin scope carries NO workspace or project guard (HARD)
 
-An `admin`-scope controller MUST NOT stack `@WorkspaceProtected()`, `@WorkspaceMemberProtected(...)`, `@ProjectProtected()`, `@ProjectMemberProtected()`, or any future `@Workspace*Protected` / `@Project*Protected` member. Not one of them, on any route, ever.
+An `admin`-scope controller MUST NOT stack `@WorkspaceProtected()`, `@WorkspaceMemberProtected(...)`, `@ProjectProtected()`, `@ProjectMemberProtected()`, or any future `@Workspace*Protected` / `@Project*Protected` member. Not one of them, on any route, ever. `@PolicyProtected` and `@PolicyAbility` are policy decorators, not members of those families, and neither resolves a workspace or project from the header.
 
 Admin reads and writes ACROSS every workspace — that is what the scope means. Those guards resolve their subject from the `x-workspace-id` header via CLS, so stacking one on an admin route makes a platform-wide endpoint silently depend on a client-supplied header, and a platform admin who omits the header gets rejected from data they are entitled to.
 
-Worse, it opens an IDOR the guard cannot see: when an admin route ALSO takes a `:workspaceId` (or `:projectId`) path param, the guard validates the header value while the query reads the path value. Two sources of truth for one request — the caller passes a workspace they belong to in the header and any other workspace's id in the path.
+Worse, the workspace a guard resolves is not the one the route addresses: `WorkspaceGuard` prefers a validated `:workspaceId` path param over the configured header, and `WorkspaceMemberGuard` still enforces the caller's membership of whatever workspace it resolved. A platform admin who is not a member of that workspace is rejected from data they are entitled to.
 
-- Admin scoping is `@RoleProtected(...)` plus `@PolicyProtected({...})`, and nothing else.
-- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `{ schema: RequestMongoIdSchema }` — never from the header.
+- Admin scoping is `@RoleProtected(...)` plus one policy decorator, and nothing else. Every admin route uses `@PolicyProtected({ subject, action })`, or `@PolicyAbility()` when the HTTP service makes the decision. An admin route that addresses one workspace or project carries `:workspaceId` / `:projectId` as a path param validated with `{ schema: RequestUuidSchema }`; the HTTP service scopes the lookup with the request ability, so a record outside the caller's scope answers the feature's 404.
+- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `{ schema: RequestUuidSchema }` — never from the header.
 - The header (`x-workspace-id`) belongs to the `user` and `shared` scopes only, where `@WorkspaceProtected()` + `@WorkspaceMemberProtected()` are the correct gate and the only source of truth for the request.
+
+### Policy decorators and the request ability (HARD)
+
+One request builds ONE ability. Exactly one policy decorator sits at slot #4 of a route that needs authorization, and it takes `EnumPolicySubject` (the persisted Prisma enum) for every `subject`:
+
+| Decorator | Takes | Guards it stacks |
+|---|---|---|
+| `@PolicyProtected({ subject, action[] }, …)` | one or more `{ subject, action[] }` requirements | `PolicyAbilityGuard`, then `PolicyGuard` |
+| `@PolicyAbility()` | nothing | `PolicyAbilityGuard` only |
+
+- **`PolicyAbilityGuard` builds the ability.** It reads the caller's platform role from the stored user and, when the request has them, the workspace member role and the project member role, takes each role revision `{ roleId, policyRevision }` from that stored context, loads the raw policy rows through the policy cache, builds one ability through `PolicyAbilityFactory`, and stores it under `PolicyAbilityStoreKey`. Placeholders resolve from the request context; a placeholder the request has not resolved stays unresolved and its rule fails closed.
+- **`PolicyGuard` enforces the route requirements.** It reads the stored ability and the `PolicyRequiredMetaKey` metadata and checks every required `{ subject, action }` pair as a type-level check, answering one `PolicyForbiddenException` that lists every missing pair. It never loads a record.
+- **`@PolicyAbility()` is for a route whose HTTP service makes the decision.** It declares no requirement and enforces nothing; the service calls `PolicyAbilityDomain.scope` / `authorize` (`rules/security.md`).
+- **A route with no policy decorator loads no ability.** `UserGuard` authenticates and stores the user; it never loads policies or builds an ability. The workspace and project member guards store the acting member and role and never build or merge an ability.
+- **Record-level decisions are made in the HTTP service, not in a guard.** A guard checks the subject type. A list hands `scope(action, subject)` to the domain as `additionalWhere`. A single record loads by identity and calls `authorize(action, target)` (`rules/security.md`).
+- A policy decorator sits ABOVE the `@Workspace*Protected` / `@Project*Protected` decorators it depends on, so its guards run after the context they read is stored.
 
 ### `@RoleProtected` never lists `superAdmin` (HARD)
 
-`superAdmin` bypasses both gates unconditionally, before the required list is ever consulted:
+`superAdmin` bypasses the role gate unconditionally, before the required list is ever consulted:
 
 - `RoleDomain.validateRoleGuard` returns `[]` and skips the `requiredRoles` check entirely for a `superAdmin`.
-- `PolicyDomain.validatePolicyGuard` returns `true` and skips the ability check entirely for a `superAdmin`.
 
-So `@RoleProtected(EnumRoleType.admin, EnumRoleType.superAdmin)` and `@RoleProtected(EnumRoleType.admin)` grant exactly the same access. Listing `superAdmin` adds nothing and actively misleads the next reader into believing the route is gated by an enumeration that is never reached.
+So `@RoleProtected(EnumRoleType.admin, EnumRoleType.superAdmin)` and `@RoleProtected(EnumRoleType.admin)` pass the role gate for the same callers. Listing `superAdmin` adds nothing and actively misleads the next reader into believing the route is gated by an enumeration that is never reached.
 
 Write the roles that are actually checked — for a platform admin route that is `@RoleProtected(EnumRoleType.admin)`. `superAdmin` appears in a `@RoleProtected` call only if the bypass in `RoleDomain` is ever removed.
 
@@ -89,24 +104,24 @@ Write the roles that are actually checked — for a platform admin route that is
 ### Path and query params bind a zod schema (HARD)
 
 A path or query value is validated by the same `RequestSchemaValidationPipe` as a body. Bind the
-schema on the decorator; do not add a custom pipe for ObjectId or presence checks.
+schema on the decorator; do not add a custom pipe for UUID or presence checks.
 
 ```typescript
-@Param('workspaceId', { schema: RequestMongoIdSchema })
+@Param('workspaceId', { schema: RequestUuidSchema })
 workspaceId: string
 
-@Query('workspaceId', { schema: RequestMongoIdSchema.optional() })
+@Query('workspaceId', { schema: RequestUuidSchema.optional() })
 workspaceId?: string
 
 @Param('inviteToken', { schema: RequestRequiredStringSchema })
 inviteToken: string
 ```
 
-- **Required ObjectId** — `RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`).
-- **Optional ObjectId query** — `RequestMongoIdSchema.optional()`. An optional ObjectId with no
+- **Required UUID** — `RequestUuidSchema` (`src/common/request/validations/request.uuid.validation.ts`).
+- **Optional UUID query** — `RequestUuidSchema.optional()`. An optional UUID with no
   schema is a defect: the raw string reaches Prisma and a malformed value returns 500 instead of
   400.
-- **Required non-ObjectId string** (token, slug) — `RequestRequiredStringSchema`.
+- **Required non-UUID string** (token, slug) — `RequestRequiredStringSchema`.
 - **Language code** — `RequestMessageLanguageSchema` where that is the contract.
 - Shared schemas live under `src/common/request/validations/`. Module-specific ones live under
   `<module>/validations/` (`rules/validation.md`).

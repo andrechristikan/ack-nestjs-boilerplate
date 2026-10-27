@@ -125,8 +125,6 @@ describe('AnalyticFraudDomain', () => {
     let domain: AnalyticFraudDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         configGet.mockImplementation((key: string) => configValues[key]);
         analyticCache.getFraudSummary.mockResolvedValue(null);
         analyticCache.getRiskScore.mockResolvedValue(null);

@@ -152,9 +152,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
 
                     if (responseData.type === EnumPaginationType.cursor) {
                         nextCursor = responseData.cursor;
-                    } else if (
-                        responseData.type === EnumPaginationType.offset
-                    ) {
+                    } else {
                         totalPage = responseData.totalPage;
                         nextPage = responseData.nextPage;
                         previousPage = responseData.previousPage;

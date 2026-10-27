@@ -1,6 +1,5 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationIn,
@@ -12,7 +11,8 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type {
-    ITermPolicyContent,
+    ITermPolicy,
+    ITermPolicyContentCreate,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
@@ -30,17 +30,35 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperDateService: HelperDateService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly helperDateService: HelperDateService
     ) {}
 
+    /**
+     * Locks and touches the scoped parent row so the content write that follows runs
+     * against a row the caller is allowed to reach; `false` when the scope excludes it.
+     */
+    private async touchScopedInTx(
+        tx: IDatabaseTransactionClient,
+        termPolicyId: string
+    ): Promise<boolean> {
+        const updatedAt = this.helperDateService.create();
+        const { count } = await tx.termPolicy.updateMany({
+            where: { id: termPolicyId },
+            data: { updatedAt },
+        });
+
+        return count > 0;
+    }
+
+    /** Extra caller-supplied constraint, AND-composed first. */
     async find(
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | undefined,
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.TermPolicyWhereInput
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.paginationService.offset<
             TermPolicy,
@@ -48,9 +66,14 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         >(this.databaseService.client.termPolicy, {
             ...others,
             where: {
-                ...where,
-                ...type,
-                ...status,
+                AND: [
+                    additionalWhere,
+                    {
+                        ...where,
+                        ...type,
+                        ...status,
+                    },
+                ],
             },
         });
     }
@@ -94,10 +117,11 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         });
     }
 
-    async findOneById(termPolicyId: string): Promise<TermPolicy | null> {
-        return this.databaseService.client.termPolicy.findUnique({
-            where: {
-                id: termPolicyId,
+    async findOneById(termPolicyId: string): Promise<ITermPolicy | null> {
+        return this.databaseService.client.termPolicy.findFirst({
+            where: { id: termPolicyId },
+            include: {
+                contents: true,
             },
         });
     }
@@ -212,115 +236,124 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async create(
         termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
-        contents: ITermPolicyContent[]
+        contents: ITermPolicyContentCreate[]
     ): Promise<TermPolicy> {
-        const plainContents: Prisma.TermPolicyContentCreateInput[] =
-            this.databaseUtil.toPlainArray(contents);
-
         return this.databaseService.client.termPolicy.create({
             data: {
                 id: termPolicyId,
                 type,
                 version,
                 status: EnumTermPolicyStatus.draft,
-                contents: plainContents,
-            },
-        });
-    }
-
-    async delete(termPolicyId: string): Promise<TermPolicy> {
-        return this.databaseService.client.termPolicy.delete({
-            where: {
-                id: termPolicyId,
-            },
-        });
-    }
-
-    async updateContent(
-        termPolicyId: string,
-        contents: ITermPolicyContent[],
-        content: ITermPolicyContent
-    ): Promise<TermPolicy> {
-        const contentIndex = contents.findIndex(
-            c => c.language === content.language
-        );
-        if (contentIndex !== -1) {
-            contents[contentIndex] = content;
-        }
-
-        const plainContents: Prisma.TermPolicyContentCreateInput[] =
-            this.databaseUtil.toPlainArray(contents);
-
-        return this.databaseService.client.termPolicy.update({
-            where: {
-                id: termPolicyId,
-            },
-            data: {
-                contents: plainContents,
-            },
-        });
-    }
-
-    async addContent(
-        termPolicyId: string,
-        newContent: ITermPolicyContent
-    ): Promise<TermPolicy> {
-        const plainContent = this.databaseUtil.toPlainObject<
-            ITermPolicyContent,
-            Prisma.TermPolicyContentCreateInput
-        >(newContent);
-
-        return this.databaseService.client.termPolicy.update({
-            where: {
-                id: termPolicyId,
-            },
-            data: {
                 contents: {
-                    push: plainContent,
+                    createMany: {
+                        data: contents,
+                    },
                 },
             },
         });
     }
 
+    async delete(termPolicyId: string): Promise<TermPolicy | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const where: Prisma.TermPolicyWhereInput = { id: termPolicyId };
+            const existing = await tx.termPolicy.findFirst({ where });
+            if (!existing) {
+                return null;
+            }
+
+            const { count } = await tx.termPolicy.deleteMany({ where });
+
+            return count > 0 ? existing : null;
+        });
+    }
+
+    async updateContent(
+        termPolicyId: string,
+        content: ITermPolicyContentCreate
+    ): Promise<TermPolicy | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const touched = await this.touchScopedInTx(tx, termPolicyId);
+            if (!touched) {
+                return null;
+            }
+
+            await tx.termPolicyContent.update({
+                where: {
+                    termPolicyId_language: {
+                        termPolicyId,
+                        language: content.language,
+                    },
+                },
+                data: content,
+            });
+
+            return tx.termPolicy.findUnique({ where: { id: termPolicyId } });
+        });
+    }
+
+    async addContent(
+        termPolicyId: string,
+        newContent: ITermPolicyContentCreate
+    ): Promise<TermPolicy | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const touched = await this.touchScopedInTx(tx, termPolicyId);
+            if (!touched) {
+                return null;
+            }
+
+            await tx.termPolicyContent.create({
+                data: { ...newContent, termPolicyId },
+            });
+
+            return tx.termPolicy.findUnique({ where: { id: termPolicyId } });
+        });
+    }
+
     async removeContent(
         termPolicyId: string,
-        contents: ITermPolicyContent[],
         { language }: TermPolicyRemoveContentRequestDto
-    ): Promise<TermPolicy> {
-        const contentIndex = contents.findIndex(c => c.language === language);
-        if (contentIndex !== -1) {
-            contents.splice(contentIndex, 1);
-        }
+    ): Promise<TermPolicy | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const touched = await this.touchScopedInTx(tx, termPolicyId);
+            if (!touched) {
+                return null;
+            }
 
-        const plainContents: Prisma.TermPolicyContentCreateInput[] =
-            this.databaseUtil.toPlainArray(contents);
+            await tx.termPolicyContent.delete({
+                where: {
+                    termPolicyId_language: {
+                        termPolicyId,
+                        language,
+                    },
+                },
+            });
 
-        return this.databaseService.client.termPolicy.update({
-            where: {
-                id: termPolicyId,
-            },
-            data: {
-                contents: plainContents,
-            },
+            return tx.termPolicy.findUnique({ where: { id: termPolicyId } });
         });
     }
 
     async publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[]
-    ): Promise<TermPolicy> {
+        contents: ITermPolicyContentCreate[]
+    ): Promise<TermPolicy | null> {
         const publishedAt = this.helperDateService.create();
-
-        return tx.termPolicy.update({
-            where: {
-                id: termPolicyId,
-            },
+        const { count } = await tx.termPolicy.updateMany({
+            where: { id: termPolicyId },
             data: {
                 status: EnumTermPolicyStatus.published,
                 publishedAt,
-                contents,
             },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        await tx.termPolicyContent.deleteMany({ where: { termPolicyId } });
+        await tx.termPolicyContent.createMany({
+            data: contents.map(content => ({ ...content, termPolicyId })),
+        });
+
+        return tx.termPolicy.findUnique({ where: { id: termPolicyId } });
     }
 }

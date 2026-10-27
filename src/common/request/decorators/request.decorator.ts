@@ -19,10 +19,11 @@ import { RequestThrottleUserInterceptor } from '@common/request/interceptors/req
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type {
+    IRequestGeoLocation,
     IRequestLog,
     IRequestThrottleOptions,
+    IRequestUserAgent,
 } from '@common/request/interfaces/request.interface';
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 
 /**
  * Overrides the global request timeout for a route.
@@ -87,7 +88,7 @@ export const RequestIPAddress = createParamDecorator((): string => {
  * Reads the user agent parsed once per request into the request-log store; throws when it is absent.
  * @public
  */
-export const RequestUserAgent = createParamDecorator((): UserAgent => {
+export const RequestUserAgent = createParamDecorator((): IRequestUserAgent => {
     const requestLog = ClsServiceManager.getClsService().get<
         IRequestLog | undefined
     >(RequestLogStoreKey);
@@ -109,20 +110,22 @@ export const RequestUserAgent = createParamDecorator((): UserAgent => {
  * Reads the IP-derived geolocation resolved once per request into the request-log store; throws when it is unresolved.
  * @public
  */
-export const RequestGeoLocation = createParamDecorator((): GeoLocation => {
-    const requestLog = ClsServiceManager.getClsService().get<
-        IRequestLog | undefined
-    >(RequestLogStoreKey);
-    if (requestLog === undefined || requestLog === null) {
-        throw new RequestContextMissingException(RequestLogStoreKey);
-    }
+export const RequestGeoLocation = createParamDecorator(
+    (): IRequestGeoLocation => {
+        const requestLog = ClsServiceManager.getClsService().get<
+            IRequestLog | undefined
+        >(RequestLogStoreKey);
+        if (requestLog === undefined || requestLog === null) {
+            throw new RequestContextMissingException(RequestLogStoreKey);
+        }
 
-    const { geoLocation } = requestLog;
-    if (geoLocation === undefined || geoLocation === null) {
-        throw new RequestContextMissingException(
-            `${RequestLogStoreKey}.geoLocation`
-        );
-    }
+        const { geoLocation } = requestLog;
+        if (geoLocation === undefined || geoLocation === null) {
+            throw new RequestContextMissingException(
+                `${RequestLogStoreKey}.geoLocation`
+            );
+        }
 
-    return geoLocation;
-});
+        return geoLocation;
+    }
+);

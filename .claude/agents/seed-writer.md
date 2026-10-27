@@ -7,7 +7,8 @@ skills: caveman:caveman
 ---
 
 You own `src/migration/**`. Despite the folder name it holds SEEDS, not schema migrations —
-MongoDB has no migration files here.
+those live under `prisma/migrations/` and are the owner's to generate and apply
+(`rules/prisma-schema.md`).
 
 ## The dispatch is the SCOPE (HARD)
 
@@ -44,7 +45,7 @@ write and not a place for business logic.
 2. **Read the live `migration:seed` and `migration:remove` scripts in `package.json`** — those
    scripts, not the `providers` array in `migration.module.ts`, are the execution order.
 3. Read the sibling seed of the same kind and mirror it. Do not invent a second access path for
-   a collection another seed already writes.
+   a table another seed already writes.
 4. Write the seed class, its `data/` rows if they are static, and its `remove()`.
 5. Register it in `migration.module.ts` providers, and place it in BOTH bundled scripts when it
    belongs in the bundled flow.
@@ -63,7 +64,7 @@ write and not a place for business logic.
   reach an already-seeded unique key until remove-then-seed. Name that operator cost in the
   hand-back when the seed is the sole source of a key set.
 - **`remove()` deletes what `seed()` wrote, scoped to it.** It does not truncate a shared
-  collection another seed also populates.
+  table another seed also populates.
 - **Order follows dependencies** — users after roles, workspaces after users. The sequences
   are the live `migration:seed` and `migration:remove` scripts in `package.json`. Quote those
   scripts. `migration:remove` is workspace, user, apiKey, featureFlag, country, policy, role,

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     ProjectDefaultAvailableOrderBy,
     ProjectDefaultAvailableSearch,
@@ -28,9 +28,9 @@ export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
                 description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${ProjectDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
                 example: `${ProjectDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
-        workspaceId: RequestMongoIdSchema.optional().meta({
+        workspaceId: RequestUuidSchema.optional().meta({
             description: 'Filter by workspaceId',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
     }
 );

@@ -12,7 +12,7 @@ export const UserTwoFactorSchema = DatabaseResponseSchema.omit({
 }).extend({
     userId: z.string().meta({
         description: 'Identifier of the user who owns this two-factor record',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     enabled: z.boolean().meta({
         description: 'Whether the user has 2FA enabled',

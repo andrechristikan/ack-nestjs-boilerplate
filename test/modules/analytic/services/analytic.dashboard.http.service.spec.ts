@@ -30,7 +30,6 @@ describe('AnalyticDashboardHttpService', () => {
     let service: AnalyticDashboardHttpService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         paginationQueryUtil.offset.mockReturnValue({
             params: pagination,
             storePatch: {},

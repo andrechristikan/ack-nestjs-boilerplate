@@ -1,17 +1,17 @@
 import { z } from 'zod';
-import { PolicySchema } from '@modules/policy/dtos/policy.dto';
+import { PolicyCreateRequestSchema } from '@modules/policy/dtos/request/policy.create.request.dto';
 
 /**
- * Request shape rewriting the action list of one stored policy. `subject` is half of the
- * `(roleId, subject)` identity, so it is not updatable.
+ * Request shape rewriting one stored rule. `subject` is fixed at creation, so it is not
+ * updatable.
  * @public
  */
-export const PolicyUpdateRequestSchema = PolicySchema.pick({
-    action: true,
-}).strict();
+export const PolicyUpdateRequestSchema = PolicyCreateRequestSchema.omit({
+    subject: true,
+});
 
 /**
- * Body replacing the action list of one policy.
+ * Body replacing the full rule of one policy, minus its subject.
  * @public
  */
 export type PolicyUpdateRequestDto = z.infer<typeof PolicyUpdateRequestSchema>;

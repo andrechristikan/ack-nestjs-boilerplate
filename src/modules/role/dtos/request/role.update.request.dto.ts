@@ -1,24 +1,23 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumRoleType } from '@generated/prisma-client/client';
 
 /**
- * Validates the body for updating a role description and type.
+ * Validates the body for updating a role's display name and description.
  * @public
  */
 export const RoleUpdateRequestSchema = z.strictObject({
+    name: z.string().trim().min(3).max(50).meta({
+        description: 'Display name of role',
+        example: faker.person.jobTitle(),
+    }),
     description: z.string().max(500).optional().meta({
         description: 'Description of role',
         example: faker.lorem.sentence(),
     }),
-    type: z.enum(EnumRoleType).meta({
-        description: 'Representative for role type',
-        example: EnumRoleType.admin,
-    }),
 });
 
 /**
- * Body for updating a role description and type.
+ * Body for updating a role's display name and description.
  * @public
  */
 export type RoleUpdateRequestDto = z.infer<typeof RoleUpdateRequestSchema>;

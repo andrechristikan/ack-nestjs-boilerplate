@@ -25,12 +25,14 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
         private readonly helperDateService: HelperDateService
     ) {}
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
+        additionalWhere: Prisma.PasswordHistoryWhereInput
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.paginationService.offset<
             IPasswordHistoryList,
@@ -38,8 +40,13 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
         >(this.databaseService.client.passwordHistory, {
             ...others,
             where: {
-                ...where,
-                userId,
+                AND: [
+                    additionalWhere,
+                    {
+                        ...where,
+                        userId,
+                    },
+                ],
             },
             select: PasswordHistoryListSelect,
         });

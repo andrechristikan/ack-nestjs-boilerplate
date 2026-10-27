@@ -6,7 +6,7 @@ const CountryData = [
         name: 'Indonesia',
         alpha2Code: 'ID',
         alpha3Code: 'IDN',
-        phoneCode: ['62'],
+        phoneCodes: ['62'],
         continent: 'Asia',
         timezone: 'Asia/Jakarta',
     },
@@ -17,6 +17,7 @@ export const MigrationCountryData: Record<
     CountryRequestDto[]
 > = {
     [EnumAppEnvironment.local]: CountryData,
+    [EnumAppEnvironment.test]: CountryData,
     [EnumAppEnvironment.development]: CountryData,
     [EnumAppEnvironment.staging]: CountryData,
     [EnumAppEnvironment.production]: CountryData,

@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 
 /**
- * Seeds the superadmin, admin, and user roles. The policy rows each role grants are seeded by
+ * Seeds the platform, workspace, and project roles, one row per `(scope, key)`. The policy rows each role grants are seeded by
  * `MigrationPolicySeed`, which runs after this one.
  */
 @Command({
@@ -51,12 +51,16 @@ export class MigrationRoleSeed
                     for (const role of this.roles) {
                         await tx.role.upsert({
                             where: {
-                                name: role.name.toLowerCase(),
+                                scope_key: {
+                                    scope: role.scope,
+                                    key: role.key,
+                                },
                             },
                             create: {
-                                name: role.name.toLowerCase(),
+                                scope: role.scope,
+                                key: role.key,
+                                name: role.name,
                                 description: role.description,
-                                type: role.type,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },
