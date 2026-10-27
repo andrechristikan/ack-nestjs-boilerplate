@@ -1,7 +1,11 @@
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import type {
+    Project,
+    ProjectMember,
+    WorkspaceMember,
+} from '@generated/prisma-client/client';
 import {
     EnumActivityLogAction,
     EnumRoleScope,
@@ -19,6 +23,7 @@ import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import type {
     IProjectMember,
+    IProjectMemberWithGuardRole,
     IProjectMemberWithRole,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
@@ -46,6 +51,8 @@ describe('ProjectMemberDomain', () => {
         vi.resetAllMocks();
         domain = new ProjectMemberDomain(repository, activityLog, roleDomain);
         activityLog.prepare.mockReturnValue({} as never);
+        repository.updateRole.mockResolvedValue(mock<ProjectMember>());
+        repository.removeMember.mockResolvedValue(mock<ProjectMember>());
     });
 
     it('assigns a workspace member after resolving a project role', async () => {
@@ -146,6 +153,79 @@ describe('ProjectMemberDomain', () => {
         });
     });
 
+    describe('scoped member writes', () => {
+        const viewerRole = {
+            id: 'role-id',
+            key: EnumRoleProjectKey.viewer,
+        } as never;
+
+        beforeEach(() => {
+            roleDomain.resolve.mockResolvedValue(viewerRole);
+        });
+
+        it('updateMemberRole calls updateRole', async () => {
+            await domain.updateMemberRole(
+                project,
+                'actor-id',
+                member,
+                'role-id'
+            );
+
+            expect(repository.updateRole).toHaveBeenCalledWith(
+                'member-id',
+                'role-id'
+            );
+            expect(activityLog.stagePrepared).toHaveBeenCalledOnce();
+        });
+
+        it('updateMemberRole throws ProjectMemberNotFoundException when updateRole returns null and stages no activity', async () => {
+            repository.updateRole.mockResolvedValue(null);
+
+            await expect(
+                domain.updateMemberRole(project, 'actor-id', member, 'role-id')
+            ).rejects.toBeInstanceOf(ProjectMemberNotFoundException);
+            expect(activityLog.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('removeMember calls removeMember', async () => {
+            await domain.removeMember(project, 'actor-id', member);
+
+            expect(repository.removeMember).toHaveBeenCalledWith('member-id');
+            expect(activityLog.stagePrepared).toHaveBeenCalledOnce();
+        });
+
+        it('removeMember throws ProjectMemberNotFoundException when removeMember returns null and stages no activity', async () => {
+            repository.removeMember.mockResolvedValue(null);
+
+            await expect(
+                domain.removeMember(project, 'actor-id', member)
+            ).rejects.toBeInstanceOf(ProjectMemberNotFoundException);
+            expect(activityLog.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('last-admin invariant still throws before any write present', async () => {
+            const adminMember = {
+                ...member,
+                role: { key: EnumRoleProjectKey.admin },
+            } as IProjectMemberWithRole;
+            repository.countAdmins.mockResolvedValue(1);
+
+            await expect(
+                domain.updateMemberRole(
+                    project,
+                    'actor-id',
+                    adminMember,
+                    'role-id'
+                )
+            ).rejects.toBeInstanceOf(ProjectMemberLastAdminException);
+            await expect(
+                domain.removeMember(project, 'actor-id', adminMember)
+            ).rejects.toBeInstanceOf(ProjectMemberLastAdminException);
+            expect(repository.updateRole).not.toHaveBeenCalled();
+            expect(repository.removeMember).not.toHaveBeenCalled();
+        });
+    });
+
     describe('getMembersList', () => {
         const pagination = {
             where: undefined,
@@ -164,33 +244,45 @@ describe('ProjectMemberDomain', () => {
         };
 
         it('forwards the accessible where to the repository', async () => {
-            const accessibleWhere = { projectId: 'project-id' };
+            const scopeWhere = { projectId: 'project-id' };
             repository.findWithPaginationCursor.mockResolvedValue(page);
 
             await expect(
-                domain.getMembersList(project, pagination, accessibleWhere)
+                domain.getMembersList(project, pagination, scopeWhere)
             ).resolves.toBe(page);
             expect(repository.findWithPaginationCursor).toHaveBeenCalledWith(
                 'project-id',
                 pagination,
-                accessibleWhere
+                scopeWhere
             );
         });
 
         it('passes undefined to the repository when no where is given', async () => {
             repository.findWithPaginationCursor.mockResolvedValue(page);
 
-            await domain.getMembersList(project, pagination);
+            await domain.getMembersList(project, pagination, {});
 
             expect(repository.findWithPaginationCursor).toHaveBeenCalledWith(
                 'project-id',
                 pagination,
-                undefined
+                {}
             );
         });
     });
 
     describe('validateProjectMemberGuard', () => {
+        const guardMember: IProjectMemberWithGuardRole = {
+            ...mock<IProjectMemberWithRole>(),
+            id: 'member-id',
+            role: {
+                id: 'role-id',
+                scope: EnumRoleScope.project,
+                key: 'admin',
+                name: 'Admin',
+                policyRevision: 4,
+            },
+        };
+
         it('rejects a request without a user as an invalid access token', async () => {
             await expect(
                 domain.validateProjectMemberGuard('project-id', null, true)
@@ -232,34 +324,46 @@ describe('ProjectMemberDomain', () => {
 
         it('asserts the project scope of the member role and returns the member', async () => {
             repository.findOneWithRoleByProjectAndUser.mockResolvedValue(
-                member
+                guardMember
             );
 
             await expect(
                 domain.validateProjectMemberGuard('project-id', 'user-id', true)
-            ).resolves.toBe(member);
+            ).resolves.toBe(guardMember);
             expect(
                 repository.findOneWithRoleByProjectAndUser
             ).toHaveBeenCalledWith('project-id', 'user-id');
             expect(roleDomain.assertScope).toHaveBeenCalledWith(
-                member.role,
+                guardMember.role,
                 EnumRoleScope.project
             );
+        });
+
+        it('returns the member with role.policyRevision', async () => {
+            repository.findOneWithRoleByProjectAndUser.mockResolvedValue(
+                guardMember
+            );
+
+            const result = await domain.validateProjectMemberGuard(
+                'project-id',
+                'user-id',
+                true
+            );
+
+            expect(result?.role.policyRevision).toBe(4);
         });
     });
 
     describe('getOneByIdAndProject', () => {
         it('loads the member within the project and the optional where', async () => {
-            const where = { userId: 'target-id' };
             repository.findByIdAndProject.mockResolvedValue(member);
 
             await expect(
-                domain.getOneByIdAndProject('project-id', 'member-id', where)
+                domain.getOneByIdAndProject('project-id', 'member-id')
             ).resolves.toBe(member);
             expect(repository.findByIdAndProject).toHaveBeenCalledWith(
                 'member-id',
-                'project-id',
-                where
+                'project-id'
             );
         });
 
@@ -271,8 +375,7 @@ describe('ProjectMemberDomain', () => {
             ).rejects.toBeInstanceOf(ProjectMemberNotFoundException);
             expect(repository.findByIdAndProject).toHaveBeenCalledWith(
                 'member-id',
-                'project-id',
-                undefined
+                'project-id'
             );
         });
     });

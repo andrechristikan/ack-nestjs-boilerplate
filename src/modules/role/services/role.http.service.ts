@@ -40,11 +40,10 @@ export class RoleHttpService {
     async getListOffsetByAdmin(
         query: RoleAdminListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.RoleWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Role
-            );
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Role
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.RoleWhereInput>(query, {
                 availableSearch: RoleDefaultAvailableSearch,
@@ -66,7 +65,7 @@ export class RoleHttpService {
         const { data, ...others } = await this.roleDomain.getListOffsetByAdmin(
             params,
             scope?.where,
-            accessibleWhere
+            scopeWhere
         );
         const roles: RoleListResponseDto[] = data.map(
             ({ _count, ...role }) => ({
@@ -158,7 +157,7 @@ export class RoleHttpService {
 
     async getOne(id: string): Promise<IResponseReturn<RoleDto>> {
         const role = await this.roleDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.read,
             subject(EnumPolicySubject.Role, role)
         );
@@ -171,7 +170,7 @@ export class RoleHttpService {
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
         const role = await this.roleDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Role, role)
         );
@@ -190,7 +189,7 @@ export class RoleHttpService {
 
     async deleteByAdmin(id: string): Promise<IResponseReturn<void>> {
         const role = await this.roleDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.Role, role)
         );

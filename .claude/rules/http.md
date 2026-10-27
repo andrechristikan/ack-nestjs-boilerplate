@@ -15,7 +15,7 @@ NestJS evaluates stacked decorators bottom-up, so the HTTP method is always last
 @Doc({ summary: '…' })                 // 1.  OpenAPI operation + global error kit
 @Response('example.action')            // 2.  @Response / @ResponsePagination / @ResponseFile
 @TermPolicyAcceptanceProtected(...)    // 3.  Term policy
-@PlatformPolicyProtected({...})        // 4.  CASL policy         — one policy decorator per route (see "Policy decorators")
+@PolicyProtected({...})                // 4.  CASL policy         — one policy decorator per route (see "Policy decorators and the request ability")
 @RoleProtected(...)                    // 5.  Role                — admin routes
 @ProjectMemberProtected()              // 6.  Project membership
 @ProjectProtected()                    // 7.  Project exists
@@ -41,45 +41,30 @@ Reordering is a defect even when the app still boots: the order encodes which ga
 
 ### Admin scope carries NO workspace or project guard (HARD)
 
-An `admin`-scope controller MUST NOT stack `@WorkspaceProtected()`, `@WorkspaceMemberProtected(...)`, `@ProjectProtected()`, `@ProjectMemberProtected()`, or any future `@Workspace*Protected` / `@Project*Protected` member. Not one of them, on any route, ever. The `@*PolicyProtected` decorators (`@PlatformPolicyProtected`, `@WorkspacePolicyProtected`, `@ProjectPolicyProtected`) are policy decorators, not members of those families. `@PlatformPolicyProtected` never resolves a workspace or project from the header.
+An `admin`-scope controller MUST NOT stack `@WorkspaceProtected()`, `@WorkspaceMemberProtected(...)`, `@ProjectProtected()`, `@ProjectMemberProtected()`, or any future `@Workspace*Protected` / `@Project*Protected` member. Not one of them, on any route, ever. `@PolicyProtected` and `@PolicyAbility` are policy decorators, not members of those families, and neither resolves a workspace or project from the header.
 
 Admin reads and writes ACROSS every workspace — that is what the scope means. Those guards resolve their subject from the `x-workspace-id` header via CLS, so stacking one on an admin route makes a platform-wide endpoint silently depend on a client-supplied header, and a platform admin who omits the header gets rejected from data they are entitled to.
 
 Worse, the workspace a guard resolves is not the one the route addresses: `WorkspaceGuard` prefers a validated `:workspaceId` path param over the configured header, and `WorkspaceMemberGuard` still enforces the caller's membership of whatever workspace it resolved. A platform admin who is not a member of that workspace is rejected from data they are entitled to.
 
-- Admin scoping is `@RoleProtected(...)` plus one policy decorator, and nothing else. Every admin route uses `@PlatformPolicyProtected({ subject, action })`. An admin route that addresses one workspace or project names the `Workspace` or `Project` subject and carries `:workspaceId` / `:projectId`: `PlatformPolicyGuard` resolves that target itself from the param, never from the header, includes soft-deleted records, and judges the platform ability. It validates the param with `DatabaseUtil.checkIdIsValid` before resolving the target, because guards run before the validation pipe. A route whose subject has no param carries a type-only check.
+- Admin scoping is `@RoleProtected(...)` plus one policy decorator, and nothing else. Every admin route uses `@PolicyProtected({ subject, action })`, or `@PolicyAbility()` when the HTTP service makes the decision. An admin route that addresses one workspace or project carries `:workspaceId` / `:projectId` as a path param validated with `{ schema: RequestUuidSchema }`; the HTTP service scopes the lookup with the request ability, so a record outside the caller's scope answers the feature's 404.
 - An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `{ schema: RequestUuidSchema }` — never from the header.
 - The header (`x-workspace-id`) belongs to the `user` and `shared` scopes only, where `@WorkspaceProtected()` + `@WorkspaceMemberProtected()` are the correct gate and the only source of truth for the request.
 
-### Policy decorators and the lazy ability (HARD)
+### Policy decorators and the request ability (HARD)
 
-Exactly one policy decorator sits at slot #4 of a route that needs authorization. There is one per scope and all three take the same call shape, a list of `{ subject, action }` requirements. Each decorator declares the requirements to enforce and chains the ability-building guards of its scope, then that scope's one policy-checking guard. The ability-building family is `PlatformAbilityGuard`, `WorkspaceAbilityGuard`, `ProjectAbilityGuard`; `PlatformPolicyGuard`, `WorkspacePolicyGuard`, `ProjectPolicyGuard` are the policy-checking family:
+One request builds ONE ability. Exactly one policy decorator sits at slot #4 of a route that needs authorization, and it takes `EnumPolicySubject` (the persisted Prisma enum) for every `subject`:
 
-| Decorator | `subject` type | Guards it stacks |
+| Decorator | Takes | Guards it stacks |
 |---|---|---|
-| `@PlatformPolicyProtected({ subject, action })` | `EnumPolicyPlatformSubject` | `PlatformAbilityGuard`, `PlatformPolicyGuard` |
-| `@WorkspacePolicyProtected({ subject, action })` | `EnumPolicyWorkspaceSubject` | `PlatformAbilityGuard`, `WorkspaceAbilityGuard`, `WorkspacePolicyGuard` |
-| `@ProjectPolicyProtected({ subject, action })` | `EnumPolicyProjectSubject` | `PlatformAbilityGuard`, `WorkspaceAbilityGuard`, `ProjectAbilityGuard`, `ProjectPolicyGuard` |
+| `@PolicyProtected({ subject, action[] }, …)` | one or more `{ subject, action[] }` requirements | `PolicyAbilityGuard`, then `PolicyGuard` |
+| `@PolicyAbility()` | nothing | `PolicyAbilityGuard` only |
 
-- **The subject enums are TS-only subsets.** `EnumPolicyPlatformSubject`, `EnumPolicyWorkspaceSubject` and `EnumPolicyProjectSubject` are typed against the Prisma `EnumPolicySubject`, which stays the persisted type of `Policy.subject`. A subject may sit in several subsets. A route cannot name a subject its scope's enum does not hold.
-- **The subject decides record check or type check, not the decorator.** Each policy guard looks the subject up in a target resolver registry for its scope. When a resolver exists and its source is available (a stored entity or a route param), the guard loads or validates the record, tags it with `PolicyUtil.toSubject`, runs `assertCan`, and stores the record under its `*TargetStoreKey`. Otherwise it runs a type-only `assertCan(ability, action, subject)`. A param present means a record check; absent means a type check.
-  - Platform scope: `Workspace` with `:workspaceId` and `Project` with `:projectId` resolve soft-deleted records included; every other subject is type-only.
-  - Workspace scope: `Workspace` is the stored workspace; `WorkspaceMember` is `:workspaceMemberId`, else the acting member; every other subject is type-only.
-  - Project scope: `Project` is the stored project; `ProjectMember` is `:projectMemberId`, else type-only; every other subject is type-only.
-- **Each policy guard composes its scope's ability through `PolicyDomain.requireComposedAbility`** (see below) and learns the scope from decorator metadata (`PolicyAbilityScopeMetaKey`).
-- A route that needs an ability and no authorization chains the ability-building guards of its scope and enforces nothing.
-- **`UserGuard` authenticates and stores the user. It never loads policies or builds an ability.** A route with no policy decorator loads no role and no ability. A route with only membership decorators loads no ability.
-- **Three fixed-scope ability-building guards are the only place an ability is loaded. Each builds ONE layer**, asking `PolicyAbilityDomain` (policy module domain) for the role policies of that layer only, building through `PolicyAbilityFactory.buildFromPolicies` with the layer's own placeholders and no context of another layer, and storing the result under its own key: `PlatformPolicyAbilityStoreKey`, `WorkspacePolicyAbilityStoreKey`, `ProjectPolicyAbilityStoreKey`. None authorizes, none reads another layer's ability, none builds another layer's rules.
-  - `PlatformAbilityGuard` receives only the user id and platform role and loads that role's policies; `userId` is the only placeholder, and it resolves on this layer only. It never reads a route param and never calls `DatabaseUtil.checkIdIsValid`.
-  - `WorkspaceAbilityGuard` receives only the workspace id and the acting member's role and loads that role's policies; placeholder `workspaceId` only.
-  - `ProjectAbilityGuard` receives only the project id and the acting project member's role, or null. It loads that role's policies when a `ProjectMember` row exists and builds empty rules when the role is null (the `{ required: false }` project member route is exactly that case); placeholder `projectId` only.
-  - **Layering is chained in the `*PolicyProtected` decorators.** `@WorkspacePolicyProtected` applies `PlatformAbilityGuard`, `WorkspaceAbilityGuard`, then `WorkspacePolicyGuard`; `@ProjectPolicyProtected` applies the platform, workspace and project ability guards, then `ProjectPolicyGuard`; `@PlatformPolicyProtected` applies only the platform guard, then `PlatformPolicyGuard`.
-  - **One scope-chain map, `PolicyAbilityChainByScope`:** `platform` → [platform]; `workspace` → [platform, workspace]; `project` → [platform, workspace, project].
-  - **Composition happens at read time.** A policy-checking guard or service of a layered scope reads its chain through `PolicyDomain.requireComposedAbility(scope)`, which concatenates the stored layer rules and rebuilds through `PolicyAbilityFactory`, so the layers merge as a union and an inverted (deny) rule from any layer stays authoritative. Platform-only readers read the platform key directly. Consequences: a workspace owner or admin `Project` rule keyed on `workspaceId` applies to every project of that workspace, and a platform role holding an unconditional `Project:read` grants read on every project at any scope.
-  - **The three keys stay separate in the store.** An ability-building guard writes or reuses only its own key. A guard never reads a key outside its scope's chain and never writes another layer's key. Abilities of different scopes coexist in one request.
-- **`PolicyAbilityDomain` does exact-scope policy loading, placeholder replacement and ability construction.** The ability guards are the HTTP adapters over it.
-- **`WorkspaceMemberGuard` and `ProjectMemberGuard` are membership and request-context guards.** They store the acting member and role and never merge a role's policies into an ability.
-- **A policy guard enforces against a real target record whenever its subject has a resolver and the source is available.** The route param (`:workspaceId`, `:workspaceMemberId`, `:projectId`, `:projectMemberId`) always wins over the acting member or the current context. A guard never judges a stored condition against a synthetic `{ id }`: a target the policy-aware query does not return answers not-found, and the guard stores the authorized record under its `*TargetStoreKey` for the HTTP service.
+- **`PolicyAbilityGuard` builds the ability.** It reads the caller's platform role from the stored user and, when the request has them, the workspace member role and the project member role, takes each role revision `{ roleId, policyRevision }` from that stored context, loads the raw policy rows through the policy cache, builds one ability through `PolicyAbilityFactory`, and stores it under `PolicyAbilityStoreKey`. Placeholders resolve from the request context; a placeholder the request has not resolved stays unresolved and its rule fails closed.
+- **`PolicyGuard` enforces the route requirements.** It reads the stored ability and the `PolicyRequiredMetaKey` metadata and checks every required `{ subject, action }` pair as a type-level check, answering one `PolicyForbiddenException` that lists every missing pair. It never loads a record.
+- **`@PolicyAbility()` is for a route whose HTTP service makes the decision.** It declares no requirement and enforces nothing; the service calls `PolicyAbilityDomain.scope` / `authorize` (`rules/security.md`).
+- **A route with no policy decorator loads no ability.** `UserGuard` authenticates and stores the user; it never loads policies or builds an ability. The workspace and project member guards store the acting member and role and never build or merge an ability.
+- **Record-level decisions are made in the HTTP service, not in a guard.** A guard checks the subject type. A list hands `scope(action, subject)` to the domain as `additionalWhere`. A single record loads by identity and calls `authorize(action, target)` (`rules/security.md`).
 - A policy decorator sits ABOVE the `@Workspace*Protected` / `@Project*Protected` decorators it depends on, so its guards run after the context they read is stored.
 
 ### `@RoleProtected` never lists `superAdmin` (HARD)

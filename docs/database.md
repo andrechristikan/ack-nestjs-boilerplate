@@ -192,19 +192,19 @@ Roles are rows of one `Role` table. `scope` (`platform`, `workspace`, `project`)
 
 The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRoleProjectKey`. A role listed under these keys is a catalog role: the role admin API updates its `name` and `description` and never deletes it. `POST /admin/role/create` adds a role whose key is a key supplied in the request, and `DELETE /admin/role/delete/:roleId` removes a non-catalog role that nothing references (see [Authorization](authorization.md)).
 
-**Seeded policies.** The `policy` seed writes each role's rules. A rule carries `subject`, `action[]`, `conditions`, `inverted`, and `reason`. It reads the roles by `(scope, key)` first and aborts without writing when one is missing. In one transaction it deletes every policy row of the seeded roles and recreates them from the declarative catalog, so re-running it is safe. Workspace and project rules on a scoped subject carry the scope condition (for example `workspaceId: ${workspaceId}` or `projectId: ${projectId}`), so a rule reaches the active workspace or project only.
+**Seeded policies.** The `policy` seed writes each role's rules. A rule carries `subject`, `action[]`, `conditions`, `inverted`, and `reason`. It reads the roles by `(scope, key)` first and aborts without writing when one is missing. In one transaction it deletes every policy row of the seeded roles, recreates them from the declarative catalog, and increments `Role.policyRevision` of each seeded role, so re-running it is safe and the policy cache reads the new rows. Removal bumps the revision the same way. Workspace and project rules on a model subject carry the scope condition (for example `workspaceId: ${workspaceId}` or `projectId: ${projectId}`), so a rule reaches the active workspace or project only. `WorkspaceAnalytic` has no Prisma model; its seeded `read` rule stores `{ workspaceId: ${workspaceId} }`.
 
 | Role | Seeded policies |
 |---|---|
 | platform `superAdmin` | `manage` on `all` |
-| platform `admin` | every action on `ActivityLog`, `ApiKey`, `Device`, `FeatureFlag`, `PasswordHistory`, `Role`, `Session`, `TermPolicy`, `User`; `read` on `analytic`, `Workspace`, and `Project` |
+| platform `admin` | every action on `ActivityLog`, `ApiKey`, `Device`, `DeviceOwnership`, `FeatureFlag`, `PasswordHistory`, `Role`, `Session`, `TermPolicy`, `User`; `read` on `Analytic`, `Workspace`, `WorkspaceMember`, and `Project` |
 | platform `user` | none |
-| workspace `owner` | `manage` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `update` on `WorkspaceJoinRequest`; `create`, then `read`, `update`, and `delete` on `Project`; `create`, `update`, and `delete` on `ProjectMember`; `read` on `analytic` |
-| workspace `admin` | `read` and `update` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `update` on `WorkspaceJoinRequest`; `create`, then `delete` on `Project`; `read` on `analytic` |
-| workspace `member` | `read` on `Workspace`; `read` on `WorkspaceMember` |
-| project `admin` | `read` and `update` on `Project`; `create`, `update`, and `delete` on `ProjectMember` |
-| project `member` | `read` on `Project` |
-| project `viewer` | `read` on `Project` |
+| workspace `owner` | `manage` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `read` and `update` on `WorkspaceJoinRequest`; `create`, then `read`, `update`, and `delete` on `Project`; `create`, `read`, `update`, and `delete` on `ProjectMember`; `read` on `WorkspaceAnalytic` |
+| workspace `admin` | `read` and `update` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `read` and `update` on `WorkspaceJoinRequest`; `create`, then `read`, `update`, and `delete` on `Project`; `create`, `read`, `update`, and `delete` on `ProjectMember`; `read` on `WorkspaceAnalytic` |
+| workspace `member` | `read` on `Workspace`; `read` on `WorkspaceMember`; `read` on `Project` limited to the workspace's projects the user is assigned to |
+| project `admin` | `read`, `update`, and `delete` on `Project`; `create`, `read`, `update`, and `delete` on `ProjectMember` |
+| project `member` | `read` on `Project`; `read` on `ProjectMember` |
+| project `viewer` | `read` on `Project`; `read` on `ProjectMember` |
 
 The `superAdmin` policy set is immutable through the API. Full authorization flow: [Authorization](authorization.md).
 

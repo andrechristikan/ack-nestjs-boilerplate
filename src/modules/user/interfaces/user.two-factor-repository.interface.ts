@@ -42,7 +42,7 @@ export interface IUserTwoFactorRepository {
     resetTwoFactorByAdminInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<IUserTwoFactor>;
+    ): Promise<IUserTwoFactor | null>;
     increaseTwoFactorAttempt(userId: string): Promise<IUserTwoFactor>;
     resetTwoFactorAttempt(userId: string): Promise<IUserTwoFactor>;
 }

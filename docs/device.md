@@ -192,19 +192,19 @@ The credential lockout (`UserPasswordDomain.reachMaxPasswordAttempt`) is the sec
 
 ## Policy Control
 
-Device endpoints are protected using `EnumPolicySubject.Device`. Admin endpoints require both `User` (read) and `Device` (read/delete) abilities:
+Admin device endpoints require both `User` (read) and `DeviceOwnership` (read, plus delete on removal) abilities. The HTTP service derives the predicates with `scope(read, User)` and `scope(read, DeviceOwnership)` or `scope(delete, DeviceOwnership)`, so a user or ownership row the ability does not reach answers the feature's own not-found:
 
 ```typescript
 // Admin list devices
-@PlatformPolicyProtected(
+@PolicyProtected(
     { subject: EnumPolicySubject.User, action: [EnumPolicyAction.read] },
-    { subject: EnumPolicySubject.Device, action: [EnumPolicyAction.read] }
+    { subject: EnumPolicySubject.DeviceOwnership, action: [EnumPolicyAction.read] }
 )
 
 // Admin remove device
-@PlatformPolicyProtected(
+@PolicyProtected(
     { subject: EnumPolicySubject.User, action: [EnumPolicyAction.read] },
-    { subject: EnumPolicySubject.Device, action: [EnumPolicyAction.read, EnumPolicyAction.delete] }
+    { subject: EnumPolicySubject.DeviceOwnership, action: [EnumPolicyAction.read, EnumPolicyAction.delete] }
 )
 ```
 

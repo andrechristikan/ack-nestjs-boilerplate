@@ -55,12 +55,32 @@ describe('MigrationPolicyData seed invariants', () => {
     const member = (projectId: string) =>
         subject(EnumPolicySubject.ProjectMember, { projectId });
 
+    const project = (workspaceId: string) =>
+        subject(EnumPolicySubject.Project, { workspaceId });
+
     it.each(seeded.map(data => [data.scope, data.key, data] as const))(
         'drops no rule of %s role %s under its richest context',
         (scope, key, data) => {
             const ability = abilityFor(scope, key);
 
             expect(ability.rules).toHaveLength(data.policies.length);
+        }
+    );
+
+    it.each([EnumRoleWorkspaceKey.owner, EnumRoleWorkspaceKey.admin])(
+        'lets workspace %s manage projects in its workspace only',
+        key => {
+            const ability = abilityFor(EnumRoleScope.workspace, key);
+
+            for (const action of [
+                EnumPolicyAction.create,
+                EnumPolicyAction.read,
+                EnumPolicyAction.update,
+                EnumPolicyAction.delete,
+            ]) {
+                expect(ability.can(action, project('workspace-1'))).toBe(true);
+                expect(ability.can(action, project('workspace-2'))).toBe(false);
+            }
         }
     );
 
@@ -78,6 +98,43 @@ describe('MigrationPolicyData seed invariants', () => {
                 expect(ability.can(action, member('project-1'))).toBe(true);
                 expect(ability.can(action, member('project-2'))).toBe(false);
             }
+        }
+    );
+
+    it.each([EnumRoleWorkspaceKey.owner, EnumRoleWorkspaceKey.admin])(
+        'limits workspace %s WorkspaceAnalytic read to the request workspace',
+        key => {
+            const ability = abilityFor(EnumRoleScope.workspace, key);
+            const data = seeded.find(
+                row => row.scope === EnumRoleScope.workspace && row.key === key
+            );
+            const analyticRules = (data?.policies ?? []).filter(
+                policy => policy.subject === EnumPolicySubject.WorkspaceAnalytic
+            );
+            const matching = subject(EnumPolicySubject.WorkspaceAnalytic, {
+                workspaceId: 'workspace-1',
+            });
+            const other = subject(EnumPolicySubject.WorkspaceAnalytic, {
+                workspaceId: 'workspace-2',
+            });
+
+            expect(analyticRules).toEqual([
+                expect.objectContaining({
+                    action: [EnumPolicyAction.read],
+                    conditions: {
+                        workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+                    },
+                    inverted: false,
+                }),
+            ]);
+            expect(ability.can(EnumPolicyAction.read, matching)).toBe(true);
+            expect(ability.can(EnumPolicyAction.read, other)).toBe(false);
+            expect(
+                ability.can(
+                    EnumPolicyAction.read,
+                    subject(EnumPolicySubject.WorkspaceAnalytic, {})
+                )
+            ).toBe(false);
         }
     );
 

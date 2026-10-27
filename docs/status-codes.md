@@ -225,7 +225,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined policies not setted. |
 | `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
 | `immutable` | `51104` | `immutable` | 403 (`FORBIDDEN`) | `policy.error.immutable` | The policies of the super administrator role cannot be changed. |
-| `invalidRule` | `51105` | `invalidRule` | 422 (`UNPROCESSABLE_ENTITY`) | `policy.error.invalidRule.<reason>` | One message per reason, listed below. |
+| `invalidRule` | `51105` | `invalidRule` | 400 (`BAD_REQUEST`) | `policy.error.invalidRule.<reason>` | One message per reason, listed below. |
 
 `invalidRule` carries a `reason` that selects the message:
 

@@ -15,7 +15,7 @@ import {
 } from '@modules/project/constants/project.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
-import type { IProjectMemberWithRole } from '@modules/project/interfaces/project.interface';
+import type { IProjectMemberWithGuardRole } from '@modules/project/interfaces/project.interface';
 import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 
@@ -28,7 +28,7 @@ describe('ProjectMemberGuard', () => {
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     const handler = vi.fn();
     const at = new Date('2026-01-01T00:00:00.000Z');
-    const member: IProjectMemberWithRole = {
+    const member: IProjectMemberWithGuardRole = {
         id: 'member-id',
         projectId: 'project-id',
         userId: 'user-id',
@@ -38,6 +38,7 @@ describe('ProjectMemberGuard', () => {
             scope: EnumRoleScope.project,
             key: EnumRoleProjectKey.admin,
             name: 'Admin',
+            policyRevision: 2,
         },
         joinedAt: at,
         createdAt: at,

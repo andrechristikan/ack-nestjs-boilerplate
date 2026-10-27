@@ -31,21 +31,22 @@ export interface IDeviceOwnershipRepository {
         deviceOwnershipId: string,
         removedBy: string,
         now: Date
-    ): Promise<IDeviceOwnership>;
+    ): Promise<IDeviceOwnership | null>;
     revokeAllByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         revokedBy: string,
         now: Date
     ): Promise<string[]>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>,
-        additionalWhere?: Prisma.DeviceOwnershipWhereInput
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>>;
     findActiveWithPaginationCursor(
         userId: string,

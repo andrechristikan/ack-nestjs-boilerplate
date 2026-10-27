@@ -29,16 +29,42 @@ describe('PolicyCreateRequestSchema', () => {
         expect(PolicyCreateRequestSchema.parse(full)).toEqual(full);
     });
 
+    it('accepts nested relation conditions', () => {
+        const rule = {
+            ...valid,
+            conditions: {
+                workspaceId: '${workspaceId}',
+                members: { some: { userId: '${userId}' } },
+                OR: [{ level: 2 }, { archived: null }, { open: true }],
+            },
+        };
+
+        expect(PolicyCreateRequestSchema.parse(rule)).toEqual(rule);
+    });
+
+    it('accepts an unknown ${token} (fails closed at build)', () => {
+        const rule = { ...valid, conditions: { userId: '${unknown}' } };
+
+        expect(PolicyCreateRequestSchema.parse(rule)).toEqual(rule);
+    });
+
+    it('rejects a non-JSON value nested in conditions', () => {
+        expect(
+            PolicyCreateRequestSchema.safeParse({
+                ...valid,
+                conditions: { at: new Date() },
+            }).success
+        ).toBe(false);
+    });
+
     it.each([
         { action: [] },
         { subject: 'unknown' },
         { subject: undefined },
         { conditions: [] },
         { conditions: 'x' },
+        { conditions: 1 },
         { conditions: null },
-        { conditions: { AND: [{ id: 'x' }] } },
-        { conditions: { workspace: { id: 'x' } } },
-        { conditions: { userId: '${unknown}' } },
         { inverted: 'yes' },
         { unknown: true },
     ])('rejects a rule with %o', override => {

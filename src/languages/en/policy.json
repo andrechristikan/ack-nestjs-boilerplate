@@ -8,7 +8,11 @@
         "predefinedNotFound": "Predefined policies not setted.",
         "notFound": "Sorry, we couldn't find the requested policy.",
         "invalidRule": {
-            "roleScopeInvalid": "This subject cannot be granted to a role of that scope."
+            "roleScopeInvalid": "This subject cannot be granted to a role of that scope.",
+            "actionInvalid": "One or more actions are not valid.",
+            "actionDuplicate": "The action list contains a duplicated action.",
+            "actionEmpty": "The action list cannot be empty.",
+            "conditionsNotAllowed": "This subject does not accept conditions."
         },
         "immutable": "The policies of the super administrator role cannot be changed."
     }

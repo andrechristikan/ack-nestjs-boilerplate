@@ -29,14 +29,15 @@ export interface IWorkspaceInviteRepository {
         workspaceId: string,
         email: string
     ): Promise<boolean>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationCursor(
         workspaceId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        additionalWhere?: Prisma.WorkspaceInviteWhereInput
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceInviteWhereInput
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>>;
     createPending({
         workspaceInviteId,
@@ -55,8 +56,8 @@ export interface IWorkspaceInviteRepository {
         hashedToken: string,
         reference: string,
         expiredAt: Date
-    ): Promise<IWorkspaceInviteWithRole>;
-    revoke(workspaceInviteId: string): Promise<void>;
+    ): Promise<IWorkspaceInviteWithRole | null>;
+    revoke(workspaceInviteId: string): Promise<WorkspaceInvite | null>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string,

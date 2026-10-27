@@ -18,9 +18,10 @@ import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.doma
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
+import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
+import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentHttpService } from '@modules/term-policy/services/term-policy.content.http.service';
 
 describe('TermPolicyContentHttpService', () => {
@@ -31,7 +32,7 @@ describe('TermPolicyContentHttpService', () => {
     const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
         mock<PolicyAbilityDomain>();
     const now = new Date('2026-01-01T00:00:00.000Z');
-    const stored = {
+    const termPolicy = {
         id: 'term-policy-id',
         type: EnumTermPolicyType.privacy,
         version: 1,
@@ -53,6 +54,7 @@ describe('TermPolicyContentHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        termPolicyDomain.getOne.mockResolvedValue(termPolicy);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -88,12 +90,16 @@ describe('TermPolicyContentHttpService', () => {
             expect(
                 termPolicyContentDomain.generateContentPresignByAdmin
             ).toHaveBeenCalledWith(request);
+            expect(termPolicyDomain.getOne).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
         });
     });
 
     describe('updateContentByAdmin', () => {
-        it('checks update on the loaded policy, delegates to the content domain and answers an empty envelope', async () => {
-            termPolicyDomain.getOne.mockResolvedValue(stored);
+        it('loads the policy by identity, authorizes update, and writes', async () => {
+            termPolicyContentDomain.updateContentByAdmin.mockResolvedValue(
+                undefined
+            );
 
             await expect(
                 service.updateContentByAdmin('term-policy-id', body)
@@ -101,37 +107,63 @@ describe('TermPolicyContentHttpService', () => {
             expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
                 'term-policy-id'
             );
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
-                subject(EnumPolicySubject.TermPolicy, stored)
+                subject(EnumPolicySubject.TermPolicy, termPolicy)
             );
             expect(
                 termPolicyContentDomain.updateContentByAdmin
             ).toHaveBeenCalledWith('term-policy-id', body);
         });
 
-        it('throws PolicyForbiddenException and never calls the content mutation when the record is denied', async () => {
-            termPolicyDomain.getOne.mockResolvedValue(stored);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('propagates TermPolicyNotFoundException from the identity load and does not authorize or write', async () => {
+            termPolicyDomain.getOne.mockRejectedValue(
+                new TermPolicyNotFoundException()
+            );
+
+            await expect(
+                service.updateContentByAdmin('term-policy-id', body)
+            ).rejects.toThrow(TermPolicyNotFoundException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+            expect(
+                termPolicyContentDomain.updateContentByAdmin
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws PolicyForbiddenException from authorize after the identity load and never writes', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
             await expect(
                 service.updateContentByAdmin('term-policy-id', body)
             ).rejects.toThrow(PolicyForbiddenException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.TermPolicy, termPolicy)
+            );
             expect(
                 termPolicyContentDomain.updateContentByAdmin
             ).not.toHaveBeenCalled();
         });
 
-        it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('throws RequestContextMissingException from authorize after the identity load and touches nothing', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
                 service.updateContentByAdmin('term-policy-id', body)
             ).rejects.toThrow(RequestContextMissingException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
             expect(
                 termPolicyContentDomain.updateContentByAdmin
             ).not.toHaveBeenCalled();
@@ -139,8 +171,10 @@ describe('TermPolicyContentHttpService', () => {
     });
 
     describe('addContentByAdmin', () => {
-        it('checks update on the loaded policy, delegates to the content domain and answers an empty envelope', async () => {
-            termPolicyDomain.getOne.mockResolvedValue(stored);
+        it('loads the policy by identity, authorizes update, and writes', async () => {
+            termPolicyContentDomain.addContentByAdmin.mockResolvedValue(
+                undefined
+            );
 
             await expect(
                 service.addContentByAdmin('term-policy-id', body)
@@ -148,37 +182,63 @@ describe('TermPolicyContentHttpService', () => {
             expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
                 'term-policy-id'
             );
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
-                subject(EnumPolicySubject.TermPolicy, stored)
+                subject(EnumPolicySubject.TermPolicy, termPolicy)
             );
             expect(
                 termPolicyContentDomain.addContentByAdmin
             ).toHaveBeenCalledWith('term-policy-id', body);
         });
 
-        it('throws PolicyForbiddenException and never calls the content mutation when the record is denied', async () => {
-            termPolicyDomain.getOne.mockResolvedValue(stored);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('propagates TermPolicyNotFoundException from the identity load and does not authorize or write', async () => {
+            termPolicyDomain.getOne.mockRejectedValue(
+                new TermPolicyNotFoundException()
+            );
+
+            await expect(
+                service.addContentByAdmin('term-policy-id', body)
+            ).rejects.toThrow(TermPolicyNotFoundException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+            expect(
+                termPolicyContentDomain.addContentByAdmin
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws PolicyForbiddenException from authorize after the identity load and never writes', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
             await expect(
                 service.addContentByAdmin('term-policy-id', body)
             ).rejects.toThrow(PolicyForbiddenException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.TermPolicy, termPolicy)
+            );
             expect(
                 termPolicyContentDomain.addContentByAdmin
             ).not.toHaveBeenCalled();
         });
 
-        it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('throws RequestContextMissingException from authorize after the identity load and touches nothing', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
                 service.addContentByAdmin('term-policy-id', body)
             ).rejects.toThrow(RequestContextMissingException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
             expect(
                 termPolicyContentDomain.addContentByAdmin
             ).not.toHaveBeenCalled();
@@ -186,48 +246,82 @@ describe('TermPolicyContentHttpService', () => {
     });
 
     describe('removeContentByAdmin', () => {
-        const removeBody = { language: EnumMessageLanguage.en };
-
-        it('checks update on the loaded policy, delegates the language to the content domain and answers an empty envelope', async () => {
-            termPolicyDomain.getOne.mockResolvedValue(stored);
+        it('loads the policy by identity, authorizes update, and writes', async () => {
+            termPolicyContentDomain.removeContentByAdmin.mockResolvedValue(
+                undefined
+            );
 
             await expect(
-                service.removeContentByAdmin('term-policy-id', removeBody)
+                service.removeContentByAdmin('term-policy-id', {
+                    language: EnumMessageLanguage.en,
+                })
             ).resolves.toEqual({});
             expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
                 'term-policy-id'
             );
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
-                subject(EnumPolicySubject.TermPolicy, stored)
+                subject(EnumPolicySubject.TermPolicy, termPolicy)
             );
             expect(
                 termPolicyContentDomain.removeContentByAdmin
             ).toHaveBeenCalledWith('term-policy-id', EnumMessageLanguage.en);
         });
 
-        it('throws PolicyForbiddenException and never calls the content mutation when the record is denied', async () => {
-            termPolicyDomain.getOne.mockResolvedValue(stored);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
-                throw new PolicyForbiddenException();
-            });
+        it('propagates TermPolicyNotFoundException from the identity load and does not authorize or write', async () => {
+            termPolicyDomain.getOne.mockRejectedValue(
+                new TermPolicyNotFoundException()
+            );
 
             await expect(
-                service.removeContentByAdmin('term-policy-id', removeBody)
-            ).rejects.toThrow(PolicyForbiddenException);
+                service.removeContentByAdmin('term-policy-id', {
+                    language: EnumMessageLanguage.en,
+                })
+            ).rejects.toThrow(TermPolicyNotFoundException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
             expect(
                 termPolicyContentDomain.removeContentByAdmin
             ).not.toHaveBeenCalled();
         });
 
-        it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('throws PolicyForbiddenException from authorize after the identity load and never writes', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                service.removeContentByAdmin('term-policy-id', {
+                    language: EnumMessageLanguage.en,
+                })
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.TermPolicy, termPolicy)
+            );
+            expect(
+                termPolicyContentDomain.removeContentByAdmin
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws RequestContextMissingException from authorize after the identity load and touches nothing', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
-                service.removeContentByAdmin('term-policy-id', removeBody)
+                service.removeContentByAdmin('term-policy-id', {
+                    language: EnumMessageLanguage.en,
+                })
             ).rejects.toThrow(RequestContextMissingException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
             expect(
                 termPolicyContentDomain.removeContentByAdmin
             ).not.toHaveBeenCalled();
@@ -235,9 +329,8 @@ describe('TermPolicyContentHttpService', () => {
     });
 
     describe('getContentByAdmin', () => {
-        it('checks read on the loaded policy, delegates to the content domain and wraps the presign', async () => {
+        it('loads the policy by identity, authorizes read, and reads', async () => {
             const presign = mock<IAwsS3Presign>();
-            termPolicyDomain.getOne.mockResolvedValue(stored);
             termPolicyContentDomain.getContentByAdmin.mockResolvedValue(
                 presign
             );
@@ -251,18 +344,37 @@ describe('TermPolicyContentHttpService', () => {
             expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
                 'term-policy-id'
             );
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
-                subject(EnumPolicySubject.TermPolicy, stored)
+                subject(EnumPolicySubject.TermPolicy, termPolicy)
             );
             expect(
                 termPolicyContentDomain.getContentByAdmin
             ).toHaveBeenCalledWith('term-policy-id', EnumMessageLanguage.en);
         });
 
-        it('throws PolicyForbiddenException and never reads the content when the record is denied', async () => {
-            termPolicyDomain.getOne.mockResolvedValue(stored);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('propagates TermPolicyNotFoundException from the identity load and does not authorize or read', async () => {
+            termPolicyDomain.getOne.mockRejectedValue(
+                new TermPolicyNotFoundException()
+            );
+
+            await expect(
+                service.getContentByAdmin(
+                    'term-policy-id',
+                    EnumMessageLanguage.en
+                )
+            ).rejects.toThrow(TermPolicyNotFoundException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+            expect(
+                termPolicyContentDomain.getContentByAdmin
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws PolicyForbiddenException from authorize after the identity load and never reads', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
@@ -272,13 +384,20 @@ describe('TermPolicyContentHttpService', () => {
                     EnumMessageLanguage.en
                 )
             ).rejects.toThrow(PolicyForbiddenException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.TermPolicy, termPolicy)
+            );
             expect(
                 termPolicyContentDomain.getContentByAdmin
             ).not.toHaveBeenCalled();
         });
 
-        it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.assertCan.mockImplementation(() => {
+        it('throws RequestContextMissingException from authorize after the identity load and touches nothing', async () => {
+            policyAbilityDomain.authorize.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
@@ -288,6 +407,9 @@ describe('TermPolicyContentHttpService', () => {
                     EnumMessageLanguage.en
                 )
             ).rejects.toThrow(RequestContextMissingException);
+            expect(termPolicyDomain.getOne).toHaveBeenCalledWith(
+                'term-policy-id'
+            );
             expect(
                 termPolicyContentDomain.getContentByAdmin
             ).not.toHaveBeenCalled();

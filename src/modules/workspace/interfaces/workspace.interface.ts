@@ -3,7 +3,10 @@ import type {
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import type { IRole } from '@modules/role/interfaces/role.interface';
+import type {
+    IRole,
+    IRoleWithPolicyRevision,
+} from '@modules/role/interfaces/role.interface';
 import type {
     WorkspaceInviteRoleInclude,
     WorkspaceInviteUserListSelect,
@@ -18,6 +21,10 @@ export interface IWorkspaceMember extends WorkspaceMember {
 
 export interface IWorkspaceMemberWithRole extends WorkspaceMember {
     role: IRole;
+}
+
+export interface IWorkspaceMemberWithGuardRole extends WorkspaceMember {
+    role: IRoleWithPolicyRevision;
 }
 
 export type IWorkspaceInviteWithRole = Prisma.WorkspaceInviteGetPayload<{

@@ -36,11 +36,10 @@ export class TermPolicyHttpService {
     async getListByAdmin(
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.TermPolicyWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.TermPolicy
-            );
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.TermPolicy
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(
                 query,
@@ -71,7 +70,7 @@ export class TermPolicyHttpService {
             params,
             type?.where,
             status?.where,
-            accessibleWhere
+            scopeWhere
         );
         return {
             data,
@@ -121,10 +120,10 @@ export class TermPolicyHttpService {
     async deleteByAdmin(
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
-        const stored = await this.termPolicyDomain.getOne(termPolicyId);
-        this.policyAbilityDomain.assertCan(
+        const termPolicy = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
-            subject(EnumPolicySubject.TermPolicy, stored)
+            subject(EnumPolicySubject.TermPolicy, termPolicy)
         );
         const deleted = await this.termPolicyDomain.deleteByAdmin(termPolicyId);
 
@@ -135,10 +134,10 @@ export class TermPolicyHttpService {
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        const stored = await this.termPolicyDomain.getOne(termPolicyId);
-        this.policyAbilityDomain.assertCan(
+        const termPolicy = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.TermPolicy, stored)
+            subject(EnumPolicySubject.TermPolicy, termPolicy)
         );
         await this.termPolicyDomain.publishByAdmin(termPolicyId, updatedBy);
 

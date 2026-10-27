@@ -18,6 +18,19 @@ describe('PolicyUpdateRequestSchema', () => {
         expect(PolicyUpdateRequestSchema.parse(full)).toEqual(full);
     });
 
+    it('accepts nested relation conditions', () => {
+        const rule = {
+            ...valid,
+            conditions: { members: { some: { userId: '${userId}' } } },
+        };
+
+        expect(PolicyUpdateRequestSchema.parse(rule)).toEqual(rule);
+    });
+
+    it('has no subject', () => {
+        expect('subject' in PolicyUpdateRequestSchema.shape).toBe(false);
+    });
+
     it.each([
         { subject: 'user' },
         { action: [] },

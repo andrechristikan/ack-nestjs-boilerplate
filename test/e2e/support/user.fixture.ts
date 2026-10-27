@@ -5,12 +5,14 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
 import {
+    EnumRoleScope,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client';
 import type { User } from '@generated/prisma-client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { getPrismaClient } from '@test/e2e/support/prisma';
 import { generateSync } from 'otplib';
 import { ConfigService } from '@nestjs/config';
@@ -49,7 +51,15 @@ export async function createActiveUser(
     const passwordString = overrides?.password ?? DEFAULT_PASSWORD;
 
     const [role, country] = await Promise.all([
-        prisma.role.findFirstOrThrow({ where: { name: 'user' } }),
+        prisma.role.findUniqueOrThrow({
+            where: {
+                scope_key: {
+                    scope: EnumRoleScope.platform,
+                    key: EnumRolePlatformKey.user,
+                },
+            },
+            select: { id: true },
+        }),
         prisma.country.findFirstOrThrow({ where: { alpha2Code: 'ID' } }),
     ]);
 

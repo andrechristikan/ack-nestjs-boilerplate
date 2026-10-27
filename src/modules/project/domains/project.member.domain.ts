@@ -17,6 +17,7 @@ import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import type {
     IProjectMember,
+    IProjectMemberWithGuardRole,
     IProjectMemberWithRole,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
@@ -45,7 +46,7 @@ export class ProjectMemberDomain {
         projectId: string | null,
         userId: string | null,
         required: boolean
-    ): Promise<IProjectMemberWithRole | null> {
+    ): Promise<IProjectMemberWithGuardRole | null> {
         if (!userId) {
             throw new AuthJwtAccessTokenInvalidException();
         } else if (!projectId) {
@@ -70,16 +71,14 @@ export class ProjectMemberDomain {
         return member;
     }
 
-    /** Loads the member the route addresses within the project, AND-composed with the optional where, so a record the where excludes reads as not found. */
+    /** Loads the member the route addresses within the project. */
     async getOneByIdAndProject(
         projectId: string,
-        projectMemberId: string,
-        where?: Prisma.ProjectMemberWhereInput
+        projectMemberId: string
     ): Promise<IProjectMemberWithRole> {
         const target = await this.projectMemberRepository.findByIdAndProject(
             projectMemberId,
-            projectId,
-            where
+            projectId
         );
         if (!target) {
             throw new ProjectMemberNotFoundException();
@@ -88,15 +87,16 @@ export class ProjectMemberDomain {
         return target;
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getMembersList(
         project: Project,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
-        where?: Prisma.ProjectMemberWhereInput
+        additionalWhere: Prisma.ProjectMemberWhereInput
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.projectMemberRepository.findWithPaginationCursor(
             project.id,
             pagination,
-            where
+            additionalWhere
         );
     }
 
@@ -208,7 +208,13 @@ export class ProjectMemberDomain {
             events.push(roleUpdatedByAdminEvent);
         }
 
-        await this.projectMemberRepository.updateRole(targetMember.id, role.id);
+        const updated = await this.projectMemberRepository.updateRole(
+            targetMember.id,
+            role.id
+        );
+        if (!updated) {
+            throw new ProjectMemberNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
     }
@@ -246,7 +252,12 @@ export class ProjectMemberDomain {
             events.push(removedByAdminEvent);
         }
 
-        await this.projectMemberRepository.removeMember(targetMember.id);
+        const removed = await this.projectMemberRepository.removeMember(
+            targetMember.id
+        );
+        if (!removed) {
+            throw new ProjectMemberNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
     }

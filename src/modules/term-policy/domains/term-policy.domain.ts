@@ -92,13 +92,19 @@ export class TermPolicyDomain {
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>,
-        where?: Prisma.TermPolicyWhereInput
+        type: Record<string, IPaginationIn> | undefined,
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.TermPolicyWhereInput
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyRepository.find(pagination, type, status, where);
+        return this.termPolicyRepository.find(
+            pagination,
+            type,
+            status,
+            additionalWhere
+        );
     }
 
     async getListPublished(
@@ -200,12 +206,15 @@ export class TermPolicyDomain {
                     timestamp
                 ),
             ];
-            const [deleted] = await Promise.all([
-                this.termPolicyRepository.delete(termPolicyId),
-                this.awsS3Service.deleteDir(contentPath, {
-                    access: EnumAwsS3Accessibility.private,
-                }),
-            ]);
+            const deleted =
+                await this.termPolicyRepository.delete(termPolicyId);
+            if (!deleted) {
+                throw new TermPolicyNotFoundException();
+            }
+
+            await this.awsS3Service.deleteDir(contentPath, {
+                access: EnumAwsS3Accessibility.private,
+            });
 
             this.activityLogDomain.stagePrepared(events);
 
@@ -258,6 +267,10 @@ export class TermPolicyDomain {
                         termPolicyId,
                         newContents
                     );
+                    if (!row) {
+                        throw new TermPolicyNotFoundException();
+                    }
+
                     await this.userDomain.resetTermPolicyForActiveUsersInTx(
                         tx,
                         termPolicy.type

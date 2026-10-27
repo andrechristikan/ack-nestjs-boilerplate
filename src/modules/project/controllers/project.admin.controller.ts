@@ -21,7 +21,7 @@ import {
 import type { Project } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -45,7 +45,7 @@ export class ProjectAdminController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PlatformPolicyProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
@@ -68,7 +68,7 @@ export class ProjectAdminController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PlatformPolicyProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })

@@ -26,7 +26,7 @@ export class UserPasswordHttpService {
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
         const user = await this.userDomain.getOne(userId);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.User, user)
         );

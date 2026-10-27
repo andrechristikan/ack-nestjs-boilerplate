@@ -12,21 +12,21 @@ import type {
 import { Prisma } from '@generated/prisma-client/client';
 
 export interface IActivityLogRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffset(
         scope: IActivityLogScope,
         {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        additionalWhere?: Prisma.ActivityLogWhereInput
+        additionalWhere: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>>;
     findWithPaginationCursor(
         scope: IActivityLogScope,
         {
             where,
             ...params
-        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
-        additionalWhere?: Prisma.ActivityLogWhereInput
+        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
     createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload>;
 }

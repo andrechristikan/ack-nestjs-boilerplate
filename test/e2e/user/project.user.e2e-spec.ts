@@ -191,7 +191,7 @@ describe('Project user routes', () => {
         });
     });
 
-    describe('GET /api/v1/user/project/permissions/:projectId', () => {
+    describe('GET /api/v1/user/project/:projectId/permissions', () => {
         let app: INestApplication;
         let owner: IE2eUserFixture;
         let accessToken: string;
@@ -221,7 +221,7 @@ describe('Project user routes', () => {
 
         it('reports permissions scoped to project and projectMember for a project member', async () => {
             const response = await withUserAuth(
-                e2eGet(app, `/api/v1/user/project/permissions/${projectId}`),
+                e2eGet(app, `/api/v1/user/project/${projectId}/permissions`),
                 accessToken,
                 workspaceId
             ).expect(200);
@@ -243,7 +243,7 @@ describe('Project user routes', () => {
             );
         });
 
-        it('rejects a caller with no project membership', async () => {
+        it('returns no permissions for a caller with no project membership', async () => {
             const stranger = await createActiveUser(app);
             await addWorkspaceMember(
                 app,
@@ -260,19 +260,14 @@ describe('Project user routes', () => {
                 const response = await withUserAuth(
                     e2eGet(
                         app,
-                        `/api/v1/user/project/permissions/${projectId}`
+                        `/api/v1/user/project/${projectId}/permissions`
                     ),
                     strangerToken,
                     workspaceId
-                ).expect(403);
+                ).expect(200);
 
                 expect(response.body).toMatchObject({
-                    module: 'project',
-                    statusCode: EnumProjectStatusCodeError.memberForbidden,
-                    statusCodeKey:
-                        EnumProjectStatusCodeError[
-                            EnumProjectStatusCodeError.memberForbidden
-                        ],
+                    data: { permissions: [] },
                 });
             } finally {
                 await deleteUserFixture(app, stranger.id);

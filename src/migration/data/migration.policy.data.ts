@@ -17,6 +17,7 @@ const PlatformAdminSubjects: EnumPolicySubject[] = [
     EnumPolicySubject.ActivityLog,
     EnumPolicySubject.ApiKey,
     EnumPolicySubject.Device,
+    EnumPolicySubject.DeviceOwnership,
     EnumPolicySubject.FeatureFlag,
     EnumPolicySubject.PasswordHistory,
     EnumPolicySubject.Role,
@@ -44,8 +45,7 @@ const rule = (
 /**
  * Builds a workspace-scoped rule. The condition is judged against the real
  * record, so the key must exist on the subject's model: `Workspace` is the
- * workspace itself (`id`); every other subject carries `workspaceId`
- * (`WorkspaceAnalytic` has no model and is a subject-type check only).
+ * workspace itself (`id`); every other subject carries `workspaceId`.
  */
 const workspaceRule = (
     subject: EnumPolicySubject,
@@ -68,9 +68,6 @@ const projectRule = (
         [subject === EnumPolicySubject.Project ? 'id' : 'projectId']:
             EnumPolicyConditionPlaceholder.projectId,
     });
-
-const projectCreateRule = (): IMigrationPolicyRule =>
-    rule(EnumPolicySubject.Project, [EnumPolicyAction.create]);
 
 /**
  * `Project` read limited to the workspace's projects the caller is a member
@@ -129,8 +126,8 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
             ]),
-            projectCreateRule(),
             workspaceRule(EnumPolicySubject.Project, [
+                EnumPolicyAction.create,
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
@@ -166,8 +163,8 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
             ]),
-            projectCreateRule(),
             workspaceRule(EnumPolicySubject.Project, [
+                EnumPolicyAction.create,
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,

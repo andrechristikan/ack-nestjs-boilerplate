@@ -53,15 +53,16 @@ export class RoleDomain {
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        scope?: Record<string, IPaginationIn>,
-        where?: Prisma.RoleWhereInput
+        scope: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.RoleWhereInput
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.roleRepository.findWithPaginationOffsetByAdmin(
             pagination,
             scope,
-            where
+            additionalWhere
         );
     }
 
@@ -106,6 +107,13 @@ export class RoleDomain {
         key: string
     ): Promise<IRole | null> {
         return this.roleRepository.findOneByScopeAndKeyInTx(tx, scope, key);
+    }
+
+    async incrementPolicyRevisionInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string
+    ): Promise<void> {
+        await this.roleRepository.incrementPolicyRevisionInTx(tx, roleId);
     }
 
     assertScope(
@@ -177,6 +185,9 @@ export class RoleDomain {
             name,
             description,
         });
+        if (!updated) {
+            throw new RoleNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -249,7 +260,10 @@ export class RoleDomain {
             ),
         ];
 
-        await this.roleRepository.delete(id);
+        const deleted = await this.roleRepository.delete(id);
+        if (!deleted) {
+            throw new RoleNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
     }

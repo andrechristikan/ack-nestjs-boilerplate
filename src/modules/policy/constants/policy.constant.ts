@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import { EnumPolicySubject } from '@generated/prisma-client/client';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 
 export enum EnumPolicyConditionPlaceholder {
@@ -42,3 +43,12 @@ export const DocPolicyErrorResponses = {
         messagePath: 'policy.error.predefinedNotFound',
     }),
 } as const;
+
+/**
+ * Subjects that reject stored conditions.
+ * @public
+ */
+export const PolicyNonModelSubjects: readonly EnumPolicySubject[] = [
+    EnumPolicySubject.all,
+    EnumPolicySubject.Analytic,
+];

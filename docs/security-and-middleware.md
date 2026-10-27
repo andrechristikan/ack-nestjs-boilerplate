@@ -62,7 +62,7 @@ consumer
 Guards and sessions are not middleware. See:
 
 - [Authentication][ref-doc-authentication] - JWT, OAuth, API keys, sessions, passwords
-- [Authorization][ref-doc-authorization] - RBAC, policies, user protection
+- [Authorization][ref-doc-authorization] - CASL request ability, policies, user protection
 
 ## Helmet
 
@@ -465,13 +465,11 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 | `AuthPayloadStoreKey` | `AuthJwtAccessGuard`, `AuthJwtRefreshGuard` | the verified JWT payload |
 | `UserStoreKey` | `UserGuard` | the loaded `IUser` |
 | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` | the authenticated `ApiKey` |
-| `PolicyAbilityStoreKey` | `PlatformPolicyAbilityGuard`, `WorkspacePolicyAbilityGuard`, `ProjectPolicyAbilityGuard` | the CASL ability of the route's effective scope, built once per request by the first ability guard that runs; a later ability guard reuses it |
+| `PolicyAbilityStoreKey` | `PolicyAbilityGuard` | the one CASL ability of the request, built from the platform, workspace-member, and project-member roles available in the request |
 | `WorkspaceStoreKey` | `WorkspaceGuard` | the resolved `Workspace` |
-| `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` | the caller's `WorkspaceMember` row with its minimal role (`id`, `scope`, `key`, `name`) |
-| `WorkspaceMemberTargetStoreKey` | `WorkspaceMemberPolicyGuard` | the workspace member record the route addresses, authorized against the ability |
+| `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` | the caller's `WorkspaceMember` row with its guard role (`id`, `scope`, `key`, `name`, `policyRevision`) |
 | `ProjectStoreKey` | `ProjectGuard` | the resolved `Project` |
-| `ProjectMemberStoreKey` | `ProjectMemberGuard` | the caller's `ProjectMember` row with its minimal role (`id`, `scope`, `key`, `name`) |
-| `ProjectMemberTargetStoreKey` | `ProjectMemberPolicyGuard` | the project member record the route addresses, authorized against the ability |
+| `ProjectMemberStoreKey` | `ProjectMemberGuard` | the caller's `ProjectMember` row with its guard role (`id`, `scope`, `key`, `name`, `policyRevision`) |
 | `ActivityLogStageStoreKey` | `ActivityLogDomain.stagePrepared` | the staged activity events of the request |
 | `PaginationStoreKey` | HTTP services via `PaginationQueryUtil` `storePatch` | the response-metadata block `ResponsePaginationInterceptor` emits |
 
@@ -561,9 +559,6 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 | `@WorkspaceMemberCurrent(field?)` | `WorkspaceMember` with its role | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` |
 | `@ProjectCurrent(field?)` | `Project` | `ProjectStoreKey` | `ProjectGuard` |
 | `@ProjectMemberCurrent(field?)` | `ProjectMember` with its role | `ProjectMemberStoreKey` | `ProjectMemberGuard`, bound by the strict `@ProjectMemberProtected()` |
-| `@WorkspaceMemberTargetCurrent(field?)` | the authorized target `WorkspaceMember` with its role | `WorkspaceMemberTargetStoreKey` | `WorkspaceMemberPolicyGuard` |
-| `@ProjectMemberTargetCurrent(field?)` | the authorized target `ProjectMember` with its role | `ProjectMemberTargetStoreKey` | `ProjectMemberPolicyGuard` |
-
 `@ProjectMemberCurrent()` is valid only on a route carrying the strict `@ProjectMemberProtected()`. With `{ required: false }` the guard stores no member row when the caller has none, so the read throws there.
 
 `@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store, and fails the same way: an empty `request.user`, or a missing field on it, throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].

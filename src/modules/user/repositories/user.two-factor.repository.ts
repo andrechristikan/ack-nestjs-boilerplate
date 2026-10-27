@@ -203,22 +203,35 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
+    /**
+     * `updateMany` takes no nested write, so the backup codes are cleared by a
+     * second statement in the same transaction.
+     */
     async resetTwoFactorByAdminInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<IUserTwoFactor> {
+    ): Promise<IUserTwoFactor | null> {
         const now = this.helperDateService.create();
-
-        return tx.twoFactor.update({
+        const { count } = await tx.twoFactor.updateMany({
             where: { userId },
             data: {
                 requiredSetup: true,
                 attempt: 0,
-                backupCodes: { deleteMany: {} },
                 secret: null,
                 pendingSecret: null,
                 updatedAt: now,
             },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        await tx.twoFactorBackupCode.deleteMany({
+            where: { twoFactor: { userId } },
+        });
+
+        return tx.twoFactor.findUnique({
+            where: { userId },
             include: TwoFactorWithBackupCodesInclude,
         });
     }

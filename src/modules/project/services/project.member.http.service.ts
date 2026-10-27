@@ -39,11 +39,10 @@ export class ProjectMemberHttpService {
         project: Project,
         query: ProjectMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.ProjectMemberWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.ProjectMember
-            );
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.ProjectMember
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectMemberWhereInput>(
                 query,
@@ -57,7 +56,7 @@ export class ProjectMemberHttpService {
             await this.projectMemberDomain.getMembersList(
                 project,
                 params,
-                accessibleWhere
+                scopeWhere
             );
 
         return {
@@ -71,7 +70,7 @@ export class ProjectMemberHttpService {
         actorId: string,
         { userId, roleId }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.create,
             subject(EnumPolicySubject.ProjectMember, {
                 projectId: project.id,
@@ -105,7 +104,7 @@ export class ProjectMemberHttpService {
                 project.id,
                 targetMemberId
             );
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ProjectMember, targetMember)
         );
@@ -127,7 +126,7 @@ export class ProjectMemberHttpService {
                 project.id,
                 targetMemberId
             );
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.ProjectMember, targetMember)
         );

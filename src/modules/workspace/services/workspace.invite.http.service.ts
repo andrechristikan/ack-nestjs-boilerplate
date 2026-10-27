@@ -39,30 +39,14 @@ export class WorkspaceInviteHttpService {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    private async assertInviteCan(
-        action: EnumPolicyAction,
-        workspaceId: string,
-        workspaceInviteId: string
-    ): Promise<void> {
-        const invite = await this.workspaceInviteDomain.getInvite(
-            workspaceId,
-            workspaceInviteId
-        );
-        this.policyAbilityDomain.assertCan(
-            action,
-            subject(EnumPolicySubject.WorkspaceInvite, invite)
-        );
-    }
-
     async getInvitesList(
         workspaceId: string,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceInviteWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.WorkspaceInvite
-            );
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceInvite
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceInviteWhereInput>(
                 query,
@@ -89,7 +73,7 @@ export class WorkspaceInviteHttpService {
                 workspaceId,
                 params,
                 status?.where,
-                accessibleWhere
+                scopeWhere
             );
 
         return {
@@ -109,7 +93,7 @@ export class WorkspaceInviteHttpService {
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.create,
             subject(EnumPolicySubject.WorkspaceInvite, {
                 workspaceId: workspace.id,
@@ -130,19 +114,22 @@ export class WorkspaceInviteHttpService {
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
-        await this.assertInviteCan(
-            EnumPolicyAction.update,
-            workspace.id,
-            workspaceInviteId
+        const invite = await this.workspaceInviteDomain.getByIdAndWorkspace(
+            workspaceInviteId,
+            workspace.id
         );
-        const invite = await this.workspaceInviteDomain.resendInvite(
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.WorkspaceInvite, invite)
+        );
+        const resent = await this.workspaceInviteDomain.resendInvite(
             workspace,
             actorId,
             workspaceInviteId,
             expiryDuration
         );
 
-        return { data: this.workspaceUtil.mapInvite(invite) };
+        return { data: this.workspaceUtil.mapInvite(resent) };
     }
 
     async revokeInvite(
@@ -150,10 +137,13 @@ export class WorkspaceInviteHttpService {
         actorId: string,
         workspaceInviteId: string
     ): Promise<void> {
-        await this.assertInviteCan(
+        const invite = await this.workspaceInviteDomain.getByIdAndWorkspace(
+            workspaceInviteId,
+            workspaceId
+        );
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
-            workspaceId,
-            workspaceInviteId
+            subject(EnumPolicySubject.WorkspaceInvite, invite)
         );
         await this.workspaceInviteDomain.revokeInvite(
             workspaceId,

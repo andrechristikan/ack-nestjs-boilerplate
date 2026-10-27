@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ForbiddenError } from '@casl/ability';
-import { accessibleBy } from '@casl/prisma';
+import { accessibleBy } from '@casl/prisma/runtime';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -11,15 +11,29 @@ import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import type {
     IEffectivePermission,
-    IPolicyRequired,
     PolicyAbility,
     PolicyAbilitySubject,
+    PolicyModelSubject,
+    PolicyWhereInput,
 } from '@modules/policy/interfaces/policy.interface';
 
 /** Reads required request context and answers what a built ability allows. */
 @Injectable()
 export class PolicyAbilityDomain {
     constructor(private readonly requestStoreService: RequestStoreService) {}
+
+    /** Reads the ability `PolicyAbilityGuard` stored for the request. */
+    private getAbility(): PolicyAbility {
+        const ability = this.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+
+        return ability;
+    }
+
+    private toSubjectName(target: PolicyAbilitySubject): EnumPolicySubject {
+        return typeof target === 'string' ? target : target.__caslSubjectType__;
+    }
 
     /** Reads a value an earlier guard stored for the request, and throws `RequestContextMissingException` naming the key when nothing is stored. The one place a guard or an HTTP service reads required request context. */
     requireStored<T>(key: string): T {
@@ -31,16 +45,11 @@ export class PolicyAbilityDomain {
         return value;
     }
 
-    /** Reads the ability `PolicyAbilityGuard` stored for the request. */
-    private getAbility(): PolicyAbility {
-        return this.requireStored<PolicyAbility>(PolicyAbilityStoreKey);
-    }
-
-    /** Returns the Prisma where clause the stored ability grants for a subject, and throws `PolicyForbiddenException` when the ability holds no rule for it, so a caller never queries without the predicate. */
-    accessibleWhere<TWhere = Record<string, unknown>>(
+    /** Returns the Prisma where clause the stored ability grants for a model subject, and throws `PolicyForbiddenException` when the ability holds no rule for it, so a caller never queries without the predicate. */
+    scope<TSubject extends PolicyModelSubject>(
         action: EnumPolicyAction,
-        subjectName: EnumPolicySubject
-    ): TWhere {
+        subjectName: TSubject
+    ): PolicyWhereInput<TSubject> {
         const ability = this.getAbility();
         if (ability.rulesFor(action, subjectName).length === 0) {
             throw new PolicyForbiddenException({
@@ -48,7 +57,7 @@ export class PolicyAbilityDomain {
             });
         }
 
-        return accessibleBy(ability, action).ofType(subjectName) as TWhere;
+        return accessibleBy(ability, action).ofType(subjectName);
     }
 
     /**
@@ -56,7 +65,7 @@ export class PolicyAbilityDomain {
      * subject, carrying the matched rule's `reason` when one is present and the missing
      * permission.
      */
-    assertCan(action: EnumPolicyAction, target: PolicyAbilitySubject): void {
+    authorize(action: EnumPolicyAction, target: PolicyAbilitySubject): void {
         const ability = this.getAbility();
         try {
             ForbiddenError.from(ability).throwUnlessCan(action, target);
@@ -69,71 +78,43 @@ export class PolicyAbilityDomain {
             const reason = matchedRule?.inverted
                 ? matchedRule.reason
                 : undefined;
-            const subjectName = (
-                typeof target === 'string' ? target : target.__caslSubjectType__
-            ) as EnumPolicySubject;
+            const subject = this.toSubjectName(target);
             throw new PolicyForbiddenException({
                 reason,
-                missing: [{ subject: subjectName, actions: [action] }],
+                missing: [
+                    {
+                        subject,
+                        actions: [action],
+                    },
+                ],
             });
         }
     }
 
     /**
-     * Throws one `PolicyForbiddenException` listing every required action the stored ability
-     * denies, grouped by subject, carrying the `reason` of the first denying inverted rule.
+     * Reports the concrete `EnumPolicyAction` members the stored ability grants on each target,
+     * a subject name or a record tagged with `subject(...)`; a subject the ability grants nothing
+     * on is omitted.
      */
-    assertCanEvery(required: IPolicyRequired[]): void {
-        const ability = this.getAbility();
-        const missing = new Map<EnumPolicySubject, EnumPolicyAction[]>();
-        let reason: string | undefined;
-
-        for (const { subject: subjectName, action } of required) {
-            for (const one of action) {
-                if (ability.can(one, subjectName)) {
-                    continue;
-                }
-
-                const actions = missing.get(subjectName) ?? [];
-                if (!actions.includes(one)) {
-                    actions.push(one);
-                }
-                missing.set(subjectName, actions);
-
-                const matchedRule = ability.relevantRuleFor(one, subjectName);
-                if (reason === undefined && matchedRule?.inverted) {
-                    reason = matchedRule.reason;
-                }
-            }
-        }
-
-        if (missing.size > 0) {
-            throw new PolicyForbiddenException({
-                reason,
-                missing: [...missing].map(([subject, actions]) => ({
-                    subject,
-                    actions,
-                })),
-            });
-        }
-    }
-
-    /**
-     * Reports the concrete `EnumPolicyAction` members the stored ability grants for each subject; a
-     * subject the ability grants nothing on is omitted.
-     */
+    getEffectivePermissions<TSubject extends EnumPolicySubject>(
+        targets: PolicyAbilitySubject<TSubject>[]
+    ): IEffectivePermission<TSubject>[];
     getEffectivePermissions(
-        subjects: EnumPolicySubject[]
+        targets: PolicyAbilitySubject[]
     ): IEffectivePermission[] {
         const ability = this.getAbility();
 
-        return subjects
-            .map(subjectName => ({
-                subject: subjectName,
-                actions: Object.values(EnumPolicyAction).filter(action =>
-                    ability.can(action, subjectName)
-                ),
-            }))
+        return targets
+            .map(target => {
+                const subject = this.toSubjectName(target);
+
+                return {
+                    subject,
+                    actions: Object.values(EnumPolicyAction).filter(action =>
+                        ability.can(action, target)
+                    ),
+                };
+            })
             .filter(permission => permission.actions.length > 0);
     }
 }

@@ -13,7 +13,8 @@ import { Command } from 'nest-commander';
 
 /**
  * Seeds the policy rows each seeded role grants. Requires roles to already be seeded, and
- * aborts otherwise.
+ * aborts otherwise. Seed and remove both bump `Role.policyRevision` so the policy cache keys
+ * roll over.
  */
 @Command({
     name: 'policy',
@@ -70,11 +71,13 @@ export class MigrationPolicySeed
 
         this.logger.log(`Found ${rows.length} Policies to seed.`);
 
+        const roleIds = roles.map(role => role.id);
+
         try {
             await this.databaseService.withTransaction(
                 async tx => {
                     await tx.policy.deleteMany({
-                        where: { roleId: { in: roles.map(role => role.id) } },
+                        where: { roleId: { in: roleIds } },
                     });
 
                     for (const row of rows) {
@@ -86,6 +89,14 @@ export class MigrationPolicySeed
                             },
                         });
                     }
+
+                    await tx.role.updateMany({
+                        where: { id: { in: roleIds } },
+                        data: {
+                            policyRevision: { increment: 1 },
+                            updatedBy: MigrationUserSuperAdminId,
+                        },
+                    });
                 },
                 { timeout: this.seedTransactionTimeoutInMs }
             );
@@ -103,15 +114,25 @@ export class MigrationPolicySeed
         this.logger.log('Removing back Policies...');
 
         const roles = await this.findRoles();
+        const roleIds = roles.map(role => role.id);
 
         try {
-            await this.databaseService.client.policy.deleteMany({
-                where: {
-                    roleId: {
-                        in: roles.map(role => role.id),
-                    },
+            await this.databaseService.withTransaction(
+                async tx => {
+                    await tx.policy.deleteMany({
+                        where: { roleId: { in: roleIds } },
+                    });
+
+                    await tx.role.updateMany({
+                        where: { id: { in: roleIds } },
+                        data: {
+                            policyRevision: { increment: 1 },
+                            updatedBy: MigrationUserSuperAdminId,
+                        },
+                    });
                 },
-            });
+                { timeout: this.seedTransactionTimeoutInMs }
+            );
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing policies');
             throw error;

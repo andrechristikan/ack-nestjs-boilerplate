@@ -36,11 +36,10 @@ export class FeatureFlagHttpService {
     async getListByAdmin(
         query: FeatureFlagAdminListRequestDto
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.FeatureFlagWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.FeatureFlag
-            );
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.FeatureFlag
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.FeatureFlagWhereInput>(
                 query,
@@ -53,7 +52,7 @@ export class FeatureFlagHttpService {
 
         const { data, ...others } = await this.featureFlagDomain.getListByAdmin(
             params,
-            accessibleWhere
+            scopeWhere
         );
 
         return {
@@ -88,10 +87,10 @@ export class FeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const stored = await this.featureFlagDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        const featureFlag = await this.featureFlagDomain.getOne(id);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.FeatureFlag, stored)
+            subject(EnumPolicySubject.FeatureFlag, featureFlag)
         );
         const updated = await this.featureFlagDomain.updateStatusByAdmin(
             id,
@@ -107,10 +106,10 @@ export class FeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const stored = await this.featureFlagDomain.getOne(id);
-        this.policyAbilityDomain.assertCan(
+        const featureFlag = await this.featureFlagDomain.getOne(id);
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
-            subject(EnumPolicySubject.FeatureFlag, stored)
+            subject(EnumPolicySubject.FeatureFlag, featureFlag)
         );
         const updated = await this.featureFlagDomain.updateMetadataByAdmin(
             id,

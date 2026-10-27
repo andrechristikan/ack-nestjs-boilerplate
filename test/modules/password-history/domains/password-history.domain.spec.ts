@@ -54,29 +54,25 @@ describe('PasswordHistoryDomain', () => {
         const pagination = { skip: 0, limit: 10 };
 
         await expect(
-            service.getListOffsetByAdmin('user-id', pagination)
+            service.getListOffsetByAdmin('user-id', pagination, {})
         ).resolves.toMatchObject({
             type: EnumPaginationType.offset,
             data: [],
         });
         expect(
             passwordHistoryRepository.findWithPaginationOffsetByAdmin
-        ).toHaveBeenCalledWith('user-id', pagination, undefined);
+        ).toHaveBeenCalledWith('user-id', pagination, {});
     });
 
     it('forwards the accessible where as the trailing repository argument of the admin list', async () => {
         const pagination = { skip: 0, limit: 10 };
-        const accessibleWhere = { userId: 'user-id' };
+        const scopeWhere = { userId: 'user-id' };
 
-        await service.getListOffsetByAdmin(
-            'user-id',
-            pagination,
-            accessibleWhere
-        );
+        await service.getListOffsetByAdmin('user-id', pagination, scopeWhere);
 
         expect(
             passwordHistoryRepository.findWithPaginationOffsetByAdmin
-        ).toHaveBeenCalledWith('user-id', pagination, accessibleWhere);
+        ).toHaveBeenCalledWith('user-id', pagination, scopeWhere);
     });
 
     it('delegates cursor pagination to the repository', async () => {

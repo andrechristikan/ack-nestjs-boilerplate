@@ -20,13 +20,14 @@ import type {
 } from '@generated/prisma-client/client';
 
 export interface IRoleRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetByAdmin(
         {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        scope?: Record<string, IPaginationIn>,
-        additionalWhere?: Prisma.RoleWhereInput
+        scope: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.RoleWhereInput
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findWithPaginationCursorBySystem(
         {
@@ -58,9 +59,13 @@ export interface IRoleRepository {
         scope: EnumRoleScope,
         key: string
     ): Promise<IRole | null>;
+    incrementPolicyRevisionInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string
+    ): Promise<void>;
     existsByScopeAndKey(scope: EnumRoleScope, key: string): Promise<boolean>;
     create(data: IRoleCreate): Promise<IRoleWithPolicies>;
-    update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies>;
+    update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies | null>;
     isUsedById(id: string): Promise<boolean>;
-    delete(id: string): Promise<Role>;
+    delete(id: string): Promise<Role | null>;
 }

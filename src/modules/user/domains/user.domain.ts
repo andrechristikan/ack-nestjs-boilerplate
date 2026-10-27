@@ -144,19 +144,20 @@ export class UserDomain {
         return user;
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>,
-        where?: Prisma.UserWhereInput
+        status: Record<string, IPaginationIn> | undefined,
+        roleId: Record<string, IPaginationEqual> | undefined,
+        countryId: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
             status,
             roleId,
             countryId,
-            where
+            additionalWhere
         );
     }
 
@@ -223,12 +224,17 @@ export class UserDomain {
         password: IAuthPassword,
         updatedBy: string
     ): Promise<User> {
-        return this.userRepository.updatePasswordInTx(
+        const user = await this.userRepository.updatePasswordInTx(
             tx,
             userId,
             password,
             updatedBy
         );
+        if (!user) {
+            throw new UserNotFoundException();
+        }
+
+        return user;
     }
 
     async updateLoginInTx(
@@ -400,6 +406,10 @@ export class UserDomain {
                             userId,
                             { status }
                         );
+                    if (!row) {
+                        throw new UserNotFoundException();
+                    }
+
                     const actorMetadata =
                         this.userUtil.mapActivityLogActorMetadata(row);
                     const targetMetadata =

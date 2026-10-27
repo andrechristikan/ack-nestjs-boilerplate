@@ -1,7 +1,10 @@
-import { EnumPolicySubject, Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
-import { RoleSelect } from '@modules/role/constants/role.constant';
+import {
+    RoleGuardSelect,
+    RoleSelect,
+} from '@modules/role/constants/role.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
@@ -16,15 +19,6 @@ export const ProjectStoreKey = 'ProjectStore';
  * @public
  */
 export const ProjectMemberStoreKey = 'ProjectMemberStore';
-
-/**
- * Subjects the project `/permissions/:projectId` endpoint reports on.
- * @public
- */
-export const ProjectPermissionSubjects: EnumPolicySubject[] = [
-    EnumPolicySubject.Project,
-    EnumPolicySubject.ProjectMember,
-];
 
 /**
  * Route metadata key holding whether `@ProjectMemberProtected` requires a `ProjectMember` row (`true`, the default) or only loads its policies when one exists (`false`).
@@ -51,7 +45,7 @@ export const DocProjectErrorResponses = {
 } as const;
 
 /**
- * Project member guard error kits for strict `@ProjectMemberProtected()` and `@ProjectPolicyProtected`.
+ * Project member guard error kits for strict `@ProjectMemberProtected()` and `@PolicyProtected`.
  * @public
  */
 export const DocProjectMemberErrorResponses = {
@@ -74,9 +68,18 @@ export const ProjectActiveFilter = {
 } as const satisfies Prisma.ProjectWhereInput;
 
 /**
- * Relations the project member guard read loads: the project role identity.
+ * Relations the project member read loads: the project role identity.
  * @public
  */
 export const ProjectMemberRoleInclude = {
     role: { select: RoleSelect },
+} as const satisfies Prisma.ProjectMemberInclude;
+
+/**
+ * Relations the project member guard read loads: the project role identity and its
+ * `policyRevision`.
+ * @public
+ */
+export const ProjectMemberGuardRoleInclude = {
+    role: { select: RoleGuardSelect },
 } as const satisfies Prisma.ProjectMemberInclude;

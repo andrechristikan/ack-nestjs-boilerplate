@@ -52,11 +52,10 @@ export class WorkspaceJoinRequestHttpService {
         workspaceId: string,
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceJoinRequestWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.WorkspaceJoinRequest
-            );
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceJoinRequest
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceJoinRequestWhereInput>(
                 query,
@@ -83,7 +82,7 @@ export class WorkspaceJoinRequestHttpService {
                 workspaceId,
                 params,
                 status?.where,
-                accessibleWhere
+                scopeWhere
             );
 
         return {
@@ -92,29 +91,19 @@ export class WorkspaceJoinRequestHttpService {
         };
     }
 
-    private async assertJoinRequestUpdatable(
-        workspaceId: string,
-        workspaceJoinRequestId: string
-    ): Promise<void> {
-        const joinRequest =
-            await this.workspaceJoinRequestDomain.getJoinRequest(
-                workspaceId,
-                workspaceJoinRequestId
-            );
-        this.policyAbilityDomain.assertCan(
-            EnumPolicyAction.update,
-            subject(EnumPolicySubject.WorkspaceJoinRequest, joinRequest)
-        );
-    }
-
     async acceptJoinRequest(
         workspace: Workspace,
         reviewerId: string,
         workspaceJoinRequestId: string
     ): Promise<void> {
-        await this.assertJoinRequestUpdatable(
-            workspace.id,
-            workspaceJoinRequestId
+        const joinRequest =
+            await this.workspaceJoinRequestDomain.getByIdAndWorkspace(
+                workspaceJoinRequestId,
+                workspace.id
+            );
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.WorkspaceJoinRequest, joinRequest)
         );
         await this.workspaceJoinRequestDomain.acceptJoinRequest(
             workspace,
@@ -129,9 +118,14 @@ export class WorkspaceJoinRequestHttpService {
         workspaceJoinRequestId: string,
         { rejectReasonCode }: WorkspaceJoinRequestRejectRequestDto
     ): Promise<void> {
-        await this.assertJoinRequestUpdatable(
-            workspace.id,
-            workspaceJoinRequestId
+        const joinRequest =
+            await this.workspaceJoinRequestDomain.getByIdAndWorkspace(
+                workspaceJoinRequestId,
+                workspace.id
+            );
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.WorkspaceJoinRequest, joinRequest)
         );
         await this.workspaceJoinRequestDomain.rejectJoinRequest(
             workspace,

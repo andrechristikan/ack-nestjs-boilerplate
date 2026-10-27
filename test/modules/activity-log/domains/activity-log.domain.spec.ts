@@ -296,32 +296,32 @@ describe('ActivityLogDomain', () => {
         const userScope = { userId: 'user-id' };
         const workspaceScope = { workspaceId: 'workspace-id' };
 
-        await domain.getListOffset(userScope, offsetPagination);
+        await domain.getListOffset(userScope, offsetPagination, {});
         await domain.getListCursor(workspaceScope, cursorPagination);
 
         expect(
             activityLogRepository.findWithPaginationOffset
-        ).toHaveBeenCalledWith(userScope, offsetPagination, undefined);
+        ).toHaveBeenCalledWith(userScope, offsetPagination, {});
         expect(
             activityLogRepository.findWithPaginationCursor
-        ).toHaveBeenCalledWith(workspaceScope, cursorPagination, undefined);
+        ).toHaveBeenCalledWith(workspaceScope, cursorPagination);
     });
 
-    it('forwards the accessible where as the trailing repository argument', async () => {
+    it('forwards the accessible where on the offset list', async () => {
         const offsetPagination = { skip: 0, limit: 10 };
         const cursorPagination = { cursor: 'cursor', limit: 10 };
-        const accessibleWhere = { userId: 'user-id' };
+        const scopeWhere = { userId: 'user-id' };
         const scope = { workspaceId: 'workspace-id', userId: 'user-id' };
 
-        await domain.getListOffset(scope, offsetPagination, accessibleWhere);
-        await domain.getListCursor(scope, cursorPagination, accessibleWhere);
+        await domain.getListOffset(scope, offsetPagination, scopeWhere);
+        await domain.getListCursor(scope, cursorPagination);
 
         expect(
             activityLogRepository.findWithPaginationOffset
-        ).toHaveBeenCalledWith(scope, offsetPagination, accessibleWhere);
+        ).toHaveBeenCalledWith(scope, offsetPagination, scopeWhere);
         expect(
             activityLogRepository.findWithPaginationCursor
-        ).toHaveBeenCalledWith(scope, cursorPagination, accessibleWhere);
+        ).toHaveBeenCalledWith(scope, cursorPagination);
     });
 
     describe('getContract', () => {

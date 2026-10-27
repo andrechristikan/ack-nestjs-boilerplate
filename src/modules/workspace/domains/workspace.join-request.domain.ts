@@ -179,11 +179,12 @@ export class WorkspaceJoinRequestDomain {
         return joinRequest;
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getJoinRequestsList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        where?: Prisma.WorkspaceJoinRequestWhereInput
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         await this.assertJoinRequestAllowed();
 
@@ -191,14 +192,14 @@ export class WorkspaceJoinRequestDomain {
             workspaceId,
             pagination,
             status,
-            where
+            additionalWhere
         );
     }
 
-    /** Loads the join request the route addresses within the workspace, so a record outside it reads as not found. */
-    async getJoinRequest(
-        workspaceId: string,
-        workspaceJoinRequestId: string
+    /** Loads the join request in the workspace. */
+    async getByIdAndWorkspace(
+        workspaceJoinRequestId: string,
+        workspaceId: string
     ): Promise<WorkspaceJoinRequest> {
         const joinRequest =
             await this.workspaceJoinRequestRepository.findByIdAndWorkspace(
@@ -262,12 +263,16 @@ export class WorkspaceJoinRequestDomain {
                 memberRole.id,
                 reviewerId
             );
-            await this.workspaceJoinRequestRepository.acceptInTx(
-                tx,
-                joinRequest.id,
-                reviewerId,
-                reviewedAt
-            );
+            const accepted =
+                await this.workspaceJoinRequestRepository.acceptInTx(
+                    tx,
+                    joinRequest.id,
+                    reviewerId,
+                    reviewedAt
+                );
+            if (!accepted) {
+                throw new WorkspaceJoinRequestNotFoundException();
+            }
         });
 
         this.activityLogDomain.stagePrepared(events);
@@ -317,12 +322,15 @@ export class WorkspaceJoinRequestDomain {
             events.push(workspaceJoinRejectedByAdminEvent);
         }
 
-        await this.workspaceJoinRequestRepository.reject(
+        const rejected = await this.workspaceJoinRequestRepository.reject(
             workspaceJoinRequestId,
             reviewerId,
             rejectReasonCode,
             reviewedAt
         );
+        if (!rejected) {
+            throw new WorkspaceJoinRequestNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 

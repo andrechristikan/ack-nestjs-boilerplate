@@ -25,6 +25,7 @@ import { WorkspaceOwnerRoleNotAssignableException } from '@modules/workspace/exc
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import type {
     IWorkspaceMember,
+    IWorkspaceMemberWithGuardRole,
     IWorkspaceMemberWithRole,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
@@ -69,7 +70,7 @@ export class WorkspaceMemberDomain {
     async validateWorkspaceMemberGuard(
         workspaceId: string | null,
         userId: string | null
-    ): Promise<IWorkspaceMemberWithRole> {
+    ): Promise<IWorkspaceMemberWithGuardRole> {
         if (!userId) {
             throw new AuthJwtAccessTokenInvalidException();
         } else if (!workspaceId) {
@@ -90,17 +91,15 @@ export class WorkspaceMemberDomain {
         return member;
     }
 
-    /** Loads the member the route addresses within the workspace, AND-composed with the optional where, so a record the where excludes reads as not found. */
+    /** Loads the member the route addresses within the workspace. */
     async getOneByIdAndWorkspace(
         workspaceId: string,
-        workspaceMemberId: string,
-        where?: Prisma.WorkspaceMemberWhereInput
+        workspaceMemberId: string
     ): Promise<IWorkspaceMemberWithRole> {
         const target =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
                 workspaceMemberId,
-                workspaceId,
-                where
+                workspaceId
             );
         if (!target) {
             throw new WorkspaceMemberNotFoundException();
@@ -183,12 +182,16 @@ export class WorkspaceMemberDomain {
             events.push(workspaceOwnershipTransferredByOwnerEvent);
         }
 
-        await this.workspaceMemberRepository.transferOwnership(
-            actorMember.id,
-            targetMember.id,
-            ownerRoleId,
-            adminRoleId
-        );
+        const transferred =
+            await this.workspaceMemberRepository.transferOwnership(
+                actorMember.id,
+                targetMember.id,
+                ownerRoleId,
+                adminRoleId
+            );
+        if (!transferred) {
+            throw new WorkspaceNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
     }
@@ -219,17 +222,18 @@ export class WorkspaceMemberDomain {
         this.activityLogDomain.stagePrepared(events);
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getMembersList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>,
-        where?: Prisma.WorkspaceMemberWhereInput
+        role: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
             role,
-            where
+            additionalWhere
         );
     }
 
@@ -270,10 +274,13 @@ export class WorkspaceMemberDomain {
             events.push(workspaceMemberRoleUpdatedByAdminEvent);
         }
 
-        await this.workspaceMemberRepository.updateRole(
+        const updated = await this.workspaceMemberRepository.updateRole(
             targetMember.id,
             role.id
         );
+        if (!updated) {
+            throw new WorkspaceMemberNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
     }
@@ -310,22 +317,29 @@ export class WorkspaceMemberDomain {
             events.push(workspaceMemberRemovedByAdminEvent);
         }
 
-        await this.workspaceMemberRepository.removeMember(targetMember.id);
+        const removed = await this.workspaceMemberRepository.removeMember(
+            targetMember.id
+        );
+        if (!removed) {
+            throw new WorkspaceMemberNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
     }
 
-    /** Pages the members of a workspace the admin policy guard already resolved, soft-deleted included, so it reads no workspace row itself. */
+    /**
+     * Pages the members of a workspace the admin policy guard already resolved, soft-deleted included, so it reads no workspace row itself.
+     * Extra caller-supplied constraint, AND-composed first.
+     */
     async getMembersListForAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
-        where?: Prisma.WorkspaceMemberWhereInput
+        additionalWhere: Prisma.WorkspaceMemberWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberRepository.findWithPaginationOffset(
             workspaceId,
             pagination,
-            undefined,
-            where
+            additionalWhere
         );
     }
 }

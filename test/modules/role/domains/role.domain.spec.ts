@@ -62,6 +62,7 @@ describe('RoleDomain', () => {
         key: EnumRolePlatformKey.admin,
         name: 'Admin',
         description: null,
+        policyRevision: 0,
         createdAt: now,
         createdBy: null,
         updatedAt: now,
@@ -103,14 +104,14 @@ describe('RoleDomain', () => {
             );
 
             await expect(
-                service.getListOffsetByAdmin(pagination, filter)
+                service.getListOffsetByAdmin(pagination, filter, {})
             ).resolves.toBe(result);
             await expect(
                 service.getListCursorBySystem(pagination, filter)
             ).resolves.toBe(result);
             expect(
                 roleRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, filter, undefined);
+            ).toHaveBeenCalledWith(pagination, filter, {});
             expect(
                 roleRepository.findWithPaginationCursorBySystem
             ).toHaveBeenCalledWith(pagination, filter);
@@ -118,22 +119,18 @@ describe('RoleDomain', () => {
 
         it('forwards the accessible where as the trailing repository argument of the admin offset list', async () => {
             const pagination = { limit: 20 } as never;
-            const accessibleWhere = { scope: EnumRoleScope.workspace };
+            const scopeWhere = { scope: EnumRoleScope.workspace };
             const result = { data: [], pagination: {} } as never;
             roleRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
                 result
             );
 
             await expect(
-                service.getListOffsetByAdmin(
-                    pagination,
-                    undefined,
-                    accessibleWhere
-                )
+                service.getListOffsetByAdmin(pagination, undefined, scopeWhere)
             ).resolves.toBe(result);
             expect(
                 roleRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, undefined, accessibleWhere);
+            ).toHaveBeenCalledWith(pagination, undefined, scopeWhere);
         });
     });
 
@@ -243,6 +240,19 @@ describe('RoleDomain', () => {
                 EnumRoleScope.workspace,
                 EnumRoleWorkspaceKey.owner
             );
+        });
+    });
+
+    describe('incrementPolicyRevisionInTx', () => {
+        it('forwards tx and roleId to the repository increment', async () => {
+            roleRepository.incrementPolicyRevisionInTx.mockResolvedValue();
+
+            await expect(
+                service.incrementPolicyRevisionInTx(tx, role.id)
+            ).resolves.toBeUndefined();
+            expect(
+                roleRepository.incrementPolicyRevisionInTx
+            ).toHaveBeenCalledWith(tx, role.id);
         });
     });
 
@@ -496,6 +506,7 @@ describe('RoleDomain', () => {
                 })
             );
             roleRepository.isUsedById.mockResolvedValue(false);
+            roleRepository.delete.mockResolvedValue({ ...role, ...custom });
 
             const call = service.deleteByAdmin(custom.id);
 
@@ -561,6 +572,7 @@ describe('RoleDomain', () => {
                 key: EnumRoleWorkspaceKey.owner,
             });
             roleRepository.isUsedById.mockResolvedValue(false);
+            roleRepository.delete.mockResolvedValue({ ...role, ...custom });
 
             await expect(
                 service.deleteByAdmin(custom.id)
@@ -619,6 +631,136 @@ describe('RoleDomain', () => {
                 event,
             ]);
             expect(callOrder).toEqual(['prepare', 'delete', 'stage']);
+        });
+    });
+
+    describe('scoped lookups and mutations', () => {
+        const custom = {
+            id: 'custom-id',
+            scope: EnumRoleScope.workspace,
+            key: 'editor',
+            name: 'editor',
+        } satisfies IRole;
+        const updated = { ...role, policies: [] };
+
+        beforeEach(() => {
+            roleRepository.findOneWithPoliciesById.mockResolvedValue(updated);
+            roleRepository.findOneById.mockResolvedValue(custom);
+            roleRepository.isUsedById.mockResolvedValue(false);
+            roleRepository.update.mockResolvedValue(updated);
+            roleRepository.delete.mockResolvedValue({ ...role, ...custom });
+            activityLogDomain.prepare.mockReturnValue({
+                action: EnumActivityLogAction.adminRoleUpdate,
+                metadata: { roleId: custom.id },
+                onError: false,
+            });
+        });
+
+        describe('getOne', () => {
+            it('calls findOneWithPoliciesById', async () => {
+                await service.getOne(role.id);
+
+                expect(
+                    roleRepository.findOneWithPoliciesById
+                ).toHaveBeenCalledWith(role.id);
+            });
+
+            it('calls findOneWithPoliciesById and returns the same result', async () => {
+                await expect(service.getOne(role.id)).resolves.toBe(updated);
+                expect(
+                    roleRepository.findOneWithPoliciesById
+                ).toHaveBeenCalledWith(role.id);
+            });
+
+            it('throws RoleNotFoundException when findOneWithPoliciesById returns null', async () => {
+                roleRepository.findOneWithPoliciesById.mockResolvedValue(null);
+
+                await expect(service.getOne(role.id)).rejects.toThrow(
+                    RoleNotFoundException
+                );
+            });
+        });
+
+        describe('updateByAdmin', () => {
+            it('calls update', async () => {
+                await service.updateByAdmin(custom.id, { name: 'Editor' });
+
+                expect(roleRepository.findOneById).toHaveBeenCalledWith(
+                    custom.id
+                );
+                expect(roleRepository.update).toHaveBeenCalledWith(custom.id, {
+                    name: 'Editor',
+                    description: undefined,
+                });
+            });
+
+            it('calls update and returns the same result', async () => {
+                await expect(
+                    service.updateByAdmin(custom.id, { name: 'Editor' })
+                ).resolves.toBe(updated);
+                expect(roleRepository.update).toHaveBeenCalledWith(custom.id, {
+                    name: 'Editor',
+                    description: undefined,
+                });
+            });
+
+            it('throws RoleNotFoundException and stages nothing when update returns null', async () => {
+                roleRepository.update.mockResolvedValue(null);
+
+                await expect(
+                    service.updateByAdmin(custom.id, { name: 'Editor' })
+                ).rejects.toThrow(RoleNotFoundException);
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('deleteByAdmin', () => {
+            it('calls delete', async () => {
+                await service.deleteByAdmin(custom.id);
+
+                expect(roleRepository.findOneById).toHaveBeenCalledWith(
+                    custom.id
+                );
+                expect(roleRepository.delete).toHaveBeenCalledWith(custom.id);
+            });
+
+            it('calls delete and resolves', async () => {
+                await expect(
+                    service.deleteByAdmin(custom.id)
+                ).resolves.toBeUndefined();
+                expect(roleRepository.delete).toHaveBeenCalledWith(custom.id);
+            });
+
+            it('throws RoleNotFoundException and stages nothing when delete returns null', async () => {
+                roleRepository.delete.mockResolvedValue(null);
+
+                await expect(service.deleteByAdmin(custom.id)).rejects.toThrow(
+                    RoleNotFoundException
+                );
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            });
+
+            it('predefined role still throws RolePredefinedException present', async () => {
+                roleRepository.findOneById.mockResolvedValue({
+                    ...custom,
+                    scope: EnumRoleScope.platform,
+                    key: EnumRolePlatformKey.superAdmin,
+                });
+
+                await expect(service.deleteByAdmin(custom.id)).rejects.toThrow(
+                    RolePredefinedException
+                );
+                expect(roleRepository.delete).not.toHaveBeenCalled();
+            });
+
+            it('used role still throws RoleUsedException present', async () => {
+                roleRepository.isUsedById.mockResolvedValue(true);
+
+                await expect(service.deleteByAdmin(custom.id)).rejects.toThrow(
+                    RoleUsedException
+                );
+                expect(roleRepository.delete).not.toHaveBeenCalled();
+            });
         });
     });
 });

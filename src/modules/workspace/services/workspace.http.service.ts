@@ -13,8 +13,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
-import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
 import {
     WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableOrderBy,
@@ -27,6 +25,7 @@ import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/
 import type { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
 import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import type { WorkspacePermissionResponseDto } from '@modules/workspace/dtos/response/workspace.permission.response.dto';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -74,8 +73,16 @@ export class WorkspaceHttpService {
         return { data: workspace };
     }
 
-    getCurrentWorkspace(workspace: Workspace): IResponseReturn<Workspace> {
-        const current = this.workspaceDomain.getCurrentWorkspace(workspace);
+    async getCurrentWorkspace(
+        workspace: Workspace
+    ): Promise<IResponseReturn<Workspace>> {
+        const current = await this.workspaceDomain.getCurrentWorkspace(
+            workspace.id
+        );
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Workspace, current)
+        );
 
         return { data: current };
     }
@@ -85,7 +92,7 @@ export class WorkspaceHttpService {
         actorId: string,
         { name, description }: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Workspace, workspaceTarget)
         );
@@ -103,7 +110,7 @@ export class WorkspaceHttpService {
         actorId: string,
         { isPublic }: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Workspace, workspaceTarget)
         );
@@ -121,7 +128,7 @@ export class WorkspaceHttpService {
         actorId: string,
         { slug }: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Workspace, workspaceTarget)
         );
@@ -145,7 +152,7 @@ export class WorkspaceHttpService {
         workspaceTarget: Workspace,
         actorId: string
     ): Promise<void> {
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.Workspace, workspaceTarget)
         );
@@ -158,11 +165,10 @@ export class WorkspaceHttpService {
     async getListForAdmin(
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Workspace
-            );
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Workspace
+        );
 
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceWhereInput>(query, {
@@ -184,7 +190,7 @@ export class WorkspaceHttpService {
         const { data, ...others } = await this.workspaceDomain.getListForAdmin(
             params,
             isPublic?.where,
-            accessibleWhere
+            scopeWhere
         );
 
         return {
@@ -198,7 +204,7 @@ export class WorkspaceHttpService {
     ): Promise<IResponseReturn<Workspace>> {
         const workspace =
             await this.workspaceDomain.getByIdForAdmin(workspaceId);
-        this.policyAbilityDomain.assertCan(
+        this.policyAbilityDomain.authorize(
             EnumPolicyAction.read,
             subject(EnumPolicySubject.Workspace, workspace)
         );
@@ -212,12 +218,12 @@ export class WorkspaceHttpService {
         return { data: workspace };
     }
 
-    getEffectivePermissions(): IResponseReturn<{
-        permissions: IEffectivePermission[];
-    }> {
-        const permissions = this.policyAbilityDomain.getEffectivePermissions(
-            WorkspacePermissionSubjects
-        );
+    getEffectivePermissions(
+        workspace: Workspace
+    ): IResponseReturn<WorkspacePermissionResponseDto> {
+        const permissions = this.policyAbilityDomain.getEffectivePermissions([
+            subject(EnumPolicySubject.Workspace, workspace),
+        ]);
 
         return { data: { permissions } };
     }

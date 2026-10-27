@@ -9,6 +9,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { Prisma, WorkspaceMember } from '@generated/prisma-client/client';
 import type {
     IWorkspaceMember,
+    IWorkspaceMemberWithGuardRole,
     IWorkspaceMemberWithRole,
 } from '@modules/workspace/interfaces/workspace.interface';
 
@@ -16,32 +17,32 @@ export interface IWorkspaceMemberRepository {
     findOneWithRoleByWorkspaceAndUser(
         workspaceId: string,
         userId: string
-    ): Promise<IWorkspaceMemberWithRole | null>;
+    ): Promise<IWorkspaceMemberWithGuardRole | null>;
     findOneByWorkspaceAndUser(
         workspaceId: string,
         userId: string
     ): Promise<WorkspaceMember | null>;
     findByIdAndWorkspace(
         workspaceMemberId: string,
-        workspaceId: string,
-        where?: Prisma.WorkspaceMemberWhereInput
+        workspaceId: string
     ): Promise<IWorkspaceMemberWithRole | null>;
     countOwnedActiveByUser(userId: string): Promise<number>;
     countOwners(workspaceId: string): Promise<number>;
     findReviewersByWorkspace(
         workspaceId: string
     ): Promise<{ userId: string }[]>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffset(
         workspaceId: string,
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>,
-        where?: Prisma.WorkspaceMemberWhereInput
+        additionalWhere: Prisma.WorkspaceMemberWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationCursor(
         workspaceId: string,
         params: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>,
-        where?: Prisma.WorkspaceMemberWhereInput
+        role: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>>;
     createOwnerInTx(
         tx: IDatabaseTransactionClient,
@@ -56,12 +57,15 @@ export interface IWorkspaceMemberRepository {
         roleId: string,
         actorId: string
     ): Promise<WorkspaceMember>;
-    updateRole(targetMemberId: string, roleId: string): Promise<void>;
-    removeMember(targetMemberId: string): Promise<void>;
+    updateRole(
+        targetMemberId: string,
+        roleId: string
+    ): Promise<WorkspaceMember | null>;
+    removeMember(targetMemberId: string): Promise<WorkspaceMember | null>;
     transferOwnership(
         fromMemberId: string,
         toMemberId: string,
         ownerRoleId: string,
         adminRoleId: string
-    ): Promise<void>;
+    ): Promise<WorkspaceMember | null>;
 }

@@ -203,9 +203,29 @@ describe('PolicyAbilityFactory', () => {
         ).toBe(false);
     });
 
-    it('orders inverted rules after allows so a matching deny wins', () => {
+    it('keeps input order so a later allow overrides an earlier cannot', () => {
         const ability = factory.build(
             [{ ...buildPolicy(null), inverted: true }, buildPolicy(null)],
+            {}
+        );
+
+        expect(ability.rules.map(rule => rule.inverted ?? false)).toEqual([
+            true,
+            false,
+        ]);
+        expect(
+            ability.can(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.WorkspaceMember, {
+                    workspaceId: 'workspace-1',
+                })
+            )
+        ).toBe(true);
+    });
+
+    it('lets a later cannot override an earlier allow', () => {
+        const ability = factory.build(
+            [buildPolicy(null), { ...buildPolicy(null), inverted: true }],
             {}
         );
 
@@ -221,6 +241,28 @@ describe('PolicyAbilityFactory', () => {
                 })
             )
         ).toBe(false);
+    });
+
+    it('lets a later specific allow override an earlier conditional cannot', () => {
+        const ability = factory.build(
+            [
+                {
+                    ...buildPolicy({ archived: true }),
+                    inverted: true,
+                },
+                buildPolicy({ id: 'member-1', archived: true }),
+            ],
+            {}
+        );
+        const read = (record: Record<string, string | boolean>): boolean =>
+            ability.can(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.WorkspaceMember, record)
+            );
+
+        expect(read({ id: 'member-1', archived: true })).toBe(true);
+        expect(read({ id: 'member-2', archived: true })).toBe(false);
+        expect(read({ id: 'member-2', archived: false })).toBe(false);
     });
 
     it('resolves a project placeholder only when a project value exists', () => {

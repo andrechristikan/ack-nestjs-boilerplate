@@ -43,17 +43,18 @@ export class DeviceDomain {
         private readonly helperDateService: HelperDateService
     ) {}
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>,
-        where?: Prisma.DeviceOwnershipWhereInput
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
             isRevoked,
-            where
+            additionalWhere
         );
     }
 
@@ -261,6 +262,10 @@ export class DeviceDomain {
                             userId,
                             now
                         );
+                    if (!row) {
+                        throw new DeviceNotFoundException();
+                    }
+
                     await this.deviceRepository.clearNotificationByIdsInTx(
                         tx,
                         [row.deviceId],
@@ -350,6 +355,10 @@ export class DeviceDomain {
                             removedBy,
                             now
                         );
+                    if (!row) {
+                        throw new DeviceNotFoundException();
+                    }
+
                     await this.deviceRepository.clearNotificationByIdsInTx(
                         tx,
                         [row.deviceId],

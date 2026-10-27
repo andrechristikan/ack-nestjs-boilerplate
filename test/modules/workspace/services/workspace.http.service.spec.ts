@@ -17,7 +17,6 @@ import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forb
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
@@ -26,6 +25,7 @@ import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/requ
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
+import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 
 describe('WorkspaceHttpService', () => {
@@ -169,24 +169,70 @@ describe('WorkspaceHttpService', () => {
     });
 
     describe('getCurrentWorkspace', () => {
-        it('wraps the domain result synchronously', () => {
-            workspaceDomain.getCurrentWorkspace.mockReturnValue(workspace);
+        const current = {
+            ...workspace,
+            name: 'Acme Current',
+        } satisfies Workspace;
 
-            const result = service.getCurrentWorkspace(workspace);
+        it('re-reads by identity and authorizes read on that workspace', async () => {
+            workspaceDomain.getCurrentWorkspace.mockResolvedValue(current);
 
-            expect(result).toEqual({ data: workspace });
+            const result = await service.getCurrentWorkspace(workspace);
+
+            expect(result).toEqual({ data: current });
             expect(workspaceDomain.getCurrentWorkspace).toHaveBeenCalledWith(
-                workspace
+                'workspace-id'
+            );
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.Workspace, current)
             );
         });
+
+        it('propagates WorkspaceNotFoundException and does not authorize when the re-read misses', async () => {
+            workspaceDomain.getCurrentWorkspace.mockRejectedValue(
+                new WorkspaceNotFoundException()
+            );
+
+            await expect(
+                service.getCurrentWorkspace(workspace)
+            ).rejects.toThrow(WorkspaceNotFoundException);
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize after the identity load',
+            async (_name, error) => {
+                workspaceDomain.getCurrentWorkspace.mockResolvedValue(current);
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(
+                    service.getCurrentWorkspace(workspace)
+                ).rejects.toThrow(error);
+                expect(
+                    workspaceDomain.getCurrentWorkspace
+                ).toHaveBeenCalledWith('workspace-id');
+            }
+        );
     });
 
     describe('updateWorkspace', () => {
-        it('delegates to the domain and wraps the updated workspace', async () => {
-            const dto = {
-                name: 'Acme Renamed',
-                description: 'Updated description',
-            } satisfies WorkspaceUpdateRequestDto;
+        const dto = {
+            name: 'Acme Renamed',
+            description: 'Updated description',
+        } satisfies WorkspaceUpdateRequestDto;
+
+        it('authorizes update on the workspace and writes', async () => {
             workspaceDomain.updateWorkspace.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspace(
@@ -196,7 +242,8 @@ describe('WorkspaceHttpService', () => {
             );
 
             expect(result).toEqual({ data: workspace });
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Workspace, workspace)
             );
@@ -206,13 +253,34 @@ describe('WorkspaceHttpService', () => {
                 { name: dto.name, description: dto.description }
             );
         });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize and does not write',
+            async (_name, error) => {
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(
+                    service.updateWorkspace(workspace, 'actor-id', dto)
+                ).rejects.toThrow(error);
+                expect(workspaceDomain.updateWorkspace).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('updateWorkspaceIsPublic', () => {
-        it('delegates to the domain and wraps the updated workspace', async () => {
-            const dto = {
-                isPublic: true,
-            } satisfies WorkspaceUpdateIsPublicRequestDto;
+        const dto = {
+            isPublic: true,
+        } satisfies WorkspaceUpdateIsPublicRequestDto;
+
+        it('authorizes update on the workspace and writes', async () => {
             workspaceDomain.updateWorkspaceIsPublic.mockResolvedValue(
                 workspace
             );
@@ -224,7 +292,8 @@ describe('WorkspaceHttpService', () => {
             );
 
             expect(result).toEqual({ data: workspace });
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Workspace, workspace)
             );
@@ -232,13 +301,36 @@ describe('WorkspaceHttpService', () => {
                 workspaceDomain.updateWorkspaceIsPublic
             ).toHaveBeenCalledWith('workspace-id', 'actor-id', true);
         });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize and does not write',
+            async (_name, error) => {
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(
+                    service.updateWorkspaceIsPublic(workspace, 'actor-id', dto)
+                ).rejects.toThrow(error);
+                expect(
+                    workspaceDomain.updateWorkspaceIsPublic
+                ).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('updateWorkspaceSlug', () => {
-        it('delegates to the domain and wraps the updated workspace', async () => {
-            const dto = {
-                slug: 'acme-team',
-            } satisfies WorkspaceUpdateSlugRequestDto;
+        const dto = {
+            slug: 'acme-team',
+        } satisfies WorkspaceUpdateSlugRequestDto;
+
+        it('authorizes update on the workspace and writes', async () => {
             workspaceDomain.updateWorkspaceSlug.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspaceSlug(
@@ -248,7 +340,8 @@ describe('WorkspaceHttpService', () => {
             );
 
             expect(result).toEqual({ data: workspace });
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Workspace, workspace)
             );
@@ -258,6 +351,28 @@ describe('WorkspaceHttpService', () => {
                 'acme-team'
             );
         });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize and does not write',
+            async (_name, error) => {
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(
+                    service.updateWorkspaceSlug(workspace, 'actor-id', dto)
+                ).rejects.toThrow(error);
+                expect(
+                    workspaceDomain.updateWorkspaceSlug
+                ).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('switchWorkspace', () => {
@@ -276,10 +391,11 @@ describe('WorkspaceHttpService', () => {
     });
 
     describe('softDeleteWorkspace', () => {
-        it('delegates to the domain', async () => {
+        it('authorizes delete on the workspace and writes', async () => {
             await service.softDeleteWorkspace(workspace, 'actor-id');
 
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.delete,
                 subject(EnumPolicySubject.Workspace, workspace)
             );
@@ -288,6 +404,28 @@ describe('WorkspaceHttpService', () => {
                 'actor-id'
             );
         });
+
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize and does not write',
+            async (_name, error) => {
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
+
+                await expect(
+                    service.softDeleteWorkspace(workspace, 'actor-id')
+                ).rejects.toThrow(error);
+                expect(
+                    workspaceDomain.softDeleteWorkspace
+                ).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('getListForAdmin', () => {
@@ -304,9 +442,7 @@ describe('WorkspaceHttpService', () => {
                 storeFilter: { isPublic: true },
             } as never);
             workspaceDomain.getListForAdmin.mockResolvedValue(offsetPage);
-            policyAbilityDomain.accessibleWhere.mockReturnValue(
-                accessibleWorkspaceWhere
-            );
+            policyAbilityDomain.scope.mockReturnValue(accessibleWorkspaceWhere);
 
             const result = await service.getListForAdmin(query);
 
@@ -333,9 +469,7 @@ describe('WorkspaceHttpService', () => {
             } as never);
             paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
             workspaceDomain.getListForAdmin.mockResolvedValue(offsetPage);
-            policyAbilityDomain.accessibleWhere.mockReturnValue(
-                accessibleWorkspaceWhere
-            );
+            policyAbilityDomain.scope.mockReturnValue(accessibleWorkspaceWhere);
 
             await service.getListForAdmin(query);
 
@@ -360,20 +494,18 @@ describe('WorkspaceHttpService', () => {
             } as never);
             paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
             workspaceDomain.getListForAdmin.mockResolvedValue(offsetPage);
-            policyAbilityDomain.accessibleWhere.mockReturnValue(
-                accessibleWorkspaceWhere
-            );
+            policyAbilityDomain.scope.mockReturnValue(accessibleWorkspaceWhere);
 
             await service.getListForAdmin({});
 
-            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Workspace
             );
         });
 
         it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.scope.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
@@ -389,7 +521,7 @@ describe('WorkspaceHttpService', () => {
                 storePatch: offsetStorePatch,
             } as never);
             paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
-            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+            policyAbilityDomain.scope.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
 
@@ -401,7 +533,7 @@ describe('WorkspaceHttpService', () => {
     });
 
     describe('getForAdmin', () => {
-        it('checks read on the loaded workspace and wraps it', async () => {
+        it('loads the workspace by id and authorizes read on that row', async () => {
             workspaceDomain.getByIdForAdmin.mockResolvedValue(workspace);
 
             const result = await service.getForAdmin(workspace.id);
@@ -409,33 +541,47 @@ describe('WorkspaceHttpService', () => {
             expect(workspaceDomain.getByIdForAdmin).toHaveBeenCalledWith(
                 workspace.id
             );
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.scope).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.authorize).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 subject(EnumPolicySubject.Workspace, workspace)
             );
             expect(result).toEqual({ data: workspace });
         });
 
-        it('throws PolicyForbiddenException when the record is denied', async () => {
-            workspaceDomain.getByIdForAdmin.mockResolvedValue(workspace);
-            policyAbilityDomain.assertCan.mockImplementation(() => {
-                throw new PolicyForbiddenException();
-            });
+        it('propagates WorkspaceNotFoundException and does not authorize when the load misses', async () => {
+            workspaceDomain.getByIdForAdmin.mockRejectedValue(
+                new WorkspaceNotFoundException()
+            );
 
             await expect(service.getForAdmin(workspace.id)).rejects.toThrow(
-                PolicyForbiddenException
+                WorkspaceNotFoundException
             );
+            expect(policyAbilityDomain.authorize).not.toHaveBeenCalled();
         });
 
-        it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
-            policyAbilityDomain.assertCan.mockImplementation(() => {
-                throw new RequestContextMissingException(PolicyAbilityStoreKey);
-            });
+        it.each([
+            ['PolicyForbiddenException', new PolicyForbiddenException()],
+            [
+                'RequestContextMissingException',
+                new RequestContextMissingException(PolicyAbilityStoreKey),
+            ],
+        ])(
+            'propagates %s from authorize after the identity load',
+            async (_name, error) => {
+                workspaceDomain.getByIdForAdmin.mockResolvedValue(workspace);
+                policyAbilityDomain.authorize.mockImplementation(() => {
+                    throw error;
+                });
 
-            await expect(service.getForAdmin(workspace.id)).rejects.toThrow(
-                RequestContextMissingException
-            );
-        });
+                await expect(service.getForAdmin(workspace.id)).rejects.toThrow(
+                    error
+                );
+                expect(workspaceDomain.getByIdForAdmin).toHaveBeenCalledWith(
+                    workspace.id
+                );
+            }
+        );
     });
 
     describe('previewWorkspace', () => {
@@ -460,11 +606,13 @@ describe('WorkspaceHttpService', () => {
                 permissions
             );
 
-            const result = service.getEffectivePermissions();
+            const result = service.getEffectivePermissions(workspace);
 
             expect(
                 policyAbilityDomain.getEffectivePermissions
-            ).toHaveBeenCalledWith(WorkspacePermissionSubjects);
+            ).toHaveBeenCalledWith([
+                subject(EnumPolicySubject.Workspace, workspace),
+            ]);
             expect(result).toEqual({ data: { permissions } });
         });
 
@@ -477,7 +625,7 @@ describe('WorkspaceHttpService', () => {
                 }
             );
 
-            expect(() => service.getEffectivePermissions()).toThrow(
+            expect(() => service.getEffectivePermissions(workspace)).toThrow(
                 RequestContextMissingException
             );
         });

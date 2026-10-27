@@ -26,6 +26,7 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
   - [CacheMainModule](#cachemainmodule)
   - [SessionDomainModule](#sessiondomainmodule)
   - [Session Cache](#session-cache)
+  - [Policy Cache](#policy-cache)
   - [Redis Failures](#redis-failures)
 - [Configuration](#configuration)
   - [Redis Configuration](#redis-configuration)
@@ -102,8 +103,8 @@ A cache manager is injected into a dedicated cache class, an interceptor, or a h
 
 | Placeholders | Filled by | Patterns |
 |---|---|---|
-| one | `String.prototype.replace('{name}', () => value)` | `ApiKey:{key}`, `FeatureFlag:{key}`, `Policy:Role:{roleId}`, `Apis:{key}`, `TwoFactor:Challenge:{token}`, `TwoFactor:Lock:{userId}` |
-| two or more | `HelperStringService.fillPattern(pattern, values)` | `User:{userId}:Session:{sessionId}`, the four `Analytic:*` patterns, the throttle storage patterns |
+| one | `String.prototype.replace('{name}', () => value)` | `ApiKey:{key}`, `FeatureFlag:{key}`, `Apis:{key}`, `TwoFactor:Challenge:{token}`, `TwoFactor:Lock:{userId}` |
+| two or more | `HelperStringService.fillPattern(pattern, values)` | `Policy:Role:{roleId}:Rev:{policyRevision}`, `User:{userId}:Session:{sessionId}`, the four `Analytic:*` patterns, the throttle storage patterns |
 
 The function form of `replace` stops a value containing `$&` or `$1` from being read as a replacement pattern. `fillPattern` scans `{token}` once and substitutes from the value map, so a substituted value is never re-read as a token, and a token with no entry raises `HelperPatternTokenMissingException` (`52202`, 500).
 
@@ -153,14 +154,18 @@ Both run after the revoke has committed, and both log and swallow a failure, so 
 
 A refresh rotates the entry with `updateLogin` after its database commit. When the entry is gone (a revoke purged it while the refresh ran), nothing is written and the refresh answers `AuthJwtRefreshTokenInvalidException` (401, `50801`).
 
+### Policy Cache
+
+`PolicyCache` caches the raw policy rows of a role under `Policy:Role:{roleId}:Rev:{policyRevision}` with a five-minute TTL. The key carries `Role.policyRevision`, which every policy writer increments in the transaction that writes the policy rows, so a policy change moves the next request to a new key. The cache deletes nothing, and the keys of earlier revisions expire by TTL. The cache reads all keys of a request with one `mget`, and concurrent misses on one key share a single repository load. Flow narrative: [Authorization][ref-doc-authorization].
+
 ### Redis Failures
 
 Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fails, so a read falls through to the database or to the caller's miss handling. Writes and deletes split into three groups:
 
 | Group | Calls | On a Redis failure |
 |---|---|---|
-| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`), `PolicyCache.deleteCacheByRoleId` (policy writes, a stale entry would keep a revoked grant working) | The request answers 500 |
-| Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.lockTwoFactorAttempt`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, `PolicyCache.setCacheByRoleIds` (read-through write), every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
+| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500 |
+| Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.lockTwoFactorAttempt`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, `PolicyCache` (the read and the read-through write), every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
 | Caught in `SessionDomain` and logged | `SessionCache.deleteLogins`, `SessionCache.deleteLoginsByUser` | The request continues |
 
 `ResponseCacheInterceptor` inherits the error handling of `@nestjs/cache-manager`'s `CacheInterceptor`, which logs a failed write and runs the handler when the cache lookup fails.
@@ -255,6 +260,7 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-authentication]: authentication.md
+[ref-doc-authorization]: authorization.md
 [ref-doc-response]: response.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-installation]: installation.md

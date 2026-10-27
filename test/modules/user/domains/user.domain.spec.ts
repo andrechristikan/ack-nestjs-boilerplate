@@ -40,6 +40,7 @@ import { UserNotFoundForbiddenException } from '@modules/user/exceptions/user.no
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
@@ -137,6 +138,7 @@ describe('UserDomain', () => {
             id: 'role-id',
             name: 'User',
             description: null,
+            policyRevision: 0,
             scope: EnumRoleScope.platform,
             key: EnumRolePlatformKey.user,
             createdAt: now,
@@ -307,7 +309,7 @@ describe('UserDomain', () => {
     it('forwards the accessible where as the trailing repository argument of the administrator list', async () => {
         const page = mock<IResponsePaginationReturn<never>>();
         const pagination = { limit: 20, page: 1, skip: 0 };
-        const accessibleWhere = { id: userRow.id };
+        const scopeWhere = { id: userRow.id };
         userRepository.findWithPaginationOffset.mockResolvedValue(page);
 
         await expect(
@@ -316,7 +318,7 @@ describe('UserDomain', () => {
                 undefined,
                 undefined,
                 undefined,
-                accessibleWhere
+                scopeWhere
             )
         ).resolves.toBe(page);
         expect(userRepository.findWithPaginationOffset).toHaveBeenCalledWith(
@@ -324,10 +326,16 @@ describe('UserDomain', () => {
             undefined,
             undefined,
             undefined,
-            accessibleWhere
+            scopeWhere
         );
 
-        await service.getListOffsetByAdmin(pagination);
+        await service.getListOffsetByAdmin(
+            pagination,
+            undefined,
+            undefined,
+            undefined,
+            {}
+        );
         expect(
             userRepository.findWithPaginationOffset
         ).toHaveBeenLastCalledWith(
@@ -335,7 +343,7 @@ describe('UserDomain', () => {
             undefined,
             undefined,
             undefined,
-            undefined
+            {}
         );
     });
 
@@ -358,7 +366,13 @@ describe('UserDomain', () => {
         userRepository.resetPasswordAttempt.mockResolvedValue(userRow);
 
         await expect(
-            service.getListOffsetByAdmin(pagination, status, roleId, countryId)
+            service.getListOffsetByAdmin(
+                pagination,
+                status,
+                roleId,
+                countryId,
+                {}
+            )
         ).resolves.toBe(page);
         await expect(service.getOneActive(userRow.id)).resolves.toBe(userRow);
         await expect(service.getOneActiveByEmail(userRow.email)).resolves.toBe(
@@ -419,6 +433,36 @@ describe('UserDomain', () => {
         await expect(service.getOne('missing')).rejects.toBeInstanceOf(
             UserNotFoundException
         );
+    });
+
+    describe('getOne', () => {
+        it('calls the profile read', async () => {
+            const profile = mock<IUserProfile>();
+            userRepository.findOneProfileById.mockResolvedValue(profile);
+
+            await expect(service.getOne('user-1')).resolves.toBe(profile);
+            expect(userRepository.findOneProfileById).toHaveBeenCalledWith(
+                'user-1'
+            );
+        });
+
+        it('reads by id only', async () => {
+            const profile = mock<IUserProfile>();
+            userRepository.findOneProfileById.mockResolvedValue(profile);
+
+            await expect(service.getOne('user-1')).resolves.toBe(profile);
+            expect(userRepository.findOneProfileById).toHaveBeenCalledWith(
+                'user-1'
+            );
+        });
+
+        it('throws UserNotFoundException when the read returns null', async () => {
+            userRepository.findOneProfileById.mockResolvedValue(null);
+
+            await expect(service.getOne('user-1')).rejects.toBeInstanceOf(
+                UserNotFoundException
+            );
+        });
     });
 
     describe('prepareCreateByAdmin', () => {
@@ -598,6 +642,68 @@ describe('UserDomain', () => {
             }
         );
 
+        it('calls the preliminary read and the scoped status write', async () => {
+            await service.updateStatusByAdmin(
+                userRow.id,
+                EnumUserStatus.active,
+                'admin-id'
+            );
+
+            expect(userRepository.findOneById).toHaveBeenCalledWith(userRow.id);
+            expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
+                expect.any(Object),
+                userRow.id,
+                { status: EnumUserStatus.active }
+            );
+        });
+
+        it('calls the read and the write', async () => {
+            await service.updateStatusByAdmin(
+                userRow.id,
+                EnumUserStatus.active,
+                'admin-id'
+            );
+
+            expect(userRepository.findOneById).toHaveBeenCalledWith(userRow.id);
+            expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
+                expect.any(Object),
+                userRow.id,
+                { status: EnumUserStatus.active }
+            );
+        });
+
+        it('throws UserNotFoundException when the preliminary read is missing', async () => {
+            userRepository.findOneById.mockResolvedValue(null);
+
+            await expect(
+                service.updateStatusByAdmin(
+                    userRow.id,
+                    EnumUserStatus.inactive,
+                    'admin-id'
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
+            expect(
+                userRepository.updateStatusByAdminInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('scoped status write returning null throws UserNotFoundException inside the transaction and no session revoke runs', async () => {
+            userRepository.updateStatusByAdminInTx.mockResolvedValue(null);
+
+            await expect(
+                service.updateStatusByAdmin(
+                    userRow.id,
+                    EnumUserStatus.blocked,
+                    'admin-id'
+                )
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
+            expect(sessionDomain.finalizeRevokeAll).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
         it('rejects an administrator updating their own status', async () => {
             await expect(
                 service.updateStatusByAdmin(
@@ -661,6 +767,57 @@ describe('UserDomain', () => {
                     'admin-id'
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+    });
+
+    describe('updatePasswordInTx', () => {
+        it('calls the password write', async () => {
+            await expect(
+                service.updatePasswordInTx(
+                    transactionClient,
+                    userRow.id,
+                    password,
+                    'admin-id'
+                )
+            ).resolves.toBe(userRow);
+            expect(userRepository.updatePasswordInTx).toHaveBeenCalledWith(
+                transactionClient,
+                userRow.id,
+                password,
+                'admin-id'
+            );
+        });
+
+        it('calls the write and returns the same row', async () => {
+            await expect(
+                service.updatePasswordInTx(
+                    transactionClient,
+                    userRow.id,
+                    password,
+                    'admin-id'
+                )
+            ).resolves.toBe(userRow);
+            expect(userRepository.updatePasswordInTx).toHaveBeenCalledWith(
+                transactionClient,
+                userRow.id,
+                password,
+                'admin-id'
+            );
+        });
+
+        it('throws UserNotFoundException when the write returns null', async () => {
+            userRepository.updatePasswordInTx.mockResolvedValue(null);
+
+            await expect(
+                service.updatePasswordInTx(
+                    transactionClient,
+                    userRow.id,
+                    password,
+                    'admin-id'
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
         });
     });
 

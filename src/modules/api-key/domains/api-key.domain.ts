@@ -87,17 +87,18 @@ export class ApiKeyDomain {
         });
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
-        isActive?: Record<string, IPaginationEqual>,
-        type?: Record<string, IPaginationIn>,
-        where?: Prisma.ApiKeyWhereInput
+        isActive: Record<string, IPaginationEqual> | undefined,
+        type: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.ApiKeyWhereInput
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
             isActive,
             type,
-            where
+            additionalWhere
         );
     }
 
@@ -190,13 +191,17 @@ export class ApiKeyDomain {
         const updated = await this.apiKeyRepository.updateStatus(id, {
             isActive,
         });
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return updated;
     }
 
-    async updateByAdmin(id: string, name?: string): Promise<ApiKey> {
+    async updateByAdmin(id: string, name: string | undefined): Promise<ApiKey> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey);
 
@@ -213,12 +218,16 @@ export class ApiKeyDomain {
                 true
             ),
         ];
-        let updated: ApiKey;
+        let updated: ApiKey | null;
         if (name) {
             updated = await this.apiKeyRepository.updateName(id, name);
         } else {
             updated = apiKey;
         }
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
@@ -255,6 +264,10 @@ export class ApiKeyDomain {
             startAt: newStartAt,
             endAt: newEndAt,
         });
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
@@ -280,6 +293,10 @@ export class ApiKeyDomain {
             ),
         ];
         const updated = await this.apiKeyRepository.updateHash(id, hash);
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
@@ -302,6 +319,10 @@ export class ApiKeyDomain {
             ),
         ];
         const deleted = await this.apiKeyRepository.delete(id);
+        if (!deleted) {
+            throw new ApiKeyNotFoundException();
+        }
+
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
