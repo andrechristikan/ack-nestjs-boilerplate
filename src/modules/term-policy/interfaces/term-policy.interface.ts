@@ -42,3 +42,12 @@ export interface ITermPolicyAcceptanceAnalytic {
     acceptedAt: Date;
     createdAt: Date;
 }
+
+export interface ITermPolicyDeleteContentPayload {
+    path: string;
+}
+
+export type ITermPolicyActivityLogSubject = Pick<
+    TermPolicy,
+    'id' | 'type' | 'version'
+>;

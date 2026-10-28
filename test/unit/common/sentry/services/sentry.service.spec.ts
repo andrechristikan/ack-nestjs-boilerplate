@@ -5,7 +5,6 @@ import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 vi.mock('@sentry/nestjs', () => ({
     captureException: vi.fn(),
     captureMessage: vi.fn(),
-    withScope: vi.fn(),
     logger: {
         fatal: vi.fn(),
         error: vi.fn(),
@@ -42,7 +41,22 @@ describe('SentryService', () => {
 
             service.captureException(exception);
 
-            expect(Sentry.captureException).toHaveBeenCalledWith(exception);
+            expect(Sentry.captureException).toHaveBeenCalledWith(
+                exception,
+                undefined
+            );
+        });
+
+        it('forwards the capture context to Sentry', () => {
+            const exception = new Error('boom');
+            const captureContext = { tags: { source: 'queue' } };
+
+            service.captureException(exception, captureContext);
+
+            expect(Sentry.captureException).toHaveBeenCalledWith(
+                exception,
+                captureContext
+            );
         });
 
         it('swallows a failure from Sentry instead of throwing', () => {
@@ -89,24 +103,6 @@ describe('SentryService', () => {
             expect(() =>
                 service.log(EnumLoggerLevel.error, 'hello')
             ).not.toThrow();
-        });
-    });
-
-    describe('withScope', () => {
-        it('forwards the callback to Sentry', () => {
-            const callback = vi.fn();
-
-            service.withScope(callback);
-
-            expect(Sentry.withScope).toHaveBeenCalledWith(callback);
-        });
-
-        it('swallows a failure from Sentry instead of throwing', () => {
-            vi.mocked(Sentry.withScope).mockImplementation(() => {
-                throw new Error('sentry unreachable');
-            });
-
-            expect(() => service.withScope(vi.fn())).not.toThrow();
         });
     });
 });

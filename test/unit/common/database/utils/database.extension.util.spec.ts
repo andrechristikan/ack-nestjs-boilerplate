@@ -8,6 +8,7 @@ import type { IDatabaseData } from '@common/database/interfaces/database.extensi
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { extractDatabaseExtension } from '@test/unit/helpers/test.unit.database.helper';
+import { EnumDatabaseAuditField } from '@common/database/enums/database.enum';
 
 describe('DatabaseExtensionUtil', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -373,25 +374,40 @@ describe('DatabaseExtensionUtil', () => {
 
     describe('modelHasField', () => {
         it('returns false when no model is given', () => {
-            expect(util['modelHasField'](null, 'createdBy')).toBe(false);
+            expect(
+                util['modelHasField'](null, EnumDatabaseAuditField.createdBy)
+            ).toBe(false);
         });
 
         it('returns true when the model owns the field', () => {
-            expect(util['modelHasField']('ApiKey', 'createdBy')).toBe(true);
-            expect(util['modelHasField']('ApiKey', 'updatedBy')).toBe(true);
+            expect(
+                util['modelHasField'](
+                    'ApiKey',
+                    EnumDatabaseAuditField.createdBy
+                )
+            ).toBe(true);
+            expect(
+                util['modelHasField'](
+                    'ApiKey',
+                    EnumDatabaseAuditField.updatedBy
+                )
+            ).toBe(true);
         });
 
         it('returns false when the model does not own the field', () => {
-            expect(util['modelHasField']('Verification', 'updatedBy')).toBe(
-                false
-            );
+            expect(
+                util['modelHasField'](
+                    'Verification',
+                    EnumDatabaseAuditField.updatedBy
+                )
+            ).toBe(false);
         });
 
         it('returns false when the model has no entry in the field map', () => {
             expect(
                 util['modelHasField'](
                     'NotARealModel' as Prisma.ModelName,
-                    'createdBy'
+                    EnumDatabaseAuditField.createdBy
                 )
             ).toBe(false);
         });
@@ -634,7 +650,7 @@ describe('DatabaseExtensionUtil', () => {
             util['stampNestedUpdateEntry']('ApiKey', entry, 'actor-1');
 
             expect(entry.data).toMatchObject({ updatedBy: 'actor-1' });
-            expect(entry).not.toHaveProperty('updatedBy');
+            expect(entry).not.toHaveProperty(EnumDatabaseAuditField.updatedBy);
         });
 
         it('stamps the entry itself when it is a to-one update payload', () => {

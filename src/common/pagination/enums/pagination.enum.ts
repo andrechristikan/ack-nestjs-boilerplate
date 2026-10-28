@@ -24,3 +24,12 @@ export enum EnumPaginationType {
     offset = 'offset',
     cursor = 'cursor',
 }
+
+/**
+ * Set operators an enum filter applies: keep the listed members or exclude them.
+ * @public
+ */
+export enum EnumPaginationFilterEnumOperator {
+    in = 'in',
+    notIn = 'notIn',
+}

@@ -13,7 +13,7 @@ export class PaginationPerPageCannotBeLessThanOneException extends AppBaseExcept
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
-    constructor(receivedPerPage: number) {
+    constructor(readonly receivedPerPage: number) {
         super('pagination.error.perPageCannotBeLessThanOne', {
             messageProperties: { minPerPage: 1, receivedPerPage },
         });

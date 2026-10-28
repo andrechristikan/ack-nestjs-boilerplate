@@ -3,11 +3,11 @@
  * @public
  */
 export class QueueException extends Error {
-    readonly isFatal: boolean = false;
-
-    constructor(message: string, isFatal?: boolean) {
+    constructor(
+        readonly message: string,
+        readonly isFatal: boolean = false,
+        readonly rawError: unknown = null
+    ) {
         super(message);
-
-        this.isFatal = isFatal ?? this.isFatal;
     }
 }

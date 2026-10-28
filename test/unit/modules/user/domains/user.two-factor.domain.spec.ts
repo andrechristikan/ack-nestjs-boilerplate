@@ -32,6 +32,7 @@ import type { INotificationRecipient } from '@modules/notification/interfaces/no
 import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -69,7 +70,6 @@ describe('UserTwoFactorDomain', () => {
     const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userVerifyTwoFactor,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -172,8 +172,11 @@ describe('UserTwoFactorDomain', () => {
         userId: baseUser.id,
     };
 
+    const revokedSessions: ISessionRef[] = [{ id: 'session-one' }];
+
     beforeEach(async () => {
         vi.resetAllMocks();
+        sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedSessions);
         notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
 
         activityLogDomain.prepare.mockReturnValue(activityLog);
@@ -213,7 +216,7 @@ describe('UserTwoFactorDomain', () => {
 
     describe('loginVerifyTwoFactor', () => {
         it('verifies the challenge and returns fresh tokens', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
                 verifiedResult
@@ -230,7 +233,7 @@ describe('UserTwoFactorDomain', () => {
             expect(
                 userLoginDomain.recordTwoFactorVerification
             ).toHaveBeenCalledWith(expect.any(Object), verifiedResult);
-            expect(authCache.clearChallenge).toHaveBeenCalledWith(
+            expect(authCache.deleteTwoFactorChallenge).toHaveBeenCalledWith(
                 'challenge-token'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
@@ -239,7 +242,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws AuthTwoFactorChallengeInvalidException when the challenge is missing', async () => {
-            authCache.getChallenge.mockResolvedValue(null);
+            authCache.getTwoFactorChallenge.mockResolvedValue(null);
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
@@ -259,7 +262,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws UserNotFoundException when the challenge user no longer exists', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
@@ -278,7 +281,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 status: EnumUserStatus.inactive,
@@ -302,7 +305,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws UserEmailNotVerifiedException when the user is not verified', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 isVerified: false,
@@ -326,7 +329,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
@@ -350,7 +353,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws AuthTwoFactorRequiredSetupException when setup is still pending', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, requiredSetup: true },
@@ -374,7 +377,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('rethrows an AppBaseException raised while finalizing the login', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
                 verifiedResult
@@ -401,7 +404,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('wraps an unknown error raised while finalizing the login', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
                 verifiedResult
@@ -439,7 +442,7 @@ describe('UserTwoFactorDomain', () => {
         };
 
         it('confirms the pending authenticator, returns backup codes, and stages the activity log in order', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(pendingUser);
             authTwoFactorDomain.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1', 'CODE2'],
@@ -478,7 +481,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws AuthTwoFactorChallengeInvalidException when the challenge is missing', async () => {
-            authCache.getChallenge.mockResolvedValue(null);
+            authCache.getTwoFactorChallenge.mockResolvedValue(null);
 
             const call = domain.loginSetupTwoFactor(
                 'challenge-token',
@@ -497,7 +500,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws UserNotFoundException when the challenge user no longer exists', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             const call = domain.loginSetupTwoFactor(
@@ -515,7 +518,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 status: EnumUserStatus.inactive,
@@ -539,7 +542,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws UserEmailNotVerifiedException when the user is not verified', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 isVerified: false,
@@ -563,7 +566,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 twoFactor: {
@@ -590,7 +593,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws AuthTwoFactorNotRequiredSetupException when setup was not required', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, requiredSetup: false },
@@ -613,7 +616,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('throws AuthTwoFactorSetupRequiredException when there is no pending secret', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 twoFactor: {
@@ -640,7 +643,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('rethrows an AppBaseException raised while enabling two-factor', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(pendingUser);
             authTwoFactorDomain.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1'],
@@ -665,7 +668,7 @@ describe('UserTwoFactorDomain', () => {
         });
 
         it('wraps an unknown error raised while enabling two-factor', async () => {
-            authCache.getChallenge.mockResolvedValue(challenge);
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(pendingUser);
             authTwoFactorDomain.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1'],
@@ -1029,8 +1032,9 @@ describe('UserTwoFactorDomain', () => {
                 user.id,
                 now
             );
-            expect(sessionDomain.purgeLoginsByUser).toHaveBeenCalledWith(
-                user.id
+            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
+                user.id,
+                revokedSessions
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
@@ -1240,7 +1244,6 @@ describe('UserTwoFactorDomain', () => {
             const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminUserResetTwoFactor,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1248,7 +1251,6 @@ describe('UserTwoFactorDomain', () => {
             const targetActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userResetTwoFactorByAdmin,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1257,8 +1259,17 @@ describe('UserTwoFactorDomain', () => {
                 .mockReturnValueOnce(actorActivityLog)
                 .mockReturnValueOnce(targetActivityLog);
             const callOrder: string[] = [];
-            sessionDomain.purgeLoginsByUser.mockImplementation(async () => {
-                callOrder.push('purgeLoginsByUser');
+            databaseService.withTransaction.mockImplementation(async fn => {
+                const result = await fn(tx);
+                callOrder.push('committed');
+
+                return result as never;
+            });
+            authCache.deleteTwoFactorLock.mockImplementation(async () => {
+                callOrder.push('deleteTwoFactorLock');
+            });
+            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
+                callOrder.push('purgeRevokedLogins');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1280,11 +1291,10 @@ describe('UserTwoFactorDomain', () => {
                 'admin-quartz',
                 now
             );
-            expect(authCache.clearLockTwoFactorAttempt).toHaveBeenCalledWith(
-                user
-            );
-            expect(sessionDomain.purgeLoginsByUser).toHaveBeenCalledWith(
-                'user-quartz'
+            expect(authCache.deleteTwoFactorLock).toHaveBeenCalledWith(user);
+            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
+                'user-quartz',
+                revokedSessions
             );
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.adminUserResetTwoFactor,
@@ -1310,9 +1320,11 @@ describe('UserTwoFactorDomain', () => {
                 notificationQueue.sendResetTwoFactorByAdmin
             ).toHaveBeenCalledWith(recipient, 'admin-quartz');
             expect(callOrder).toEqual([
-                'purgeLoginsByUser',
-                'stagePrepared',
+                'committed',
+                'deleteTwoFactorLock',
+                'purgeRevokedLogins',
                 'sendResetTwoFactorByAdmin',
+                'stagePrepared',
             ]);
         });
 
@@ -1330,8 +1342,8 @@ describe('UserTwoFactorDomain', () => {
 
             await expect(call).rejects.toMatchObject({ rawError: error });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(authCache.clearLockTwoFactorAttempt).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
+            expect(authCache.deleteTwoFactorLock).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
@@ -1429,6 +1441,7 @@ describe('UserTwoFactorDomain', () => {
                 messagePath: 'user.error.notFound',
             });
             await expect(call).rejects.toBe(error);
+            expect(authCache.deleteTwoFactorLock).not.toHaveBeenCalled();
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {

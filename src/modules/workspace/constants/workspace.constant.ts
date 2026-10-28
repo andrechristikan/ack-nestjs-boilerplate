@@ -2,6 +2,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import type { IWorkspaceActiveFilter } from '@modules/workspace/interfaces/workspace.interface';
 
 /**
  * Request-store key holding the workspace the workspace guard resolved.
@@ -74,9 +75,10 @@ export const DocWorkspaceRoleErrorResponses = {
  * explicitly `null`. This OR restores "active" semantics for that data, top-level or nested.
  * @public
  */
-export const WorkspaceActiveFilter: NonNullable<
-    Prisma.WorkspaceWhereInput['OR']
-> = [{ deletedAt: null }, { deletedAt: { isSet: false } }];
+export const WorkspaceActiveFilter: IWorkspaceActiveFilter = [
+    { deletedAt: null },
+    { deletedAt: { isSet: false } },
+];
 
 /**
  * Columns a user-scope workspace invite list read returns; the invite token is never among them.

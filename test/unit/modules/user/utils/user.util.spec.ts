@@ -14,16 +14,18 @@ import type { TwoFactor, User } from '@generated/prisma-client/client';
 import { UserUtil } from '@modules/user/utils/user.util';
 
 describe('UserUtil', () => {
-    const configGet = vi.fn<(key: string) => RegExp | string[] | undefined>();
+    const configGet =
+        vi.fn<(key: string) => RegExp | string[] | string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
 
     let util: UserUtil;
 
-    const configValues: Record<string, RegExp | string[]> = {
+    const configValues: Record<string, RegExp | string[] | string> = {
         'user.usernameRegex': /^[a-zA-Z0-9-_]+$/,
         'message.availableLanguage': ['en'],
+        'user.uploadPhotoProfilePath': 'users/{userId}/profile',
     };
 
     const user: User = {
@@ -153,6 +155,43 @@ describe('UserUtil', () => {
                 lastUsedAt: null,
             });
         });
+    });
+
+    describe('buildPhotoProfilePath', () => {
+        it('substitutes the user id in the configured path', () => {
+            expect(util.buildPhotoProfilePath('user-marigold')).toBe(
+                'users/user-marigold/profile'
+            );
+        });
+
+        it('keeps a replacement pattern in the user id literal', () => {
+            expect(util.buildPhotoProfilePath('$&')).toBe('users/$&/profile');
+        });
+    });
+
+    describe('isPhotoProfileKeyOwned', () => {
+        it('returns true when the key sits under the user photo path', () => {
+            expect(
+                util.isPhotoProfileKeyOwned(
+                    'user-marigold',
+                    'users/user-marigold/profile/random.png'
+                )
+            ).toBe(true);
+        });
+
+        it.each([
+            'users/user-other/profile/random.png',
+            'users/user-marigold-sibling/profile/random.png',
+            'users/user-marigold/profile',
+            'term-policies/privacy/1/en.pdf',
+        ])(
+            'returns false when the key %s sits outside the user photo path',
+            key => {
+                expect(util.isPhotoProfileKeyOwned('user-marigold', key)).toBe(
+                    false
+                );
+            }
+        );
     });
 
     describe('checkMobileNumber', () => {

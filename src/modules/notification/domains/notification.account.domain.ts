@@ -3,6 +3,7 @@ import { NotificationKindContract } from '@modules/notification/contracts/notifi
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumNotificationKind,
+    EnumNotificationProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
@@ -20,6 +21,7 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
+import { MessageService } from '@common/message/services/message.service';
 
 /** Writes and fans out the sign-up, welcome and verification notifications. */
 @Injectable()
@@ -28,7 +30,8 @@ export class NotificationAccountDomain {
         private readonly notificationRepository: NotificationRepository,
         private readonly helperStringService: HelperStringService,
         private readonly notificationUtil: NotificationUtil,
-        private readonly notificationEmailQueue: NotificationEmailQueue
+        private readonly notificationEmailQueue: NotificationEmailQueue,
+        private readonly messageService: MessageService
     ) {}
 
     async processWelcomeByAdmin(
@@ -41,9 +44,17 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.welcomeByAdmin,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Welcome by admin notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -71,8 +82,17 @@ export class NotificationAccountDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.welcomeByAdmin,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Welcome by admin notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -118,8 +138,12 @@ export class NotificationAccountDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.welcomeByAdmin'
+        );
+
         return {
-            message: 'Welcome by admin notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -178,8 +202,13 @@ export class NotificationAccountDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    { properties: { process: EnumNotificationProcess.welcome } }
+                );
+
                 return {
-                    message: 'Welcome notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -242,8 +271,12 @@ export class NotificationAccountDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.welcome'
+        );
+
         return {
-            message: 'Welcome notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -257,9 +290,17 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.welcomeSocial,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Welcome social notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -287,8 +328,17 @@ export class NotificationAccountDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.welcomeSocial,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Welcome social notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -332,8 +382,12 @@ export class NotificationAccountDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.welcomeSocial'
+        );
+
         return {
-            message: 'Welcome social notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -348,9 +402,17 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.verifiedEmail,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Verified email notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -378,8 +440,17 @@ export class NotificationAccountDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.verifiedEmail,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Verified email notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -425,8 +496,12 @@ export class NotificationAccountDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.verifiedEmail'
+        );
+
         return {
-            message: 'Verified email notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -441,9 +516,17 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.verificationEmail,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Verification email notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -471,8 +554,17 @@ export class NotificationAccountDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.verificationEmail,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Verification email notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -518,8 +610,12 @@ export class NotificationAccountDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.verificationEmail'
+        );
+
         return {
-            message: 'Verification email notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -534,9 +630,17 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.verifiedMobileNumber,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Verified mobile number notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -571,8 +675,18 @@ export class NotificationAccountDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationProcess.verifiedMobileNumber,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Mobile number verified notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -619,8 +733,12 @@ export class NotificationAccountDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.verifiedMobileNumber'
+        );
+
         return {
-            message: 'Mobile number verified notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };

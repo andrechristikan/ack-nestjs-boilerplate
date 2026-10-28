@@ -100,7 +100,7 @@ Send behavior:
 - When SES is unconfigured, both calls log a warning and return an empty output.
 - The job then completes and no email leaves.
 
-Queue names, rate limits, dedup, and payload encryption: [Notification Documentation][ref-doc-notification].
+Queue names, rate limits, job ids, and payload encryption: [Notification Documentation][ref-doc-notification].
 
 <!-- REFERENCES -->
 

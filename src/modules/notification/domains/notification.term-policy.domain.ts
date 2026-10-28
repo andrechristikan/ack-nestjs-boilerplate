@@ -3,12 +3,14 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumNotificationKind,
+    EnumNotificationProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationAcceptTermPolicyPayload,
     INotificationCreateEntry,
     INotificationPublishTermPolicyPayload,
+    INotificationPublishTermPolicyResult,
     INotificationRecipientEncryptedPayload,
     INotificationStepResult,
     INotificationTermPolicyBatchRecipient,
@@ -22,7 +24,7 @@ import { UserDomain } from '@modules/user/domains/user.domain';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { MessageService } from '@common/message/services/message.service';
 
 /** Writes and fans out the term-policy publication and acceptance notifications. */
 @Injectable()
@@ -36,7 +38,8 @@ export class NotificationTermPolicyDomain {
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationUtil: NotificationUtil,
-        private readonly notificationEmailQueue: NotificationEmailQueue
+        private readonly notificationEmailQueue: NotificationEmailQueue,
+        private readonly messageService: MessageService
     ) {
         this.emailBatchSize =
             this.configService.get<number>('email.batchSize')!;
@@ -175,7 +178,7 @@ export class NotificationTermPolicyDomain {
     async processPublishTermPolicy(
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationPublishTermPolicyResult> {
         const createdBefore = this.helperDateService.createFromIso(
             data.recipientCutoffAt
         );
@@ -255,8 +258,12 @@ export class NotificationTermPolicyDomain {
             hasNextPage = pageUsers.length === this.emailBatchSize;
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.publishTermPolicy'
+        );
+
         return {
-            message: 'Publish term policy notification processed',
+            message,
             candidateCounts,
             createdCounts,
             batches: index,
@@ -272,9 +279,17 @@ export class NotificationTermPolicyDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.userAcceptTermPolicy,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'User accept term policy notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -305,16 +320,30 @@ export class NotificationTermPolicyDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationProcess.userAcceptTermPolicy,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'User accept term policy notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
             }
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.userAcceptTermPolicy'
+        );
+
         return {
-            message: 'User accept term policy notification processed',
+            message,
             completedSteps: done,
             failedSteps: [],
         };

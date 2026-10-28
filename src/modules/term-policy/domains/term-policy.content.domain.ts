@@ -15,6 +15,7 @@ import { TermPolicyContentNotFoundException } from '@modules/term-policy/excepti
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
+    ITermPolicyActivityLogSubject,
     ITermPolicyContent,
     ITermPolicyContentPresign,
     ITermPolicyContentUpload,
@@ -40,7 +41,7 @@ export class TermPolicyContentDomain {
 
     private prepareActivityLog(
         action: EnumActivityLogAction,
-        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        termPolicy: ITermPolicyActivityLogSubject,
         timestamp: Date
     ): IActivityLogStaged {
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(

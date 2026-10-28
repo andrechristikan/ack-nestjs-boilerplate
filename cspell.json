@@ -79,6 +79,7 @@
         "unparse",
         "unseal",
         "unsealed",
+        "unstub",
         "userhistories",
         "userpasswords",
         "utdh",

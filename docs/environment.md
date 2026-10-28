@@ -486,6 +486,9 @@ MongoDB connection string.
 - The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`, and the local Compose file uses `mongo:latest`.
 - The local Compose port is `DOCKER_MONGO_PORT` (default `27017`).
 - Changing `DOCKER_MONGO_PORT` does not change `DATABASE_URL`. Set the port in `DATABASE_URL` to the same value by hand.
+- With `DOCKER_MONGO_ROOT_PASSWORD` set, the URL needs `<user>:<password>@` before the host and `authSource=admin` in the query.
+    - The root user lives in the `admin` database. Without `authSource=admin` the driver authenticates against `ACKNestJs`, and Prisma fails with `SCRAM failure: Authentication failed`.
+    - Without credentials, Prisma fails with `Error code 13 (Unauthorized): Command aggregate requires authentication`.
 - Setup: [Installation][ref-doc-installation].
 
 ```bash
@@ -836,7 +839,7 @@ Redis URL for cache (`db:0`).
 
 - Locally, Compose Redis is the default choice.
 - Without Docker, use a hosted Redis such as [Amazon ElastiCache][ref-elasticache].
-- Redis 6.0 or later is required, because `SessionCache` runs `SCAN` with the `TYPE` option.
+- Redis 6.2 or later is required. BullMQ refuses to connect to a server older than 5.0 and logs a warning below 6.2, its recommended minimum.
 - Setup: [Installation][ref-doc-installation].
 
 ```bash
@@ -852,6 +855,7 @@ Redis URL for BullMQ (`db:1`).
 
 - The same host as cache is fine.
 - A different logical DB from cache keeps the two apart.
+- With `DOCKER_REDIS_PASSWORD` set, Redis runs with `--requirepass`, and both Redis URLs take `redis://:<password>@<host>:<port>/<db>`. Without the password the app logs `NOAUTH Authentication required`.
 
 ```bash
 # Local Compose
@@ -907,9 +911,9 @@ Turns MongoDB authentication on.
 
 - Unset or empty starts MongoDB plain.
 - The keyfile `keys/mongo-keyfile` (created by `pnpm generate:secret` or `pnpm generate:secret:mongo`) is mounted either way. The password decides whether `mongod` uses it.
-- When set, `mongod` starts with `--keyFile` and `--auth` and creates the root user on the first start of a database without one.
+- When set, `mongod` starts with `--keyFile` and `--auth` and tries to create the root user in the `admin` database on every start.
 - An existing user is left as it is, so changing the variable later does not change the stored password.
-- `DATABASE_URL` then carries the credentials, with `DOCKER_MONGO_ROOT_USERNAME` as `<user>`, and `authSource=admin`.
+- The root user is created in the `admin` database, so `DATABASE_URL` then carries the credentials, with `DOCKER_MONGO_ROOT_USERNAME` as `<user>`, and `authSource=admin`. Without `authSource=admin` the driver authenticates against `ACKNestJs` and fails with `SCRAM failure: Authentication failed`.
 - Special characters in the password are percent-encoded inside the URL.
 - A `$` in the password makes the stored password and the one in the URL differ, because Compose interpolates `$` in values it reads with `--env-file` while the app reads `.env` literally (`expandVariables: false`).
 

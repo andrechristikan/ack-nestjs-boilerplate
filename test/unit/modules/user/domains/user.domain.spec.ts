@@ -15,7 +15,7 @@ import {
     EnumVerificationType,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { TwoFactor } from '@generated/prisma-client/client';
+import type { TwoFactor, UserPhoto } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -33,6 +33,7 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
@@ -85,6 +86,7 @@ describe('UserDomain', () => {
         mock<ActivityLogDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
 
     let domain: UserDomain;
 
@@ -160,10 +162,19 @@ describe('UserDomain', () => {
         twoFactor,
     };
 
+    const photo: UserPhoto = {
+        bucket: 'bucket',
+        key: 'photo-profile/user-cobalt/current.png',
+        cdnUrl: null,
+        completedUrl: 'https://cdn.example.com/current.png',
+        mime: 'image/png',
+        extension: 'png',
+        access: 'public',
+    };
+
     const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userUpdateStatus,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -206,6 +217,7 @@ describe('UserDomain', () => {
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: SessionDomain, useValue: sessionDomain },
+                { provide: UserQueue, useValue: userQueue },
             ],
         }).compile();
         domain = module.get(UserDomain);
@@ -928,7 +940,7 @@ describe('UserDomain', () => {
         };
 
         it('formats the password dates and sends the welcome notification', async () => {
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
+            notificationRecipientDomain.buildNewUserRecipient.mockReturnValue(
                 recipient
             );
             const passwordCreated = new Date('2026-01-01T00:00:00.000Z');
@@ -946,11 +958,14 @@ describe('UserDomain', () => {
             );
 
             expect(
-                notificationRecipientDomain.getRecipient
+                notificationRecipientDomain.buildNewUserRecipient
             ).toHaveBeenCalledWith(
                 recipientUser,
                 EnumNotificationKind.welcomeByAdmin
             );
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).not.toHaveBeenCalled();
             expect(notificationQueue.sendWelcomeByAdmin).toHaveBeenCalledWith(
                 recipient,
                 {
@@ -1056,6 +1071,7 @@ describe('UserDomain', () => {
             );
             expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
                 'user-cobalt',
+                [{ id: 'session-one' }],
                 [activityLog]
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
@@ -1184,12 +1200,15 @@ describe('UserDomain', () => {
     describe('deleteSelf', () => {
         it('deletes the account, revokes sessions and devices, and stages the activity log', async () => {
             sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
+            sessionDomain.revokeActiveByUserInTx.mockResolvedValue([
+                { id: 'session-one' },
+            ]);
+            userRepository.deleteSelfInTx.mockResolvedValue(baseUser);
 
             await domain.deleteSelf('user-cobalt');
 
             expect(sessionDomain.prepareRevokeAllSelf).toHaveBeenCalledWith(
-                'user-cobalt',
-                false
+                'user-cobalt'
             );
             expect(userRepository.deleteSelfInTx).toHaveBeenCalledWith(
                 tx,
@@ -1210,11 +1229,87 @@ describe('UserDomain', () => {
             );
             expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
                 'user-cobalt',
+                [{ id: 'session-one' }],
                 [activityLog]
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
+        });
+
+        it('does not enqueue a photo delete when the deleted user has no photo', async () => {
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
+            userRepository.deleteSelfInTx.mockResolvedValue(baseUser);
+
+            await domain.deleteSelf('user-cobalt');
+
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it('enqueues no photo delete when the stored photo key is outside the user photo path', async () => {
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
+            userUtil.isPhotoProfileKeyOwned.mockReturnValue(false);
+            userRepository.deleteSelfInTx.mockResolvedValue({
+                ...baseUser,
+                photo: {
+                    ...photo,
+                    key: 'photo-profile/user-other/current.png',
+                },
+            });
+
+            await domain.deleteSelf('user-cobalt');
+
+            expect(userUtil.isPhotoProfileKeyOwned).toHaveBeenCalledWith(
+                'user-cobalt',
+                'photo-profile/user-other/current.png'
+            );
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it('enqueues the photo delete after the commit and before the activity rows are staged', async () => {
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
+            userUtil.isPhotoProfileKeyOwned.mockReturnValue(true);
+            userRepository.deleteSelfInTx.mockResolvedValue({
+                ...baseUser,
+                photo,
+            });
+            const callOrder: string[] = [];
+            databaseService.withTransaction.mockImplementation(async fn => {
+                const result = await fn(tx);
+                callOrder.push('commit');
+                return result as never;
+            });
+            userQueue.deletePhoto.mockImplementation(async () => {
+                callOrder.push('deletePhoto');
+            });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stagePrepared');
+            });
+
+            await domain.deleteSelf('user-cobalt');
+
+            expect(userQueue.deletePhoto).toHaveBeenCalledWith(
+                'user-cobalt',
+                photo
+            );
+            expect(callOrder).toEqual([
+                'commit',
+                'deletePhoto',
+                'stagePrepared',
+            ]);
+        });
+
+        it('enqueues no photo delete when the transaction rejects', async () => {
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
+            databaseService.withTransaction.mockRejectedValueOnce(
+                new Error('boom')
+            );
+
+            await expect(
+                domain.deleteSelf('user-cobalt')
+            ).rejects.toBeDefined();
+
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {

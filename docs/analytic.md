@@ -305,12 +305,14 @@ OpenAPI:
 
 ## Caching and config
 
-`AnalyticCache` injects `CacheMainProvider` and reads `analytic.cache.*` from config. Domains call get-then-compute-then-set for:
+`AnalyticCache` injects `CacheMainProvider` and reads `analytic.cache.*` from config. Domains read the cache, compute on a miss, then write the result for:
 
 - dashboard metrics
 - anomaly summaries
 - fraud summaries
 - risk scores
+
+`AnalyticDashboardDomain` runs that sequence inline in each metric method: its private `readCache` returns the cached value or `null`, the method computes on a miss, and its private `writeCache` stores the result under the metric name and the date-range tokens.
 
 Default TTLs in `analytic.config.ts`:
 
@@ -367,7 +369,7 @@ Several dashboard, anomaly, and fraud metrics count or list `ActivityLog` rows b
 Credential-failure rows:
 
 - `UserAuthDomain` calls both writers.
-- Every row uses `onError: true`, so the rows are written although the request answers an error.
+- The rows are written although the request answers an error, because the error path flushes every staged activity log.
 
 By cause:
 

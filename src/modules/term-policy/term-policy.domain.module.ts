@@ -1,4 +1,9 @@
 import { AwsModule } from '@common/aws/aws.module';
+import { BullModule } from '@nestjs/bullmq';
+import { TermPolicyQueueFactory } from '@modules/term-policy/factories/term-policy.queue.factory';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
+import { QueueConfigKey } from '@queues/constants/queue.constant';
+import { EnumQueue } from '@queues/enums/queue.enum';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { UserDomainModule } from '@modules/user/user.domain.module';
 import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
@@ -22,8 +27,10 @@ import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains
         TermPolicyUtil,
         TermPolicyAnalyticDomain,
         TermPolicyAcceptanceAnalyticDomain,
+        TermPolicyQueue,
     ],
     exports: [
+        BullModule,
         TermPolicyDomain,
         TermPolicyContentDomain,
         TermPolicyAcceptanceDomain,
@@ -31,7 +38,17 @@ import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains
         TermPolicyUtil,
         TermPolicyAnalyticDomain,
         TermPolicyAcceptanceAnalyticDomain,
+        TermPolicyQueue,
     ],
-    imports: [TermPolicyRepositoryModule, AwsModule, UserDomainModule],
+    imports: [
+        TermPolicyRepositoryModule,
+        AwsModule,
+        UserDomainModule,
+        BullModule.registerQueueAsync({
+            name: EnumQueue.termPolicy,
+            configKey: QueueConfigKey,
+            useClass: TermPolicyQueueFactory,
+        }),
+    ],
 })
 export class TermPolicyDomainModule {}

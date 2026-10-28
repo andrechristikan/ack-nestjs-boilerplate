@@ -81,6 +81,7 @@ describe('AwsS3Service', () => {
         'aws.s3.endpoint': null,
         'aws.s3.maxAttempts': 3,
         'aws.s3.timeoutInMs': 5000,
+        'aws.s3.deleteDirMaxIterations': 3,
         'aws.s3.config.public': publicSource,
         'aws.s3.config.private': privateSource,
         'aws.s3.presignExpiredInSeconds': 1800,
@@ -868,6 +869,8 @@ describe('AwsS3Service', () => {
                     access: EnumAwsS3Accessibility.public,
                 })
             );
+
+            expect(send).toHaveBeenCalledTimes(6);
         });
     });
 

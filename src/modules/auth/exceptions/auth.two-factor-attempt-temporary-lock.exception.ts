@@ -12,7 +12,7 @@ export class AuthTwoFactorAttemptTemporaryLockException extends AppBaseException
     readonly statusCodeKey = EnumAuthStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.TOO_MANY_REQUESTS;
 
-    constructor(retryAfterSeconds: number) {
+    constructor(readonly retryAfterSeconds: number) {
         super('auth.error.twoFactorAttemptTemporaryLock', {
             messageProperties: { retryAfterSeconds },
         });

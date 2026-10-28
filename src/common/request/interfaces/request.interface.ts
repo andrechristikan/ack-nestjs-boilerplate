@@ -28,3 +28,10 @@ export interface IRequestThrottleOptions {
     user?: boolean;
     route?: EnumRequestThrottleRoute;
 }
+
+export type IRequestThrottleRoutePolicies = Record<
+    EnumRequestThrottleRoute,
+    IRequestThrottlePolicy
+>;
+
+export type IRequestStorePatch<T extends object> = Partial<T>;

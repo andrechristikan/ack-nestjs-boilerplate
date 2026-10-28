@@ -1,4 +1,5 @@
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import type { IResponseFileMediaTypes } from '@common/response/interfaces/response.interface';
 
 /**
  * Metadata key carrying the i18n message path from the `@Response`/`@ResponsePagination`
@@ -18,11 +19,10 @@ export const ResponseSchemaMetaKey = 'ResponseSchemaMetaKey';
  * Media type a `@ResponseFile` download publishes for each document extension.
  * @public
  */
-export const ResponseFileMediaTypes: Record<EnumFileExtensionDocument, string> =
-    {
-        [EnumFileExtensionDocument.csv]: 'text/csv',
-        [EnumFileExtensionDocument.pdf]: 'application/pdf',
-    };
+export const ResponseFileMediaTypes: IResponseFileMediaTypes = {
+    [EnumFileExtensionDocument.csv]: 'text/csv',
+    [EnumFileExtensionDocument.pdf]: 'application/pdf',
+};
 
 /**
  * Response header carrying the response timestamp.

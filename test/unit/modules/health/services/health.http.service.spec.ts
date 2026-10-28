@@ -54,6 +54,35 @@ describe('HealthHttpService', () => {
             });
             expect(healthDomain.checkAws).toHaveBeenCalledWith();
         });
+
+        it('maps the health result Terminus reports through ServiceUnavailableException', async () => {
+            healthDomain.checkAws.mockRejectedValue(
+                new ServiceUnavailableException(healthCheckResult)
+            );
+            healthUtil.isHealthCheckResult.mockReturnValue(true);
+            healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.error);
+
+            const result = await service.checkAws();
+
+            expect(result).toEqual({
+                data: {
+                    status: EnumHealthStatus.error,
+                    info: healthCheckResult.info,
+                    error: healthCheckResult.error,
+                    details: healthCheckResult.details,
+                },
+            });
+        });
+
+        it('wraps an unexpected error in AppUnknownException', async () => {
+            const error = new Error('indicator crashed');
+            healthDomain.checkAws.mockRejectedValue(error);
+
+            await expect(service.checkAws()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
+        });
     });
 
     describe('checkDatabase', () => {
@@ -72,6 +101,35 @@ describe('HealthHttpService', () => {
                 },
             });
             expect(healthDomain.checkDatabase).toHaveBeenCalledWith();
+        });
+
+        it('maps the health result Terminus reports through ServiceUnavailableException', async () => {
+            healthDomain.checkDatabase.mockRejectedValue(
+                new ServiceUnavailableException(healthCheckResult)
+            );
+            healthUtil.isHealthCheckResult.mockReturnValue(true);
+            healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.error);
+
+            const result = await service.checkDatabase();
+
+            expect(result).toEqual({
+                data: {
+                    status: EnumHealthStatus.error,
+                    info: healthCheckResult.info,
+                    error: healthCheckResult.error,
+                    details: healthCheckResult.details,
+                },
+            });
+        });
+
+        it('wraps an unexpected error in AppUnknownException', async () => {
+            const error = new Error('indicator crashed');
+            healthDomain.checkDatabase.mockRejectedValue(error);
+
+            await expect(service.checkDatabase()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -92,6 +150,35 @@ describe('HealthHttpService', () => {
             });
             expect(healthDomain.checkThirdParty).toHaveBeenCalledWith();
         });
+
+        it('maps the health result Terminus reports through ServiceUnavailableException', async () => {
+            healthDomain.checkThirdParty.mockRejectedValue(
+                new ServiceUnavailableException(healthCheckResult)
+            );
+            healthUtil.isHealthCheckResult.mockReturnValue(true);
+            healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.error);
+
+            const result = await service.checkThirdParty();
+
+            expect(result).toEqual({
+                data: {
+                    status: EnumHealthStatus.error,
+                    info: healthCheckResult.info,
+                    error: healthCheckResult.error,
+                    details: healthCheckResult.details,
+                },
+            });
+        });
+
+        it('wraps an unexpected error in AppUnknownException', async () => {
+            const error = new Error('indicator crashed');
+            healthDomain.checkThirdParty.mockRejectedValue(error);
+
+            await expect(service.checkThirdParty()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
+        });
     });
 
     describe('checkInstance', () => {
@@ -111,55 +198,65 @@ describe('HealthHttpService', () => {
             });
             expect(healthDomain.checkInstance).toHaveBeenCalledWith();
         });
-    });
 
-    describe('resolveResponse', () => {
-        it('maps the resolved health check result', async () => {
-            healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.ok);
-
-            const result = await service['resolveResponse'](
-                Promise.resolve(healthCheckResult)
+        it('maps the health result Terminus reports through ServiceUnavailableException', async () => {
+            healthDomain.checkInstance.mockRejectedValue(
+                new ServiceUnavailableException(healthCheckResult)
             );
+            healthUtil.isHealthCheckResult.mockReturnValue(true);
+            healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.error);
+
+            const result = await service.checkInstance();
 
             expect(result).toEqual({
-                status: EnumHealthStatus.ok,
-                info: healthCheckResult.info,
-                error: healthCheckResult.error,
-                details: healthCheckResult.details,
+                data: {
+                    status: EnumHealthStatus.error,
+                    info: healthCheckResult.info,
+                    error: healthCheckResult.error,
+                    details: healthCheckResult.details,
+                },
             });
         });
 
-        it('wraps an error that is not a ServiceUnavailableException in AppUnknownException', async () => {
+        it('wraps an unexpected error in AppUnknownException', async () => {
             const error = new Error('indicator crashed');
+            healthDomain.checkInstance.mockRejectedValue(error);
 
-            await expect(
-                service['resolveResponse'](Promise.reject(error))
-            ).rejects.toMatchObject({
+            await expect(service.checkInstance()).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,
             });
         });
+    });
 
-        it('rethrows a ServiceUnavailableException whose response is not a health check result', async () => {
+    describe('resolveFailure', () => {
+        it('wraps an error that is not a ServiceUnavailableException in AppUnknownException', () => {
+            const error = new Error('indicator crashed');
+
+            expect(() => service['resolveFailure'](error)).toThrow(
+                expect.objectContaining({
+                    constructor: AppUnknownException,
+                    rawError: error,
+                })
+            );
+        });
+
+        it('rethrows a ServiceUnavailableException whose response is not a health check result', () => {
             const error = new ServiceUnavailableException('unavailable');
             healthUtil.isHealthCheckResult.mockReturnValue(false);
 
-            await expect(
-                service['resolveResponse'](Promise.reject(error))
-            ).rejects.toBe(error);
+            expect(() => service['resolveFailure'](error)).toThrow(error);
             expect(healthUtil.isHealthCheckResult).toHaveBeenCalledWith(
                 error.getResponse()
             );
         });
 
-        it('maps a ServiceUnavailableException whose response is a health check result', async () => {
+        it('maps a ServiceUnavailableException whose response is a health check result', () => {
             const error = new ServiceUnavailableException(healthCheckResult);
             healthUtil.isHealthCheckResult.mockReturnValue(true);
             healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.error);
 
-            const result = await service['resolveResponse'](
-                Promise.reject(error)
-            );
+            const result = service['resolveFailure'](error);
 
             expect(result).toEqual({
                 status: EnumHealthStatus.error,

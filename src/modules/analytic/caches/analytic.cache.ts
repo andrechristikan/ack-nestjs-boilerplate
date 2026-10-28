@@ -51,30 +51,42 @@ export class AnalyticCache {
         )!;
     }
 
-    private buildKey(pattern: string, tokens: Record<string, string>): string {
-        return this.helperStringService.fillPattern(pattern, tokens);
+    private buildDashboardKey(
+        metric: string,
+        start: string,
+        end: string
+    ): string {
+        return this.helperStringService.fillPattern(this.dashboardKeyPattern, {
+            metric,
+            start,
+            end,
+        });
     }
 
-    private async get<T>(cacheKey: string): Promise<T | null> {
-        try {
-            const cached = await this.cacheManager.get<T>(cacheKey);
-            return cached ?? null;
-        } catch (error: unknown) {
-            this.logger.error(error, 'Analytic cache read failed');
-            return null;
-        }
+    private buildAnomalySummaryKey(
+        signal: EnumAnalyticAnomalySignal,
+        window: string
+    ): string {
+        return this.helperStringService.fillPattern(this.anomalyKeyPattern, {
+            signal,
+            window,
+        });
     }
 
-    private async set<T>(
-        cacheKey: string,
-        value: T,
-        ttl: number
-    ): Promise<void> {
-        try {
-            await this.cacheManager.set(cacheKey, value, ttl);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Analytic cache write failed');
-        }
+    private buildFraudSummaryKey(
+        signal: EnumAnalyticFraudSignal,
+        window: string
+    ): string {
+        return this.helperStringService.fillPattern(this.fraudKeyPattern, {
+            signal,
+            window,
+        });
+    }
+
+    private buildRiskScoreKey(userId: string): string {
+        return this.helperStringService.fillPattern(this.riskScoreKeyPattern, {
+            userId,
+        });
     }
 
     async getDashboard<T>(
@@ -82,13 +94,16 @@ export class AnalyticCache {
         start: string,
         end: string
     ): Promise<T | null> {
-        const key = this.buildKey(this.dashboardKeyPattern, {
-            metric,
-            start,
-            end,
-        });
+        const key = this.buildDashboardKey(metric, start, end);
+        try {
+            const cached = await this.cacheManager.get<T>(key);
 
-        return this.get<T>(key);
+            return cached ?? null;
+        } catch (error: unknown) {
+            this.logger.error(error, 'Analytic dashboard cache read failed');
+
+            return null;
+        }
     }
 
     async setDashboard<T>(
@@ -97,21 +112,28 @@ export class AnalyticCache {
         end: string,
         value: T
     ): Promise<void> {
-        const key = this.buildKey(this.dashboardKeyPattern, {
-            metric,
-            start,
-            end,
-        });
-        await this.set(key, value, this.dashboardTtlInMs);
+        const key = this.buildDashboardKey(metric, start, end);
+        try {
+            await this.cacheManager.set(key, value, this.dashboardTtlInMs);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Analytic dashboard cache write failed');
+        }
     }
 
     async getAnomalySummary<T>(
         signal: EnumAnalyticAnomalySignal,
         window: string
     ): Promise<T | null> {
-        const key = this.buildKey(this.anomalyKeyPattern, { signal, window });
+        const key = this.buildAnomalySummaryKey(signal, window);
+        try {
+            const cached = await this.cacheManager.get<T>(key);
 
-        return this.get<T>(key);
+            return cached ?? null;
+        } catch (error: unknown) {
+            this.logger.error(error, 'Analytic anomaly cache read failed');
+
+            return null;
+        }
     }
 
     async setAnomalySummary<T>(
@@ -119,17 +141,28 @@ export class AnalyticCache {
         window: string,
         value: T
     ): Promise<void> {
-        const key = this.buildKey(this.anomalyKeyPattern, { signal, window });
-        await this.set(key, value, this.anomalySummaryTtlInMs);
+        const key = this.buildAnomalySummaryKey(signal, window);
+        try {
+            await this.cacheManager.set(key, value, this.anomalySummaryTtlInMs);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Analytic anomaly cache write failed');
+        }
     }
 
     async getFraudSummary<T>(
         signal: EnumAnalyticFraudSignal,
         window: string
     ): Promise<T | null> {
-        const key = this.buildKey(this.fraudKeyPattern, { signal, window });
+        const key = this.buildFraudSummaryKey(signal, window);
+        try {
+            const cached = await this.cacheManager.get<T>(key);
 
-        return this.get<T>(key);
+            return cached ?? null;
+        } catch (error: unknown) {
+            this.logger.error(error, 'Analytic fraud cache read failed');
+
+            return null;
+        }
     }
 
     async setFraudSummary<T>(
@@ -137,18 +170,33 @@ export class AnalyticCache {
         window: string,
         value: T
     ): Promise<void> {
-        const key = this.buildKey(this.fraudKeyPattern, { signal, window });
-        await this.set(key, value, this.fraudSummaryTtlInMs);
+        const key = this.buildFraudSummaryKey(signal, window);
+        try {
+            await this.cacheManager.set(key, value, this.fraudSummaryTtlInMs);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Analytic fraud cache write failed');
+        }
     }
 
     async getRiskScore<T>(userId: string): Promise<T | null> {
-        const key = this.buildKey(this.riskScoreKeyPattern, { userId });
+        const key = this.buildRiskScoreKey(userId);
+        try {
+            const cached = await this.cacheManager.get<T>(key);
 
-        return this.get<T>(key);
+            return cached ?? null;
+        } catch (error: unknown) {
+            this.logger.error(error, 'Analytic risk score cache read failed');
+
+            return null;
+        }
     }
 
     async setRiskScore<T>(userId: string, value: T): Promise<void> {
-        const key = this.buildKey(this.riskScoreKeyPattern, { userId });
-        await this.set(key, value, this.riskScoreTtlInMs);
+        const key = this.buildRiskScoreKey(userId);
+        try {
+            await this.cacheManager.set(key, value, this.riskScoreTtlInMs);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Analytic risk score cache write failed');
+        }
     }
 }

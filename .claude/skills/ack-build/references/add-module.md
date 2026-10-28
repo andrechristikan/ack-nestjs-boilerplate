@@ -42,7 +42,7 @@ Copy the shape, not the names:
 ## 5. Register
 
 - Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module (`src/router/http/router.http.shared.module.ts:24-47`). A missing import fails the boot.
-- Processor module: `src/router/processor/router.processor.module.ts:8-13`.
+- Processor module: `src/router/processor/router.processor.module.ts:16-23`.
 - A `@Global()` domain module: `src/common/common.module.ts:64-72` `imports`. Read the `@Global()` decision from a sibling that needs to be reachable everywhere (`src/modules/notification/notification.domain.module.ts:34`); the default is not global.
 
 ## 6. Messages

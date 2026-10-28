@@ -9,8 +9,10 @@ import { HelperEncryptionService } from '@common/helper/services/helper.encrypti
 import { NotificationEmailAccountDomain } from '@modules/notification/domains/notification.email.account.domain';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationEmailAccountDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -35,6 +37,7 @@ describe('NotificationEmailAccountDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, string> = {
                 'email.noreply': 'noreply@example.com',
@@ -49,6 +52,7 @@ describe('NotificationEmailAccountDomain', () => {
         stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationEmailAccountDomain,
                 { provide: AwsSESService, useValue: awsSESService },
                 { provide: ConfigService, useValue: configService },
@@ -122,7 +126,7 @@ describe('NotificationEmailAccountDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Welcome email processed',
+                message: 'notification.queue.email.welcome',
             });
         });
 
@@ -160,7 +164,7 @@ describe('NotificationEmailAccountDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Welcome social email processed',
+                message: 'notification.queue.email.welcomeSocial',
             });
         });
 
@@ -222,7 +226,7 @@ describe('NotificationEmailAccountDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Create by admin email processed',
+                message: 'notification.queue.email.welcomeByAdmin',
             });
         });
 
@@ -297,7 +301,7 @@ describe('NotificationEmailAccountDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Verification email processed',
+                message: 'notification.queue.email.verificationEmail',
             });
         });
 
@@ -349,7 +353,7 @@ describe('NotificationEmailAccountDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Email verified email processed',
+                message: 'notification.queue.email.verifiedEmail',
             });
         });
 
@@ -397,7 +401,7 @@ describe('NotificationEmailAccountDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Mobile number verified email processed',
+                message: 'notification.queue.email.verifiedMobileNumber',
             });
         });
 

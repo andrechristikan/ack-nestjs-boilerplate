@@ -14,7 +14,7 @@ import {
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
-import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -45,8 +45,7 @@ export class MigrationWorkspaceSeed
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService,
-        private readonly workspaceMemberRepository: WorkspaceMemberRepository
+        private readonly helperStringService: HelperStringService
     ) {
         super();
 
@@ -94,13 +93,15 @@ export class MigrationWorkspaceSeed
                                 updatedBy: MigrationUserSuperAdminId,
                             },
                         });
-                        await this.workspaceMemberRepository.createInTx(
-                            tx,
-                            workspace.id,
-                            user.id,
-                            EnumWorkspaceMemberRole.owner,
-                            MigrationUserSuperAdminId
-                        );
+                        await tx.workspaceMember.create({
+                            data: {
+                                workspaceId: workspace.id,
+                                userId: user.id,
+                                role: EnumWorkspaceMemberRole.owner,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
                     },
                     { timeout: this.seedTransactionTimeoutInMs }
                 );
@@ -154,8 +155,16 @@ export class MigrationWorkspaceSeed
             await Promise.all(
                 seededUsers.map(async user => {
                     const ownedCount =
-                        await this.workspaceMemberRepository.countOwnedActiveByUser(
-                            user.id
+                        await this.databaseService.client.workspaceMember.count(
+                            {
+                                where: {
+                                    userId: user.id,
+                                    role: EnumWorkspaceMemberRole.owner,
+                                    workspace: {
+                                        OR: WorkspaceActiveFilter,
+                                    },
+                                },
+                            }
                         );
                     if (ownedCount > 0) {
                         return;

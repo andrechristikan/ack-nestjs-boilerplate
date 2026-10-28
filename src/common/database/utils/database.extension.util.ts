@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
 import { DatabaseModelRelations } from '@common/database/constants/database.constant';
+import { EnumDatabaseAuditField } from '@common/database/enums/database.enum';
 import type { IDatabaseExtension } from '@common/database/interfaces/database.client.interface';
 import type {
     IDatabaseData,
     IDatabaseModelContext,
+    IDatabaseModelRelation,
     IDatabaseRestoreArgs,
     IDatabaseSoftDeleteArgs,
 } from '@common/database/interfaces/database.extension.interface';
@@ -36,7 +38,7 @@ export class DatabaseExtensionUtil {
      */
     private modelHasField(
         model: Prisma.ModelName | null,
-        field: 'createdBy' | 'updatedBy'
+        field: EnumDatabaseAuditField
     ): boolean {
         if (!model) {
             return false;
@@ -86,11 +88,17 @@ export class DatabaseExtensionUtil {
         const payloads = this.toWritePayloads(data);
 
         for (const payload of payloads) {
-            const hasCreatedByField = this.modelHasField(model, 'createdBy');
+            const hasCreatedByField = this.modelHasField(
+                model,
+                EnumDatabaseAuditField.createdBy
+            );
             if (hasCreatedByField && payload.createdBy == null) {
                 payload.createdBy = actor;
             }
-            const hasUpdatedByField = this.modelHasField(model, 'updatedBy');
+            const hasUpdatedByField = this.modelHasField(
+                model,
+                EnumDatabaseAuditField.updatedBy
+            );
             if (hasUpdatedByField && payload.updatedBy == null) {
                 payload.updatedBy = actor;
             }
@@ -111,7 +119,10 @@ export class DatabaseExtensionUtil {
         const payloads = this.toWritePayloads(data);
 
         for (const payload of payloads) {
-            const hasUpdatedByField = this.modelHasField(model, 'updatedBy');
+            const hasUpdatedByField = this.modelHasField(
+                model,
+                EnumDatabaseAuditField.updatedBy
+            );
             if (hasUpdatedByField && payload.updatedBy == null) {
                 payload.updatedBy = actor;
             }
@@ -133,8 +144,7 @@ export class DatabaseExtensionUtil {
             return;
         }
 
-        const relations: Readonly<Record<string, Prisma.ModelName>> =
-            DatabaseModelRelations[model];
+        const relations: IDatabaseModelRelation = DatabaseModelRelations[model];
 
         for (const [field, relatedModel] of Object.entries(relations)) {
             const value = payload[field];

@@ -13,7 +13,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 
 /**
  * Flushes staged activity logs after the handler settles.
- * Success flushes every staged activity log; error flushes only `onError: true` activity logs.
+ * Success and error both flush every staged activity log, each flush enqueued as one job.
  * A flush failure never changes the handler outcome; an error that is neither an `AppBaseException` nor an `HttpException` leaves wrapped in `AppUnknownException`.
  */
 @Injectable()
@@ -22,15 +22,9 @@ export class ActivityLogInterceptor implements NestInterceptor {
 
     constructor(private readonly activityLogDomain: ActivityLogDomain) {}
 
-    private async flushSafe(
-        payloadUserId: string | null,
-        isError: boolean
-    ): Promise<void> {
+    private async flushSafe(payloadUserId: string | null): Promise<void> {
         try {
-            await this.activityLogDomain.flushStaged({
-                payloadUserId,
-                isError,
-            });
+            await this.activityLogDomain.flushStaged({ payloadUserId });
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to flush staged activity logs');
         }
@@ -49,13 +43,13 @@ export class ActivityLogInterceptor implements NestInterceptor {
 
         return next.handle().pipe(
             concatMap(async result => {
-                await this.flushSafe(payloadUserId, false);
+                await this.flushSafe(payloadUserId);
                 return result;
             }),
             catchError((error: unknown) =>
                 from(
                     (async () => {
-                        await this.flushSafe(payloadUserId, true);
+                        await this.flushSafe(payloadUserId);
 
                         if (
                             error instanceof AppBaseException ||

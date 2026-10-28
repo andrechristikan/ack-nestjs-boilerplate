@@ -69,7 +69,6 @@ describe('UserVerificationDomain', () => {
     const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userSendVerificationEmail,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -160,6 +159,7 @@ describe('UserVerificationDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
+        userRepository.findOneById.mockResolvedValue(baseUser);
         userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
 
         configGet.mockImplementation(key => configValues[key]);
@@ -296,6 +296,9 @@ describe('UserVerificationDomain', () => {
             expect(
                 userVerificationRepository.findOneActiveByVerificationEmailToken
             ).toHaveBeenCalledWith('hashed-token');
+            expect(userRepository.findOneById).toHaveBeenCalledWith(
+                verification.userId
+            );
             expect(
                 userVerificationRepository.markUsedInTx
             ).toHaveBeenCalledWith(tx, verification.id, now);
@@ -319,7 +322,7 @@ describe('UserVerificationDomain', () => {
             );
         });
 
-        it('notifies from the user the transaction marks verified, whatever its status', async () => {
+        it('notifies from the user read before the transaction, whatever its status', async () => {
             const inactiveUser: IUser = {
                 ...baseUser,
                 status: EnumUserStatus.inactive,
@@ -328,7 +331,7 @@ describe('UserVerificationDomain', () => {
             userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
                 verification
             );
-            userRepository.markVerifiedInTx.mockResolvedValue(inactiveUser);
+            userRepository.findOneById.mockResolvedValue(inactiveUser);
 
             await domain.verifyEmail('raw-token');
 
@@ -343,6 +346,41 @@ describe('UserVerificationDomain', () => {
                 recipient,
                 { reference: verification.reference }
             );
+        });
+
+        it('writes nothing and enqueues nothing when the recipient read rejects', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
+                verification
+            );
+            notificationRecipientDomain.getRecipient.mockRejectedValue(
+                new Error('recipient-unavailable')
+            );
+
+            await expect(domain.verifyEmail('raw-token')).rejects.toMatchObject(
+                { module: 'app', httpStatus: 500 }
+            );
+
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(notificationQueue.sendVerifiedEmail).not.toHaveBeenCalled();
+        });
+
+        it('throws UserNotFoundException when the verified user is gone', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
+                verification
+            );
+            userRepository.findOneById.mockResolvedValue(null);
+
+            await expect(domain.verifyEmail('raw-token')).rejects.toMatchObject(
+                {
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.notFound,
+                }
+            );
+
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws UserTokenInvalidException when the token is unknown', async () => {

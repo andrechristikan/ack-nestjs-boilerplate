@@ -1,4 +1,7 @@
-import { EnumFileExtension } from '@common/file/enums/file.enum';
+import {
+    EnumFileExtension,
+    EnumFileExtensionTemplate,
+} from '@common/file/enums/file.enum';
 
 export type IFile = Express.Multer.File;
 
@@ -30,3 +33,10 @@ export interface IFileRandomFilenameOptions {
 export interface IFileCsvValidationOptions {
     maxDataImportConfigKey?: string;
 }
+
+export type IFileExtensionContracts = Readonly<
+    Record<
+        Exclude<EnumFileExtension, EnumFileExtensionTemplate>,
+        readonly string[]
+    >
+>;

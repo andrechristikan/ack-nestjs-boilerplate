@@ -3,6 +3,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import {
     EnumNotificationKind,
+    EnumNotificationProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
@@ -20,6 +21,7 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
+import { MessageService } from '@common/message/services/message.service';
 
 /** Writes and fans out the password, two-factor and new-device login notifications. */
 @Injectable()
@@ -30,7 +32,8 @@ export class NotificationSecurityDomain {
         private readonly requestContextService: RequestContextService,
         private readonly notificationUtil: NotificationUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue,
-        private readonly notificationPushQueue: NotificationPushQueue
+        private readonly notificationPushQueue: NotificationPushQueue,
+        private readonly messageService: MessageService
     ) {}
 
     async processTemporaryPasswordByAdmin(
@@ -43,9 +46,18 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process:
+                            EnumNotificationProcess.temporaryPasswordByAdmin,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Temporary password by admin notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -80,8 +92,18 @@ export class NotificationSecurityDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationProcess.temporaryPasswordByAdmin,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Temporary password by admin notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -152,8 +174,12 @@ export class NotificationSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.temporaryPasswordByAdmin'
+        );
+
         return {
-            message: 'Temporary password by admin notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -167,9 +193,17 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.changePassword,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Change password notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -197,8 +231,17 @@ export class NotificationSecurityDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.changePassword,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Change password notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -242,8 +285,12 @@ export class NotificationSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.changePassword'
+        );
+
         return {
-            message: 'Change password notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -258,9 +305,17 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.forgotPassword,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Forgot password notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -288,8 +343,17 @@ export class NotificationSecurityDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.forgotPassword,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Forgot password notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -353,8 +417,12 @@ export class NotificationSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.forgotPassword'
+        );
+
         return {
-            message: 'Forgot password notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -368,9 +436,17 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.resetPassword,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Reset password notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -398,8 +474,17 @@ export class NotificationSecurityDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.resetPassword,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Reset password notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -461,8 +546,12 @@ export class NotificationSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.resetPassword'
+        );
+
         return {
-            message: 'Reset password notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -477,9 +566,17 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.resetTwoFactorByAdmin,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Reset two factor by admin notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -507,8 +604,18 @@ export class NotificationSecurityDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationProcess.resetTwoFactorByAdmin,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Reset two factor by admin notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -574,8 +681,12 @@ export class NotificationSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.resetTwoFactorByAdmin'
+        );
+
         return {
-            message: 'Reset two factor by admin notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -590,9 +701,17 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.newDeviceLogin,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'New device login notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -635,8 +754,17 @@ export class NotificationSecurityDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.newDeviceLogin,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'New device login notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -702,8 +830,12 @@ export class NotificationSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.newDeviceLogin'
+        );
+
         return {
-            message: 'New device login notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };

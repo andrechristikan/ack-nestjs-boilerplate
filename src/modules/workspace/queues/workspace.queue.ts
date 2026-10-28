@@ -1,23 +1,26 @@
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
+import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
  * Owns the workspace queue connection; schedules the recurring invite-expiry sweep.
  */
 @Injectable()
-export class WorkspaceQueue {
+export class WorkspaceQueue extends QueueBase {
     private readonly defTz: string;
     private readonly expirySweepCron: string;
 
     constructor(
-        @InjectQueue(EnumQueue.workspace)
-        private readonly workspaceQueue: Queue,
+        @InjectQueue(EnumQueue.workspace) protected readonly queue: Queue,
+        protected readonly sentryService: SentryService,
         private readonly configService: ConfigService
     ) {
+        super(queue, sentryService);
         this.defTz = this.configService.get<string>('app.timezone')!;
         this.expirySweepCron = this.configService.get<string>(
             'workspace.invite.expirySweepCron'
@@ -31,7 +34,7 @@ export class WorkspaceQueue {
      * bootstrap since the sweep is idempotent (it only flips already-past-due rows).
      */
     async scheduleInviteExpirySweep(): Promise<void> {
-        await this.workspaceQueue.upsertJobScheduler(
+        await this.queue.upsertJobScheduler(
             EnumWorkspaceProcess.expireStaleInvites,
             {
                 pattern: this.expirySweepCron,

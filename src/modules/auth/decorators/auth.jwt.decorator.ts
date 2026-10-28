@@ -13,14 +13,17 @@ import {
 } from '@modules/auth/constants/auth.constant';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
-import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type {
+    IAuthJwtAccessTokenPayload,
+    IAuthJwtPayloadField,
+} from '@modules/auth/interfaces/auth.interface';
 
 /**
  * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request; throws `AuthJwtGuardMissingException` when the request carries no payload and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
-    field?: Extract<keyof T, string>
+    field?: IAuthJwtPayloadField<T>
 ) => ParameterDecorator = createParamDecorator<string | undefined, unknown>(
     (field: string | undefined, ctx: ExecutionContext): unknown => {
         const user =

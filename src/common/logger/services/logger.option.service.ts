@@ -21,10 +21,11 @@ import type { Response } from 'express';
 import type {
     ILoggerDebugInfo,
     ILoggerMixin,
+    ILoggerPinoHttp,
+    ILoggerTransport,
 } from '@common/logger/interfaces/logger.interface';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
-import type { Options } from 'pino-http';
 
 @Injectable()
 export class LoggerOptionService {
@@ -73,7 +74,7 @@ export class LoggerOptionService {
         ).flat();
     }
 
-    private buildTransports(): NonNullable<Options['transport']> | null {
+    private buildTransports(): ILoggerTransport | null {
         const transport: {
             targets: {
                 target: string;
@@ -113,7 +114,7 @@ export class LoggerOptionService {
         }
 
         return transport.targets.length > 0
-            ? (transport as unknown as NonNullable<Options['transport']>)
+            ? (transport as unknown as ILoggerTransport)
             : null;
     }
 
@@ -293,7 +294,7 @@ export class LoggerOptionService {
                 redact: redactionConfig,
                 serializers,
                 autoLogging: autoLoggingConfig,
-            } as unknown as NonNullable<Params['pinoHttp']>,
+            } as unknown as ILoggerPinoHttp,
         };
     }
 }

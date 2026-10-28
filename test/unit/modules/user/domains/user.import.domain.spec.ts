@@ -380,9 +380,9 @@ describe('UserImportDomain', () => {
             helperDateService.formatToIso.mockImplementation(date =>
                 date.toISOString()
             );
-            notificationRecipientDomain.getRecipient
-                .mockResolvedValueOnce(recipientOne)
-                .mockResolvedValueOnce(recipientTwo);
+            notificationRecipientDomain.buildNewUserRecipient
+                .mockReturnValueOnce(recipientOne)
+                .mockReturnValueOnce(recipientTwo);
 
             await domain.notifyImported(
                 users,
@@ -393,40 +393,49 @@ describe('UserImportDomain', () => {
 
             expect(
                 notificationRecipientDomain.getRecipient
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationRecipientDomain.buildNewUserRecipient
             ).toHaveBeenNthCalledWith(
                 1,
                 users[0],
                 EnumNotificationKind.welcomeByAdmin
             );
             expect(
-                notificationRecipientDomain.getRecipient
+                notificationRecipientDomain.buildNewUserRecipient
             ).toHaveBeenNthCalledWith(
                 2,
                 users[1],
                 EnumNotificationKind.welcomeByAdmin
             );
             expect(
-                notificationQueue.sendWelcomeByAdmin
-            ).toHaveBeenNthCalledWith(
-                1,
-                recipientOne,
-                {
-                    password: 'password-one',
-                    passwordCreatedAt: password.passwordCreated.toISOString(),
-                    passwordExpiredAt: password.passwordExpired.toISOString(),
-                },
-                'admin-thistle'
-            );
+                notificationQueue.sendWelcomeByAdminBulk
+            ).toHaveBeenCalledTimes(1);
             expect(
-                notificationQueue.sendWelcomeByAdmin
-            ).toHaveBeenNthCalledWith(
-                2,
-                recipientTwo,
-                {
-                    password: 'password-two',
-                    passwordCreatedAt: password.passwordCreated.toISOString(),
-                    passwordExpiredAt: password.passwordExpired.toISOString(),
-                },
+                notificationQueue.sendWelcomeByAdminBulk
+            ).toHaveBeenCalledWith(
+                [
+                    {
+                        recipient: recipientOne,
+                        data: {
+                            password: 'password-one',
+                            passwordCreatedAt:
+                                password.passwordCreated.toISOString(),
+                            passwordExpiredAt:
+                                password.passwordExpired.toISOString(),
+                        },
+                    },
+                    {
+                        recipient: recipientTwo,
+                        data: {
+                            password: 'password-two',
+                            passwordCreatedAt:
+                                password.passwordCreated.toISOString(),
+                            passwordExpiredAt:
+                                password.passwordExpired.toISOString(),
+                        },
+                    },
+                ],
                 'admin-thistle'
             );
         });

@@ -1,5 +1,5 @@
 import { EnumApiKeyType } from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
+import type { ApiKey, Prisma } from '@generated/prisma-client/client';
 import type { ApiKeySelect } from '@modules/api-key/constants/api-key.constant';
 
 export type IApiKey = Prisma.ApiKeyGetPayload<{
@@ -34,3 +34,9 @@ export interface IApiKeyAnalyticCreated {
     createdAt: Date;
     createdBy: string | null;
 }
+
+export type IApiKeyField = Extract<keyof ApiKey, string>;
+
+export type IApiKeyFieldValue = NonNullable<ApiKey[IApiKeyField]>;
+
+export type IApiKeyActivityLogSubject = Pick<ApiKey, 'id' | 'name' | 'type'>;

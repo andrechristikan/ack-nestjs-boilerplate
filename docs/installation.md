@@ -58,7 +58,7 @@ Without Docker you also need:
 
 - A [MongoDB Atlas][ref-mongodb] cluster, or any MongoDB 8.0+ **replica set** (Prisma transactions need one).
 - The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`, and the local Compose file uses `mongo:latest`.
-- A Redis 6.0+ instance for cache (`db:0`) and queues (`db:1`). `SessionCache` runs `SCAN` with the `TYPE` option, which Redis supports from 6.0.
+- A Redis 6.2+ instance for cache (`db:0`) and queues (`db:1`). BullMQ refuses to connect to a server older than 5.0 and logs a warning below 6.2, its recommended minimum.
 
 > [!IMPORTANT] Prefer [Installation with Docker](#installation-with-docker-recommended). Local single-node MongoDB without a replica set will break Prisma transactions.
 
@@ -127,11 +127,13 @@ The `DOCKER_*` variables in `.env` are optional and empty in `.env.example`.
 
 - Compose reads them from `.env`.
 - A variable left empty falls back to plain MongoDB, plain Redis, and the BullBoard login `admin` / `admin123`.
-- To turn authentication on, set `DOCKER_MONGO_ROOT_PASSWORD` and `DOCKER_REDIS_PASSWORD` and put the credentials into the URLs.
+- To turn authentication on, set `DOCKER_MONGO_ROOT_PASSWORD` and `DOCKER_REDIS_PASSWORD` and put the credentials into the URLs. A URL without them fails against a server that requires authentication.
 - `<user>` is `DOCKER_MONGO_ROOT_USERNAME`, `root` when it is empty.
+- `authSource=admin` is required in `DATABASE_URL`: the root user lives in the `admin` database, and without it the driver authenticates against `ACKNestJs`.
+- On every start `ci/mongo/entrypoint.sh` tries to create the root user in the `admin` database and leaves an existing one as it is.
 - Special characters in a password are percent-encoded.
 
-Example URLs:
+Example URLs with authentication on:
 
 ```bash
 DATABASE_URL=mongodb://<user>:<password>@localhost:27017/ACKNestJs?authSource=admin&retryWrites=true&w=majority&replicaSet=rs0
@@ -284,7 +286,7 @@ AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://jwks-server/.well-known/access-jwks.json
 AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://jwks-server/.well-known/refresh-jwks.json
 ```
 
-The same file feeds `pnpm start:dev` on the host, which needs the `localhost` values from [Create Environment](#create-environment). With authentication on, the credentials from that section go into these URLs too.
+The same file feeds `pnpm start:dev` on the host, which needs the `localhost` values from [Create Environment](#create-environment). With authentication on, the credentials from that section go into these URLs too, and `DATABASE_URL` keeps `authSource=admin`.
 
 MongoDB reports its replica set member as `host.docker.internal:27017`, or `host.docker.internal:<DOCKER_MONGO_PORT>` when that variable is set:
 
@@ -308,6 +310,9 @@ Steps:
 - **Host resolution**: Add `127.0.0.1 host.docker.internal` to the host machine's `/etc/hosts` when the name does not resolve there. The containers need no entry.
 - **Bind mount error naming a file under `keys/`**: The file does not exist yet. Run `pnpm generate:secret`.
 - **Replica set still starting**: The replica set takes a minute or two after the first `up`.
+- **`SCRAM failure: Authentication failed` from Prisma**: `DATABASE_URL` has credentials but no `authSource=admin`, so the driver authenticates against `ACKNestJs` instead of `admin`. Add `authSource=admin` to the query. The same error appears when the user or password in the URL differs from the stored one, for example after a `$` in the password or a password changed after the first start.
+- **`Error code 13 (Unauthorized): Command aggregate requires authentication`**: MongoDB runs with `--auth` and `DATABASE_URL` carries no credentials. Put `<user>:<password>@` before the host and add `authSource=admin`.
+- **`NOAUTH Authentication required` in the app log**: Redis runs with `--requirepass` and `CACHE_REDIS_URL` or `QUEUE_REDIS_URL` has no password. Use `redis://:<password>@localhost:6379/0` and `redis://:<password>@localhost:6379/1`, with host `redis` inside the Compose network.
 - **Permissions**: Docker needs permission to create volumes and networks.
 
 ## Installation without Docker
@@ -320,7 +325,7 @@ Use this only when Docker is not an option:
 ### Hosted MongoDB and Redis
 
 1. **MongoDB**: Create a [MongoDB Atlas][ref-mongodb] cluster, or use any MongoDB deployment that is a **replica set**. Copy the connection string into `DATABASE_URL`.
-2. **Redis**: Use a hosted Redis 6.0+ service such as [Amazon ElastiCache][ref-elasticache]. Point cache and queues at different logical DBs when you can:
+2. **Redis**: Use a hosted Redis 6.2+ service such as [Amazon ElastiCache][ref-elasticache]. Point cache and queues at different logical DBs when you can:
     ```bash
     CACHE_REDIS_URL=redis://<host>:6379/0
     QUEUE_REDIS_URL=redis://<host>:6379/1

@@ -31,6 +31,8 @@
     "workspaceInviteAcceptedByInvitee": "Your workspace invite has been accepted",
     "workspaceInviteCreated": "A workspace invite has been sent",
     "workspaceInviteCreatedByAdmin": "You have been invited to a workspace",
+    "workspaceInviteResent": "A workspace invite has been resent",
+    "workspaceInviteResentByAdmin": "Your workspace invite has been resent",
     "workspaceInviteRevoked": "A workspace invite has been revoked",
     "workspaceInviteRevokedByAdmin": "Your workspace invite has been revoked",
     "workspaceUpdated": "Workspace details have been updated",
@@ -104,6 +106,13 @@
     "adminUserResetTwoFactor": "Two-factor authentication of user {targetUsername} has been reset",
     "adminUserImport": "Users have been imported",
     "adminDeviceRemove": "A device of user {targetUsername} has been removed",
+    "queue": {
+        "createMany": "Created activity logs.",
+        "error": {
+            "unknownProcess": "No {process} job handler exists.",
+            "enqueueCreateMany": "Enqueue activity log rows failed."
+        }
+    },
     "error": {
         "contractInvalid": "Activity log contract validation failed"
     }

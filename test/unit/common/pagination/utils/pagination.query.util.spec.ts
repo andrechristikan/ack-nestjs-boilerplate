@@ -17,6 +17,7 @@ import {
     EnumPaginationFilterDateBetweenType,
     EnumPaginationOrderDirectionType,
 } from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationFilterEnumOperator } from '@common/pagination/enums/pagination.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import type { IPaginationOrderByQuery } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client/client';
@@ -1100,17 +1101,34 @@ describe('PaginationQueryUtil', () => {
 
         it('returns null for an empty value', () => {
             expect(
-                util['enumFilter']('status', undefined, defaultEnum, 'in')
+                util['enumFilter'](
+                    'status',
+                    undefined,
+                    defaultEnum,
+                    EnumPaginationFilterEnumOperator.in
+                )
             ).toBeNull();
         });
 
         it('returns null when the allow-list is empty', () => {
-            expect(util['enumFilter']('status', 'active', [], 'in')).toBeNull();
+            expect(
+                util['enumFilter'](
+                    'status',
+                    'active',
+                    [],
+                    EnumPaginationFilterEnumOperator.in
+                )
+            ).toBeNull();
         });
 
         it('returns null when every entry is empty after filtering', () => {
             expect(
-                util['enumFilter']('status', ',,', defaultEnum, 'in')
+                util['enumFilter'](
+                    'status',
+                    ',,',
+                    defaultEnum,
+                    EnumPaginationFilterEnumOperator.in
+                )
             ).toBeNull();
         });
 
@@ -1119,7 +1137,7 @@ describe('PaginationQueryUtil', () => {
                 'status',
                 'active,active,inactive',
                 defaultEnum,
-                'in'
+                EnumPaginationFilterEnumOperator.in
             );
 
             expect(result).toEqual({
@@ -1133,7 +1151,7 @@ describe('PaginationQueryUtil', () => {
                 'status',
                 'active',
                 defaultEnum,
-                'notIn'
+                EnumPaginationFilterEnumOperator.notIn
             );
 
             expect(result).toEqual({
@@ -1147,7 +1165,7 @@ describe('PaginationQueryUtil', () => {
                 'status',
                 'active',
                 defaultEnum,
-                'in',
+                EnumPaginationFilterEnumOperator.in,
                 { customField: 'state' }
             );
 
@@ -1157,7 +1175,12 @@ describe('PaginationQueryUtil', () => {
         it('rejects a value outside the allowed enum', () => {
             let error: unknown;
             try {
-                util['enumFilter']('status', 'unknown', defaultEnum, 'in');
+                util['enumFilter'](
+                    'status',
+                    'unknown',
+                    defaultEnum,
+                    EnumPaginationFilterEnumOperator.in
+                );
             } catch (caught) {
                 error = caught;
             }

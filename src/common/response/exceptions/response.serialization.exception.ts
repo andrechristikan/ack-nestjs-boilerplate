@@ -13,7 +13,7 @@ export class ResponseSerializationException extends AppBaseException {
     readonly statusCodeKey = EnumResponseStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 
-    constructor(options?: IAppBaseExceptionOptions) {
+    constructor(readonly options?: IAppBaseExceptionOptions) {
         super('response.error.serialization', options);
     }
 }

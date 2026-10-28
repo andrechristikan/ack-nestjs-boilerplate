@@ -14,9 +14,11 @@ import { RequestUtil } from '@common/request/utils/request.util';
 @Injectable()
 export class RequestThrottleDefaultGuard extends ThrottlerGuard {
     constructor(
-        @InjectThrottlerOptions() options: ThrottlerModuleOptions,
-        @InjectThrottlerStorage() storageService: ThrottlerStorage,
-        reflector: Reflector,
+        @InjectThrottlerOptions()
+        protected readonly options: ThrottlerModuleOptions,
+        @InjectThrottlerStorage()
+        protected readonly storageService: ThrottlerStorage,
+        protected readonly reflector: Reflector,
         private readonly requestUtil: RequestUtil
     ) {
         super(options, storageService, reflector);

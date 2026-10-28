@@ -4,6 +4,7 @@ import { MessageService } from '@common/message/services/message.service';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
+    INotificationEmailResult,
     INotificationEmailSendEncryptedPayload,
     INotificationEmailSendUnregisteredEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
@@ -15,7 +16,6 @@ import type {
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Renders and sends the workspace invite and join-request emails. */
 @Injectable()
@@ -79,7 +79,7 @@ export class NotificationEmailWorkspaceDomain {
             reference,
             expiredAt,
         }: INotificationWorkspaceInviteEncryptedPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
             encryptedInviteAcceptLink,
@@ -108,7 +108,11 @@ export class NotificationEmailWorkspaceDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
-        return { message: 'Workspace invite email processed', result };
+        const message = this.messageService.setMessage(
+            'notification.queue.email.workspaceInvite'
+        );
+
+        return { message, result };
     }
 
     async processWorkspaceInviteUnregistered(
@@ -121,7 +125,7 @@ export class NotificationEmailWorkspaceDomain {
             reference,
             expiredAt,
         }: INotificationWorkspaceInviteUnregisteredEncryptedPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, reference);
         const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
             encryptedInviteAcceptLink,
@@ -148,8 +152,12 @@ export class NotificationEmailWorkspaceDomain {
             },
         });
 
+        const message = this.messageService.setMessage(
+            'notification.queue.email.workspaceInviteUnregistered'
+        );
+
         return {
-            message: 'Workspace invite (unregistered) email processed',
+            message,
             result,
         };
     }
@@ -167,7 +175,7 @@ export class NotificationEmailWorkspaceDomain {
             requesterName,
             encryptedJoinRequestReviewLink,
         }: INotificationWorkspaceJoinRequestEncryptedPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const joinRequestReviewLink =
             this.helperEncryptionService.aes256Decrypt(
@@ -192,8 +200,12 @@ export class NotificationEmailWorkspaceDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
+        const message = this.messageService.setMessage(
+            'notification.queue.email.workspaceJoinRequest'
+        );
+
         return {
-            message: 'Workspace join request email processed',
+            message,
             result,
         };
     }
@@ -207,7 +219,7 @@ export class NotificationEmailWorkspaceDomain {
             userId,
         }: INotificationEmailSendEncryptedPayload,
         { workspaceName }: INotificationWorkspaceJoinAcceptedPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceJoinAccepted,
@@ -222,8 +234,12 @@ export class NotificationEmailWorkspaceDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
+        const message = this.messageService.setMessage(
+            'notification.queue.email.workspaceJoinAccepted'
+        );
+
         return {
-            message: 'Workspace join accepted email processed',
+            message,
             result,
         };
     }
@@ -240,7 +256,7 @@ export class NotificationEmailWorkspaceDomain {
             workspaceName,
             rejectReasonCode,
         }: INotificationWorkspaceJoinRejectedPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const rejectReasonLabel = this.messageService.setMessage(
             `notification.rejectReason.${rejectReasonCode}`
@@ -260,8 +276,12 @@ export class NotificationEmailWorkspaceDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
+        const message = this.messageService.setMessage(
+            'notification.queue.email.workspaceJoinRejected'
+        );
+
         return {
-            message: 'Workspace join rejected email processed',
+            message,
             result,
         };
     }

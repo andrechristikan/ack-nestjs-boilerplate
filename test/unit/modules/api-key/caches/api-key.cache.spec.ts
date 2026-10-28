@@ -53,11 +53,11 @@ describe('ApiKeyCache', () => {
         cache = module.get(ApiKeyCache);
     });
 
-    describe('getCacheByKey', () => {
+    describe('getApiKey', () => {
         it('returns the cached api key', async () => {
             cacheManager.get.mockResolvedValue(apiKey);
 
-            const result = await cache.getCacheByKey('local_abc123');
+            const result = await cache.getApiKey('local_abc123');
 
             expect(result).toEqual(apiKey);
             expect(cacheManager.get).toHaveBeenCalledWith(
@@ -68,15 +68,26 @@ describe('ApiKeyCache', () => {
         it('returns null on a cache miss', async () => {
             cacheManager.get.mockResolvedValue(undefined);
 
-            const result = await cache.getCacheByKey('local_abc123');
+            const result = await cache.getApiKey('local_abc123');
 
             expect(result).toBeNull();
         });
+
+        it('returns null when the cache read fails', async () => {
+            cacheManager.get.mockRejectedValue(new Error('redis down'));
+
+            const result = await cache.getApiKey('local_abc123');
+
+            expect(result).toBeNull();
+            expect(cacheManager.get).toHaveBeenCalledWith(
+                'ApiKey:local_abc123'
+            );
+        });
     });
 
-    describe('setCacheByKey', () => {
+    describe('setApiKey', () => {
         it('writes the api key to the cache', async () => {
-            await cache.setCacheByKey('local_abc123', apiKey);
+            await cache.setApiKey('local_abc123', apiKey);
 
             expect(cacheManager.set).toHaveBeenCalledWith(
                 'ApiKey:local_abc123',
@@ -90,14 +101,14 @@ describe('ApiKeyCache', () => {
             });
 
             await expect(
-                cache.setCacheByKey('local_abc123', apiKey)
+                cache.setApiKey('local_abc123', apiKey)
             ).resolves.toBeUndefined();
         });
     });
 
-    describe('deleteCacheByKey', () => {
+    describe('deleteApiKey', () => {
         it('deletes the cached api key', async () => {
-            await cache.deleteCacheByKey('local_abc123');
+            await cache.deleteApiKey('local_abc123');
 
             expect(cacheManager.del).toHaveBeenCalledWith(
                 'ApiKey:local_abc123'

@@ -140,7 +140,7 @@ describe('AuthCache', () => {
         cache = module.get(AuthCache);
     });
 
-    describe('createChallenge', () => {
+    describe('setTwoFactorChallenge', () => {
         it('stores the challenge payload under a random token with the configured ttl', async () => {
             helperStringService.random.mockReturnValue('random-token');
             const cachePayload: IAuthTwoFactorChallengeCache = {
@@ -150,7 +150,7 @@ describe('AuthCache', () => {
                 loginWith: EnumUserLoginWith.credential,
             };
 
-            const result = await cache.createChallenge(cachePayload);
+            const result = await cache.setTwoFactorChallenge(cachePayload);
 
             expect(result).toEqual({
                 challengeToken: 'random-token',
@@ -164,7 +164,7 @@ describe('AuthCache', () => {
         });
     });
 
-    describe('getChallenge', () => {
+    describe('getTwoFactorChallenge', () => {
         it('returns the cached challenge payload', async () => {
             const cachePayload: IAuthTwoFactorChallengeCache = {
                 userId: 'user-1',
@@ -174,7 +174,7 @@ describe('AuthCache', () => {
             };
             cacheManager.get.mockResolvedValue(cachePayload);
 
-            const result = await cache.getChallenge('token-value');
+            const result = await cache.getTwoFactorChallenge('token-value');
 
             expect(result).toEqual(cachePayload);
             expect(cacheManager.get).toHaveBeenCalledWith(
@@ -185,15 +185,15 @@ describe('AuthCache', () => {
         it('returns null when the challenge is not cached', async () => {
             cacheManager.get.mockResolvedValue(undefined);
 
-            const result = await cache.getChallenge('token-value');
+            const result = await cache.getTwoFactorChallenge('token-value');
 
             expect(result).toBeNull();
         });
     });
 
-    describe('clearChallenge', () => {
+    describe('deleteTwoFactorChallenge', () => {
         it('deletes the challenge cache entry', async () => {
-            await cache.clearChallenge('token-value');
+            await cache.deleteTwoFactorChallenge('token-value');
 
             expect(cacheManager.del).toHaveBeenCalledWith(
                 'TwoFactorChallenge:token-value'
@@ -206,16 +206,16 @@ describe('AuthCache', () => {
             });
 
             await expect(
-                cache.clearChallenge('token-value')
+                cache.deleteTwoFactorChallenge('token-value')
             ).resolves.toBeUndefined();
         });
     });
 
-    describe('lockTwoFactorAttempt', () => {
+    describe('setTwoFactorLock', () => {
         it('locks with an exponential backoff ttl derived from the attempt count', async () => {
             const user = userWithTwoFactor;
 
-            await cache.lockTwoFactorAttempt(user);
+            await cache.setTwoFactorLock(user);
 
             expect(cacheManager.set).toHaveBeenCalledWith(
                 'TwoFactorLock:user-1',
@@ -227,7 +227,7 @@ describe('AuthCache', () => {
         it('treats a missing two-factor record as zero attempts', async () => {
             const user = { ...userWithTwoFactor, twoFactor: null };
 
-            await cache.lockTwoFactorAttempt(user);
+            await cache.setTwoFactorLock(user);
 
             expect(cacheManager.set).toHaveBeenCalledWith(
                 'TwoFactorLock:user-1',
@@ -245,13 +245,13 @@ describe('AuthCache', () => {
                 twoFactor: { ...twoFactor, attempt: 1 },
             };
 
-            await expect(cache.lockTwoFactorAttempt(user)).rejects.toThrow(
+            await expect(cache.setTwoFactorLock(user)).rejects.toThrow(
                 'redis down'
             );
         });
     });
 
-    describe('getLockTwoFactorAttempt', () => {
+    describe('getTwoFactorLockTtlInMs', () => {
         const now = new Date('2026-01-01T00:00:00.000Z');
 
         beforeEach(() => {
@@ -263,7 +263,7 @@ describe('AuthCache', () => {
             cacheManager.ttl.mockResolvedValue(now.getTime() + 30000);
 
             const result =
-                await cache.getLockTwoFactorAttempt(userWithTwoFactor);
+                await cache.getTwoFactorLockTtlInMs(userWithTwoFactor);
 
             expect(result).toBe(30000);
             expect(cacheManager.ttl).toHaveBeenCalledWith(
@@ -276,7 +276,7 @@ describe('AuthCache', () => {
             cacheManager.ttl.mockResolvedValue(undefined);
 
             const result =
-                await cache.getLockTwoFactorAttempt(userWithTwoFactor);
+                await cache.getTwoFactorLockTtlInMs(userWithTwoFactor);
 
             expect(result).toBe(0);
         });
@@ -285,17 +285,17 @@ describe('AuthCache', () => {
             cacheManager.ttl.mockResolvedValue(now.getTime() - 1);
 
             const result =
-                await cache.getLockTwoFactorAttempt(userWithTwoFactor);
+                await cache.getTwoFactorLockTtlInMs(userWithTwoFactor);
 
             expect(result).toBe(0);
         });
     });
 
-    describe('clearLockTwoFactorAttempt', () => {
+    describe('deleteTwoFactorLock', () => {
         it('deletes the lock cache entry', async () => {
             const user = userWithTwoFactor;
 
-            await cache.clearLockTwoFactorAttempt(user);
+            await cache.deleteTwoFactorLock(user);
 
             expect(cacheManager.del).toHaveBeenCalledWith(
                 'TwoFactorLock:user-1'
@@ -309,7 +309,7 @@ describe('AuthCache', () => {
             const user = userWithTwoFactor;
 
             await expect(
-                cache.clearLockTwoFactorAttempt(user)
+                cache.deleteTwoFactorLock(user)
             ).resolves.toBeUndefined();
         });
     });

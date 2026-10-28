@@ -24,6 +24,7 @@ import { ApiKeyXApiKeyInvalidException } from '@modules/api-key/exceptions/api-k
 import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
 import type {
     IApiKey,
+    IApiKeyActivityLogSubject,
     IApiKeyCreate,
     IApiKeyWithSecret,
 } from '@modules/api-key/interfaces/api-key.interface';
@@ -74,9 +75,8 @@ export class ApiKeyDomain {
 
     private prepareActivityLog(
         action: EnumActivityLogAction,
-        apiKey: Pick<ApiKey, 'id' | 'name' | 'type'>,
-        timestamp: Date,
-        onError: boolean
+        apiKey: IApiKeyActivityLogSubject,
+        timestamp: Date
     ): IActivityLogStaged {
         const metadata = this.apiKeyUtil.mapActivityLogMetadata(
             apiKey,
@@ -86,7 +86,6 @@ export class ApiKeyDomain {
         return this.activityLogDomain.prepare({
             action,
             metadata,
-            onError,
         });
     }
 
@@ -119,8 +118,7 @@ export class ApiKeyDomain {
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyCreate,
                 { id: apiKeyId, name: others.name, type: others.type },
-                createdAt,
-                false
+                createdAt
             ),
         ];
         let dateWindow: { startAt: Date | null; endAt: Date | null } = {
@@ -174,15 +172,14 @@ export class ApiKeyDomain {
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyUpdateStatus,
                 apiKey,
-                today,
-                true
+                today
             ),
         ];
         const updated = await this.apiKeyRepository.updateStatus(id, {
             isActive,
         });
         this.activityLogDomain.stagePrepared(activityLogs);
-        await this.apiKeyCache.deleteCacheByKey(apiKey.key);
+        await this.apiKeyCache.deleteApiKey(apiKey.key);
 
         return updated;
     }
@@ -201,13 +198,12 @@ export class ApiKeyDomain {
                     type: apiKey.type,
                     name,
                 },
-                updatedAt,
-                true
+                updatedAt
             ),
         ];
         const updated = await this.apiKeyRepository.updateName(id, name);
         this.activityLogDomain.stagePrepared(activityLogs);
-        await this.apiKeyCache.deleteCacheByKey(apiKey.key);
+        await this.apiKeyCache.deleteApiKey(apiKey.key);
 
         return updated;
     }
@@ -235,8 +231,7 @@ export class ApiKeyDomain {
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyUpdateDate,
                 apiKey,
-                timestamp,
-                true
+                timestamp
             ),
         ];
         const updated = await this.apiKeyRepository.updateDates(id, {
@@ -244,7 +239,7 @@ export class ApiKeyDomain {
             endAt: newEndAt,
         });
         this.activityLogDomain.stagePrepared(activityLogs);
-        await this.apiKeyCache.deleteCacheByKey(apiKey.key);
+        await this.apiKeyCache.deleteApiKey(apiKey.key);
 
         return updated;
     }
@@ -264,13 +259,12 @@ export class ApiKeyDomain {
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyReset,
                 apiKey,
-                timestamp,
-                true
+                timestamp
             ),
         ];
         const updated = await this.apiKeyRepository.updateHash(id, hash);
         this.activityLogDomain.stagePrepared(activityLogs);
-        await this.apiKeyCache.deleteCacheByKey(apiKey.key);
+        await this.apiKeyCache.deleteApiKey(apiKey.key);
 
         return { apiKey: updated, secret };
     }
@@ -287,26 +281,25 @@ export class ApiKeyDomain {
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyDelete,
                 apiKey,
-                timestamp,
-                true
+                timestamp
             ),
         ];
         const deleted = await this.apiKeyRepository.delete(id);
         this.activityLogDomain.stagePrepared(activityLogs);
-        await this.apiKeyCache.deleteCacheByKey(apiKey.key);
+        await this.apiKeyCache.deleteApiKey(apiKey.key);
 
         return deleted;
     }
 
     async getOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
-        const cached = await this.apiKeyCache.getCacheByKey(key);
+        const cached = await this.apiKeyCache.getApiKey(key);
         if (cached) {
             return cached;
         }
 
         const apiKey = await this.apiKeyRepository.findOneByKey(key);
         if (apiKey) {
-            await this.apiKeyCache.setCacheByKey(key, apiKey);
+            await this.apiKeyCache.setApiKey(key, apiKey);
         }
 
         return apiKey;

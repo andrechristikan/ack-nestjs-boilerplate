@@ -18,7 +18,7 @@ export abstract class AppBaseException extends Error {
 
     constructor(
         readonly messagePath: string,
-        options?: IAppBaseExceptionOptions
+        readonly options?: IAppBaseExceptionOptions
     ) {
         super(messagePath);
 

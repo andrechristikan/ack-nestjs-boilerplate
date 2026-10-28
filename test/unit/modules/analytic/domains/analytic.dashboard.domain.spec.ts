@@ -98,6 +98,8 @@ describe('AnalyticDashboardDomain', () => {
         data: [{ workspaceId: 'workspace-1', count: 3 }],
     };
 
+    const cachedValue = { count: 99 };
+
     let domain: AnalyticDashboardDomain;
 
     beforeEach(async () => {
@@ -207,6 +209,18 @@ describe('AnalyticDashboardDomain', () => {
                 { count: 12 }
             );
         });
+
+        it('returns the cached value without computing or storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue({ count: 99 });
+
+            const result = await domain.usersRegistrations(startDate, endDate);
+
+            expect(result).toEqual({ count: 99 });
+            expect(
+                userAnalyticDomain.getCountRegistrations
+            ).not.toHaveBeenCalled();
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersChurn', () => {
@@ -221,6 +235,15 @@ describe('AnalyticDashboardDomain', () => {
                 startDate,
                 endDate
             );
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersChurn(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -245,6 +268,15 @@ describe('AnalyticDashboardDomain', () => {
                 EnumUserStatus.blocked
             );
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersBlocked(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersSignUpWith', () => {
@@ -261,6 +293,15 @@ describe('AnalyticDashboardDomain', () => {
                 ],
             });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersSignUpWith(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersSignUpFrom', () => {
@@ -276,6 +317,15 @@ describe('AnalyticDashboardDomain', () => {
                     { key: String(EnumUserSignUpFrom.website), count: 7 },
                 ],
             });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersSignUpFrom(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -294,6 +344,18 @@ describe('AnalyticDashboardDomain', () => {
                 userAnalyticDomain.getEmailVerificationRate
             ).toHaveBeenCalledWith();
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersEmailVerification(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersMobileVerification', () => {
@@ -310,6 +372,18 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual(rate);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersMobileVerification(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersStatusDistribution', () => {
@@ -324,6 +398,15 @@ describe('AnalyticDashboardDomain', () => {
                 buckets: [{ key: String(EnumUserStatus.active), count: 8 }],
             });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersStatusDistribution();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersCountryDistribution', () => {
@@ -335,6 +418,15 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual({ buckets: rows });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersCountryDistribution();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersRoleDistribution', () => {
@@ -345,6 +437,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.usersRoleDistribution();
 
             expect(result).toEqual({ buckets: rows });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersRoleDistribution();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -365,6 +466,15 @@ describe('AnalyticDashboardDomain', () => {
                 endDate
             );
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersSelfDelete(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersClaimUsername', () => {
@@ -384,6 +494,15 @@ describe('AnalyticDashboardDomain', () => {
                 endDate
             );
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersClaimUsername(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('usersMobileChurn', () => {
@@ -398,6 +517,15 @@ describe('AnalyticDashboardDomain', () => {
                 userMobileNumberAnalyticDomain.getChurn
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.usersMobileChurn(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authLoginFrequency', () => {
@@ -407,6 +535,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.authLoginFrequency(startDate, endDate);
 
             expect(result).toEqual({ count: 12 });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authLoginFrequency(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -440,6 +577,15 @@ describe('AnalyticDashboardDomain', () => {
                 userLoginAnalyticDomain.getLoginMethodMix
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authLoginMethod(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authLoginSource', () => {
@@ -459,6 +605,15 @@ describe('AnalyticDashboardDomain', () => {
                 ],
             });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authLoginSource(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authLockout', () => {
@@ -471,6 +626,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.authLockout(startDate, endDate);
 
             expect(result).toEqual(metrics);
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authLockout(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -496,6 +660,15 @@ describe('AnalyticDashboardDomain', () => {
                 endDate
             );
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authSessionRevoke(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authConcurrentSessions', () => {
@@ -510,6 +683,15 @@ describe('AnalyticDashboardDomain', () => {
                 buckets: [{ key: 'user-1', count: 2 }],
             });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authConcurrentSessions();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authSessionsGeo', () => {
@@ -520,6 +702,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.authSessionsGeo(startDate, endDate);
 
             expect(result).toEqual({ buckets: rows });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authSessionsGeo(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -602,6 +793,18 @@ describe('AnalyticDashboardDomain', () => {
                 ],
             });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authSessionsUserAgent(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authRefreshTokenVolume', () => {
@@ -624,6 +827,18 @@ describe('AnalyticDashboardDomain', () => {
                 endDate
             );
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authRefreshTokenVolume(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authLogoutRate', () => {
@@ -642,6 +857,15 @@ describe('AnalyticDashboardDomain', () => {
                 startDate,
                 endDate
             );
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authLogoutRate(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -676,6 +900,18 @@ describe('AnalyticDashboardDomain', () => {
                 endDate
             );
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authVerificationFunnel(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authPasswordExpiry', () => {
@@ -694,6 +930,15 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual(expiry);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authPasswordExpiry();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authPasswordChange', () => {
@@ -705,6 +950,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.authPasswordChange(startDate, endDate);
 
             expect(result).toEqual({ count: 6 });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authPasswordChange(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -722,6 +976,18 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual(conversion);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authForgotPasswordConversion(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authAdminForcePassword', () => {
@@ -737,6 +1003,18 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual({ count: 1 });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authAdminForcePassword(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authTwoFactorAdoption', () => {
@@ -747,6 +1025,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.authTwoFactorAdoption();
 
             expect(result).toEqual(adoption);
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authTwoFactorAdoption();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -760,6 +1047,18 @@ describe('AnalyticDashboardDomain', () => {
             );
 
             expect(result).toEqual({ count: 2 });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authTwoFactorAdminReset(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -776,6 +1075,18 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual({ count: 8 });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authTwoFactorVerifySuccess(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authBackupCodeRegeneration', () => {
@@ -791,6 +1102,18 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual({ count: 3 });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authBackupCodeRegeneration(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('authTwoFactorAttempt', () => {
@@ -804,6 +1127,15 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual(snapshot);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.authTwoFactorAttempt();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('devicesRegistration', () => {
@@ -813,6 +1145,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.devicesRegistration(startDate, endDate);
 
             expect(result).toEqual({ count: 9 });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.devicesRegistration(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -825,6 +1166,15 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual({ buckets: rows });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.devicesPlatform();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('devicesPushToken', () => {
@@ -835,6 +1185,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.devicesPushToken();
 
             expect(result).toEqual(rate);
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.devicesPushToken();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -854,6 +1213,15 @@ describe('AnalyticDashboardDomain', () => {
                 startDate,
                 endDate
             );
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.devicesInfoRefresh(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -875,6 +1243,15 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual({ sessions: 10, devices: 0, ratio: 0 });
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.devicesSessionRatio();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('devicesPerUser', () => {
@@ -888,6 +1265,15 @@ describe('AnalyticDashboardDomain', () => {
             expect(result).toEqual({
                 buckets: [{ key: 'user-1', count: 3 }],
             });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.devicesPerUser();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -917,6 +1303,15 @@ describe('AnalyticDashboardDomain', () => {
                 before
             );
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.devicesInactivity();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('apiKeysLifecycle', () => {
@@ -927,6 +1322,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.apiKeysLifecycle(startDate, endDate);
 
             expect(result).toEqual(lifecycle);
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.apiKeysLifecycle(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -939,6 +1343,15 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual(counts);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.apiKeysActiveExpired();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('apiKeysTypeMix', () => {
@@ -949,6 +1362,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.apiKeysTypeMix();
 
             expect(result).toEqual({ buckets: rows });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.apiKeysTypeMix();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -983,6 +1405,18 @@ describe('AnalyticDashboardDomain', () => {
                 termPolicyAcceptanceAnalyticDomain.getAcceptanceRate
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.termPoliciesAcceptanceRate(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('termPoliciesTimeToAccept', () => {
@@ -999,6 +1433,18 @@ describe('AnalyticDashboardDomain', () => {
                 termPolicyAcceptanceAnalyticDomain.getTimeToAccept
             ).toHaveBeenCalledWith(null, null);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.termPoliciesTimeToAccept(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('workspacesCreation', () => {
@@ -1008,6 +1454,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.workspacesCreation(startDate, endDate);
 
             expect(result).toEqual({ count: 4 });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.workspacesCreation(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -1021,6 +1476,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.workspacesVisibility();
 
             expect(result).toEqual({ buckets: rows });
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.workspacesVisibility();
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -1038,6 +1502,18 @@ describe('AnalyticDashboardDomain', () => {
             expect(
                 workspaceInviteAnalyticDomain.getFunnel
             ).toHaveBeenCalledWith(startDate, endDate, null);
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.workspacesInviteFunnel(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -1058,6 +1534,18 @@ describe('AnalyticDashboardDomain', () => {
                 workspaceJoinRequestAnalyticDomain.getOutcomes
             ).toHaveBeenCalledWith(startDate, endDate, null);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.workspacesJoinOutcomes(
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('workspacesMembership', () => {
@@ -1074,6 +1562,15 @@ describe('AnalyticDashboardDomain', () => {
                 '_',
                 '_'
             );
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.workspacesMembership(pagination);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -1094,6 +1591,19 @@ describe('AnalyticDashboardDomain', () => {
                 activityLogAnalyticDomain.getGroupActivityByWorkspaceOffset
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
         });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.workspacesActivityVolume(
+                startDate,
+                endDate,
+                pagination
+            );
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+        });
     });
 
     describe('projectsCreation', () => {
@@ -1107,6 +1617,15 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.projectsCreation(startDate, endDate);
 
             expect(result).toEqual(creation);
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.projectsCreation(startDate, endDate);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -1128,6 +1647,15 @@ describe('AnalyticDashboardDomain', () => {
                 '_',
                 '_'
             );
+        });
+
+        it('returns the cached value without storing on a cache hit', async () => {
+            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+
+            const result = await domain.projectsMembership(pagination);
+
+            expect(result).toBe(cachedValue);
+            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
     });
 
@@ -1154,31 +1682,45 @@ describe('AnalyticDashboardDomain', () => {
         });
     });
 
-    describe('cached', () => {
-        it('returns the store value on a cache hit without computing', async () => {
-            const cached = { count: 99 };
-            analyticCache.getDashboard.mockResolvedValue(cached);
+    describe('readCache', () => {
+        it('returns the stored value read under the date tokens', async () => {
+            const stored = { count: 99 };
+            analyticCache.getDashboard.mockResolvedValue(stored);
 
-            const result = await domain['cached'](
+            const result = await domain['readCache'](
                 'users.registrations',
                 startDate,
-                endDate,
-                vi.fn().mockResolvedValue({ count: 1 })
+                endDate
             );
 
-            expect(result).toEqual(cached);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(result).toEqual(stored);
+            expect(analyticCache.getDashboard).toHaveBeenCalledWith(
+                'users.registrations',
+                startDate.toISOString(),
+                endDate.toISOString()
+            );
         });
 
-        it('computes and stores the value on a cache miss', async () => {
-            const result = await domain['cached'](
+        it('returns null on a cache miss', async () => {
+            const result = await domain['readCache'](
+                'users.registrations',
+                startDate,
+                endDate
+            );
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('writeCache', () => {
+        it('stores the value under the date tokens', async () => {
+            await domain['writeCache'](
                 'users.registrations',
                 startDate,
                 endDate,
-                vi.fn().mockResolvedValue({ count: 1 })
+                { count: 1 }
             );
 
-            expect(result).toEqual({ count: 1 });
             expect(analyticCache.setDashboard).toHaveBeenCalledWith(
                 'users.registrations',
                 startDate.toISOString(),

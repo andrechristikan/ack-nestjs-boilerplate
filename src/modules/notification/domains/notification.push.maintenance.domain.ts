@@ -3,7 +3,11 @@ import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { MessageService } from '@common/message/services/message.service';
+import type {
+    INotificationPushCleanupStaleTokensResult,
+    INotificationPushCleanupTokensResult,
+} from '@modules/notification/interfaces/notification.interface';
 
 /** Removes the notification tokens Firebase rejected and the ones that went stale. */
 @Injectable()
@@ -14,7 +18,8 @@ export class NotificationPushMaintenanceDomain {
     constructor(
         private readonly deviceDomain: DeviceDomain,
         private readonly configService: ConfigService,
-        private readonly helperEncryptionService: HelperEncryptionService
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly messageService: MessageService
     ) {
         this.staleTokenThresholdInMs = this.configService.get<number>(
             'notification.push.staleTokenThresholdInMs'
@@ -27,7 +32,7 @@ export class NotificationPushMaintenanceDomain {
     async processCleanupTokens(
         userId: string,
         encryptedFailureTokens: string[]
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationPushCleanupTokensResult> {
         const failureTokens = encryptedFailureTokens.map(encrypted =>
             this.helperEncryptionService.aes256Decrypt(
                 encrypted,
@@ -42,21 +47,29 @@ export class NotificationPushMaintenanceDomain {
                 failureTokens
             );
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.cleanupTokens'
+        );
+
         return {
-            message: `Processed token cleanup for invalid tokens`,
+            message,
             countRequestedTokens: failureTokens.length,
             countRemovedTokens,
         };
     }
 
-    async processCleanupStaleTokens(): Promise<IQueueResponse> {
+    async processCleanupStaleTokens(): Promise<INotificationPushCleanupStaleTokensResult> {
         const countRemovedTokens =
             await this.deviceDomain.cleanupStaleNotificationTokens(
                 this.staleTokenThresholdInMs
             );
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.cleanupStaleTokens'
+        );
+
         return {
-            message: `Processed stale token cleanup`,
+            message,
             countRemovedTokens,
         };
     }

@@ -2,6 +2,10 @@ import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 
 export interface IConfigQueue {
+    redis: {
+        connectTimeoutInMs: number;
+        maxRetriesPerRequest: number;
+    };
     job: {
         attempts: number;
         keepLogs: number;
@@ -11,10 +15,18 @@ export interface IConfigQueue {
         pushBackoffDelayInMs: number;
         notificationBackoffDelayInMs: number;
         workspaceBackoffDelayInMs: number;
+        sessionBackoffDelayInMs: number;
+        activityLogBackoffDelayInMs: number;
+        termPolicyBackoffDelayInMs: number;
+        userBackoffDelayInMs: number;
     };
 }
 
 export default registerAs('queue', (): IConfigQueue => ({
+    redis: {
+        connectTimeoutInMs: ms('5s'),
+        maxRetriesPerRequest: 1,
+    },
     job: {
         attempts: 3,
         keepLogs: 20,
@@ -24,5 +36,9 @@ export default registerAs('queue', (): IConfigQueue => ({
         pushBackoffDelayInMs: ms('5s'),
         notificationBackoffDelayInMs: ms('3s'),
         workspaceBackoffDelayInMs: ms('10s'),
+        sessionBackoffDelayInMs: ms('3s'),
+        activityLogBackoffDelayInMs: ms('10s'),
+        termPolicyBackoffDelayInMs: ms('10s'),
+        userBackoffDelayInMs: ms('10s'),
     },
 }));

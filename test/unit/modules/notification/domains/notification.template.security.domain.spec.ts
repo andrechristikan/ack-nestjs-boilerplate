@@ -5,15 +5,19 @@ import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationTemplateSecurityDomain } from '@modules/notification/domains/notification.template.security.domain';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationTemplateSecurityDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     let domain: NotificationTemplateSecurityDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationTemplateSecurityDomain,
                 { provide: AwsSESService, useValue: awsSESService },
             ],

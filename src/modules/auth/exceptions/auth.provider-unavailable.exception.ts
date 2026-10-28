@@ -12,7 +12,7 @@ export class AuthProviderUnavailableException extends AppBaseException {
     readonly statusCodeKey = EnumAuthStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.SERVICE_UNAVAILABLE;
 
-    constructor(rawError?: unknown) {
+    constructor(readonly rawError: unknown = null) {
         super('auth.error.providerUnavailable', { rawError });
     }
 }

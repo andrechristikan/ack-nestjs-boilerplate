@@ -130,13 +130,12 @@ sequenceDiagram
         API->>S3 Public: Copy all content files from the private bucket
         API->>API: Reject a copy set that misses a language (500)
         API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>non-deleted users termPolicy[type] = false
-        API->>API: Stage the adminTermPolicyPublish activity log (onError: true)
+        API->>API: Stage the adminTermPolicyPublish activity log
         API->>Users: Queue the publishTermPolicy job after the commit
         alt Enqueue fails
-            API->>Admin: 500 (policy stays published, acceptances stay reset,<br/>audit row written)
-        else Enqueued
-            API->>Admin: Policy published
+            API->>API: Log the failure and report it to Sentry
         end
+        API->>Admin: Policy published
     end
 
     Note over Users: Users re-accept before the next protected call
@@ -172,7 +171,7 @@ Publish:
     4. the staging of the prepared activity log
     5. the enqueue of the `publishTermPolicy` job
 - Preparing an activity log validates its metadata against the action contract and builds the row in memory. It writes nothing, so a rolled-back transaction leaves no row.
-- Staging after the commit hands the prepared row to the request. `ActivityLogInterceptor` writes the staged rows when the handler settles: every row on success, only the rows prepared with `onError: true` on a failure. The publish row carries `onError: true`.
+- Staging after the commit hands the prepared row to the request. `ActivityLogInterceptor` flushes every staged row when the handler settles, on success and on failure.
 - A policy already `published` answers `400` (`statusInvalid`, `TermPolicyStatusInvalidException`) from the initial read, before the copy and before any write. Publish runs once per version.
 - No per-type gate exists: a version never waits for, and is never blocked by, another version of the same type.
 - The status update matches the policy only while it is `draft`, so one of two concurrent publishes commits.
@@ -188,9 +187,9 @@ Publish:
     - The policy stays `draft`, so a partial copy set never publishes.
 - The job id is `publishTermPolicy-{termPolicyId}`.
     - BullMQ ignores a second add with the same id while the job is kept: a completed job for 7 days, a failed job for 14 days.
-- A queue failure answers `500` after the commit.
+- A queue failure after the commit answers `200`: `NotificationQueue.sendPublishTermPolicy` enqueues through `QueueBase.addSideEffect`, which logs the failure and reports it to Sentry.
     - The policy stays `published` and the acceptances stay reset.
-    - The `adminTermPolicyPublish` row is written, because it is staged before the enqueue and carries `onError: true`.
+    - The `adminTermPolicyPublish` row is written, because it is staged before the enqueue.
     - The admin recovers with the resend endpoint, which re-runs the fan-out of a published policy (see [Resend Email](#resend-email)).
 
 Resend:
@@ -199,7 +198,7 @@ Resend:
 - The job id is `resendPublishTermPolicy-{termPolicyId}-{resendNonce}`, and `resendNonce` is a fresh id per request, so every request queues its own job.
 - The job carries the policy's stored `publishedAt` as `recipientCutoffAt`, the value the publish job carried, even when the publish job never queued. It runs the same fan-out and changes no acceptance and no policy field.
 - It creates rows for the active users that have none and re-queues the recipient rows still unsent and unclaimed. A row already sent or claimed is left alone.
-- A queue failure answers `500` and writes no `adminTermPolicyResendEmail` row: the row is staged only after the enqueue succeeds, and it carries `onError: false`.
+- A queue failure answers `500` (`AppUnknownException`) and writes no `adminTermPolicyResendEmail` row, because the row is staged only after the enqueue succeeds. The resend is the one request whose only work is the enqueue, so `NotificationQueue.sendResendPublishTermPolicy` calls `add` and its failure throws.
 - A repeat request mints a fresh nonce, so it queues a new job.
 
 Recipients:
@@ -305,6 +304,7 @@ POST /shared/user/term-policy/accept
 - When no published policy exists for the type, it returns `404` (`notFound`).
 - `userAccept` reads the recipient snapshot before the write, through `NotificationRecipientDomain.getRecipient`: the address, the channels the user's notification settings leave enabled, and the device tokens.
 - The job queued after the commit carries that snapshot, and its processor does not read the user again.
+- A failed enqueue is logged and reported, and the acceptance still answers success.
 - The job payload (`INotificationAcceptTermPolicyPayload`) holds `termPolicyId`, `type`, and `version`. The publish payload extends it with `recipientCutoffAt` and `resendNonce` (`null` on a publish, the request nonce on a resend).
 - A user whose settings leave no channel enabled gets no notification row.
 
@@ -428,7 +428,7 @@ PATCH /admin/term-policy/publish/:termPolicyId
 
 - The route carries the admin role guard and the `termPolicy` read and update abilities.
 - The success message is `termPolicy.publish` and the response data is `{}`.
-- The activity log action is `adminTermPolicyPublish`, staged after the commit with `onError: true`.
+- The activity log action is `adminTermPolicyPublish`, staged after the commit.
 
 Publishing a draft:
 
@@ -438,7 +438,7 @@ Publishing a draft:
 - a stored content with an unknown language or access returns `500` (`contentInvalid`)
 - a copy set that misses a language returns `500` and leaves the policy `draft`
 - a write conflict in the publish transaction returns `400` (`statusInvalid`), leaves the policy `draft`, and queues nothing: publish again
-- a failed enqueue returns `500` after the commit: the policy stays `published`, the acceptances stay reset, and the `adminTermPolicyPublish` row is written. [Resend Email](#resend-email) recovers it
+- a failed enqueue is logged and reported, and the request still returns `200`: the policy stays `published`, the acceptances stay reset, and the `adminTermPolicyPublish` row is written. [Resend Email](#resend-email) recovers it
 
 Publishing a policy that is already published returns `400` (`statusInvalid`) and changes nothing.
 
@@ -463,7 +463,7 @@ POST /admin/term-policy/resend/:termPolicyId/email
 - A published policy queues one `resendPublishTermPolicy` job under a fresh nonce, described under [Admin Flow Diagram](#admin-flow-diagram).
 - The job emails only the recipient rows that are unsent and unclaimed, and creates rows for the active users that have none.
 - A recipient whose delivery outcome was unknown stays claimed, and a resend does not reach it.
-- A failed enqueue returns `500` and writes no activity log row, because the row is staged after the enqueue and carries `onError: false`.
+- A failed enqueue returns `500` and writes no activity log row, because the row is staged after the enqueue.
 - It is the recovery for a publish whose enqueue failed: the policy is already `published`, so the resend creates rows for the active users that have none and re-queues the rows still unsent and unclaimed.
 
 ### List Policies
@@ -490,6 +490,8 @@ DELETE /admin/term-policy/delete/:termPolicyId
 - Only draft policies can be deleted.
 - Any other policy returns `400` (`statusInvalid`).
 - The record is hard deleted.
+- After the delete, a `deleteContent` job on the `termPolicy` queue carries the content directory path, and its processor deletes that directory from the private bucket.
+- A failed enqueue is logged and reported, and the request still succeeds.
 
 ## TermPolicyAcceptanceProtected
 

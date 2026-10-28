@@ -102,7 +102,6 @@ describe('ProjectMemberDomain', () => {
             <A extends EnumActivityLogAction>(
                 input: IActivityLogStageInput<A>
             ): IActivityLogStaged => ({
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -454,7 +453,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
-                    onError: false,
                 },
                 {
                     action: EnumActivityLogAction.projectMemberAssignedByAdmin,
@@ -462,7 +460,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: actorId },
-                    onError: false,
                 },
             ]);
         });
@@ -498,7 +495,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: actorId },
-                    onError: false,
                 },
             ]);
         });
@@ -587,7 +583,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
-                    onError: false,
                 },
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
@@ -595,7 +590,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: actorId },
-                    onError: false,
                 },
             ]);
         });
@@ -627,7 +621,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: actorId },
-                    onError: false,
                 },
             ]);
         });
@@ -733,7 +726,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
-                    onError: false,
                 },
                 {
                     action: EnumActivityLogAction.projectMemberRemovedByAdmin,
@@ -741,7 +733,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: actorId },
-                    onError: false,
                 },
             ]);
         });
@@ -764,7 +755,6 @@ describe('ProjectMemberDomain', () => {
                     createdBy: member.userId,
                     workspaceId: project.workspaceId,
                     metadata: {},
-                    onError: false,
                 },
             ]);
         });

@@ -12,7 +12,7 @@ export class UserPasswordMustNewException extends AppBaseException {
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.BAD_REQUEST;
 
-    constructor(period: number) {
+    constructor(readonly period: number) {
         super('user.error.passwordMustNew', {
             messageProperties: { period },
         });

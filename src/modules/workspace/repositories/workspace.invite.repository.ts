@@ -167,24 +167,42 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         hashedToken: string,
         reference: string,
         expiredAt: Date
-    ): Promise<WorkspaceInvite> {
-        return this.databaseService.client.workspaceInvite.update({
-            where: { id: workspaceInviteId },
-            data: {
-                token: hashedToken,
-                reference,
-                expiredAt,
-            },
+    ): Promise<WorkspaceInvite | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.workspaceInvite.updateMany({
+                where: {
+                    id: workspaceInviteId,
+                    status: EnumWorkspaceInviteStatus.pending,
+                },
+                data: {
+                    token: hashedToken,
+                    reference,
+                    expiredAt,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.workspaceInvite.findUnique({
+                where: { id: workspaceInviteId },
+            });
         });
     }
 
-    async revoke(workspaceInviteId: string): Promise<void> {
-        await this.databaseService.client.workspaceInvite.update({
-            where: { id: workspaceInviteId },
-            data: {
-                status: EnumWorkspaceInviteStatus.revoked,
-            },
-        });
+    async revoke(workspaceInviteId: string): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.workspaceInvite.updateMany({
+                where: {
+                    id: workspaceInviteId,
+                    status: EnumWorkspaceInviteStatus.pending,
+                },
+                data: {
+                    status: EnumWorkspaceInviteStatus.revoked,
+                },
+            });
+
+        return count > 0;
     }
 
     async acceptInTx(
@@ -192,9 +210,12 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         workspaceInviteId: string,
         userId: string,
         acceptedAt: Date
-    ): Promise<void> {
-        await tx.workspaceInvite.update({
-            where: { id: workspaceInviteId },
+    ): Promise<boolean> {
+        const { count } = await tx.workspaceInvite.updateMany({
+            where: {
+                id: workspaceInviteId,
+                status: EnumWorkspaceInviteStatus.pending,
+            },
             data: {
                 status: EnumWorkspaceInviteStatus.accepted,
                 acceptedAt,
@@ -202,5 +223,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 updatedBy: userId,
             },
         });
+
+        return count > 0;
     }
 }

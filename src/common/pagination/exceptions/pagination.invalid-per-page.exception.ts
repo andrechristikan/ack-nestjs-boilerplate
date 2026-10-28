@@ -12,7 +12,7 @@ export class PaginationInvalidPerPageException extends AppBaseException {
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
-    constructor(maxPerPage: number) {
+    constructor(readonly maxPerPage: number) {
         super('pagination.error.invalidPerPage', {
             messageProperties: { maxPerPage },
         });

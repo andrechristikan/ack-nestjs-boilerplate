@@ -9,6 +9,7 @@ export interface IConfigAws {
         corsMaxAgeShortInSeconds: number;
         maxAttempts: number;
         timeoutInMs: number;
+        deleteDirMaxIterations: number;
         region: string | null;
         endpoint: string | null;
         baseUrlPattern: string;
@@ -73,6 +74,7 @@ export default registerAs('aws', (): IConfigAws => {
             corsMaxAgeShortInSeconds: ms('1h') / 1000,
             maxAttempts: 3,
             timeoutInMs: ms('30s'),
+            deleteDirMaxIterations: 100,
             region:
                 process.env.AWS_S3_REGION === ''
                     ? null

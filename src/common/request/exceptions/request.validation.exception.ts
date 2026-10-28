@@ -12,11 +12,8 @@ export class RequestValidationException extends AppBaseException {
     readonly statusCode = EnumRequestStatusCodeError.validation;
     readonly statusCodeKey = EnumRequestStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
-    readonly issues: readonly StandardSchemaV1.Issue[];
 
-    constructor(issues: readonly StandardSchemaV1.Issue[]) {
+    constructor(readonly issues: readonly StandardSchemaV1.Issue[]) {
         super('request.error.validation');
-
-        this.issues = issues;
     }
 }

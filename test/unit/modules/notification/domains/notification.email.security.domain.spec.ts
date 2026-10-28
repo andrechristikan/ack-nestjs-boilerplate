@@ -16,8 +16,10 @@ import { NotificationEmailSecurityDomain } from '@modules/notification/domains/n
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 import type { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationEmailSecurityDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -42,6 +44,7 @@ describe('NotificationEmailSecurityDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, string> = {
                 'email.noreply': 'noreply@example.com',
@@ -62,6 +65,7 @@ describe('NotificationEmailSecurityDomain', () => {
         stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationEmailSecurityDomain,
                 { provide: AwsSESService, useValue: awsSESService },
                 { provide: ConfigService, useValue: configService },
@@ -119,7 +123,7 @@ describe('NotificationEmailSecurityDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Temporary password email processed',
+                message: 'notification.queue.email.temporaryPasswordByAdmin',
             });
         });
 
@@ -198,7 +202,7 @@ describe('NotificationEmailSecurityDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Change password email processed',
+                message: 'notification.queue.email.changePassword',
             });
         });
 
@@ -235,7 +239,7 @@ describe('NotificationEmailSecurityDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Reset password email processed',
+                message: 'notification.queue.email.resetPassword',
             });
         });
 
@@ -294,7 +298,7 @@ describe('NotificationEmailSecurityDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Forgot password email processed',
+                message: 'notification.queue.email.forgotPassword',
             });
         });
 
@@ -335,7 +339,7 @@ describe('NotificationEmailSecurityDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Reset two factor by admin email processed',
+                message: 'notification.queue.email.resetTwoFactorByAdmin',
             });
         });
 
@@ -410,7 +414,7 @@ describe('NotificationEmailSecurityDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'New device login email processed',
+                message: 'notification.queue.email.newDeviceLogin',
             });
         });
 

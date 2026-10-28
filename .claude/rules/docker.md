@@ -25,6 +25,7 @@ paths:
 ## Credentials and variables
 
 - Auth is opt-in in both compose files. Mongo turns on `--keyFile` and `--auth` and creates the root user only when `DOCKER_MONGO_ROOT_PASSWORD` is set; Redis, run as user `redis`, takes `--requirepass` and BullBoard authenticates to it only when `DOCKER_REDIS_PASSWORD` is set; unset, each starts plain. BullBoard's own login falls back to the compose defaults.
+- With `DOCKER_MONGO_ROOT_PASSWORD` set, `DATABASE_URL` carries `<DOCKER_MONGO_ROOT_USERNAME>:<password>@` and `authSource=admin`: the root user lives in `admin`, and without it Prisma fails with `SCRAM failure: Authentication failed`. With `DOCKER_REDIS_PASSWORD` set, `CACHE_REDIS_URL` and `QUEUE_REDIS_URL` carry `redis://:<password>@`. `.env.example` shows both variants commented under the URLs.
 - Every `DOCKER_` key is empty in `.env.example` and holds its value in the owner's `.env`; each compose file reads it as `${DOCKER_X:-default}` (names and defaults there), so production without `--env-file` takes the fallbacks. Any other key follows `config.md`.
 
 ## Volumes

@@ -2,11 +2,15 @@
 
 ## The sweep log
 
-`generated/docs/report-src-sweep.md` records a `src/` defect that is not repaired in the run that found it: a flow change, a decision the owner has not made, a line no input can reach. It is gitignored and additive.
+`generated/docs/report-src-sweep.md` records a `src/` defect that is not repaired in the run that found it: a flow change, a decision the owner has not made, a line no input can reach. It is gitignored and holds open defects only.
 
-Create the file with these five headings when it is missing:
+Create the file with this header and these five headings when it is missing:
 
 ```
+# src sweep: open items
+
+Append a new finding as an open row under its heading; delete a row once its defect is fixed. No SOLVED marker.
+
 ## CHANGE
 ## STYLE
 ## RENAME
@@ -22,19 +26,19 @@ A finding is one open row under the matching heading:
 
 Rules:
 
-- Append only. Do not delete, reorder, or reword a row, a SOLVED one included. The only edits are the SOLVED mark (`[ ]` to `[x]` plus ` SOLVED`) and a moved `file:line` (table below).
+- Append a new finding; delete a row once its defect is fixed. No SOLVED marker, no `[x]`. Do not reorder or reword an open row; its one edit is a moved `file:line` (table below).
 - One row per defect; a defect spanning files names each `file:line` in the same row.
 - The fact describes what the code does, not what it should do; the decision is the owner's.
 
 End of every run, whether or not the run added a row, validate the whole file: re-read every open row and open the `src/` it names.
 
-| State of the defect | Mark |
-| --- | --- |
-| gone | change `[ ]` to `[x]` and append ` SOLVED` to the row |
+| State of the defect     | Action                             |
+| ----------------------- | ---------------------------------- |
+| gone                    | delete the row                     |
 | still there, line moved | keep `[ ]`, update the `file:line` |
-| still there, unchanged | leave the row as it is |
+| still there, unchanged  | leave the row as it is             |
 
-Name every row marked SOLVED and every row still open in the hand-back.
+Name every row deleted and every row still open in the hand-back.
 
 ## Coverage reading
 

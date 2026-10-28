@@ -28,7 +28,7 @@ The working tree is the source (`.claude/skills/ack-build/references/dispatch.md
 
 ## A defect found in `src/`
 
-Recorded, not fixed: append one open row to `generated/docs/report-src-sweep.md` under its heading, in the shape `.claude/skills/ack-spec/references/sweep-log.md` gives. Create the file with the five headings when it is missing. Append only; do not mark a row SOLVED.
+Recorded, not fixed: append one open row to `generated/docs/report-src-sweep.md` under its heading, in the shape `.claude/skills/ack-spec/references/sweep-log.md` gives. Create the file with the header and five headings that file gives when it is missing. Append a new finding; a row is deleted once its defect is fixed, never marked SOLVED.
 
 ## Hand back
 

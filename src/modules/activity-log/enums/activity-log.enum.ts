@@ -1,4 +1,12 @@
 /**
+ * Job names on the activity-log queue.
+ * @public
+ */
+export enum EnumActivityLogProcess {
+    createMany = 'createMany',
+}
+
+/**
  * Where an activity-log contract resolves the logged user from.
  * @public
  */

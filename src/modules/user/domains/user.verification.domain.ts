@@ -163,6 +163,11 @@ export class UserVerificationDomain {
             throw new UserTokenInvalidException();
         }
 
+        const user = await this.userRepository.findOneById(verification.userId);
+        if (!user) {
+            throw new UserNotFoundException();
+        }
+
         try {
             const activityLogs = [
                 this.activityLogDomain.prepare({
@@ -173,29 +178,26 @@ export class UserVerificationDomain {
             ];
             const verifiedAt = this.helperDateService.create();
             // Sequential by design: write must not run if an earlier step throws
-            const user = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userVerificationRepository.markUsedInTx(
-                        tx,
-                        verification.id,
-                        verifiedAt
-                    );
-
-                    return this.userRepository.markVerifiedInTx(
-                        tx,
-                        verification.userId,
-                        verifiedAt
-                    );
-                }
-            );
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
             const recipient =
                 await this.notificationRecipientDomain.getRecipient(
                     user,
                     EnumNotificationKind.verifiedEmail
                 );
+            await this.databaseService.withTransaction(async tx => {
+                await this.userVerificationRepository.markUsedInTx(
+                    tx,
+                    verification.id,
+                    verifiedAt
+                );
+                await this.userRepository.markVerifiedInTx(
+                    tx,
+                    verification.userId,
+                    verifiedAt
+                );
+            });
+
+            this.activityLogDomain.stagePrepared(activityLogs);
+
             await this.notificationQueue.sendVerifiedEmail(recipient, {
                 reference: verification.reference,
             });

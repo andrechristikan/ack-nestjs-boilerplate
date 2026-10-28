@@ -6,9 +6,9 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
  */
 export class NotificationEmailDeliveryUnknownException extends AppUnknownException {
     constructor(
-        batchId: string,
-        unknownCount: number,
-        rawError: unknown = null
+        readonly batchId: string,
+        readonly unknownCount: number,
+        readonly rawError: unknown = null
     ) {
         super(
             rawError,

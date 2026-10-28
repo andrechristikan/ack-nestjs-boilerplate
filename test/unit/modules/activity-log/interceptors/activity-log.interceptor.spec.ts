@@ -91,7 +91,6 @@ describe('ActivityLogInterceptor', () => {
             expect(result).toBe('handled');
             expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
-                isError: false,
             });
         });
 
@@ -115,7 +114,6 @@ describe('ActivityLogInterceptor', () => {
 
             expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: null,
-                isError: false,
             });
         });
 
@@ -142,7 +140,7 @@ describe('ActivityLogInterceptor', () => {
             expect(result).toBe('handled');
         });
 
-        it('flushes only onError activity logs and wraps a non-typed error in AppUnknownException on failure', async () => {
+        it('flushes the staged activity logs and wraps a non-typed error in AppUnknownException on failure', async () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
@@ -167,11 +165,10 @@ describe('ActivityLogInterceptor', () => {
             expect(caught).toMatchObject({ rawError: handlerError });
             expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
-                isError: true,
             });
         });
 
-        it('flushes onError activity logs and rethrows an AppBaseException unchanged', async () => {
+        it('flushes the staged activity logs and rethrows an AppBaseException unchanged', async () => {
             const executionContext = buildHttpExecutionContext({ user });
             executionContext.getType.mockReturnValue('http');
             const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
@@ -188,11 +185,10 @@ describe('ActivityLogInterceptor', () => {
             expect(caught).toBe(handlerError);
             expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
-                isError: true,
             });
         });
 
-        it('flushes onError activity logs and rethrows an HttpException unchanged', async () => {
+        it('flushes the staged activity logs and rethrows an HttpException unchanged', async () => {
             const executionContext = buildHttpExecutionContext({ user });
             executionContext.getType.mockReturnValue('http');
             const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
@@ -239,14 +235,13 @@ describe('ActivityLogInterceptor', () => {
     });
 
     describe('flushSafe', () => {
-        it('flushes staged activity logs for the given payload user and error flag', async () => {
+        it('flushes staged activity logs for the given payload user', async () => {
             activityLogDomain.flushStaged.mockResolvedValue(undefined);
 
-            await interceptor['flushSafe']('user-1', false);
+            await interceptor['flushSafe']('user-1');
 
             expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
-                isError: false,
             });
         });
 
@@ -256,7 +251,7 @@ describe('ActivityLogInterceptor', () => {
             );
 
             await expect(
-                interceptor['flushSafe'](null, true)
+                interceptor['flushSafe'](null)
             ).resolves.toBeUndefined();
         });
     });

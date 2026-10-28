@@ -334,7 +334,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinRequested,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -417,28 +416,20 @@ describe('WorkspaceJoinRequestDomain', () => {
                 EnumNotificationKind.workspaceJoinRequest
             );
             expect(
-                notificationQueue.sendWorkspaceJoinRequest
-            ).toHaveBeenCalledTimes(2);
+                notificationQueue.sendWorkspaceJoinRequestBulk
+            ).toHaveBeenCalledTimes(1);
             expect(
-                notificationQueue.sendWorkspaceJoinRequest
-            ).toHaveBeenNthCalledWith(
-                1,
-                recipientOne,
+                notificationQueue.sendWorkspaceJoinRequestBulk
+            ).toHaveBeenCalledWith(
+                [recipientOne, recipientTwo],
                 {
                     workspaceId: 'workspace-1',
                     workspaceName: 'Acme',
                     requesterName: 'Jane Doe',
+                    joinRequestId: 'join-request-1',
                     joinRequestReviewLink:
                         'https://app.example.com/review/join-request-1',
                 },
-                'user-2'
-            );
-            expect(
-                notificationQueue.sendWorkspaceJoinRequest
-            ).toHaveBeenNthCalledWith(
-                2,
-                recipientTwo,
-                expect.objectContaining({ requesterName: 'Jane Doe' }),
                 'user-2'
             );
         });
@@ -477,7 +468,7 @@ describe('WorkspaceJoinRequestDomain', () => {
             ).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(
-                notificationQueue.sendWorkspaceJoinRequest
+                notificationQueue.sendWorkspaceJoinRequestBulk
             ).not.toHaveBeenCalled();
         });
     });
@@ -605,7 +596,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinAccepted,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -663,7 +653,8 @@ describe('WorkspaceJoinRequestDomain', () => {
             ).toHaveBeenCalledWith(
                 recipient,
                 { workspaceId: 'workspace-1', workspaceName: 'Acme' },
-                'reviewer-1'
+                'reviewer-1',
+                'join-request-1'
             );
             expect(callOrder).toEqual([
                 'acceptInTx',
@@ -730,7 +721,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             const acceptedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinAccepted,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -738,7 +728,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             const acceptedByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -835,7 +824,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -890,7 +878,8 @@ describe('WorkspaceJoinRequestDomain', () => {
                     rejectReasonCode:
                         EnumWorkspaceJoinRejectReason.wrongWorkspace,
                 },
-                'reviewer-1'
+                'reviewer-1',
+                'join-request-1'
             );
             expect(callOrder).toEqual([
                 'reject',
@@ -957,7 +946,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             const rejectedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -965,7 +953,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             const rejectedByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinRejectedByAdmin,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1082,13 +1069,14 @@ describe('WorkspaceJoinRequestDomain', () => {
             );
 
             expect(
-                notificationQueue.sendWorkspaceJoinRequest
+                notificationQueue.sendWorkspaceJoinRequestBulk
             ).toHaveBeenCalledWith(
-                recipient,
+                [recipient],
                 {
                     workspaceId: 'workspace-1',
                     workspaceName: 'Acme',
                     requesterName: 'jane',
+                    joinRequestId: 'join-request-1',
                     joinRequestReviewLink:
                         'https://app.example.com/review/join-request-1',
                 },
@@ -1109,7 +1097,7 @@ describe('WorkspaceJoinRequestDomain', () => {
             );
 
             expect(
-                notificationQueue.sendWorkspaceJoinRequest
+                notificationQueue.sendWorkspaceJoinRequestBulk
             ).not.toHaveBeenCalled();
         });
     });

@@ -116,3 +116,10 @@ export interface IAuthTwoFactorSetup {
     otpauthUrl: string;
     encryptedSecret: string;
 }
+
+export type IAuthJwtPayloadField<T> = Extract<keyof T, string>;
+
+export type IAuthJwtAccessTokenPayloadUser = Pick<
+    IAuthJwtAccessTokenPayload,
+    'userId'
+>;

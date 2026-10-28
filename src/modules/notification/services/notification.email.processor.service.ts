@@ -24,6 +24,8 @@ import { NotificationEmailWorkspaceDomain } from '@modules/notification/domains/
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { MessageService } from '@common/message/services/message.service';
+import { QueueException } from '@queues/exceptions/queue.exception';
 
 @Injectable()
 export class NotificationEmailProcessorService {
@@ -31,7 +33,8 @@ export class NotificationEmailProcessorService {
         private readonly notificationEmailAccountDomain: NotificationEmailAccountDomain,
         private readonly notificationEmailSecurityDomain: NotificationEmailSecurityDomain,
         private readonly notificationEmailTermPolicyDomain: NotificationEmailTermPolicyDomain,
-        private readonly notificationEmailWorkspaceDomain: NotificationEmailWorkspaceDomain
+        private readonly notificationEmailWorkspaceDomain: NotificationEmailWorkspaceDomain,
+        private readonly messageService: MessageService
     ) {}
 
     async processWelcome(
@@ -263,5 +266,13 @@ export class NotificationEmailProcessorService {
             job.data.send,
             job.data.data
         );
+    }
+    processUnknown(process: string): never {
+        const message = this.messageService.setMessage(
+            'notification.queue.email.error.unknownProcess',
+            { properties: { process } }
+        );
+
+        throw new QueueException(message, true);
     }
 }

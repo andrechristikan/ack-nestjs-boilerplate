@@ -120,7 +120,7 @@ Install and configure the project.
 22. [Email][ref-doc-email]: SES Handlebars templates, sync command, and send mapping
 23. [Two Factor][ref-doc-two-factor]: TOTP 2FA with authenticator apps and backup codes
 24. [Feature Flag][ref-doc-feature-flag]: Dynamic feature management and percentage rollouts
-25. [Activity Log][ref-doc-activity-log]: Recording user activities staged by domains and flushed by `ActivityLogInterceptor`
+25. [Activity Log][ref-doc-activity-log]: Recording user activities staged by domains and flushed by `ActivityLogInterceptor` into a queue job
 26. [Analytic][ref-doc-analytic]: Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
 27. [Term Policy][ref-doc-term-policy]: Legal agreements, versioning, and user consent enforcement
 28. [File Upload][ref-doc-file-upload]: Multipart uploads, CSV processing, and S3 presign (GET, upload, part)

@@ -61,7 +61,6 @@ describe('UserMobileNumberDomain', () => {
     const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userAddMobileNumber,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,

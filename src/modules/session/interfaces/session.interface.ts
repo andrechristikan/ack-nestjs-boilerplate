@@ -18,6 +18,11 @@ export type ISessionList = Prisma.SessionGetPayload<{
 
 export type ISessionRef = Pick<Session, 'id'>;
 
+export interface ISessionPurgeLoginsPayload {
+    userId: string;
+    sessions: ISessionRef[];
+}
+
 export interface ISessionCache {
     userId: string;
     sessionId: string;

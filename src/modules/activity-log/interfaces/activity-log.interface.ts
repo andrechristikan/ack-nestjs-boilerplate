@@ -20,7 +20,6 @@ export type IActivityLogMetadata = Record<
 export interface IActivityLogStaged {
     action: EnumActivityLogAction;
     metadata: IActivityLogMetadata;
-    onError: boolean;
     userId: string | null;
     createdBy: string | null;
     workspaceId: string | null;
@@ -34,19 +33,18 @@ export interface IActivityLogActionContract {
 
 export interface IActivityLogFlushOptions {
     payloadUserId: string | null;
-    isError: boolean;
 }
 
 export type IActivityLogStageInput<A extends EnumActivityLogAction> = {
     action: A;
     metadata?: IActivityLogMetadata;
-    onError?: boolean;
     userId?: string;
     createdBy?: string;
     workspaceId?: string;
 };
 
 export interface IActivityLogCreate {
+    id: string;
     userId: string;
     createdBy: string;
     workspaceId: string | null;
@@ -54,6 +52,18 @@ export interface IActivityLogCreate {
     description: string;
     requestLog: IRequestLog;
     metadata: IActivityLogMetadata;
+    createdAt: Date;
+}
+
+export interface IActivityLogCreatePayload extends Omit<
+    IActivityLogCreate,
+    'createdAt'
+> {
+    createdAt: string;
+}
+
+export interface IActivityLogCreateManyPayload {
+    rows: IActivityLogCreatePayload[];
 }
 
 export interface IActivityLogAnalyticActionCount {
@@ -70,3 +80,8 @@ export interface IActivityLogAnalyticList {
     userAgent: Prisma.JsonValue | null;
     workspaceId: string | null;
 }
+
+export type IActivityLogActionContracts = Record<
+    EnumActivityLogAction,
+    IActivityLogActionContract
+>;

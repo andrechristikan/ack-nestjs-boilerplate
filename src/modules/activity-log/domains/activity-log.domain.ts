@@ -2,6 +2,8 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -23,6 +25,7 @@ import type {
     IActivityLogStaged,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IActivityLogCreate } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
@@ -34,7 +37,10 @@ export class ActivityLogDomain {
     constructor(
         private readonly activityLogRepository: ActivityLogRepository,
         private readonly activityLogUtil: ActivityLogUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     private getContract(
@@ -161,7 +167,8 @@ export class ActivityLogDomain {
     private buildFlushCreate(
         activityLog: IActivityLogStaged,
         payloadUserId: string | null,
-        requestLog: IRequestLog
+        requestLog: IRequestLog,
+        createdAt: Date
     ): IActivityLogCreate {
         const contract = this.getContract(activityLog.action);
         const metadata = this.validateMetadata(
@@ -188,7 +195,10 @@ export class ActivityLogDomain {
             metadata
         );
 
+        const id = this.databaseUtil.createId();
+
         return {
+            id,
             userId,
             createdBy,
             workspaceId,
@@ -196,6 +206,7 @@ export class ActivityLogDomain {
             description,
             requestLog,
             metadata,
+            createdAt,
         };
     }
 
@@ -218,7 +229,6 @@ export class ActivityLogDomain {
         return {
             action: input.action,
             metadata,
-            onError: input.onError === true,
             userId,
             createdBy,
             workspaceId,
@@ -241,21 +251,11 @@ export class ActivityLogDomain {
 
     async flushStaged({
         payloadUserId,
-        isError,
     }: IActivityLogFlushOptions): Promise<void> {
         const staged = this.requestStoreService.get<IActivityLogStaged[]>(
             ActivityLogStageStoreKey
         );
         if (!staged?.length) {
-            return;
-        }
-
-        const toFlush = isError
-            ? staged.filter(activityLog => activityLog.onError)
-            : staged;
-
-        if (!toFlush.length) {
-            this.requestStoreService.set(ActivityLogStageStoreKey, []);
             return;
         }
 
@@ -265,13 +265,25 @@ export class ActivityLogDomain {
             throw new ActivityLogContractInvalidException();
         }
 
-        const rows: IActivityLogCreate[] = toFlush.map(activityLog =>
-            this.buildFlushCreate(activityLog, payloadUserId, requestLog)
-        );
+        const createdAt = this.helperDateService.create();
+        const rows: IActivityLogCreate[] = [];
+        for (const activityLog of staged) {
+            const row = this.buildFlushCreate(
+                activityLog,
+                payloadUserId,
+                requestLog,
+                createdAt
+            );
+            rows.push(row);
+        }
 
-        await this.activityLogRepository.createMany(rows);
+        await this.activityLogQueue.createMany(rows);
 
         this.requestStoreService.set(ActivityLogStageStoreKey, []);
+    }
+
+    async createMany(rows: IActivityLogCreate[]): Promise<void> {
+        await this.activityLogRepository.createMany(rows);
     }
 
     async getListOffsetByUser(

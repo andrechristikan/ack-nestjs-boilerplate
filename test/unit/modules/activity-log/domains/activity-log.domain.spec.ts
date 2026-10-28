@@ -6,6 +6,8 @@ import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { UserAgent, Workspace } from '@generated/prisma-client/client';
 import { ActivityLogStageStoreKey } from '@modules/activity-log/constants/activity-log.constant';
@@ -18,9 +20,11 @@ import { EnumActivityLogStatusCodeError } from '@modules/activity-log/enums/acti
 import { ActivityLogContractInvalidException } from '@modules/activity-log/exceptions/activity-log.contract-invalid.exception';
 import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activity-log.empty-metadata.dto';
 import type {
+    IActivityLogCreate,
     IActivityLogStaged,
     IActivityLogStageInput,
 } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
@@ -31,6 +35,12 @@ describe('ActivityLogDomain', () => {
     const activityLogUtil: MockProxy<ActivityLogUtil> = mock<ActivityLogUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
     const userAgent: UserAgent = {
         ua: null,
@@ -76,6 +86,9 @@ describe('ActivityLogDomain', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
@@ -95,22 +108,10 @@ describe('ActivityLogDomain', () => {
             expect(result).toEqual({
                 action: EnumActivityLogAction.userLoginCredential,
                 metadata: {},
-                onError: false,
                 userId: 'user-1',
                 createdBy: 'creator-1',
                 workspaceId: null,
             });
-        });
-
-        it('marks the activity log onError when onError is true', () => {
-            const result = domain.prepare({
-                action: EnumActivityLogAction.userLoginCredential,
-                userId: 'user-1',
-                createdBy: 'creator-1',
-                onError: true,
-            });
-
-            expect(result.onError).toBe(true);
         });
 
         it('stages null userId, createdBy, and workspaceId for a payload-user, no-workspace action', () => {
@@ -121,7 +122,6 @@ describe('ActivityLogDomain', () => {
             expect(result).toEqual({
                 action: EnumActivityLogAction.userUpdateProfile,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -139,7 +139,6 @@ describe('ActivityLogDomain', () => {
             expect(result).toEqual({
                 action: EnumActivityLogAction.workspaceCreated,
                 metadata: {},
-                onError: false,
                 userId: 'user-1',
                 createdBy: 'creator-1',
                 workspaceId: 'workspace-1',
@@ -260,7 +259,6 @@ describe('ActivityLogDomain', () => {
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
-                    onError: false,
                     userId: null,
                     createdBy: null,
                     workspaceId: null,
@@ -279,7 +277,6 @@ describe('ActivityLogDomain', () => {
             const alreadyStaged: IActivityLogStaged = {
                 action: EnumActivityLogAction.userLogout,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -289,7 +286,6 @@ describe('ActivityLogDomain', () => {
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
-                    onError: false,
                     userId: null,
                     createdBy: null,
                     workspaceId: null,
@@ -309,39 +305,17 @@ describe('ActivityLogDomain', () => {
         it('does nothing when nothing is staged', async () => {
             requestStoreService.get.mockReturnValue(null);
 
-            await domain.flushStaged({ payloadUserId: null, isError: false });
+            await domain.flushStaged({ payloadUserId: null });
 
-            expect(activityLogRepository.createMany).not.toHaveBeenCalled();
+            expect(activityLogQueue.createMany).not.toHaveBeenCalled();
         });
 
         it('does nothing when the staged list is empty', async () => {
             requestStoreService.get.mockReturnValue([]);
 
-            await domain.flushStaged({ payloadUserId: null, isError: false });
+            await domain.flushStaged({ payloadUserId: null });
 
-            expect(activityLogRepository.createMany).not.toHaveBeenCalled();
-        });
-
-        it('resets the store and skips the repository when every staged activity log fails the error filter', async () => {
-            const staged: IActivityLogStaged[] = [
-                {
-                    action: EnumActivityLogAction.userLoginCredential,
-                    metadata: {},
-                    onError: false,
-                    userId: null,
-                    createdBy: null,
-                    workspaceId: null,
-                },
-            ];
-            requestStoreService.get.mockReturnValue(staged);
-
-            await domain.flushStaged({ payloadUserId: null, isError: true });
-
-            expect(activityLogRepository.createMany).not.toHaveBeenCalled();
-            expect(requestStoreService.set).toHaveBeenCalledWith(
-                ActivityLogStageStoreKey,
-                []
-            );
+            expect(activityLogQueue.createMany).not.toHaveBeenCalled();
         });
 
         it('throws when the request log is missing', async () => {
@@ -349,7 +323,6 @@ describe('ActivityLogDomain', () => {
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
-                    onError: false,
                     userId: 'user-1',
                     createdBy: 'creator-1',
                     workspaceId: null,
@@ -365,7 +338,7 @@ describe('ActivityLogDomain', () => {
             );
 
             await expect(
-                domain.flushStaged({ payloadUserId: null, isError: false })
+                domain.flushStaged({ payloadUserId: null })
             ).rejects.toMatchObject({
                 constructor: ActivityLogContractInvalidException,
                 module: 'activityLog',
@@ -376,16 +349,23 @@ describe('ActivityLogDomain', () => {
                     ],
                 messagePath: 'activityLog.error.contractInvalid',
             });
+            expect(activityLogQueue.createMany).not.toHaveBeenCalled();
         });
 
-        it('flushes every staged activity log for a target-user action on success', async () => {
+        it('enqueues once every staged activity log as a row with an id and createdAt', async () => {
             const staged: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
-                    onError: false,
                     userId: 'user-1',
                     createdBy: 'creator-1',
+                    workspaceId: null,
+                },
+                {
+                    action: EnumActivityLogAction.userUpdateProfile,
+                    metadata: {},
+                    userId: null,
+                    createdBy: null,
                     workspaceId: null,
                 },
             ];
@@ -400,21 +380,37 @@ describe('ActivityLogDomain', () => {
                     return null;
                 }
             );
-            activityLogUtil.getDescription.mockReturnValue(
-                'User login with credential'
-            );
+            databaseUtil.createId
+                .mockReturnValueOnce('aaaaaaaaaaaaaaaaaaaaaaaa')
+                .mockReturnValueOnce('bbbbbbbbbbbbbbbbbbbbbbbb');
+            helperDateService.create.mockReturnValue(createdAt);
+            activityLogUtil.getDescription.mockReturnValue('Description');
 
-            await domain.flushStaged({ payloadUserId: null, isError: false });
+            await domain.flushStaged({ payloadUserId: 'payload-user-1' });
 
-            expect(activityLogRepository.createMany).toHaveBeenCalledWith([
+            expect(activityLogQueue.createMany).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.createMany).toHaveBeenCalledWith([
                 {
+                    id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
                     userId: 'user-1',
                     createdBy: 'creator-1',
                     workspaceId: null,
                     action: EnumActivityLogAction.userLoginCredential,
-                    description: 'User login with credential',
+                    description: 'Description',
                     requestLog,
                     metadata: {},
+                    createdAt,
+                },
+                {
+                    id: 'bbbbbbbbbbbbbbbbbbbbbbbb',
+                    userId: 'payload-user-1',
+                    createdBy: 'payload-user-1',
+                    workspaceId: null,
+                    action: EnumActivityLogAction.userUpdateProfile,
+                    description: 'Description',
+                    requestLog,
+                    metadata: {},
+                    createdAt,
                 },
             ]);
             expect(requestStoreService.set).toHaveBeenCalledWith(
@@ -423,25 +419,17 @@ describe('ActivityLogDomain', () => {
             );
         });
 
-        it('flushes only the onError activity logs for a payload-user action on error', async () => {
+        it('keeps the staged list when the enqueue fails', async () => {
             const staged: IActivityLogStaged[] = [
                 {
-                    action: EnumActivityLogAction.userUpdateProfile,
+                    action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
-                    onError: true,
-                    userId: null,
-                    createdBy: null,
-                    workspaceId: null,
-                },
-                {
-                    action: EnumActivityLogAction.userLogout,
-                    metadata: {},
-                    onError: false,
-                    userId: null,
-                    createdBy: null,
+                    userId: 'user-1',
+                    createdBy: 'creator-1',
                     workspaceId: null,
                 },
             ];
+            const failure = new Error('redis down');
             requestStoreService.get.mockImplementation(
                 (key: string): unknown => {
                     if (key === ActivityLogStageStoreKey) {
@@ -453,24 +441,37 @@ describe('ActivityLogDomain', () => {
                     return null;
                 }
             );
-            activityLogUtil.getDescription.mockReturnValue('Profile updated');
+            databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
+            helperDateService.create.mockReturnValue(createdAt);
+            activityLogUtil.getDescription.mockReturnValue('Description');
+            activityLogQueue.createMany.mockRejectedValue(failure);
 
-            await domain.flushStaged({
-                payloadUserId: 'payload-user-1',
-                isError: true,
-            });
+            const rejection = domain.flushStaged({ payloadUserId: null });
 
-            expect(activityLogRepository.createMany).toHaveBeenCalledWith([
+            await expect(rejection).rejects.toBe(failure);
+            expect(requestStoreService.set).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('createMany', () => {
+        it('writes the rows through the repository', async () => {
+            const rows: IActivityLogCreate[] = [
                 {
-                    userId: 'payload-user-1',
-                    createdBy: 'payload-user-1',
+                    id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+                    userId: 'user-1',
+                    createdBy: 'creator-1',
                     workspaceId: null,
-                    action: EnumActivityLogAction.userUpdateProfile,
-                    description: 'Profile updated',
+                    action: EnumActivityLogAction.userLoginCredential,
+                    description: 'Description',
                     requestLog,
                     metadata: {},
+                    createdAt,
                 },
-            ]);
+            ];
+
+            await domain.createMany(rows);
+
+            expect(activityLogRepository.createMany).toHaveBeenCalledWith(rows);
         });
     });
 
@@ -1019,7 +1020,6 @@ describe('ActivityLogDomain', () => {
             const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userLoginCredential,
                 metadata: {},
-                onError: false,
                 userId: 'user-1',
                 createdBy: 'creator-1',
                 workspaceId: null,
@@ -1028,13 +1028,17 @@ describe('ActivityLogDomain', () => {
                 'User login with credential'
             );
 
+            databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
+
             const result = domain['buildFlushCreate'](
                 activityLog,
                 null,
-                requestLog
+                requestLog,
+                createdAt
             );
 
             expect(result).toEqual({
+                id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
                 userId: 'user-1',
                 createdBy: 'creator-1',
                 workspaceId: null,
@@ -1042,6 +1046,7 @@ describe('ActivityLogDomain', () => {
                 description: 'User login with credential',
                 requestLog,
                 metadata: {},
+                createdAt,
             });
         });
     });

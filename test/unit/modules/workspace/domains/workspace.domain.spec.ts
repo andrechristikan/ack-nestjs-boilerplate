@@ -737,7 +737,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminUserImport,
                 metadata: { userCount: 7 },
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -808,7 +807,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceCreated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -855,7 +853,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceCreated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -945,7 +942,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceUpdated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -980,7 +976,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1064,7 +1059,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceUpdated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1119,7 +1113,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceSwitched,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1156,7 +1149,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceDeleted,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1506,7 +1498,6 @@ describe('WorkspaceDomain', () => {
             const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userCreated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1542,7 +1533,6 @@ describe('WorkspaceDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminUserImport,
                 metadata: { userCount: 7 },
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1550,7 +1540,6 @@ describe('WorkspaceDomain', () => {
             const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userCreated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,

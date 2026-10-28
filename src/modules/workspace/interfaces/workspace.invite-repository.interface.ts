@@ -53,12 +53,12 @@ export interface IWorkspaceInviteRepository {
         hashedToken: string,
         reference: string,
         expiredAt: Date
-    ): Promise<WorkspaceInvite>;
-    revoke(workspaceInviteId: string): Promise<void>;
+    ): Promise<WorkspaceInvite | null>;
+    revoke(workspaceInviteId: string): Promise<boolean>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string,
         userId: string,
         acceptedAt: Date
-    ): Promise<void>;
+    ): Promise<boolean>;
 }

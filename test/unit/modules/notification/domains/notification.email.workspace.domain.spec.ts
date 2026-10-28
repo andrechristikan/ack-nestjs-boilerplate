@@ -45,6 +45,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, string> = {
                 'email.noreply': 'noreply@example.com',
@@ -129,7 +130,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Workspace invite email processed',
+                message: 'notification.queue.email.workspaceInvite',
             });
         });
 
@@ -200,7 +201,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 },
             });
             expect(result).toMatchObject({
-                message: 'Workspace invite (unregistered) email processed',
+                message: 'notification.queue.email.workspaceInviteUnregistered',
             });
         });
 
@@ -225,6 +226,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
             workspaceId: 'workspace-id',
             workspaceName: 'Acme',
             requesterName: 'Omar',
+            joinRequestId: 'join-request-id',
             encryptedJoinRequestReviewLink: 'cipher-review-link',
         };
 
@@ -265,7 +267,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Workspace join request email processed',
+                message: 'notification.queue.email.workspaceJoinRequest',
             });
         });
 
@@ -350,7 +352,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Workspace join accepted email processed',
+                message: 'notification.queue.email.workspaceJoinAccepted',
             });
         });
 
@@ -372,7 +374,11 @@ describe('NotificationEmailWorkspaceDomain', () => {
         };
 
         it('resolves the reject reason label and sends the email with cc and bcc when present', async () => {
-            messageService.setMessage.mockReturnValue('Workspace is full');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.startsWith('notification.rejectReason')
+                    ? 'Workspace is full'
+                    : path
+            );
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
                 MessageId: 'message-1',
@@ -402,12 +408,16 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 bcc: sendWithCcBcc.bcc,
             });
             expect(result).toMatchObject({
-                message: 'Workspace join rejected email processed',
+                message: 'notification.queue.email.workspaceJoinRejected',
             });
         });
 
         it('rethrows when SES rejects, with no cc or bcc present', async () => {
-            messageService.setMessage.mockReturnValue('Workspace is full');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.startsWith('notification.rejectReason')
+                    ? 'Workspace is full'
+                    : path
+            );
             const error = new Error('ses down');
             awsSESService.send.mockRejectedValue(error);
 

@@ -6,6 +6,8 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { Duration } from 'luxon';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -24,9 +26,9 @@ import {
     EnumUserStatus,
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
+    Prisma,
 } from '@generated/prisma-client/client';
 import type {
-    Prisma,
     Project,
     User,
     Workspace,
@@ -599,7 +601,6 @@ describe('WorkspaceInviteDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -658,7 +659,6 @@ describe('WorkspaceInviteDomain', () => {
             const createdActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -666,7 +666,6 @@ describe('WorkspaceInviteDomain', () => {
             const createdByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -721,7 +720,6 @@ describe('WorkspaceInviteDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -793,7 +791,6 @@ describe('WorkspaceInviteDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -880,6 +877,66 @@ describe('WorkspaceInviteDomain', () => {
                         EnumWorkspaceStatusCodeError.inviteAlreadyProcessed
                     ],
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
+            });
+        });
+
+        it('throws WorkspaceInviteAlreadyProcessedException and notifies nothing when the guarded rotation misses', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            workspaceInviteRepository.rotateForResend.mockResolvedValue(null);
+
+            await expect(
+                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+                messagePath: 'workspace.error.inviteAlreadyProcessed',
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWorkspaceInviteUnregistered
+            ).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict on the rotation to WorkspaceInviteAlreadyProcessedException', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                { code: 'P2034', clientVersion: 'test' }
+            );
+            workspaceInviteRepository.rotateForResend.mockRejectedValue(
+                conflict
+            );
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps another rotation failure in AppUnknownException', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const cause = new Error('db-down');
+            workspaceInviteRepository.rotateForResend.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
             });
         });
 
@@ -1017,6 +1074,156 @@ describe('WorkspaceInviteDomain', () => {
                 notificationEmailQueue.sendWorkspaceInviteUnregistered
             ).toHaveBeenCalledTimes(1);
         });
+
+        it('stages the resend activity log for the actor after the rotation when the invitee has no account', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const resentActivityLog: IActivityLogStaged = {
+                action: EnumActivityLogAction.workspaceInviteResent,
+                metadata: {},
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
+            };
+            const callOrder: string[] = [];
+            activityLogDomain.prepare.mockImplementation(() => {
+                callOrder.push('prepare');
+                return resentActivityLog;
+            });
+            workspaceInviteRepository.rotateForResend.mockImplementation(
+                async () => {
+                    callOrder.push('rotateForResend');
+                    return baseInvite;
+                }
+            );
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stagePrepared');
+            });
+
+            await domain.resendInvite(workspace, 'user-1', 'invite-1', null);
+
+            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.workspaceInviteResent,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: { workspaceInviteId: 'invite-1' },
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                resentActivityLog,
+            ]);
+            expect(callOrder).toEqual([
+                'prepare',
+                'rotateForResend',
+                'stagePrepared',
+            ]);
+        });
+
+        it('stages the actor row and the invitee row when the invitee has an account other than the actor', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const existingUser = { ...baseUser, id: 'user-9' };
+            userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
+            notificationRecipientDomain.getRecipient.mockResolvedValue({
+                ...TestRecipient,
+                userId: existingUser.id,
+            });
+            const resentActivityLog: IActivityLogStaged = {
+                action: EnumActivityLogAction.workspaceInviteResent,
+                metadata: {},
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
+            };
+            const resentByAdminActivityLog: IActivityLogStaged = {
+                action: EnumActivityLogAction.workspaceInviteResentByAdmin,
+                metadata: {},
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
+            };
+            activityLogDomain.prepare
+                .mockReturnValueOnce(resentActivityLog)
+                .mockReturnValueOnce(resentByAdminActivityLog);
+            workspaceInviteRepository.rotateForResend.mockResolvedValue(
+                baseInvite
+            );
+
+            await domain.resendInvite(workspace, 'user-1', 'invite-1', null);
+
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
+                action: EnumActivityLogAction.workspaceInviteResent,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: {
+                    workspaceInviteId: 'invite-1',
+                    targetUserId: 'user-9',
+                },
+            });
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
+                action: EnumActivityLogAction.workspaceInviteResentByAdmin,
+                userId: 'user-9',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: { actorUserId: 'user-1' },
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                resentActivityLog,
+                resentByAdminActivityLog,
+            ]);
+        });
+
+        it('stages only the actor row when the invitee account is the actor', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            userDomain.getOneActiveByEmail.mockResolvedValue({
+                ...baseUser,
+                id: 'user-1',
+            });
+            notificationRecipientDomain.getRecipient.mockResolvedValue({
+                ...TestRecipient,
+                userId: 'user-1',
+            });
+            workspaceInviteRepository.rotateForResend.mockResolvedValue(
+                baseInvite
+            );
+
+            await domain.resendInvite(workspace, 'user-1', 'invite-1', null);
+
+            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: EnumActivityLogAction.workspaceInviteResent,
+                    metadata: {
+                        workspaceInviteId: 'invite-1',
+                        targetUserId: 'user-1',
+                    },
+                })
+            );
+        });
+
+        it('stages nothing when the rotation rejects', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            const cause = new Error('rotate-failed');
+            workspaceInviteRepository.rotateForResend.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
+
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
     });
 
     describe('revokeInvite', () => {
@@ -1067,7 +1274,6 @@ describe('WorkspaceInviteDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1076,6 +1282,8 @@ describe('WorkspaceInviteDomain', () => {
             const callOrder: string[] = [];
             workspaceInviteRepository.revoke.mockImplementation(async () => {
                 callOrder.push('revoke');
+
+                return true;
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1104,6 +1312,7 @@ describe('WorkspaceInviteDomain', () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 baseInvite
             );
+            workspaceInviteRepository.revoke.mockResolvedValue(true);
             userDomain.getOneActiveByEmail.mockResolvedValue({
                 ...baseUser,
                 id: 'user-9',
@@ -1111,7 +1320,6 @@ describe('WorkspaceInviteDomain', () => {
             const revokedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1119,7 +1327,6 @@ describe('WorkspaceInviteDomain', () => {
             const revokedByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1148,6 +1355,7 @@ describe('WorkspaceInviteDomain', () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 baseInvite
             );
+            workspaceInviteRepository.revoke.mockResolvedValue(true);
             userDomain.getOneActiveByEmail.mockResolvedValue({
                 ...baseUser,
                 id: 'user-1',
@@ -1155,7 +1363,6 @@ describe('WorkspaceInviteDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1169,10 +1376,87 @@ describe('WorkspaceInviteDomain', () => {
                 stagedActivityLog,
             ]);
         });
+
+        it('throws WorkspaceInviteAlreadyProcessedException and stages nothing when the guarded revoke matches no pending invite', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            userDomain.getOneActiveByEmail.mockResolvedValue(null);
+            workspaceInviteRepository.revoke.mockResolvedValue(false);
+
+            await expect(
+                domain.revokeInvite('workspace-1', 'user-1', 'invite-1')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.inviteAlreadyProcessed
+                    ],
+                messagePath: 'workspace.error.inviteAlreadyProcessed',
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
     });
 
     describe('acceptOnSignUpInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
+        const inviteContext: IUserSignUpWorkspaceInvite = {
+            type: EnumUserSignUpWorkspaceContextType.invite,
+            workspaceId: 'workspace-1',
+            workspaceInviteId: 'invite-1',
+            invitedByUserId: 'user-1',
+            workspaceMemberRole: EnumWorkspaceMemberRole.member,
+            projectId: 'project-1',
+            projectMemberRole: EnumProjectMemberRole.member,
+        };
+
+        beforeEach(() => {
+            workspaceInviteRepository.acceptInTx.mockResolvedValue(true);
+        });
+
+        it('throws WorkspaceInviteAlreadyProcessedException and creates no project membership when the guarded accept matches no pending invite', async () => {
+            workspaceInviteRepository.acceptInTx.mockResolvedValue(false);
+
+            await expect(
+                domain.acceptOnSignUpInTx(tx, 'user-2', inviteContext)
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+                messagePath: 'workspace.error.inviteAlreadyProcessed',
+            });
+            expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict on the accept to WorkspaceInviteAlreadyProcessedException', async () => {
+            const conflict = new Error('conflict');
+            workspaceInviteRepository.acceptInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.acceptOnSignUpInTx(tx, 'user-2', inviteContext)
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('wraps another accept failure in AppUnknownException', async () => {
+            const cause = new Error('db-down');
+            workspaceInviteRepository.acceptInTx.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                domain.acceptOnSignUpInTx(tx, 'user-2', inviteContext)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
+        });
 
         it('creates the workspace membership and accepts the invite with no project', async () => {
             helperDateService.create.mockReturnValue(
@@ -1240,6 +1524,50 @@ describe('WorkspaceInviteDomain', () => {
             );
             const tx = {} as IDatabaseTransactionClient;
             databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceInviteRepository.acceptInTx.mockResolvedValue(true);
+        });
+
+        it('throws WorkspaceInviteAlreadyProcessedException and stages nothing when the guarded accept matches no pending invite', async () => {
+            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
+                { ...baseInvite, email: 'user@example.com' }
+            );
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                null
+            );
+            workspaceInviteRepository.acceptInTx.mockResolvedValue(false);
+
+            await expect(
+                domain.claimInvite('user-1', 'user@example.com', 'raw-token')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+                messagePath: 'workspace.error.inviteAlreadyProcessed',
+            });
+            expect(userDomain.setLastWorkspaceInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict on the accept to WorkspaceInviteAlreadyProcessedException', async () => {
+            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
+                { ...baseInvite, email: 'user@example.com' }
+            );
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                null
+            );
+            const conflict = new Error('conflict');
+            workspaceInviteRepository.acceptInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.claimInvite('user-1', 'user@example.com', 'raw-token')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceInviteInvalidException when the token does not resolve a pending invite', async () => {
@@ -1330,7 +1658,6 @@ describe('WorkspaceInviteDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteAccepted,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1367,7 +1694,6 @@ describe('WorkspaceInviteDomain', () => {
             const acceptedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteAccepted,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1375,7 +1701,6 @@ describe('WorkspaceInviteDomain', () => {
             const acceptedByInviteeActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1508,40 +1833,25 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
-    describe('getNotificationTarget', () => {
-        it('returns the inviter name and the awaited recipient', async () => {
-            const recipient: INotificationRecipient = {
-                ...TestRecipient,
-                userId: baseUser.id,
-            };
+    describe('getInviterName', () => {
+        it('returns the inviter name', async () => {
             userDomain.getNameById.mockResolvedValue({
                 name: 'Jane Doe',
                 username: 'jane',
             });
 
-            const result = await domain['getNotificationTarget'](
-                workspace,
-                'user-1',
-                Promise.resolve(recipient)
-            );
+            const result = await domain['getInviterName'](workspace, 'user-1');
 
             expect(userDomain.getNameById).toHaveBeenCalledWith('user-1');
-            expect(result).toEqual({ inviterName: 'Jane Doe', recipient });
+            expect(result).toBe('Jane Doe');
         });
 
-        it('falls back to the workspace name and a null recipient for an unregistered invitee', async () => {
+        it('falls back to the workspace name when the inviter is missing', async () => {
             userDomain.getNameById.mockResolvedValue(null);
 
-            const result = await domain['getNotificationTarget'](
-                workspace,
-                'user-1',
-                Promise.resolve(null)
-            );
+            const result = await domain['getInviterName'](workspace, 'user-1');
 
-            expect(result).toEqual({
-                inviterName: workspace.name,
-                recipient: null,
-            });
+            expect(result).toBe(workspace.name);
         });
 
         it('falls back to the inviter username when the inviter has no name', async () => {
@@ -1550,30 +1860,46 @@ describe('WorkspaceInviteDomain', () => {
                 username: 'jane',
             });
 
-            const result = await domain['getNotificationTarget'](
-                workspace,
-                'user-1',
-                Promise.resolve(null)
+            const result = await domain['getInviterName'](workspace, 'user-1');
+
+            expect(result).toBe('jane');
+        });
+    });
+
+    describe('getInviteeByEmail', () => {
+        it('returns the active user and the in-app recipient', async () => {
+            const recipient: INotificationRecipient = {
+                ...TestRecipient,
+                userId: baseUser.id,
+            };
+            userDomain.getOneActiveByEmail.mockResolvedValue(baseUser);
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
             );
 
-            expect(result.inviterName).toBe('jane');
+            const result = await domain['getInviteeByEmail'](baseUser.email);
+
+            expect(userDomain.getOneActiveByEmail).toHaveBeenCalledWith(
+                baseUser.email
+            );
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.workspaceInvite
+            );
+            expect(result).toEqual({ existingUser: baseUser, recipient });
         });
 
-        it('starts the inviter name read while the recipient is pending', async () => {
-            const recipient =
-                Promise.withResolvers<INotificationRecipient | null>();
-            userDomain.getNameById.mockResolvedValue(null);
+        it('returns a null user and a null recipient when no active user matches', async () => {
+            userDomain.getOneActiveByEmail.mockResolvedValue(null);
 
-            const pending = domain['getNotificationTarget'](
-                workspace,
-                'user-1',
-                recipient.promise
-            );
+            const result = await domain['getInviteeByEmail']('new@example.com');
 
-            expect(userDomain.getNameById).toHaveBeenCalledWith('user-1');
-
-            recipient.resolve(null);
-            await pending;
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({ existingUser: null, recipient: null });
         });
     });
 
@@ -1604,44 +1930,6 @@ describe('WorkspaceInviteDomain', () => {
             expect(
                 notificationRecipientDomain.getRecipient
             ).not.toHaveBeenCalled();
-            expect(result).toBeNull();
-        });
-    });
-
-    describe('getInviteeRecipientByEmail', () => {
-        it('looks the user up by email and returns the in-app recipient', async () => {
-            const recipient: INotificationRecipient = {
-                ...TestRecipient,
-                userId: baseUser.id,
-            };
-            userDomain.getOneActiveByEmail.mockResolvedValue(baseUser);
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
-            );
-
-            const result = await domain['getInviteeRecipientByEmail'](
-                'invitee@example.com'
-            );
-
-            expect(userDomain.getOneActiveByEmail).toHaveBeenCalledWith(
-                'invitee@example.com'
-            );
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.workspaceInvite
-            );
-            expect(result).toBe(recipient);
-        });
-
-        it('returns null when no active user has the email', async () => {
-            userDomain.getOneActiveByEmail.mockResolvedValue(null);
-
-            const result = await domain['getInviteeRecipientByEmail'](
-                'invitee@example.com'
-            );
-
             expect(result).toBeNull();
         });
     });

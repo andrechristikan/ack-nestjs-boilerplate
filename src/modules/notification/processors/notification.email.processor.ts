@@ -45,8 +45,8 @@ import {
 })
 export class NotificationEmailProcessor extends QueueProcessorBase {
     constructor(
-        private readonly notificationEmailProcessorService: NotificationEmailProcessorService,
-        sentryService: SentryService
+        protected readonly sentryService: SentryService,
+        private readonly notificationEmailProcessorService: NotificationEmailProcessorService
     ) {
         super(sentryService);
     }
@@ -220,10 +220,9 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 default:
-                    return {
-                        message:
-                            'No email processor found for the given job name',
-                    };
+                    this.notificationEmailProcessorService.processUnknown(
+                        job.name
+                    );
             }
         } catch (error: unknown) {
             if (

@@ -4,7 +4,11 @@ import {
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
 import { UserGuard } from '@modules/user/guards/user.guard';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserField,
+    IUserFieldValue,
+} from '@modules/user/interfaces/user.interface';
 import {
     SetMetadata,
     UseGuards,
@@ -36,31 +40,25 @@ export function UserProtected(isVerified: boolean = true): MethodDecorator {
  * @public
  */
 export const UserCurrent = createParamDecorator<
-    Extract<keyof IUser, string> | undefined,
-    IUser | NonNullable<IUser[Extract<keyof IUser, string>]>
->(
-    (
-        field: Extract<keyof IUser, string> | undefined
-    ): IUser | NonNullable<IUser[Extract<keyof IUser, string>]> => {
-        const user =
-            ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
-            null;
-        if (user === null) {
-            throw new UserGuardMissingException();
-        }
-
-        const fieldKey = field ?? null;
-        if (fieldKey === null) {
-            return user;
-        }
-
-        const value = user[fieldKey] ?? null;
-        if (value === null) {
-            throw new RequestContextMissingException(
-                `${UserStoreKey}.${fieldKey}`
-            );
-        }
-
-        return value;
+    IUserField | undefined,
+    IUser | IUserFieldValue
+>((field: IUserField | undefined): IUser | IUserFieldValue => {
+    const user =
+        ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
+        null;
+    if (user === null) {
+        throw new UserGuardMissingException();
     }
-);
+
+    const fieldKey = field ?? null;
+    if (fieldKey === null) {
+        return user;
+    }
+
+    const value = user[fieldKey] ?? null;
+    if (value === null) {
+        throw new RequestContextMissingException(`${UserStoreKey}.${fieldKey}`);
+    }
+
+    return value;
+});

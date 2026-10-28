@@ -12,7 +12,7 @@ export class UserImportUsernameExistException extends AppBaseException {
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.CONFLICT;
 
-    constructor(usernames: string) {
+    constructor(readonly usernames: string) {
         super('user.error.importUsernameExist', {
             messageProperties: { usernames },
         });

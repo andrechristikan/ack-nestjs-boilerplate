@@ -61,7 +61,6 @@ describe('ApiKeyDomain', () => {
     const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.adminApiKeyCreate,
         metadata: { apiKeyId: apiKey.id },
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -304,9 +303,7 @@ describe('ApiKeyDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
-                apiKey.key
-            );
+            expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
         });
     });
 
@@ -363,8 +360,8 @@ describe('ApiKeyDomain', () => {
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
-            apiKeyCache.deleteCacheByKey.mockImplementation(async () => {
-                callOrder.push('deleteCacheByKey');
+            apiKeyCache.deleteApiKey.mockImplementation(async () => {
+                callOrder.push('deleteApiKey');
             });
 
             const result = await domain.updateByAdmin(apiKey.id, 'New Name');
@@ -377,7 +374,6 @@ describe('ApiKeyDomain', () => {
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.adminApiKeyUpdate,
                 metadata,
-                onError: true,
             });
             expect(apiKeyRepository.updateName).toHaveBeenCalledWith(
                 apiKey.id,
@@ -386,13 +382,11 @@ describe('ApiKeyDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
-                apiKey.key
-            );
+            expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
             expect(callOrder).toEqual([
                 'updateName',
                 'stagePrepared',
-                'deleteCacheByKey',
+                'deleteApiKey',
             ]);
         });
     });
@@ -485,8 +479,8 @@ describe('ApiKeyDomain', () => {
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
-            apiKeyCache.deleteCacheByKey.mockImplementation(async () => {
-                callOrder.push('deleteCacheByKey');
+            apiKeyCache.deleteApiKey.mockImplementation(async () => {
+                callOrder.push('deleteApiKey');
             });
 
             const result = await domain.updateDatesByAdmin(
@@ -507,18 +501,15 @@ describe('ApiKeyDomain', () => {
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.adminApiKeyUpdateDate,
                 metadata,
-                onError: true,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
-                apiKey.key
-            );
+            expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
             expect(callOrder).toEqual([
                 'updateDates',
                 'stagePrepared',
-                'deleteCacheByKey',
+                'deleteApiKey',
             ]);
         });
     });
@@ -571,8 +562,8 @@ describe('ApiKeyDomain', () => {
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
-            apiKeyCache.deleteCacheByKey.mockImplementation(async () => {
-                callOrder.push('deleteCacheByKey');
+            apiKeyCache.deleteApiKey.mockImplementation(async () => {
+                callOrder.push('deleteApiKey');
             });
 
             const result = await domain.resetByAdmin(apiKey.id);
@@ -593,18 +584,15 @@ describe('ApiKeyDomain', () => {
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.adminApiKeyReset,
                 metadata,
-                onError: true,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
-                apiKey.key
-            );
+            expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
             expect(callOrder).toEqual([
                 'updateHash',
                 'stagePrepared',
-                'deleteCacheByKey',
+                'deleteApiKey',
             ]);
         });
     });
@@ -638,15 +626,13 @@ describe('ApiKeyDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
-                apiKey.key
-            );
+            expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
         });
     });
 
     describe('getOneActiveByKeyAndCache', () => {
         it('returns the cached api key without reading the repository', async () => {
-            apiKeyCache.getCacheByKey.mockResolvedValue(apiKey);
+            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
 
             const result = await domain.getOneActiveByKeyAndCache(apiKey.key);
 
@@ -655,26 +641,26 @@ describe('ApiKeyDomain', () => {
         });
 
         it('reads the repository and caches the result on a cache miss', async () => {
-            apiKeyCache.getCacheByKey.mockResolvedValue(null);
+            apiKeyCache.getApiKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
 
             const result = await domain.getOneActiveByKeyAndCache(apiKey.key);
 
             expect(result).toBe(apiKey);
-            expect(apiKeyCache.setCacheByKey).toHaveBeenCalledWith(
+            expect(apiKeyCache.setApiKey).toHaveBeenCalledWith(
                 apiKey.key,
                 apiKey
             );
         });
 
         it('returns null and writes nothing to the cache when the key is unknown', async () => {
-            apiKeyCache.getCacheByKey.mockResolvedValue(null);
+            apiKeyCache.getApiKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(null);
 
             const result = await domain.getOneActiveByKeyAndCache('unknown');
 
             expect(result).toBeNull();
-            expect(apiKeyCache.setCacheByKey).not.toHaveBeenCalled();
+            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
         });
     });
 
@@ -766,7 +752,7 @@ describe('ApiKeyDomain', () => {
         });
 
         it('throws ApiKeyXApiKeyInvalidException when no api key matches the key half', async () => {
-            apiKeyCache.getCacheByKey.mockResolvedValue(null);
+            apiKeyCache.getApiKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(null);
 
             await expect(
@@ -784,7 +770,7 @@ describe('ApiKeyDomain', () => {
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the credential does not match', async () => {
-            apiKeyCache.getCacheByKey.mockResolvedValue(apiKey);
+            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(false);
             apiKeyUtil.isValid.mockReturnValue(true);
 
@@ -803,7 +789,7 @@ describe('ApiKeyDomain', () => {
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the key is no longer valid', async () => {
-            apiKeyCache.getCacheByKey.mockResolvedValue(apiKey);
+            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
             apiKeyUtil.isValid.mockReturnValue(false);
 
@@ -822,7 +808,7 @@ describe('ApiKeyDomain', () => {
         });
 
         it('returns the resolved api key when the credential and validity both pass', async () => {
-            apiKeyCache.getCacheByKey.mockResolvedValue(apiKey);
+            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
             apiKeyUtil.isValid.mockReturnValue(true);
 
@@ -978,8 +964,7 @@ describe('ApiKeyDomain', () => {
             const result = domain['prepareActivityLog'](
                 EnumActivityLogAction.adminApiKeyCreate,
                 apiKey,
-                now,
-                false
+                now
             );
 
             expect(result).toBe(stagedActivityLog);
@@ -990,7 +975,6 @@ describe('ApiKeyDomain', () => {
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.adminApiKeyCreate,
                 metadata,
-                onError: false,
             });
         });
     });

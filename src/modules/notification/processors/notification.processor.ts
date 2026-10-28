@@ -31,8 +31,8 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 @QueueProcessor(EnumQueue.notification)
 export class NotificationProcessor extends QueueProcessorBase {
     constructor(
-        private readonly notificationProcessorService: NotificationProcessorService,
-        sentryService: SentryService
+        protected readonly sentryService: SentryService,
+        private readonly notificationProcessorService: NotificationProcessorService
     ) {
         super(sentryService);
     }
@@ -188,9 +188,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                     >
                 );
             default:
-                return {
-                    message: `No notification processor found for the given job name ${job.name}`,
-                };
+                this.notificationProcessorService.processUnknown(job.name);
         }
     }
 }

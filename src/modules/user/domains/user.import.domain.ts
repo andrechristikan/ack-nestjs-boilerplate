@@ -158,7 +158,7 @@ export class UserImportDomain {
         passwordStrings: IUserImportPrepared['passwordStrings'],
         createdBy: string
     ): Promise<void> {
-        const notified = users.map(async (newUser, index) => {
+        const items = users.map((newUser, index) => {
             const passwordCreatedAt = this.helperDateService.formatToIso(
                 passwordHasheds[index]!.passwordCreated
             );
@@ -166,22 +166,22 @@ export class UserImportDomain {
                 passwordHasheds[index]!.passwordExpired
             );
             const recipient =
-                await this.notificationRecipientDomain.getRecipient(
+                this.notificationRecipientDomain.buildNewUserRecipient(
                     newUser,
                     EnumNotificationKind.welcomeByAdmin
                 );
 
-            await this.notificationQueue.sendWelcomeByAdmin(
+            return {
                 recipient,
-                {
+                data: {
                     password: passwordStrings[index]!,
                     passwordCreatedAt,
                     passwordExpiredAt,
                 },
-                createdBy
-            );
+            };
         });
-        await Promise.all(notified);
+
+        await this.notificationQueue.sendWelcomeByAdminBulk(items, createdBy);
     }
 
     async exportByAdmin(

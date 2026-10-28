@@ -45,6 +45,8 @@ Under `test/`, a spec with a subject file is that file's name plus `.spec.ts` an
 
 A name this project declares is `UPPER_SNAKE_CASE` only when it is an environment variable (`AppEnvSchema` keys, `src/app/dtos/app.env.dto.ts`). Everything on the wire is camelCase: DTO fields, query and route params, Prisma columns, job payload fields, i18n keys, flag keys. Route path segments and folders are kebab-case, mapped one-to-one to camelCase (`sign-up` ↔ `signUp`, never `signup`). A config key named `Pattern` is a `{placeholder}` string, `Regex` a `RegExp`. A Redis key is a config `keyPattern` with PascalCase segments, no prefix-append.
 
+An `OrThrow` suffix is Prisma's only (`findUniqueOrThrow`), never on a name this project declares.
+
 ## Renaming
 
 No frozen surface: rename a wrong name and change every call site; Prisma-generated names are schema-owned (`database.md`); a queue, job name, or payload field rename follows `queue.md`. An i18n key rename changes both halves, in every language, in the same change (`i18n.md`).

@@ -5,8 +5,10 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
 import { WorkspaceProcessorService } from '@modules/workspace/services/workspace.processor.service';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('WorkspaceProcessorService', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const workspaceInviteDomain: MockProxy<WorkspaceInviteDomain> =
         mock<WorkspaceInviteDomain>();
     const workspaceQueue: MockProxy<WorkspaceQueue> = mock<WorkspaceQueue>();
@@ -15,9 +17,11 @@ describe('WorkspaceProcessorService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 WorkspaceProcessorService,
                 {
                     provide: WorkspaceInviteDomain,
@@ -47,12 +51,27 @@ describe('WorkspaceProcessorService', () => {
             const result = await service.processExpireStaleInvites();
 
             expect(result).toEqual({
-                message: 'Processed stale workspace invite expiry sweep',
+                message: 'workspace.queue.expireStaleInvites',
                 countExpiredInvites: 4,
             });
             expect(
                 workspaceInviteDomain.expireStalePending
             ).toHaveBeenCalledWith();
+        });
+    });
+
+    describe('processUnknown', () => {
+        it('throws a fatal QueueException naming the unknown process', () => {
+            expect(() => service.processUnknown('unknownProcess')).toThrow(
+                expect.objectContaining({
+                    message: 'workspace.queue.error.unknownProcess',
+                    isFatal: true,
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'workspace.queue.error.unknownProcess',
+                { properties: { process: 'unknownProcess' } }
+            );
         });
     });
 });

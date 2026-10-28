@@ -128,24 +128,25 @@ export class WorkspaceJoinRequestDomain {
         requesterId: string,
         target: IWorkspaceJoinRequestNotificationTarget
     ): Promise<void> {
+        if (target.reviewerRecipients.length === 0) {
+            return;
+        }
+
         const link = this.helperStringService.fillPattern(
             this.joinRequestReviewLinkPattern,
             { homeUrl: this.homeUrl, joinRequestId: joinRequest.id }
         );
 
-        await Promise.all(
-            target.reviewerRecipients.map(recipient =>
-                this.notificationQueue.sendWorkspaceJoinRequest(
-                    recipient,
-                    {
-                        workspaceId: workspace.id,
-                        workspaceName: workspace.name,
-                        requesterName: target.requesterName,
-                        joinRequestReviewLink: link,
-                    },
-                    requesterId
-                )
-            )
+        await this.notificationQueue.sendWorkspaceJoinRequestBulk(
+            target.reviewerRecipients,
+            {
+                workspaceId: workspace.id,
+                workspaceName: workspace.name,
+                requesterName: target.requesterName,
+                joinRequestId: joinRequest.id,
+                joinRequestReviewLink: link,
+            },
+            requesterId
         );
     }
 
@@ -310,7 +311,8 @@ export class WorkspaceJoinRequestDomain {
                     workspaceId: workspace.id,
                     workspaceName: workspace.name,
                 },
-                reviewerId
+                reviewerId,
+                joinRequest.id
             );
         }
     }
@@ -373,7 +375,8 @@ export class WorkspaceJoinRequestDomain {
                     workspaceName: workspace.name,
                     rejectReasonCode,
                 },
-                reviewerId
+                reviewerId,
+                joinRequest.id
             );
         }
     }

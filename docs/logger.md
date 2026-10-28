@@ -835,12 +835,12 @@ Forwarded levels are environment-aware:
 **`SentryService`.** `src/common/sentry` holds the Sentry kit:
 
 - `SentryModule.forRoot()` is global, imports `@sentry/nestjs/setup`, and exports `SentryService`
-- Methods: `captureException(exception)`, `captureMessage(message, level)`, `log(level, message, attributes?)`, and `withScope(callback)`
+- Methods: `captureException(exception, captureContext?)`, `captureMessage(message, level)`, and `log(level, message, attributes?)`
 - Methods never throw: a Sentry SDK failure is logged and swallowed
 - `log` writes to Sentry Logs directly.
     - Its `attributes` bypass the pino redaction and are scrubbed only by `beforeSendLog`.
     - They therefore carry no credential.
-- `withScope` runs a callback against a fresh Sentry scope (used by `QueueProcessorBase.onFailed` to attach job attributes before `captureException`)
+- `captureContext` is a Sentry `CaptureContext`. `QueueProcessorBase.onFailed` passes `tags` and `contexts` through it.
 
 **Exceptions (Sentry Issues).** Exception reporting goes through `SentryService.captureException`:
 
@@ -851,8 +851,9 @@ Forwarded levels are environment-aware:
 - `QueueProcessorBase`:
     - In `process`, it writes BullMQ `job.log` lines (start, metadata-only input, finish or failure). On catch it calls Nest `Logger.error` once, then rethrows a `QueueException`, `AppBaseException`, or `UnrecoverableError` unchanged and wraps any other error in `AppUnknownException`.
     - In `onFailed`, it reports a failed job once when BullMQ will not retry it (final attempt, or immediately for an `UnrecoverableError`), and only when the error is fatal.
-    - Before `captureException`, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`.
+    - `captureException` receives a `captureContext` with the tag `job.name` and a `job` context holding `id`, `name`, `attemptsMade`, and `maxAttempts`.
     - A `QueueException` is reported only when `isFatal` is set.
+- `QueueBase`: logs a failed post-commit enqueue at `error` as `QueueSideEffectFailedException` and reports it with `captureException`; the request still succeeds (see [Queue][ref-doc-queue])
 - `AuthTwoFactorDomain`: reports a stored TOTP secret that fails to decrypt, before answering `409 twoFactorSecretUnavailable`
 - The bootstrap `catch` handler in `src/main.ts` and `src/migration.ts`: reports a boot failure with `Sentry.captureException` and waits for `Sentry.flush` before the process exits (see [Boot Failure](#boot-failure))
 
@@ -950,4 +951,5 @@ When the DSN is not configured:
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-handling-error]: handling-error.md
+[ref-doc-queue]: queue.md
 [ref-doc-security-and-middleware]: security-and-middleware.md

@@ -12,7 +12,7 @@ export class UserImportEmailExistException extends AppBaseException {
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.CONFLICT;
 
-    constructor(emails: string) {
+    constructor(readonly emails: string) {
         super('user.error.importEmailExist', { messageProperties: { emails } });
     }
 }

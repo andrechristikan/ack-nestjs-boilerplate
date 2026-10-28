@@ -21,16 +21,13 @@ import {
     EnumActivityLogUser,
     EnumActivityLogWorkspace,
 } from '@modules/activity-log/enums/activity-log.enum';
-import type { IActivityLogActionContract } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogActionContracts } from '@modules/activity-log/interfaces/activity-log.interface';
 
 /**
  * Per-action contract of an activity log: how its user and workspace resolve and the schema its metadata must match.
  * @public
  */
-export const ActivityLogActionContract: Record<
-    EnumActivityLogAction,
-    IActivityLogActionContract
-> = {
+export const ActivityLogActionContract: IActivityLogActionContracts = {
     // Pre-auth / subject-id without JWT / dual-feed subject rows
     [EnumActivityLogAction.userCreated]: {
         user: EnumActivityLogUser.target,
@@ -423,6 +420,11 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.target,
         metadata: ActivityLogInviteMetadataSchema,
     },
+    [EnumActivityLogAction.workspaceInviteResent]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogInviteMetadataSchema,
+    },
     [EnumActivityLogAction.workspaceInviteAccepted]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
@@ -469,6 +471,11 @@ export const ActivityLogActionContract: Record<
         metadata: ActivityLogTargetMetadataSchema,
     },
     [EnumActivityLogAction.workspaceInviteCreatedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceInviteResentByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
         metadata: ActivityLogTargetMetadataSchema,

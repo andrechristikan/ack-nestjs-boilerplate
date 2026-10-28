@@ -8,9 +8,18 @@ import {
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { MessageService } from '@common/message/services/message.service';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 describe('NotificationUtil', () => {
-    const util = new NotificationUtil();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const util = new NotificationUtil(messageService);
+
+    beforeEach(() => {
+        vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
+    });
 
     describe('toStepFailure', () => {
         it('maps an Error reason to its message', () => {
@@ -36,7 +45,7 @@ describe('NotificationUtil', () => {
                     { step: EnumNotificationStep.sendEmail, error: 'down' },
                     { step: EnumNotificationStep.sendPush, error: 'boom' },
                 ])
-            ).toBe('Notification steps failed: sendEmail:down, sendPush:boom');
+            ).toBe('notification.queue.error.stepsFailed');
         });
     });
 

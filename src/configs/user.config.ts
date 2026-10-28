@@ -14,6 +14,9 @@ export interface IConfigUser {
         createTimeoutInMs: number;
         createBulkTimeoutInMs: number;
     };
+    jobId: {
+        deletePhotoPattern: string;
+    };
 }
 
 export default registerAs('user', (): IConfigUser => ({
@@ -28,5 +31,8 @@ export default registerAs('user', (): IConfigUser => ({
     onboarding: {
         createTimeoutInMs: ms('10s'),
         createBulkTimeoutInMs: ms('30s'),
+    },
+    jobId: {
+        deletePhotoPattern: '{process}-{nonce}',
     },
 }));

@@ -13,7 +13,7 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
-import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
+import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -64,7 +64,7 @@ export class UserAuthDomain {
         private readonly userVerificationDomain: UserVerificationDomain,
         private readonly userLoginDomain: UserLoginDomain,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly featureFlagCache: FeatureFlagCache,
+        private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationRecipientDomain: NotificationRecipientDomain,
@@ -145,7 +145,7 @@ export class UserAuthDomain {
         workspaceContext: IUserSignUpWorkspaceContext
     ): Promise<IUserCreateWithWorkspaceInput | null> {
         const [featureFlag, user] = await Promise.all([
-            this.featureFlagCache.getMetadataByKeyAndCache<{
+            this.featureFlagDomain.getMetadataByKey<{
                 signUpAllowed: boolean;
             }>(
                 loginWith === EnumUserLoginWith.socialGoogle
@@ -349,10 +349,11 @@ export class UserAuthDomain {
         const expiredAt = this.helperDateService.formatToIso(
             emailVerification.expiredAt
         );
-        const recipient = await this.notificationRecipientDomain.getRecipient(
-            user,
-            EnumNotificationKind.welcome
-        );
+        const recipient =
+            this.notificationRecipientDomain.buildNewUserRecipient(
+                user,
+                EnumNotificationKind.welcome
+            );
         await this.notificationQueue.sendWelcome(recipient, {
             expiredAt,
             reference: emailVerification.reference,
@@ -362,10 +363,11 @@ export class UserAuthDomain {
     }
 
     async notifyWelcomeSocial(user: IUserRecipient): Promise<void> {
-        const recipient = await this.notificationRecipientDomain.getRecipient(
-            user,
-            EnumNotificationKind.welcomeSocial
-        );
+        const recipient =
+            this.notificationRecipientDomain.buildNewUserRecipient(
+                user,
+                EnumNotificationKind.welcomeSocial
+            );
         await this.notificationQueue.sendWelcomeSocial(recipient);
     }
 

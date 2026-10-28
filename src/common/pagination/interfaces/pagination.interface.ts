@@ -170,3 +170,5 @@ export interface IPaginationQueryFilterResult<
     where: TWhere;
     storeFilter: IPaginationQueryFilter;
 }
+
+export type IPaginationQueryPatch = Partial<IPaginationQuery>;

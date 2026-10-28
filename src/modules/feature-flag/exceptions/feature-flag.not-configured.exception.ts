@@ -13,7 +13,7 @@ export class FeatureFlagNotConfiguredException extends AppBaseException {
     readonly statusCodeKey = EnumFeatureFlagStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 
-    constructor(key: string) {
+    constructor(readonly key: string) {
         super('featureFlag.error.notConfigured', {
             rawError: new AppUnknownException(
                 null,

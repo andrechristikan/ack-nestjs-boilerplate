@@ -17,14 +17,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private readonly logger: Logger = new Logger(DatabaseService.name);
     private readonly isDebugMode: boolean;
     private readonly prettier: boolean;
+    readonly client: IDatabaseClient;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly databaseClientFactory: DatabaseClientFactory,
-        @Inject(DatabaseClientToken) readonly client: IDatabaseClient
+        @Inject(DatabaseClientToken)
+        private readonly databaseClient: IDatabaseClient
     ) {
         this.isDebugMode = this.configService.get<boolean>('database.debug')!;
         this.prettier = this.configService.get<boolean>('logger.prettier')!;
+        this.client = this.databaseClient;
     }
 
     /**

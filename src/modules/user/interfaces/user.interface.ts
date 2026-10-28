@@ -33,6 +33,7 @@ import type {
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 
 export interface IUser extends User {
     role: IRoleWithPolicies;
@@ -364,3 +365,18 @@ export interface IUserVerificationAnalyticUsedBucket {
     isUsed: boolean;
     count: number;
 }
+
+export interface IUserDeletePhotoPayload {
+    userId: string;
+    key: string;
+    access: string;
+}
+
+export type IUserField = Extract<keyof IUser, string>;
+
+export type IUserFieldValue = NonNullable<IUser[IUserField]>;
+
+export type IUserCreateContracts = Record<
+    EnumUserCreateMode,
+    IUserCreateContract
+>;

@@ -11,7 +11,7 @@ Device lives in `src/modules/device`.
 When a device ownership is removed:
 
 - all active sessions for that device-user pair are revoked in the database
-- the revoked session keys are purged from Redis after the commit, which logs the client out
+- the purge of the revoked session keys is enqueued after the commit, and the job that deletes them logs the client out
 
 Other paths:
 
@@ -139,7 +139,7 @@ Removing a device ownership (device per user) is composed by `DeviceDomain.remov
 
 - Both first check that the ownership exists, belongs to the user, and is not revoked. Otherwise the request answers `DeviceNotFoundException` (404, `51300`) and nothing changes.
 - One `withTransaction`, opened by `DeviceDomain`, lands the database effects atomically.
-- Both paths then follow one order: commit, purge Redis, stage the activity rows.
+- Both paths then follow one order: commit, enqueue the session purge, stage the activity rows.
 
 Steps:
 
@@ -155,11 +155,11 @@ Steps:
     - The push token is therefore invalidated for every user owning that device.
 4. **Prepares the activity rows** inside the transaction, after the ownership write whose row the metadata reads.
     - `sessionCount` in the metadata is the number of sessions step 1 revoked.
-5. **Purges the revoked session keys from Redis** once the transaction has committed (`SessionDomain.purgeRevokedLogins`).
-    - Exactly the ids returned in step 1 are deleted, so any later request carrying those tokens gets 401.
-    - A purge failure is logged and the removal still succeeds.
-    - The unpurged keys keep passing the session check until their TTL expires.
-6. **Stages the activity rows** with `ActivityLogDomain.stagePrepared` after the purge.
+5. **Enqueues the purge of the revoked session keys** once the transaction has committed (`SessionDomain.purgeRevokedLogins`).
+    - The `purgeLogins` job on the `session` queue carries exactly the ids returned in step 1, and its processor deletes those keys, so any later request carrying those tokens gets 401 once the job has run.
+    - An enqueue failure is logged and reported, and the removal still succeeds.
+    - Keys that were never deleted keep passing the session check until their TTL expires.
+6. **Stages the activity rows** with `ActivityLogDomain.stagePrepared` after the enqueue.
     - `ActivityLogInterceptor` writes them after the handler returns.
 
 The rows depend on the path:
@@ -191,19 +191,19 @@ The rows depend on the path:
 sequenceDiagram
     participant Client
     participant API
-    participant Redis
+    participant Queue as Session queue
     participant Database
 
     Client->>API: DELETE /shared/user/device/remove/:deviceOwnershipId
     API->>Database: withTransaction: revoke active sessions of this device-user pair,<br/>revoke DeviceOwnership, clear Device push token
     API->>API: prepare userRemoveDevice (sessionCount = revoked sessions)
     Database-->>API: Committed, revoked session ids returned
-    API->>Redis: Delete exactly the revoked session keys
-    alt Purge fails
+    API->>Queue: Add purgeLogins job with exactly the revoked session ids
+    alt Enqueue fails
         API->>API: Log the error, continue
     end
     API->>API: stage userRemoveDevice
-    Note over Redis: Tokens for this device-user pair are now invalid
+    Note over Queue: Once the job runs, tokens for this device-user pair are invalid
     API-->>Client: 200 OK (ActivityLogInterceptor writes the staged log)
     Note over Client: Client using this device gets 401 on next request
     Note over Client: Sessions of other users owning the same device are unaffected

@@ -14,10 +14,12 @@ import type {
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { UserPhoto } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
@@ -27,16 +29,14 @@ import type {
     IUserUpdatePhotoProfile,
     IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserProfileDomain {
     private readonly logger = new Logger(UserProfileDomain.name);
-
-    private readonly uploadPhotoProfilePath: string;
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -45,26 +45,47 @@ export class UserProfileDomain {
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
-        private readonly configService: ConfigService
-    ) {
-        this.uploadPhotoProfilePath = this.configService.get<string>(
-            'user.uploadPhotoProfilePath'
-        )!;
+        private readonly userQueue: UserQueue
+    ) {}
+
+    private async deletePreviousPhoto(
+        userId: string,
+        previousPhoto: UserPhoto | null,
+        currentKey: string
+    ): Promise<void> {
+        if (previousPhoto === null || previousPhoto.key === currentKey) {
+            return;
+        }
+
+        const isOwned = this.userUtil.isPhotoProfileKeyOwned(
+            userId,
+            previousPhoto.key
+        );
+        if (!isOwned) {
+            return;
+        }
+
+        await this.userQueue.deletePhoto(userId, previousPhoto);
     }
 
     createRandomFilenamePhotoProfileWithPath(
         user: string,
         { extension }: IFileRandomFilenameOptions
     ): string {
-        const path: string = this.uploadPhotoProfilePath.replace(
-            '{userId}',
-            () => user
-        );
+        const path = this.userUtil.buildPhotoProfilePath(user);
+
         return this.fileService.createRandomFilename({
             path,
             extension,
             randomLength: 20,
         });
+    }
+
+    async deletePhotoObject(
+        key: string,
+        access: EnumAwsS3Accessibility
+    ): Promise<void> {
+        await this.awsS3Service.deleteItem(key, { access });
     }
 
     async getProfile(userId: string): Promise<IUserProfile> {
@@ -148,6 +169,11 @@ export class UserProfileDomain {
             throw new AwsS3NotConfiguredException();
         }
 
+        const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, key);
+        if (!isOwned) {
+            throw new UserPhotoKeyInvalidException();
+        }
+
         try {
             const aws: IAwsS3 = this.awsS3Service.mapPresign(
                 {
@@ -157,6 +183,12 @@ export class UserProfileDomain {
                 { access: EnumAwsS3Accessibility.public }
             );
 
+            // Sequential by design: gate before the work it guards
+            const user = await this.userRepository.findOneById(userId);
+            if (!user) {
+                throw new UserNotFoundException();
+            }
+
             const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdatePhotoProfile,
@@ -164,6 +196,7 @@ export class UserProfileDomain {
             ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
+            await this.deletePreviousPhoto(userId, user.photo, aws.key);
             this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
@@ -190,15 +223,20 @@ export class UserProfileDomain {
                 }
             );
 
-            const aws: IAwsS3 | null = await this.awsS3Service.putItem(
-                {
-                    key,
-                    size: file.size,
-                    file: file.buffer,
-                },
-                { access: EnumAwsS3Accessibility.public }
-            );
-
+            const [user, aws] = await Promise.all([
+                this.userRepository.findOneById(userId),
+                this.awsS3Service.putItem(
+                    {
+                        key,
+                        size: file.size,
+                        file: file.buffer,
+                    },
+                    { access: EnumAwsS3Accessibility.public }
+                ),
+            ]);
+            if (!user) {
+                throw new UserNotFoundException();
+            }
             if (!aws) {
                 throw new AwsS3NotConfiguredException();
             }
@@ -220,6 +258,7 @@ export class UserProfileDomain {
             ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
+            await this.deletePreviousPhoto(userId, user.photo, aws.key);
             this.activityLogDomain.stagePrepared(activityLogs);
 
             return;

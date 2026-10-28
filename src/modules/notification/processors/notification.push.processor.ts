@@ -36,8 +36,8 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 })
 export class NotificationPushProcessor extends QueueProcessorBase {
     constructor(
-        private readonly notificationPushProcessorService: NotificationPushProcessorService,
-        sentryService: SentryService
+        protected readonly sentryService: SentryService,
+        private readonly notificationPushProcessorService: NotificationPushProcessorService
     ) {
         super(sentryService);
     }
@@ -131,9 +131,9 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.cleanupStaleTokens:
                     return await this.notificationPushProcessorService.processCleanupStaleTokens();
                 default:
-                    return {
-                        message: `No notification processor found for the given job name ${job.name}`,
-                    };
+                    this.notificationPushProcessorService.processUnknown(
+                        job.name
+                    );
             }
         } catch (error: unknown) {
             if (error instanceof HelperDecryptFailedException) {

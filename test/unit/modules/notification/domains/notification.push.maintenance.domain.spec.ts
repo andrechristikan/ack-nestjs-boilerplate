@@ -7,8 +7,10 @@ import { HelperEncryptionService } from '@common/helper/services/helper.encrypti
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
 import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationPushMaintenanceDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
@@ -17,6 +19,7 @@ describe('NotificationPushMaintenanceDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, number | string> = {
                 'notification.push.staleTokenThresholdInMs': 86_400_000,
@@ -27,6 +30,7 @@ describe('NotificationPushMaintenanceDomain', () => {
         });
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationPushMaintenanceDomain,
                 { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: ConfigService, useValue: configService },
@@ -60,7 +64,7 @@ describe('NotificationPushMaintenanceDomain', () => {
                 ['token-1', 'token-2']
             );
             expect(result).toEqual({
-                message: 'Processed token cleanup for invalid tokens',
+                message: 'notification.queue.push.cleanupTokens',
                 countRequestedTokens: 2,
                 countRemovedTokens: 2,
             });
@@ -90,7 +94,7 @@ describe('NotificationPushMaintenanceDomain', () => {
                 deviceDomain.cleanupStaleNotificationTokens
             ).toHaveBeenCalledWith(86_400_000);
             expect(result).toEqual({
-                message: 'Processed stale token cleanup',
+                message: 'notification.queue.push.cleanupStaleTokens',
                 countRemovedTokens: 5,
             });
         });

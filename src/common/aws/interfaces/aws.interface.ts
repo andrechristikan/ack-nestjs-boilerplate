@@ -103,3 +103,8 @@ export interface IAwsS3FileInfo {
     extension: string;
     mime: string;
 }
+
+export type IAwsS3ConfigBuckets = Record<
+    EnumAwsS3Accessibility,
+    IAwsS3ConfigBucket
+>;

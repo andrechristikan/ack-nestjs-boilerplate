@@ -120,6 +120,13 @@ The producer takes the delivery decision once, at enqueue, and the job carries i
 
 The domain reads the user's settings and the device tokens concurrently.
 
+A user the write has just created has no device token and no settings row. `NotificationRecipientDomain.buildNewUserRecipient(user, kind)` builds the snapshot from the values the write stored, with no read:
+
+- `userId`, `email`, and `username` come from the written user.
+- `notificationTokens` is empty.
+- `channels` is `NotificationUtil.resolveChannels(kind, [])`, so every channel of the kind.
+- `welcome`, `welcomeByAdmin`, and `welcomeSocial` use it.
+
 `NotificationUtil.resolveChannels(kind, settings)` resolves the channels in this order:
 
 1. It starts from the kind's `pendingChannels` followed by its `deliveredChannels` in `NotificationKindContract`.
@@ -146,7 +153,7 @@ The email and push jobs that a snapshot job enqueues carry a `send` object with 
 
 #### How the snapshot travels
 
-1. The domain that raises the event reads the snapshot before any write that does not depend on it, then passes it to the queue class.
+1. The domain that raises the event reads the snapshot before the transaction, so a failed read writes nothing and no read sits between the commit and the enqueue. A welcome snapshot for a user the transaction creates is built from the written values instead (`buildNewUserRecipient`). The domain passes the snapshot to the queue class.
 2. `NotificationQueue` seals the email address and every device token (see [Payload Encryption](#payload-encryption)) and sets the result as `recipient` in the job data.
 3. The orchestration domain reads `recipient.channels`, `username`, and the sealed fields from the job. It reads no user, setting, or device.
 
@@ -204,20 +211,35 @@ Step 3 runs after step 2 has committed:
 - A channel job is only added when its channel is in the snapshot `channels`, and a push job also needs at least one token. The verification email of the `welcome` job is added whatever `channels` holds.
 - Each outcome is inspected: a rejected enqueue becomes a failed step (see [Step Tracking](#step-tracking)).
 
-Jobs reach this queue through `NotificationQueue`, which deduplicates on the process name plus whatever identifies that event. Only the publication and resend jobs set a `jobId` on this queue:
+Jobs reach this queue through `NotificationQueue`, which sets a fixed BullMQ `jobId` on every `add` and uses no `deduplication` option. The id is the process name plus whatever identifies the event, so BullMQ ignores a second add of the same event while the job is kept:
 
-| Event | Identifier |
+| Process | Job id |
 | --- | --- |
-| account and security events | the target user |
-| a join request and its acceptance or rejection | the workspace and the target user |
-| an invite | the invite `reference` |
-| an acceptance | the target user and the term policy id |
-| a publication | the term policy id, as the BullMQ `jobId` |
-| a resend | the term policy id and a resend nonce, as the BullMQ `jobId` |
+| `welcomeByAdmin`, `welcome`, `welcomeSocial` | `{process}-{userId}`, one job per user |
+| `temporaryPasswordByAdmin`, `changePassword` | `{process}-{eventId}`, the id of the password history row the request wrote |
+| `resetPassword` | `{process}-{eventId}`, the id of the reset password row |
+| `resetTwoFactorByAdmin` | `{process}-{eventId}`, the `notificationId` minted for the request, so every reset queues its own job |
+| `newDeviceLogin` | `{process}-{eventId}`, the session id of the login |
+| `verificationEmail`, `forgotPassword`, `verifiedEmail`, `verifiedMobileNumber` | `{process}-{reference}`, the reference of the verification or reset row |
+| `workspaceInvite` | `{process}-{reference}`, the invite `reference` |
+| `workspaceJoinRequest`, `workspaceJoinAccepted`, `workspaceJoinRejected` | `{process}-{joinRequestId}-{userId}` |
+| `userAcceptTermPolicy` | `{process}-{userId}-{termPolicyId}` |
+| `publishTermPolicy` | `{process}-{termPolicyId}` |
+| `resendPublishTermPolicy` | `{process}-{termPolicyId}-{resendNonce}` |
 
-- The TTL is `notification.dedupTtlInMs` (1 second), so two different events for the same user never collapse into one.
-- A publication sets the fixed job id `publishTermPolicy-{termPolicyId}`: BullMQ ignores a second add while that job is kept, which is 7 days after completion and 14 days after failure (`queue.job.removeOnCompleteAgeInSeconds` and `queue.job.removeOnFailAgeInSeconds` in `src/configs/queue.config.ts`).
+- A job id is kept for 7 days after completion and 14 days after failure (`queue.job.removeOnCompleteAgeInSeconds` and `queue.job.removeOnFailAgeInSeconds` in `src/configs/queue.config.ts`).
+- A publication sets the fixed job id `publishTermPolicy-{termPolicyId}`.
 - A resend sets the job id `resendPublishTermPolicy-{termPolicyId}-{resendNonce}`, unique per resend request, so each request adds its own job (see [Term-Policy Publication Email](#term-policy-publication-email)).
+- The welcome-by-admin import queues one job per imported user in a single `addBulk` (`NotificationQueue.sendWelcomeByAdminBulk`).
+- A join request queues one job per active reviewer in a single `addBulk` (`NotificationQueue.sendWorkspaceJoinRequestBulk`).
+
+A request adds these jobs after its transaction commits, through `QueueBase.addSideEffect` and `addBulkSideEffect`, which the queue-class method calls:
+
+- A failed `add` or `addBulk` is wrapped in `QueueSideEffectFailedException`, logged, and reported to Sentry, and the request still succeeds.
+- The domain awaits the queue method directly.
+- The term-policy resend calls `add` and answers `500` on failure, because the enqueue is its only work (see [Term-Policy Publication Email](#term-policy-publication-email)).
+- An enqueue made inside a job calls `add` and throws, and BullMQ retries the job.
+- The producer connection sets `enableOfflineQueue: false`, `queue.redis.connectTimeoutInMs`, and `queue.redis.maxRetriesPerRequest`, so an enqueue rejects quickly when Redis is down.
 
 **Supported processes (`EnumNotificationProcess`):**
 
@@ -285,7 +307,7 @@ Behavior of a retried run:
 - A multicast that leaves tokens in `retryTokens` fails the `sendMulticast` step with the error `<n> tokens pending retry`. See [Retrying Transient Failures](#retrying-transient-failures).
 - A skip (Firebase not initialized) returns a message with no failed step, so the job completes.
 
-The job id of a channel job is `{notificationId}-{step}`, from `NotificationStepJobIdPattern`:
+The job id of a channel job is `{notificationId}-{step}`, from the `notification.jobId.stepPattern` config key:
 
 - A push job is `{notificationId}-sendPush`.
 - A `cleanupTokens` job is `{notificationId}-cleanupTokens`.
@@ -315,30 +337,21 @@ That domain:
 
 Jobs reach this queue through `NotificationEmailQueue`:
 
-- Every email job except the publication batch uses BullMQ's `deduplication` option, on the same identifiers the orchestration queue uses.
-- A publication batch job uses a fixed BullMQ `jobId` (term policy id plus batch id, plus the resend nonce on a resend): BullMQ ignores a second add of the same id while the job is kept, which is 7 days after completion and 14 days after failure (`queue.job.removeOnCompleteAgeInSeconds` and `queue.job.removeOnFailAgeInSeconds` in `src/configs/queue.config.ts`).
+- Every email job sets a fixed BullMQ `jobId` and uses no `deduplication` option.
+- A publication batch job uses the `jobId` term policy id plus batch id, plus the resend nonce on a resend: BullMQ ignores a second add of the same id while the job is kept, which is 7 days after completion and 14 days after failure (`queue.job.removeOnCompleteAgeInSeconds` and `queue.job.removeOnFailAgeInSeconds` in `src/configs/queue.config.ts`).
 - An email job for a recipient with an account also carries the step-based `jobId` `{notificationId}-{step}` (see [Step Tracking](#step-tracking)):
     - `-sendEmail` for every process except the three below.
     - `-sendWelcomeEmail` for `welcome`, with the id of the welcome row.
     - `-sendVerificationEmail` for `verificationEmail`, with the id of its own row.
     - `-sendVerificationEmail` for the second email of `welcome`, with `verificationNotificationId`, the id of the second row: `{verificationNotificationId}-sendVerificationEmail`.
-- The `workspaceInviteUnregistered` job has no notification id and no step-based `jobId`.
-- Both options sit on one `add`, and BullMQ ignores the add when the job id still exists or when the deduplication id is still within its TTL.
+- The `workspaceInviteUnregistered` job has no notification id and no step-based `jobId`. Its `jobId` is `workspaceInviteUnregistered-{reference}`.
+- BullMQ ignores the add when the job id still exists.
 
 | Identifier | Processes |
 | --- | --- |
-| target user | account and security events |
-| invite `reference` | the two invite emails |
-| workspace and target user | a join request, a join acceptance, a join rejection |
-| term policy id, batch id, and on a resend the resend nonce | a publication batch, as the fixed `jobId` |
-
-Most templates use `notification.dedupTtlInMs` (1 second). A template carrying a time-limited link uses the config value matching that link's expiry or resend window instead:
-
-| Process                | Config                      |
-| ---------------------- | --------------------------- |
-| `verificationEmail`    | `verification.expiredInMs`  |
-| `verifiedMobileNumber` | `verification.resendInMs`   |
-| `forgotPassword`       | `forgotPassword.resendInMs` |
+| `{notificationId}-{step}` | every email job for a recipient with an account |
+| invite `reference` | `workspaceInviteUnregistered` |
+| term policy id, batch id, and on a resend the resend nonce | a publication batch |
 
 ### Push Queue
 
@@ -509,7 +522,7 @@ sequenceDiagram
 
 1. `TermPolicyDomain` reads the policy. A `published` policy answers `400` (`statusInvalid`) and enqueues nothing.
 2. A `draft` policy publishes: the contents are copied to the public bucket, then one transaction runs an `updateMany` that matches the policy only while its status is `draft`, rewrites the contents, and resets the acceptances of the policy type.
-3. Publish enqueues the job through `NotificationQueue.sendPublishTermPolicy`, with the `jobId` `publishTermPolicy-{termPolicyId}` (`NotificationTermPolicyPublishJobIdPattern`).
+3. Publish enqueues the job through `NotificationQueue.sendPublishTermPolicy`, with the `jobId` `publishTermPolicy-{termPolicyId}` (`notification.jobId.termPolicyPublishPattern`).
 
 The enqueue is a plain `add`:
 
@@ -524,7 +537,7 @@ What the publish guarantees:
     - when the two transactions overlap. MongoDB raises a write conflict (`P2034`), nothing retries it, and `TermPolicyDomain` maps `DatabaseWriteConflictException` to `TermPolicyStatusInvalidException` (see [Database][ref-doc-database]).
 - A write conflict from a concurrent user write during the acceptance reset gets the same answer: the policy stays `draft`, nothing is queued, and the admin publishes again.
 - A copy set that misses a language of the draft throws before the transaction. The request answers `500` and the policy stays `draft`, so a partial copy set never publishes.
-- A failed queue call answers `500`.
+- A failed queue call after the commit is logged and reported, and the request answers success. The resend endpoint recovers it.
 - The marker unique on `termPolicyId` and `userId` stops a duplicate `Notification` row and a second batch for one user.
 - A recipient is sent to at most once: an email job claims a marker before it sends (see the email job below).
 
@@ -534,10 +547,10 @@ An admin resend request (`POST /admin/term-policy/resend/:termPolicyId/email`, `
 
 1. `TermPolicyDomain.resendEmailByAdmin` reads the policy. A policy that is not `published` answers `400` (`statusInvalid`).
 2. It calls `NotificationQueue.sendResendPublishTermPolicy`. That method mints a `resendNonce` with `DatabaseUtil.createId()` and adds a `resendPublishTermPolicy` job.
-    - The job id is `resendPublishTermPolicy-{termPolicyId}-{resendNonce}` (`NotificationTermPolicyResendJobIdPattern`).
+    - The job id is `resendPublishTermPolicy-{termPolicyId}-{resendNonce}` (`notification.jobId.termPolicyResendPattern`).
     - The job data carries the same `recipientCutoffAt` as the publication, and the nonce as `resendNonce`.
 3. `NotificationProcessor` routes `resendPublishTermPolicy` to the same fan-out as `publishTermPolicy`.
-4. The email jobs of a resend keep the job name `publishTermPolicy`. Their job id is `publishTermPolicy-{termPolicyId}-{batchId}-{resendNonce}` (`NotificationTermPolicyBatchResendJobIdPattern`).
+4. The email jobs of a resend keep the job name `publishTermPolicy`. Their job id is `publishTermPolicy-{termPolicyId}-{batchId}-{resendNonce}` (`notification.jobId.termPolicyBatchResendPattern`).
 
 Each request carries a new nonce, so no job id collides with an earlier run. The claim on the marker keeps delivery at most once per recipient.
 
@@ -651,7 +664,7 @@ The invalid tokens go through three steps:
 
 1. Merged into the `encryptedFailureTokens` of the push job data after every send, including a send that leaves tokens pending. The job data holds them sealed. Once the `sendMulticast` step is complete, a retry of a later step reuses them without sending again.
 2. Once no token is pending, queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`.
-    - The job id is `{notificationId}-cleanupTokens`. The job carries no deduplication option.
+    - The job id is `{notificationId}-cleanupTokens`.
     - The payload is `{ userId, encryptedFailureTokens }`.
     - A send with no invalid token enqueues nothing.
     - `NotificationPushMaintenanceDomain.processCleanupTokens()` handles it.
@@ -756,7 +769,7 @@ For Firebase configuration, see [Third-Party Integration: Firebase][ref-doc-thir
 
 Handlebars templates, SES sync (`templateEmailNotification`), and how channel domains call `AwsSESService`: [Email Documentation][ref-doc-email].
 
-The email queue, rate limits, dedup, and sealed payload fields stay in this document under [Email Queue](#email-queue) and [Payload Encryption](#payload-encryption).
+The email queue, rate limits, job ids, and sealed payload fields stay in this document under [Email Queue](#email-queue) and [Payload Encryption](#payload-encryption).
 
 ## Delivery Tracking
 

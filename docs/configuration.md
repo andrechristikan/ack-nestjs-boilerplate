@@ -45,6 +45,7 @@ Config lives in `src/configs`.
 - [Workspace Configuration](#workspace-configuration)
 - [Project Configuration](#project-configuration)
 - [Analytic Configuration](#analytic-configuration)
+- [Activity Log Configuration](#activity-log-configuration)
 
 ## Configuration Structure
 
@@ -88,7 +89,7 @@ export class CommonModule {}
 
 A config value whose name ends in `Pattern` or `Path` is a template carrying `{token}` placeholders.
 
-- The templates cover cache and Redis keys, S3 object paths and URLs, email links, and the export filename.
+- The templates cover cache and Redis keys, queue job ids, S3 object paths and URLs, email links, and the export filename.
 - The consumer fills the template at the point of use.
 
 The number of placeholders decides how the consumer fills it:
@@ -328,6 +329,7 @@ s3: {
     corsMaxAgeShortInSeconds: number; // CORS preflight max-age in seconds, short (`ms('1h') / 1000`)
     maxAttempts: number; // Maximum retry attempts for S3 operations (default: 3)
     timeoutInMs: number; // Request timeout in milliseconds (default: 30000ms)
+    deleteDirMaxIterations: number; // Listing passes `deleteDir` makes before it throws `AwsS3IterationLimitExceededException` (default: 100)
     region: string | null; // AWS region for S3
     endpoint: string | null; // Custom S3 endpoint (LocalStack or another S3-compatible store), from AWS_S3_ENDPOINT
     baseUrlPattern: string; // Bucket base URL template; '{endpoint}/{bucket}' with an endpoint, 'https://{bucket}.s3.{region}.amazonaws.com' without
@@ -661,6 +663,14 @@ onboarding: {
 > - `OnboardingDomain.importByAdmin` passes `createBulkTimeoutInMs` from `UserOnboardingDomain.getCreateBulkTimeoutInMs`.
 > - Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
 
+**`jobId`**: Job id patterns of the user queue
+
+```typescript
+jobId: {
+    deletePhotoPattern: string; // Job id of a photo delete job ('{process}-{nonce}')
+}
+```
+
 ### Documentation Configuration
 
 **File**: `src/configs/doc.config.ts` **Interface**: `IConfigDoc`
@@ -853,6 +863,14 @@ url: string; // URL for organization/home page
 keyPattern: string; // Redis key pattern for user sessions ('User:{userId}:Session:{sessionId}')
 ```
 
+**`jobId`**: Job id patterns of the session queue
+
+```typescript
+jobId: {
+    purgeLoginsPattern: string; // Job id of a login purge job ('{process}-{nonce}')
+}
+```
+
 ### Term Policy Configuration
 
 **File**: `src/configs/term-policy.config.ts` **Interface**: `IConfigTermPolicy`
@@ -869,6 +887,14 @@ uploadContentPath: string; // Path pattern for uploading policy content files
 
 ```typescript
 contentPublicPath: string; // Public path for accessing policy content
+```
+
+**`jobId`**: Job id patterns of the term policy queue
+
+```typescript
+jobId: {
+    deleteContentPattern: string; // Job id of a content delete job ('{process}-{nonce}')
+}
 ```
 
 ### Feature Flag Configuration
@@ -959,6 +985,17 @@ privateKey: string | null; // Service account private key (PEM), verbatim from t
 
 #### Configuration Keys:
 
+**`redis`**: Producer connection limits, applied by `QueueModule.forRoot()` to the producer connection
+
+```typescript
+redis: {
+    connectTimeoutInMs: number; // Connect timeout of the producer connection (ms('5s'))
+    maxRetriesPerRequest: number; // Retries of one command before it rejects (default: 1)
+}
+```
+
+The producer connection also sets `enableOfflineQueue: false`, so an enqueue rejects quickly when Redis is down.
+
 **`job`**: Default job options
 
 ```typescript
@@ -971,6 +1008,10 @@ job: {
     pushBackoffDelayInMs: number; // Push queue exponential backoff delay (ms('5s'))
     notificationBackoffDelayInMs: number; // Notification queue exponential backoff delay (ms('3s'))
     workspaceBackoffDelayInMs: number; // Workspace queue exponential backoff delay (ms('10s'))
+    sessionBackoffDelayInMs: number; // Session queue exponential backoff delay (ms('3s'))
+    activityLogBackoffDelayInMs: number; // Activity log queue exponential backoff delay (ms('10s'))
+    termPolicyBackoffDelayInMs: number; // Term policy queue exponential backoff delay (ms('10s'))
+    userBackoffDelayInMs: number; // User queue exponential backoff delay (ms('10s'))
 }
 ```
 
@@ -1016,12 +1057,6 @@ gracefulShutdownTimeoutInMs: number; // How long Terminus keeps serving after a 
 
 #### Configuration Keys:
 
-**`dedupTtlInMs`**: Default deduplication TTL
-
-```typescript
-dedupTtlInMs: number; // BullMQ deduplication TTL for a notification job (ms('1s'))
-```
-
 **`push`**: Push cleanup settings
 
 ```typescript
@@ -1030,6 +1065,25 @@ push: {
     staleTokenThresholdInMs: number; // Device inactivity after which its push token is cleared (ms('30d'))
 }
 ```
+
+**`jobId`**: Job id patterns of the notification queues
+
+```typescript
+jobId: {
+    userPattern: string; // A job that runs once per user ('{process}-{userId}')
+    referencePattern: string; // A job keyed by a verification, reset, or invite reference ('{process}-{reference}')
+    eventPattern: string; // A job that reports one event ('{process}-{eventId}')
+    joinRequestPattern: string; // A join request job per reviewer ('{process}-{joinRequestId}-{userId}')
+    termPolicyBatchPattern: string; // An email batch job of a publication ('{process}-{termPolicyId}-{batchId}')
+    termPolicyBatchResendPattern: string; // An email batch job of a resend ('{process}-{termPolicyId}-{batchId}-{resendNonce}')
+    termPolicyResendPattern: string; // The resend job ('{process}-{termPolicyId}-{resendNonce}')
+    termPolicyPublishPattern: string; // The publication job ('{process}-{termPolicyId}')
+    userTermPolicyPattern: string; // A term policy acceptance job per user ('{process}-{userId}-{termPolicyId}')
+    stepPattern: string; // A channel job, one per notification step ('{notificationId}-{step}')
+}
+```
+
+See [Queue](queue.md) for the job each pattern keys.
 
 ### File Configuration
 
@@ -1207,6 +1261,20 @@ cache: {
 
 - The band a score falls in is an `EnumAnalyticFraudBand` value (`monitor`, `review`, `elevate`, `critical`).
 - `fraud.concurrency` (10) is the chunk size for the per-user lookups and risk scoring. Rows within a chunk run concurrently, and chunks run in sequence.
+
+### Activity Log Configuration
+
+**File**: `src/configs/activity-log.config.ts` **Interface**: `IConfigActivityLog`
+
+#### Configuration Keys:
+
+**`jobId`**: Job id patterns of the activity log queue
+
+```typescript
+jobId: {
+    createManyPattern: string; // Job id of a flush job ('{process}-{nonce}')
+}
+```
 
 <!-- REFERENCES -->
 

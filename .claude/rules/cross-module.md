@@ -27,7 +27,7 @@ A repository does not inject or call another repository. Work spanning repositor
 
 ## A repository module belongs to its own feature
 
-`<Module>RepositoryModule` has one importer: the domain module beside it. Data another module needs goes through the owning domain, which holds that feature's invariants. `src/migration/` is the exception: `MigrationModule` is its own composition root and imports any repository module directly (`seeding.md`).
+`<Module>RepositoryModule` has one importer: the domain module beside it. Data another module needs goes through the owning domain, which holds that feature's invariants. `src/migration/` sits outside this file and `layering.md`: a seed writes models through `DatabaseService` directly, and `MigrationModule` imports no feature repository module; a feature domain module only for an injection `seeding.md` allows.
 
 ## No `forwardRef` between feature modules
 

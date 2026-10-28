@@ -1,6 +1,7 @@
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import {
     EnumNotificationKind,
+    EnumNotificationProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
@@ -19,6 +20,7 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
+import { MessageService } from '@common/message/services/message.service';
 
 /** Writes and fans out the workspace invite and join-request notifications. */
 @Injectable()
@@ -27,7 +29,8 @@ export class NotificationWorkspaceDomain {
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUtil: NotificationUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue,
-        private readonly notificationPushQueue: NotificationPushQueue
+        private readonly notificationPushQueue: NotificationPushQueue,
+        private readonly messageService: MessageService
     ) {}
 
     async processWorkspaceInvite(
@@ -40,9 +43,17 @@ export class NotificationWorkspaceDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.workspaceInvite,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Workspace invite notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -75,8 +86,17 @@ export class NotificationWorkspaceDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationProcess.workspaceInvite,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Workspace invite notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -149,8 +169,12 @@ export class NotificationWorkspaceDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.workspaceInvite'
+        );
+
         return {
-            message: 'Workspace invite notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -166,9 +190,17 @@ export class NotificationWorkspaceDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.workspaceJoinRequest,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Workspace join request notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -201,8 +233,18 @@ export class NotificationWorkspaceDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationProcess.workspaceJoinRequest,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Workspace join request notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -274,8 +316,12 @@ export class NotificationWorkspaceDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.workspaceJoinRequest'
+        );
+
         return {
-            message: 'Workspace join request notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -291,9 +337,17 @@ export class NotificationWorkspaceDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.workspaceJoinAccepted,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Workspace join accepted notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -325,8 +379,18 @@ export class NotificationWorkspaceDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationProcess.workspaceJoinAccepted,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Workspace join accepted notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -394,8 +458,12 @@ export class NotificationWorkspaceDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.workspaceJoinAccepted'
+        );
+
         return {
-            message: 'Workspace join accepted notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };
@@ -411,9 +479,17 @@ export class NotificationWorkspaceDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.error.noChannel',
+                {
+                    properties: {
+                        process: EnumNotificationProcess.workspaceJoinRejected,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Workspace join rejected notification skipped, no channel enabled',
+                message,
                 completedSteps: done,
                 failedSteps: [],
             };
@@ -446,8 +522,18 @@ export class NotificationWorkspaceDomain {
                     error
                 );
 
+                const message = this.messageService.setMessage(
+                    'notification.queue.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationProcess.workspaceJoinRejected,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Workspace join rejected notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [failure],
                 };
@@ -515,8 +601,12 @@ export class NotificationWorkspaceDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.workspaceJoinRejected'
+        );
+
         return {
-            message: 'Workspace join rejected notification processed',
+            message,
             completedSteps: done,
             failedSteps,
         };

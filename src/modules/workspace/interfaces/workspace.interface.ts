@@ -4,6 +4,7 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Prisma,
+    User,
     Workspace,
     WorkspaceInvite,
     WorkspaceMember,
@@ -24,6 +25,11 @@ export type IWorkspaceInviteList = Prisma.WorkspaceInviteGetPayload<{
 export interface IWorkspaceInviteInviter {
     name: string | null;
     username: string;
+}
+
+export interface IWorkspaceInviteInvitee {
+    existingUser: User | null;
+    recipient: INotificationRecipient | null;
 }
 
 export interface IWorkspaceInviteNotificationTarget {
@@ -107,3 +113,17 @@ export interface IWorkspaceJoinRequestCreateData {
     userId: string;
     message: string | null;
 }
+
+export type IWorkspaceField = Extract<keyof Workspace, string>;
+
+export type IWorkspaceFieldValue = NonNullable<Workspace[IWorkspaceField]>;
+
+export type IWorkspaceMemberField = Extract<keyof WorkspaceMember, string>;
+
+export type IWorkspaceMemberFieldValue = NonNullable<
+    WorkspaceMember[IWorkspaceMemberField]
+>;
+
+export type IWorkspaceActiveFilter = NonNullable<
+    Prisma.WorkspaceWhereInput['OR']
+>;

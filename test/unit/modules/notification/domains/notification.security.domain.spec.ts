@@ -23,8 +23,10 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationSecurityDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -87,12 +89,14 @@ describe('NotificationSecurityDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         notificationRepository.createMany.mockResolvedValue([notification]);
         helperDateService.createFromIso.mockImplementation(
             (iso: string) => new Date(iso)
         );
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationSecurityDomain,
                 NotificationUtil,
                 {
@@ -159,7 +163,7 @@ describe('NotificationSecurityDomain', () => {
                 passwordExpiredAt: data.passwordExpiredAt,
             });
             expect(result).toEqual({
-                message: 'Temporary password by admin notification processed',
+                message: 'notification.queue.temporaryPasswordByAdmin',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -272,7 +276,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendTemporaryPasswordByAdmin
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Temporary password by admin notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -301,8 +305,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendTemporaryPasswordByAdmin
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Temporary password by admin notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -431,7 +434,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationEmailQueue.sendChangePassword
             ).toHaveBeenCalledWith(emailPayload);
             expect(result).toEqual({
-                message: 'Change password notification processed',
+                message: 'notification.queue.changePassword',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -530,8 +533,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationEmailQueue.sendChangePassword
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Change password notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -636,7 +638,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendForgotPassword
             ).toHaveBeenCalledWith(pushPayload);
             expect(result).toEqual({
-                message: 'Forgot password notification processed',
+                message: 'notification.queue.forgotPassword',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -765,8 +767,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendForgotPassword
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Forgot password notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -894,7 +895,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendResetPassword
             ).toHaveBeenCalledWith(pushPayload);
             expect(result).toEqual({
-                message: 'Reset password notification processed',
+                message: 'notification.queue.resetPassword',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -1017,8 +1018,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendResetPassword
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Reset password notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -1143,7 +1143,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendResetTwoFactorByAdmin
             ).toHaveBeenCalledWith(pushPayload);
             expect(result).toEqual({
-                message: 'Reset two factor by admin notification processed',
+                message: 'notification.queue.resetTwoFactorByAdmin',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -1272,8 +1272,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendResetTwoFactorByAdmin
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Reset two factor by admin notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -1447,7 +1446,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendNewDeviceLogin
             ).toHaveBeenCalledWith(pushPayload, data);
             expect(result).toEqual({
-                message: 'New device login notification processed',
+                message: 'notification.queue.newDeviceLogin',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -1576,8 +1575,7 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendNewDeviceLogin
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'New device login notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });

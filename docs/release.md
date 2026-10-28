@@ -409,7 +409,8 @@ When a password is set, the credentials go into the URLs of `.env`:
 
 - Special characters in the password are percent-encoded.
 - `<user>` is `DOCKER_MONGO_ROOT_USERNAME`, `root` when it is empty.
-- `authSource=admin`, because the `mongo` entrypoint creates the root user in the `admin` database.
+- `authSource=admin`, because the `mongo` entrypoint creates the root user in the `admin` database. Without it the driver authenticates against `ACKNestJs` and Prisma fails with `SCRAM failure: Authentication failed`.
+- The Redis URLs carry the password. Without it the app logs `NOAUTH Authentication required`.
 
 ```bash
 DATABASE_URL=mongodb://<user>:<password>@mongo:27017/ACKNestJs?authSource=admin&retryWrites=true&w=majority&replicaSet=rs0

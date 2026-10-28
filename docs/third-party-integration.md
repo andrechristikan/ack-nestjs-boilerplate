@@ -242,7 +242,7 @@ AWS service errors use `EnumAwsStatusCodeError` located at `src/common/aws/enums
 | `EnumAwsStatusCodeError.s3FileRequired` | `51401` | `aws.error.s3FileRequired` | `putItem` received no file content |
 | `EnumAwsStatusCodeError.s3ObjectExist` | `51402` | `aws.error.s3ObjectExist` | The target key already holds an object and `forceUpdate` is off (HTTP 409) |
 | `EnumAwsStatusCodeError.s3MaxPartNumberExceeded` | `51403` | `aws.error.s3MaxPartNumberExceeded` | A multipart upload asks for more parts than `AwsS3MaxPartNumber` |
-| `EnumAwsStatusCodeError.s3IterationLimitExceeded` | `51404` | `aws.error.s3IterationLimitExceeded` | `deleteDir` reached its iteration cap before the prefix was empty |
+| `EnumAwsStatusCodeError.s3IterationLimitExceeded` | `51404` | `aws.error.s3IterationLimitExceeded` | `deleteDir` reached its iteration cap (`aws.s3.deleteDirMaxIterations`) before the prefix was empty |
 | `EnumAwsStatusCodeError.sesTemplateBodyRequired` | `51405` | `aws.error.sesTemplateBodyRequired` | An SES template create or update has neither an HTML nor a plain-text body |
 | `EnumAwsStatusCodeError.s3NotConfigured` | `51406` | `aws.error.s3NotConfigured` | A request path needs S3 and S3 is unconfigured (HTTP 404) |
 

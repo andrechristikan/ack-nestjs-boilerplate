@@ -153,43 +153,46 @@ export class UserPasswordDomain {
     }
 
     async reachMaxPasswordAttempt(userId: string): Promise<void> {
-        const revokeAllActivityLogs = this.sessionDomain.prepareRevokeAllSelf(
-            userId,
-            true
-        );
+        const revokeAllActivityLogs =
+            this.sessionDomain.prepareRevokeAllSelf(userId);
         const reachMaxActivityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userReachMaxPasswordAttempt,
                 userId,
                 createdBy: userId,
-                onError: true,
             }),
         ];
         const now = this.helperDateService.create();
 
         try {
             // Sequential by design: write must not run if an earlier step throws
-            await this.databaseService.withTransaction(async tx => {
-                await this.userDomain.deactivateForMaxPasswordAttemptInTx(
-                    tx,
-                    userId
-                );
-                await this.sessionDomain.revokeActiveByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-                await this.deviceDomain.revokeAllByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-            });
+            const revoked = await this.databaseService.withTransaction(
+                async tx => {
+                    await this.userDomain.deactivateForMaxPasswordAttemptInTx(
+                        tx,
+                        userId
+                    );
+                    const sessions =
+                        await this.sessionDomain.revokeActiveByUserInTx(
+                            tx,
+                            userId,
+                            userId,
+                            now
+                        );
+                    await this.deviceDomain.revokeAllByUserInTx(
+                        tx,
+                        userId,
+                        userId,
+                        now
+                    );
+
+                    return sessions;
+                }
+            );
 
             await this.sessionDomain.finalizeRevokeAll(
                 userId,
+                revoked,
                 revokeAllActivityLogs
             );
 
@@ -234,29 +237,31 @@ export class UserPasswordDomain {
                     user,
                     EnumNotificationKind.temporaryPasswordByAdmin
                 );
-            const activityLogs = await this.databaseService.withTransaction(
-                async tx => {
+            const { passwordHistoryId, activityLogs, revoked } =
+                await this.databaseService.withTransaction(async tx => {
                     const row = await this.userDomain.updatePasswordInTx(
                         tx,
                         userId,
                         password,
                         updatedBy
                     );
-                    await this.passwordHistoryDomain.createInTx(
-                        tx,
-                        userId,
-                        password.passwordHash,
-                        EnumPasswordHistoryType.admin,
-                        password.passwordPeriodExpired,
-                        password.passwordCreated,
-                        updatedBy
-                    );
-                    await this.sessionDomain.revokeActiveByUserInTx(
-                        tx,
-                        userId,
-                        updatedBy,
-                        password.passwordCreated
-                    );
+                    const passwordHistory =
+                        await this.passwordHistoryDomain.createInTx(
+                            tx,
+                            userId,
+                            password.passwordHash,
+                            EnumPasswordHistoryType.admin,
+                            password.passwordPeriodExpired,
+                            password.passwordCreated,
+                            updatedBy
+                        );
+                    const sessions =
+                        await this.sessionDomain.revokeActiveByUserInTx(
+                            tx,
+                            userId,
+                            updatedBy,
+                            password.passwordCreated
+                        );
 
                     const actorMetadata =
                         this.userUtil.mapActivityLogActorMetadata(row);
@@ -266,40 +271,44 @@ export class UserPasswordDomain {
                             updatedBy
                         );
 
-                    return [
-                        this.activityLogDomain.prepare({
-                            action: EnumActivityLogAction.adminUserUpdatePassword,
-                            metadata: actorMetadata,
-                        }),
-                        this.activityLogDomain.prepare({
-                            action: EnumActivityLogAction.userUpdatePasswordByAdmin,
-                            userId,
-                            createdBy: updatedBy,
-                            metadata: targetMetadata,
-                        }),
-                    ];
-                }
-            );
-            // Sequential by design: side effects whose order is part of the contract
-            await this.sessionDomain.purgeLoginsByUser(userId);
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
+                    return {
+                        passwordHistoryId: passwordHistory.id,
+                        revoked: sessions,
+                        activityLogs: [
+                            this.activityLogDomain.prepare({
+                                action: EnumActivityLogAction.adminUserUpdatePassword,
+                                metadata: actorMetadata,
+                            }),
+                            this.activityLogDomain.prepare({
+                                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                                userId,
+                                createdBy: updatedBy,
+                                metadata: targetMetadata,
+                            }),
+                        ],
+                    };
+                });
             const passwordCreatedAt = this.helperDateService.formatToIso(
                 password.passwordCreated
             );
             const passwordExpiredAt = this.helperDateService.formatToIso(
                 password.passwordExpired
             );
-            await this.notificationQueue.sendTemporaryPasswordByAdmin(
-                recipient,
-                {
-                    password: passwordString,
-                    passwordCreatedAt,
-                    passwordExpiredAt,
-                },
-                updatedBy
-            );
+            await Promise.all([
+                this.sessionDomain.purgeRevokedLogins(userId, revoked),
+                this.notificationQueue.sendTemporaryPasswordByAdmin(
+                    recipient,
+                    {
+                        password: passwordString,
+                        passwordCreatedAt,
+                        passwordExpiredAt,
+                    },
+                    updatedBy,
+                    passwordHistoryId
+                ),
+            ]);
+
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -388,42 +397,53 @@ export class UserPasswordDomain {
                     user,
                     EnumNotificationKind.changePassword
                 );
-            await this.databaseService.withTransaction(async tx => {
-                await this.userDomain.updatePasswordInTx(
-                    tx,
-                    user.id,
-                    password,
-                    user.id
-                );
-                await this.passwordHistoryDomain.createInTx(
-                    tx,
-                    user.id,
-                    password.passwordHash,
-                    EnumPasswordHistoryType.profile,
-                    password.passwordPeriodExpired,
-                    password.passwordCreated,
-                    user.id
-                );
-                await this.sessionDomain.revokeActiveByUserInTx(
-                    tx,
-                    user.id,
-                    user.id,
-                    password.passwordCreated
-                );
-                if (twoFactorVerified) {
-                    await this.userLoginDomain.recordTwoFactorVerificationInTx(
+            const { passwordHistoryId, revoked } =
+                await this.databaseService.withTransaction(async tx => {
+                    await this.userDomain.updatePasswordInTx(
                         tx,
-                        user,
-                        twoFactorVerified
+                        user.id,
+                        password,
+                        user.id
                     );
-                }
-            });
-            // Sequential by design: side effects whose order is part of the contract
-            await this.sessionDomain.purgeLoginsByUser(user.id);
+                    const passwordHistory =
+                        await this.passwordHistoryDomain.createInTx(
+                            tx,
+                            user.id,
+                            password.passwordHash,
+                            EnumPasswordHistoryType.profile,
+                            password.passwordPeriodExpired,
+                            password.passwordCreated,
+                            user.id
+                        );
+                    const sessions =
+                        await this.sessionDomain.revokeActiveByUserInTx(
+                            tx,
+                            user.id,
+                            user.id,
+                            password.passwordCreated
+                        );
+                    if (twoFactorVerified) {
+                        await this.userLoginDomain.recordTwoFactorVerificationInTx(
+                            tx,
+                            user,
+                            twoFactorVerified
+                        );
+                    }
+
+                    return {
+                        passwordHistoryId: passwordHistory.id,
+                        revoked: sessions,
+                    };
+                });
+            await Promise.all([
+                this.sessionDomain.purgeRevokedLogins(user.id, revoked),
+                this.notificationQueue.sendChangePassword(
+                    recipient,
+                    passwordHistoryId
+                ),
+            ]);
 
             this.activityLogDomain.stagePrepared(activityLogs);
-
-            await this.notificationQueue.sendChangePassword(recipient);
 
             return;
         } catch (err: unknown) {
@@ -587,47 +607,58 @@ export class UserPasswordDomain {
                     resetPassword.user,
                     EnumNotificationKind.resetPassword
                 );
-            await this.databaseService.withTransaction(async tx => {
-                await this.userDomain.updatePasswordInTx(
-                    tx,
-                    resetPassword.userId,
-                    password,
-                    resetPassword.userId
-                );
-                await this.passwordHistoryDomain.createInTx(
-                    tx,
-                    resetPassword.userId,
-                    password.passwordHash,
-                    EnumPasswordHistoryType.forgot,
-                    password.passwordPeriodExpired,
-                    password.passwordCreated,
-                    resetPassword.userId
-                );
-                await this.userPasswordRepository.markUsedInTx(
-                    tx,
-                    resetPassword.id,
-                    password.passwordCreated
-                );
-                await this.sessionDomain.revokeActiveByUserInTx(
-                    tx,
-                    resetPassword.userId,
-                    resetPassword.userId,
-                    password.passwordCreated
-                );
-                if (twoFactorVerified) {
-                    await this.userLoginDomain.recordTwoFactorVerificationInTx(
+            const revoked = await this.databaseService.withTransaction(
+                async tx => {
+                    await this.userDomain.updatePasswordInTx(
                         tx,
-                        resetPassword.user,
-                        twoFactorVerified
+                        resetPassword.userId,
+                        password,
+                        resetPassword.userId
                     );
+                    await this.passwordHistoryDomain.createInTx(
+                        tx,
+                        resetPassword.userId,
+                        password.passwordHash,
+                        EnumPasswordHistoryType.forgot,
+                        password.passwordPeriodExpired,
+                        password.passwordCreated,
+                        resetPassword.userId
+                    );
+                    await this.userPasswordRepository.markUsedInTx(
+                        tx,
+                        resetPassword.id,
+                        password.passwordCreated
+                    );
+                    const sessions =
+                        await this.sessionDomain.revokeActiveByUserInTx(
+                            tx,
+                            resetPassword.userId,
+                            resetPassword.userId,
+                            password.passwordCreated
+                        );
+                    if (twoFactorVerified) {
+                        await this.userLoginDomain.recordTwoFactorVerificationInTx(
+                            tx,
+                            resetPassword.user,
+                            twoFactorVerified
+                        );
+                    }
+
+                    return sessions;
                 }
-            });
-            // Sequential by design: side effects whose order is part of the contract
-            await this.sessionDomain.purgeLoginsByUser(resetPassword.userId);
+            );
+            await Promise.all([
+                this.sessionDomain.purgeRevokedLogins(
+                    resetPassword.userId,
+                    revoked
+                ),
+                this.notificationQueue.sendResetPassword(
+                    recipient,
+                    resetPassword.id
+                ),
+            ]);
 
             this.activityLogDomain.stagePrepared(activityLogs);
-
-            await this.notificationQueue.sendResetPassword(recipient);
 
             return;
         } catch (err: unknown) {

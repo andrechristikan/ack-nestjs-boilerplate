@@ -657,7 +657,7 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 **Request log (`RequestLogStoreKey`):**
 
 - `RequestRequestLogMiddleware` calls the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), which resolves `userAgent`, `ipAddress`, and `geoLocation` once per request.
-- `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it writes the staged rows. It throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs it).
+- `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it builds the rows it enqueues. It throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs and reports it, and the response is unchanged).
 - `UserLoginDomain.createTokenAndSession` reads the same key, throws `RequestContextMissingException` when it is absent, and threads the `IRequestLog` to the session and device writes.
 - Nothing recomputes ua/ip/geo.
 - `IRequestLog` declares all three fields as present: `ipAddress` and `geoLocation` are `null` when unresolved, never absent.
@@ -676,6 +676,7 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 - The new-device-login BullMQ job carries `requestLog` explicitly on its payload (`INotificationNewDeviceLoginPayload.requestLog`), snapshotted at enqueue time.
 - A notification job for a registered user carries a recipient snapshot taken at enqueue (`INotificationQueuePayload.recipient`): the username, the channels the user's settings leave enabled, and the address and device push tokens encrypted.
 - A worker runs outside any HTTP request, so no CLS store is active there.
+- The activity-log job carries each row's `requestLog` inside the row, for the same reason.
 - The value crosses the boundary as data.
 
 ## Decorators

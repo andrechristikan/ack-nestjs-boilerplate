@@ -12,7 +12,7 @@ export class HelperDecryptFailedException extends AppBaseException {
     readonly statusCodeKey = EnumHelperStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 
-    constructor(rawError?: unknown) {
+    constructor(readonly rawError: unknown = null) {
         super('helper.error.decryptFailed', { rawError });
     }
 }

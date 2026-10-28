@@ -3,6 +3,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -20,9 +21,12 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationPushQueue', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationPushQueue: MockProxy<Queue> = mock<Queue>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     let queue: NotificationPushQueue;
 
@@ -35,22 +39,25 @@ describe('NotificationPushQueue', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, unknown> = {
                 'app.timezone': 'UTC',
-                'notification.dedupTtlInMs': 60_000,
                 'notification.push.cleanupStaleTokensCron': '0 3 * * *',
+                'notification.jobId.stepPattern': '{notificationId}-{step}',
             };
 
             return values[key];
         });
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationPushQueue,
                 {
                     provide: getQueueToken(EnumQueue.notificationPush),
                     useValue: notificationPushQueue,
                 },
+                { provide: SentryService, useValue: sentryService },
                 { provide: ConfigService, useValue: configService },
                 HelperStringService,
             ],
@@ -79,10 +86,6 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'temporaryPasswordByAdmin-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
@@ -104,10 +107,6 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'resetPassword-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
@@ -129,10 +128,6 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'forgotPassword-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
@@ -154,10 +149,6 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'resetTwoFactorByAdmin-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
@@ -198,17 +189,13 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'newDeviceLogin-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
     });
 
     describe('sendWorkspaceInvite', () => {
-        it('enqueues the workspaceInvite job deduplicated by reference, high priority', async () => {
+        it('enqueues the workspaceInvite job with a step job id, high priority', async () => {
             const data = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -232,17 +219,13 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'workspaceInvite-ref-1',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
     });
 
     describe('sendWorkspaceJoinRequest', () => {
-        it('enqueues the workspaceJoinRequest job deduplicated by workspace and user, medium priority', async () => {
+        it('enqueues the workspaceJoinRequest job with a step job id, medium priority', async () => {
             const data = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -263,17 +246,13 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinRequest-workspace-id-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
     });
 
     describe('sendWorkspaceJoinAccepted', () => {
-        it('enqueues the workspaceJoinAccepted job deduplicated by workspace and user, medium priority', async () => {
+        it('enqueues the workspaceJoinAccepted job with a step job id, medium priority', async () => {
             const data = { workspaceId: 'workspace-id', workspaceName: 'Acme' };
 
             await queue.sendWorkspaceJoinAccepted(send, data);
@@ -290,17 +269,13 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinAccepted-workspace-id-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
     });
 
     describe('sendWorkspaceJoinRejected', () => {
-        it('enqueues the workspaceJoinRejected job deduplicated by workspace and user, medium priority', async () => {
+        it('enqueues the workspaceJoinRejected job with a step job id, medium priority', async () => {
             const data: INotificationWorkspaceJoinRejectedPayload = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -322,10 +297,6 @@ describe('NotificationPushQueue', () => {
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinRejected-workspace-id-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
@@ -359,6 +330,19 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).not.toHaveBeenCalled();
         });
+
+        it('rejects and reports nothing when the add rejects', async () => {
+            const error = new Error('redis down');
+            notificationPushQueue.add.mockRejectedValue(error);
+
+            await expect(
+                queue.sendCleanupTokens('notification-id', 'user-id', [
+                    'cipher(token-1)',
+                ])
+            ).rejects.toBe(error);
+
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
     });
 
     describe('sendCleanupStaleTokens', () => {
@@ -376,6 +360,15 @@ describe('NotificationPushQueue', () => {
                     opts: { priority: EnumQueuePriority.low },
                 }
             );
+        });
+
+        it('rejects and reports nothing when the scheduler upsert rejects', async () => {
+            const error = new Error('redis down');
+            notificationPushQueue.upsertJobScheduler.mockRejectedValue(error);
+
+            await expect(queue.sendCleanupStaleTokens()).rejects.toBe(error);
+
+            expect(sentryService.captureException).not.toHaveBeenCalled();
         });
     });
 });

@@ -12,8 +12,12 @@ import {
 } from '@generated/prisma-client/client';
 import {
     EnumNotificationKind,
+    EnumNotificationProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
+import type { BulkJobOptions } from 'bullmq';
+import type { NotificationUserSetting } from '@generated/prisma-client/client';
+import type { SendTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 
 export interface INotificationKindContract {
     type: EnumNotificationType;
@@ -115,6 +119,17 @@ export type INotificationWelcomeByAdminPayload =
 export type INotificationWelcomeByAdminEncryptedPayload =
     INotificationTemporaryPasswordEncryptedPayload;
 
+export interface INotificationQueueJob<T> {
+    name: EnumNotificationProcess;
+    data: INotificationQueuePayload<T>;
+    opts: BulkJobOptions;
+}
+
+export interface INotificationWelcomeByAdminItem {
+    recipient: INotificationRecipient;
+    data: INotificationWelcomeByAdminPayload;
+}
+
 export interface INotificationVerificationEmailPayload {
     link: string;
     expiredAt: string;
@@ -197,6 +212,7 @@ export interface INotificationWorkspaceJoinRequestPayload {
     workspaceId: string;
     workspaceName: string;
     requesterName: string;
+    joinRequestId: string;
     joinRequestReviewLink: string;
 }
 
@@ -209,7 +225,7 @@ export interface INotificationWorkspaceJoinRequestEncryptedPayload extends Omit<
 
 export type INotificationWorkspaceJoinRequestPushPayload = Omit<
     INotificationWorkspaceJoinRequestPayload,
-    'joinRequestReviewLink'
+    'joinRequestReviewLink' | 'joinRequestId'
 >;
 
 export interface INotificationWorkspaceJoinAcceptedPayload {
@@ -314,3 +330,45 @@ export interface INotificationPushStepResult extends INotificationStepResult {
     encryptedFailureTokens: string[] | null;
     encryptedPendingTokens: string[] | null;
 }
+
+export type INotificationUserSettingPreference = Pick<
+    NotificationUserSetting,
+    'channel' | 'type' | 'isActive'
+>;
+
+export type INotificationPublishTermPolicyInput = Omit<
+    INotificationPublishTermPolicyPayload,
+    'resendNonce'
+>;
+
+export type INotificationKindContracts = Record<
+    EnumNotificationKind,
+    INotificationKindContract
+>;
+
+export type INotificationEmailResult = {
+    message: string;
+    result: SendTemplatedEmailCommandOutput;
+};
+
+export type INotificationEmailPublishTermPolicyResult = {
+    message: string;
+};
+
+export type INotificationPushCleanupTokensResult = {
+    message: string;
+    countRequestedTokens: number;
+    countRemovedTokens: number;
+};
+
+export type INotificationPushCleanupStaleTokensResult = {
+    message: string;
+    countRemovedTokens: number;
+};
+
+export type INotificationPublishTermPolicyResult = {
+    message: string;
+    candidateCounts: number;
+    createdCounts: number;
+    batches: number;
+};

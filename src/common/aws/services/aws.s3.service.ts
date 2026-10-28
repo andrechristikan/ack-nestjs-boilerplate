@@ -72,6 +72,7 @@ import type {
     IAwsS3,
     IAwsS3ConfigBucket,
     IAwsS3ConfigBucketSource,
+    IAwsS3ConfigBuckets,
     IAwsS3CopyItemOptions,
     IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
@@ -115,6 +116,7 @@ export class AwsS3Service implements OnModuleInit {
     private readonly endpoint: string | null;
     private readonly maxAttempts: number;
     private readonly timeoutInMs: number;
+    private readonly deleteDirMaxIterations: number;
 
     private readonly presignExpiredInSeconds: number;
     private readonly multipartExpiredInDays: number;
@@ -128,7 +130,7 @@ export class AwsS3Service implements OnModuleInit {
     private readonly iamArn: string | null;
     private readonly corsAllowedOrigin: string[];
 
-    private readonly config: Record<EnumAwsS3Accessibility, IAwsS3ConfigBucket>;
+    private readonly config: IAwsS3ConfigBuckets;
 
     private s3Client: S3Client;
 
@@ -155,6 +157,9 @@ export class AwsS3Service implements OnModuleInit {
             this.configService.get<number>('aws.s3.maxAttempts')!;
         this.timeoutInMs =
             this.configService.get<number>('aws.s3.timeoutInMs')!;
+        this.deleteDirMaxIterations = this.configService.get<number>(
+            'aws.s3.deleteDirMaxIterations'
+        )!;
 
         this.baseUrlPattern = this.configService.get<string>(
             'aws.s3.baseUrlPattern'
@@ -704,11 +709,10 @@ export class AwsS3Service implements OnModuleInit {
         const config = this.getConfig(options.access);
         let continuationToken: string | null = null;
 
-        const maxIterations = 100;
         let iterations = 0;
 
         do {
-            if (iterations >= maxIterations) {
+            if (iterations >= this.deleteDirMaxIterations) {
                 throw new AwsS3IterationLimitExceededException();
             }
 

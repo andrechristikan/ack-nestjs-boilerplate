@@ -49,3 +49,5 @@ export type IDatabaseModelRelations = {
               >;
           };
 };
+
+export type IDatabaseModelRelation = Readonly<Record<string, Prisma.ModelName>>;

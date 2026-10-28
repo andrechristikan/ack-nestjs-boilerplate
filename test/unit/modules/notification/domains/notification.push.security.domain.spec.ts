@@ -90,6 +90,7 @@ describe('NotificationPushSecurityDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockReturnValue('secret-key');
         stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
@@ -160,9 +161,13 @@ describe('NotificationPushSecurityDomain', () => {
             helperDateService.formatToRFC2822.mockImplementation((date: Date) =>
                 date.toISOString()
             );
-            messageService.setMessage
-                .mockReturnValueOnce('New login')
-                .mockReturnValueOnce('New login from Chrome on macOS');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.endsWith('.title')
+                    ? 'New login'
+                    : path.endsWith('.body')
+                      ? 'New login from Chrome on macOS'
+                      : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -177,8 +182,7 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping new login notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [EnumNotificationStep.updateProcessAt],
                 failedSteps: [],
                 encryptedFailureTokens: ['bad'],
@@ -228,7 +232,7 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'New login notification processed'
+                'notification.queue.push.newDeviceLogin'
             );
         });
 
@@ -374,9 +378,13 @@ describe('NotificationPushSecurityDomain', () => {
 
     describe('processResetTwoFactorByAdmin', () => {
         beforeEach(() => {
-            messageService.setMessage
-                .mockReturnValueOnce('Two-factor reset')
-                .mockReturnValueOnce('Your two-factor was reset');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.endsWith('.title')
+                    ? 'Two-factor reset'
+                    : path.endsWith('.body')
+                      ? 'Your two-factor was reset'
+                      : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -390,8 +398,7 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping reset two-factor notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [],
                 failedSteps: [],
                 encryptedFailureTokens: null,
@@ -426,7 +433,7 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'Reset two-factor notification processed'
+                'notification.queue.push.resetTwoFactorByAdmin'
             );
         });
 
@@ -558,9 +565,13 @@ describe('NotificationPushSecurityDomain', () => {
             helperDateService.formatToRFC2822.mockImplementation((date: Date) =>
                 date.toISOString()
             );
-            messageService.setMessage
-                .mockReturnValueOnce('Temporary password')
-                .mockReturnValueOnce('Your temporary password expires soon');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.endsWith('.title')
+                    ? 'Temporary password'
+                    : path.endsWith('.body')
+                      ? 'Your temporary password expires soon'
+                      : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -575,8 +586,7 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping temporary password notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [],
                 failedSteps: [],
                 encryptedFailureTokens: null,
@@ -617,7 +627,7 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'Temporary password notification processed'
+                'notification.queue.push.temporaryPasswordByAdmin'
             );
         });
 
@@ -746,9 +756,13 @@ describe('NotificationPushSecurityDomain', () => {
 
     describe('processResetPassword', () => {
         beforeEach(() => {
-            messageService.setMessage
-                .mockReturnValueOnce('Reset password')
-                .mockReturnValueOnce('Your password was reset');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.endsWith('.title')
+                    ? 'Reset password'
+                    : path.endsWith('.body')
+                      ? 'Your password was reset'
+                      : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -759,8 +773,7 @@ describe('NotificationPushSecurityDomain', () => {
             ]);
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping reset password notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [],
                 failedSteps: [],
                 encryptedFailureTokens: null,
@@ -795,7 +808,7 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'Reset password notification processed'
+                'notification.queue.push.resetPassword'
             );
         });
 
@@ -916,9 +929,13 @@ describe('NotificationPushSecurityDomain', () => {
 
     describe('processForgotPassword', () => {
         beforeEach(() => {
-            messageService.setMessage
-                .mockReturnValueOnce('Forgot password')
-                .mockReturnValueOnce('You requested a password reset');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.endsWith('.title')
+                    ? 'Forgot password'
+                    : path.endsWith('.body')
+                      ? 'You requested a password reset'
+                      : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -929,8 +946,7 @@ describe('NotificationPushSecurityDomain', () => {
             ]);
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping forgot password notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [],
                 failedSteps: [],
                 encryptedFailureTokens: null,
@@ -965,7 +981,7 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'Forgot password notification processed'
+                'notification.queue.push.forgotPassword'
             );
         });
 

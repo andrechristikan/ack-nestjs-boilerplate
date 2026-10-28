@@ -90,14 +90,16 @@ export abstract class QueueProcessorBase extends WorkerHost {
             return;
         }
 
-        const sentryService = this.sentryService;
-
-        sentryService.withScope(scope => {
-            scope.setAttribute('job.id', String(job.id));
-            scope.setAttribute('job.name', job.name);
-            scope.setAttribute('job.attemptsMade', job.attemptsMade);
-            scope.setAttribute('job.maxAttempts', maxAttempts);
-            sentryService.captureException(error);
+        this.sentryService.captureException(error, {
+            tags: { 'job.name': job.name },
+            contexts: {
+                job: {
+                    id: String(job.id),
+                    name: job.name,
+                    attemptsMade: job.attemptsMade,
+                    maxAttempts,
+                },
+            },
         });
     }
 }

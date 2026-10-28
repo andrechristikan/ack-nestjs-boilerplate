@@ -18,20 +18,20 @@ import type {
     ISessionList,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
-import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { SessionRepository } from '@modules/session/repositories/session.repository';
+import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class SessionDomain {
-    private readonly logger = new Logger(SessionDomain.name);
-
     constructor(
         private readonly sessionRepository: SessionRepository,
-        private readonly sessionUtil: SessionUtil,
         private readonly sessionCache: SessionCache,
+        private readonly sessionUtil: SessionUtil,
+        private readonly sessionQueue: SessionQueue,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -56,6 +56,10 @@ export class SessionDomain {
             userId,
             pagination
         );
+    }
+
+    async deleteLogins(userId: string, sessions: ISessionRef[]): Promise<void> {
+        await this.sessionCache.deleteLogins(userId, sessions);
     }
 
     async validateActive(userId: string, sessionId: string): Promise<ISession> {
@@ -229,30 +233,15 @@ export class SessionDomain {
     }
 
     /**
-     * Runs after the revoke is committed: purges exactly the revoked logins from the session
-     * cache. A purge failure is logged and swallowed, so the committed revoke still succeeds.
+     * Runs after the revoke is committed: enqueues the purge of exactly the revoked logins from
+     * the session cache. An enqueue failure is logged and reported, so the committed revoke
+     * still succeeds.
      */
     async purgeRevokedLogins(
         userId: string,
         sessions: ISessionRef[]
     ): Promise<void> {
-        try {
-            await this.sessionCache.deleteLogins(userId, sessions);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Failed to purge revoked session cache');
-        }
-    }
-
-    /**
-     * Runs after the revoke is committed: purges every session login of the user from the
-     * cache. A purge failure is logged and swallowed, so the committed revoke still succeeds.
-     */
-    async purgeLoginsByUser(userId: string): Promise<void> {
-        try {
-            await this.sessionCache.deleteLoginsByUser(userId);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Failed to purge user session cache');
-        }
+        await this.sessionQueue.purgeLogins(userId, sessions);
     }
 
     /** Prepares the admin revoke-all pair for a committed revoke; nothing when no session was revoked. */
@@ -292,27 +281,24 @@ export class SessionDomain {
         return activityLogs;
     }
 
-    /** Prepares the self revoke-all row of a whole-user revoke; `onError` keeps it on the error-path flush. */
-    prepareRevokeAllSelf(
-        userId: string,
-        onError: boolean
-    ): IActivityLogStaged[] {
+    /** Prepares the self revoke-all row of a whole-user revoke. */
+    prepareRevokeAllSelf(userId: string): IActivityLogStaged[] {
         return [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId,
                 createdBy: userId,
-                onError,
             }),
         ];
     }
 
-    /** Runs after a whole-user revoke commits: purges every login of the user, then stages the prepared revoke-all activity logs. */
+    /** Runs after a whole-user revoke commits: enqueues the purge of the revoked logins, then stages the prepared revoke-all activity logs. */
     async finalizeRevokeAll(
         userId: string,
+        sessions: ISessionRef[],
         activityLogs: IActivityLogStaged[]
     ): Promise<void> {
-        await this.purgeLoginsByUser(userId);
+        await this.purgeRevokedLogins(userId, sessions);
 
         this.activityLogDomain.stagePrepared(activityLogs);
     }
@@ -337,6 +323,6 @@ export class SessionDomain {
             revokedBy,
             sessions.length
         );
-        await this.finalizeRevokeAll(userId, activityLogs);
+        await this.finalizeRevokeAll(userId, sessions, activityLogs);
     }
 }

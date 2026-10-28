@@ -265,7 +265,6 @@ describe('PolicyDomain', () => {
             const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminPolicyCreate,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -335,7 +334,6 @@ describe('PolicyDomain', () => {
             const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminPolicyUpdate,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -405,7 +403,6 @@ describe('PolicyDomain', () => {
             const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminPolicyDelete,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,

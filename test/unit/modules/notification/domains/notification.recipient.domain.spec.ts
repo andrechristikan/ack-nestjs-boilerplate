@@ -15,8 +15,10 @@ import { NotificationRecipientDomain } from '@modules/notification/domains/notif
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationRecipientDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationUserSettingRepository: MockProxy<NotificationUserSettingRepository> =
         mock<NotificationUserSettingRepository>();
     const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
@@ -73,9 +75,11 @@ describe('NotificationRecipientDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
 
         const moduleRef = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationRecipientDomain,
                 NotificationUtil,
                 {
@@ -174,6 +178,31 @@ describe('NotificationRecipientDomain', () => {
             await expect(pending).resolves.toMatchObject({
                 userId: 'user-id',
             });
+        });
+    });
+
+    describe('buildNewUserRecipient', () => {
+        it('snapshots the identity with no token and the kind channels, reading nothing', () => {
+            const result = domain.buildNewUserRecipient(
+                user,
+                EnumNotificationKind.welcome
+            );
+
+            expect(result).toStrictEqual({
+                userId: 'user-id',
+                email: 'nadia@example.com',
+                username: 'nadia',
+                notificationTokens: [],
+                channels: expect.arrayContaining([
+                    EnumNotificationChannel.email,
+                ]),
+            });
+            expect(
+                notificationUserSettingRepository.findUserSetting
+            ).not.toHaveBeenCalled();
+            expect(
+                deviceDomain.getOwnershipsWithNotificationToken
+            ).not.toHaveBeenCalled();
         });
     });
 });

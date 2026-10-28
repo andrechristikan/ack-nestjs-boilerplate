@@ -58,7 +58,6 @@ describe('WorkspaceMemberDomain', () => {
     const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.workspaceMemberLeft,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -267,7 +266,6 @@ describe('WorkspaceMemberDomain', () => {
             const transferredActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceOwnershipTransferred,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -275,7 +273,6 @@ describe('WorkspaceMemberDomain', () => {
             const transferredByOwnerActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -344,7 +341,6 @@ describe('WorkspaceMemberDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberLeft,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -533,7 +529,6 @@ describe('WorkspaceMemberDomain', () => {
             const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -541,7 +536,6 @@ describe('WorkspaceMemberDomain', () => {
             const byAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -666,7 +660,6 @@ describe('WorkspaceMemberDomain', () => {
             const removedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberRemoved,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -674,7 +667,6 @@ describe('WorkspaceMemberDomain', () => {
             const removedByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,

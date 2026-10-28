@@ -89,7 +89,7 @@ A good fit when you are building:
 
     Full detail: [Authorization Documentation][ref-doc-authorization].
 
-- Activity logging is separate from the stack: domains stage events, and a global interceptor writes them.
+- Activity logging is separate from the stack: domains stage events, and a global interceptor enqueues them as a job that writes them.
 
 ## TODO
 
@@ -130,7 +130,7 @@ Versions this project expects:
 | TypeScript     | v6.0.x                                      |
 | Prisma         | v6.19.x                                     |
 | MongoDB        | v8.0+ replica set (compose: `mongo:latest`) |
-| Redis          | v6.0+ (compose: `redis:latest`)             |
+| Redis          | v6.2+ (compose: `redis:latest`)             |
 | Docker         | v28.5.x+                                    |
 | Docker Compose | v2.40.x+                                    |
 
@@ -178,7 +178,7 @@ See [package.json][ref-package-json] for the full list.
 
 ### 📈 Analytics
 
-- **Activity log**: Domains stage user actions. A global interceptor writes them after the request settles, including actor/target pairs
+- **Activity log**: Domains stage user actions. A global interceptor enqueues them after the request settles and a queue processor writes them, including actor/target pairs
 - **Analytic dashboard**: Admin metrics, anomaly and fraud reports, and current-workspace user metrics ([docs][ref-doc-analytic])
 
 ### 🩺 Monitoring

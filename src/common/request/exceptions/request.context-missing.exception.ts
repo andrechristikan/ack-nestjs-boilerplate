@@ -13,7 +13,7 @@ export class RequestContextMissingException extends AppBaseException {
     readonly statusCodeKey = EnumRequestStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 
-    constructor(contextKey: string) {
+    constructor(readonly contextKey: string) {
         super('request.error.contextMissing', {
             rawError: new AppUnknownException(
                 null,

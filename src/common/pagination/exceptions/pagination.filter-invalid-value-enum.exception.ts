@@ -12,7 +12,10 @@ export class PaginationFilterInvalidValueEnumException extends AppBaseException 
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
-    constructor(property: string, allowedValues: string) {
+    constructor(
+        readonly property: string,
+        readonly allowedValues: string
+    ) {
         super('pagination.error.filterInvalidValueEnum', {
             messageProperties: { property, allowedValues },
         });

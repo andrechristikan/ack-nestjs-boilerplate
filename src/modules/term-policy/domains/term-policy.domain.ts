@@ -25,10 +25,12 @@ import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/excep
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
+    ITermPolicyActivityLogSubject,
     ITermPolicyContent,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
 } from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -52,14 +54,14 @@ export class TermPolicyDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly userDomain: UserDomain
+        private readonly userDomain: UserDomain,
+        private readonly termPolicyQueue: TermPolicyQueue
     ) {}
 
     private prepareActivityLog(
         action: EnumActivityLogAction,
-        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
-        timestamp: Date,
-        onError: boolean
+        termPolicy: ITermPolicyActivityLogSubject,
+        timestamp: Date
     ): IActivityLogStaged {
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
@@ -69,38 +71,7 @@ export class TermPolicyDomain {
         return this.activityLogDomain.prepare({
             action,
             metadata,
-            onError,
         });
-    }
-
-    private async enqueuePublishNotification(
-        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version' | 'publishedAt'>,
-        updatedBy: string
-    ): Promise<void> {
-        try {
-            const recipientCutoffAt = this.helperDateService.formatToIso(
-                termPolicy.publishedAt!
-            );
-            await this.notificationQueue.sendPublishTermPolicy(
-                {
-                    termPolicyId: termPolicy.id,
-                    type: termPolicy.type,
-                    version: termPolicy.version,
-                    recipientCutoffAt,
-                    resendNonce: null,
-                },
-                updatedBy
-            );
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(
-                err,
-                'Enqueueing the term policy publish notification failed'
-            );
-        }
     }
 
     mapPublicContent(
@@ -209,8 +180,7 @@ export class TermPolicyDomain {
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyCreate,
                     { id: termPolicyId, type, version },
-                    timestamp,
-                    false
+                    timestamp
                 ),
             ];
             const created = await this.termPolicyRepository.create(
@@ -231,6 +201,12 @@ export class TermPolicyDomain {
         }
     }
 
+    async deleteContentDir(path: string): Promise<void> {
+        await this.awsS3Service.deleteDir(path, {
+            access: EnumAwsS3Accessibility.private,
+        });
+    }
+
     async deleteByAdmin(termPolicyId: string): Promise<TermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
@@ -247,17 +223,14 @@ export class TermPolicyDomain {
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyDelete,
                     termPolicy,
-                    timestamp,
-                    false
+                    timestamp
                 ),
             ];
-            const [deleted] = await Promise.all([
-                this.termPolicyRepository.delete(termPolicyId),
-                this.awsS3Service.deleteDir(contentPath, {
-                    access: EnumAwsS3Accessibility.private,
-                }),
-            ]);
+            // Sequential by design: write must not run if an earlier step throws
+            const deleted =
+                await this.termPolicyRepository.delete(termPolicyId);
 
+            await this.termPolicyQueue.deleteContent(contentPath);
             this.activityLogDomain.stagePrepared(activityLogs);
 
             return deleted;
@@ -344,8 +317,7 @@ export class TermPolicyDomain {
                             this.prepareActivityLog(
                                 EnumActivityLogAction.adminTermPolicyPublish,
                                 row,
-                                row.updatedAt,
-                                true
+                                row.updatedAt
                             ),
                         ],
                     };
@@ -353,7 +325,19 @@ export class TermPolicyDomain {
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
-            await this.enqueuePublishNotification(published, updatedBy);
+            const recipientCutoffAt = this.helperDateService.formatToIso(
+                published.publishedAt!
+            );
+            await this.notificationQueue.sendPublishTermPolicy(
+                {
+                    termPolicyId: published.id,
+                    type: published.type,
+                    version: published.version,
+                    recipientCutoffAt,
+                    resendNonce: null,
+                },
+                updatedBy
+            );
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -385,8 +369,7 @@ export class TermPolicyDomain {
         const activityLog = this.prepareActivityLog(
             EnumActivityLogAction.adminTermPolicyResendEmail,
             termPolicy,
-            timestamp,
-            false
+            timestamp
         );
 
         try {

@@ -18,8 +18,10 @@ import type { INotificationTermPolicyBatchRecipientEncryptedPayload } from '@mod
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationEmailTermPolicyDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const notificationRepository: MockProxy<NotificationRepository> =
@@ -60,6 +62,7 @@ describe('NotificationEmailTermPolicyDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, string> = {
                 'email.noreply': 'noreply@example.com',
@@ -77,6 +80,7 @@ describe('NotificationEmailTermPolicyDomain', () => {
         stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationEmailTermPolicyDomain,
                 { provide: AwsSESService, useValue: awsSESService },
                 { provide: ConfigService, useValue: configService },
@@ -96,7 +100,9 @@ describe('NotificationEmailTermPolicyDomain', () => {
     });
 
     describe('processPublishTermPolicy', () => {
-        const processed = { message: 'Publish term policy email processed' };
+        const processed = {
+            message: 'notification.queue.email.publishTermPolicy',
+        };
 
         it('sends one bulk email from the payload recipients alone, reading no user, and marks both sent', async () => {
             notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
@@ -400,9 +406,18 @@ describe('NotificationEmailTermPolicyDomain', () => {
             await expect(attempt).rejects.toBeInstanceOf(QueueException);
             await expect(attempt).rejects.toMatchObject({
                 isFatal: true,
-                message: expect.stringContaining(batchId),
+                message: 'notification.queue.email.error.batchFailed',
             });
-            await expect(attempt).rejects.toThrow(/1 of 2/);
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.email.error.batchFailed',
+                {
+                    properties: {
+                        batchId,
+                        failedCount: 1,
+                        claimedCount: 2,
+                    },
+                }
+            );
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
             ).toHaveBeenCalledWith(claimNonce, ['user-1'], now, proceedBy);

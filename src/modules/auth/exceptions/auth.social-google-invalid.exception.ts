@@ -12,7 +12,7 @@ export class AuthSocialGoogleInvalidException extends AppBaseException {
     readonly statusCodeKey = EnumAuthStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNAUTHORIZED;
 
-    constructor(rawError: unknown) {
+    constructor(readonly rawError: unknown) {
         super('auth.error.socialGoogleInvalid', { rawError });
     }
 }

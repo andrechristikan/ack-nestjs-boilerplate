@@ -11,7 +11,6 @@ import { WorkspaceProcessorService } from '@modules/workspace/services/workspace
 import { WorkspaceProcessor } from '@modules/workspace/processors/workspace.processor';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { buildProcessorJob } from '@test/unit/helpers/test.unit.queue.helper';
-import { stubSentryScope } from '@test/unit/helpers/test.unit.sentry.helper';
 
 describe('QueueProcessorBase', () => {
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
@@ -145,31 +144,26 @@ describe('QueueProcessorBase', () => {
     });
 
     describe('onFailed', () => {
-        it('reports to Sentry when the error is an UnrecoverableError instance', () => {
-            const scope = stubSentryScope(sentryService);
+        it('reports to Sentry with the job tag and context when the error is an UnrecoverableError instance', () => {
             const job = buildProcessorJob({ opts: {}, attemptsMade: 0 });
             const error = new UnrecoverableError('unrecoverable');
 
             processor.onFailed(job, error);
 
-            expect(scope.setAttribute).toHaveBeenCalledWith('job.id', 'job-1');
-            expect(scope.setAttribute).toHaveBeenCalledWith(
-                'job.name',
-                EnumWorkspaceProcess.expireStaleInvites
-            );
-            expect(scope.setAttribute).toHaveBeenCalledWith(
-                'job.attemptsMade',
-                0
-            );
-            expect(scope.setAttribute).toHaveBeenCalledWith(
-                'job.maxAttempts',
-                1
-            );
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+            expect(sentryService.captureException).toHaveBeenCalledWith(error, {
+                tags: { 'job.name': EnumWorkspaceProcess.expireStaleInvites },
+                contexts: {
+                    job: {
+                        id: 'job-1',
+                        name: EnumWorkspaceProcess.expireStaleInvites,
+                        attemptsMade: 0,
+                        maxAttempts: 1,
+                    },
+                },
+            });
         });
 
         it('reports to Sentry when the error carries the UnrecoverableError name without being an instance', () => {
-            stubSentryScope(sentryService);
             const job = buildProcessorJob({
                 opts: { attempts: 3 },
                 attemptsMade: 0,
@@ -179,21 +173,31 @@ describe('QueueProcessorBase', () => {
 
             processor.onFailed(job, error);
 
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                error,
+                expect.objectContaining({
+                    tags: expect.any(Object),
+                    contexts: expect.any(Object),
+                })
+            );
         });
 
         it('reports to Sentry on the final attempt for an ordinary error', () => {
-            stubSentryScope(sentryService);
             const job = buildProcessorJob({ opts: {}, attemptsMade: 1 });
             const error = new Error('boom');
 
             processor.onFailed(job, error);
 
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                error,
+                expect.objectContaining({
+                    tags: expect.any(Object),
+                    contexts: expect.any(Object),
+                })
+            );
         });
 
         it('does nothing when the attempt is not the last one', () => {
-            stubSentryScope(sentryService);
             const job = buildProcessorJob({
                 opts: { attempts: 3 },
                 attemptsMade: 0,
@@ -202,28 +206,30 @@ describe('QueueProcessorBase', () => {
 
             processor.onFailed(job, error);
 
-            expect(sentryService.withScope).not.toHaveBeenCalled();
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
 
         it('reports a fatal QueueException on the final attempt', () => {
-            stubSentryScope(sentryService);
             const job = buildProcessorJob({ opts: {}, attemptsMade: 1 });
             const error = new QueueException('boom', true);
 
             processor.onFailed(job, error);
 
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                error,
+                expect.objectContaining({
+                    tags: expect.any(Object),
+                    contexts: expect.any(Object),
+                })
+            );
         });
 
         it('does nothing for a non-fatal QueueException on the final attempt', () => {
-            stubSentryScope(sentryService);
             const job = buildProcessorJob({ opts: {}, attemptsMade: 1 });
             const error = new QueueException('boom', false);
 
             processor.onFailed(job, error);
 
-            expect(sentryService.withScope).not.toHaveBeenCalled();
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
     });

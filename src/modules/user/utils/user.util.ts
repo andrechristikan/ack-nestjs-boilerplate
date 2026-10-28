@@ -9,12 +9,14 @@ import {
 import type { TwoFactor, User } from '@generated/prisma-client/client';
 import { Profanity } from '@2toad/profanity';
 
-/** Username checks, two-factor mapping, and activity-log mapping. */
+/** Username checks, profile photo path, two-factor mapping, and activity-log mapping. */
 @Injectable()
 export class UserUtil {
     private readonly usernameRegex: RegExp;
 
     private readonly profanity: Profanity;
+
+    private readonly uploadPhotoProfilePath: string;
 
     constructor(private readonly configService: ConfigService) {
         this.usernameRegex =
@@ -22,6 +24,9 @@ export class UserUtil {
 
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguage'
+        )!;
+        this.uploadPhotoProfilePath = this.configService.get<string>(
+            'user.uploadPhotoProfilePath'
         )!;
         this.profanity = new Profanity({
             languages: availableLanguages,
@@ -34,6 +39,17 @@ export class UserUtil {
     /** True when the username does NOT match the allowed pattern (i.e. should be rejected). */
     checkUsernamePattern(username: string): boolean {
         return !!username.search(this.usernameRegex);
+    }
+
+    buildPhotoProfilePath(userId: string): string {
+        return this.uploadPhotoProfilePath.replace('{userId}', () => userId);
+    }
+
+    /** True when the key sits under the profile photo path of the user. */
+    isPhotoProfileKeyOwned(userId: string, key: string): boolean {
+        const photoPath = this.buildPhotoProfilePath(userId);
+
+        return key.startsWith(`${photoPath}/`);
     }
 
     async checkBadWord(str: string): Promise<boolean> {

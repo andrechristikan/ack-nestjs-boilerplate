@@ -427,15 +427,33 @@ Create and resend look the invited address up among active users. `sendInviteNot
 
 Create and resend read the snapshot before their write, so the processor reads no user record afterwards.
 
+The enqueue runs after the write commits:
+
+- `sendInviteNotification` awaits the queue methods directly. They enqueue through `QueueBase.addSideEffect`, so a failed enqueue is logged and reported to Sentry and the create or resend still answers success.
+- The `workspaceInvite` job id is `workspaceInvite-{reference}`, and a resend rotates the reference, so each resend queues a fresh job.
+
 The two processes share one SES template.
 
 See [Notification][ref-doc-notification] for the payload encryption.
 
 **Resend** rotates the token, reference, and expiry, then sends again.
 
+- It reads the active account for the address once, and that lookup serves both the notification snapshot and the activity rows.
+- It prepares `workspaceInviteResent` for the actor and, when the address belongs to an active account other than the actor, `workspaceInviteResentByAdmin` for that account.
+- It stages them after the rotation commits, before the notification is enqueued.
+
 - Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestSchema`, a `.pick()` of the create schema).
 - Omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with.
 - Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
+- The rotation matches the invite only while it is `pending`, so a resend never revives an accepted, revoked, or expired invite. A resend that loses a race with another write to the same invite, including a MongoDB write conflict, answers the same `400` `inviteAlreadyProcessed`, never `409`.
+- **Revoke** flips the invite to `revoked` only while it is `pending`. An invite that is not pending when read, or that stops being pending before the write, answers the same `400` `inviteAlreadyProcessed`.
+
+**Pending guard.** Every write that ends an invite's pending state matches `status: pending` in the same statement:
+
+- revoke, resend, claim, and accept on sign-up
+- A statement that matches no row means another request got there first, and the caller answers `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
+- Claim and accept on sign-up run this statement inside their transaction, so the membership rows written before it roll back with it.
+- A MongoDB write conflict on the claim, the sign-up accept, or the resend maps to the same `400`, never `409`.
 
 **Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user.
 
@@ -443,6 +461,8 @@ Preconditions (anything else, including an existing membership, collapses into `
 
 - the token hashes to a `pending`, unexpired invite on an active workspace
 - the invite email matches the caller's email (case-insensitive)
+
+A race that consumes the invite after those checks pass answers `WorkspaceInviteAlreadyProcessedException` (400, `51613`) and writes nothing.
 
 On success one transaction:
 
@@ -453,7 +473,7 @@ On success one transaction:
 
 The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepared before the transaction and staged after it commits.
 
-- A user who has no account yet redeems the invite through sign-up instead, by passing `inviteToken`.
+- A user who has no account yet redeems the invite through sign-up instead, by passing `inviteToken`. The accept inside the sign-up transaction is guarded on `pending` too: an invite consumed between the token check and the commit fails the sign-up with `400` `inviteAlreadyProcessed` and creates no user.
 - See [Personal Workspace](#personal-workspace).
 
 **Expiry sweep.** `WorkspaceProcessorService.onModuleInit` calls `WorkspaceQueue.scheduleInviteExpirySweep`:
@@ -475,6 +495,8 @@ The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepa
     - Each reviewer gets a recipient snapshot (address, username, channels, device tokens), read before the request row is written.
     - Each reviewer's review link is sealed (AES-256-GCM) with **that reviewer's** user id as authenticated data.
     - A link sealed for one reviewer therefore does not open in another reviewer's job.
+    - `NotificationQueue.sendWorkspaceJoinRequestBulk` adds the jobs of every reviewer in one `addBulk`, each under the job id `workspaceJoinRequest-{joinRequestId}-{userId}`.
+    - A failed enqueue is logged and reported, and the request still answers success.
 - **Accept always creates a `member` membership.** The role is not configurable on this path.
     - The membership creation and the status flip to `accepted` with `reviewedByUserId` / `reviewedAt` run in one transaction.
     - The activity pair is prepared before the transaction and staged after it commits.
@@ -485,6 +507,7 @@ The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepa
 - Both outcomes notify the requester once the write commits: `workspaceJoinAccepted` on accept, `workspaceJoinRejected` (carrying the reason code) on reject.
     - The requester's recipient snapshot is read before the write, from `UserDomain.getOneActive`.
     - A requester who is not an active user gets no notification, and the write still completes.
+    - The job id is `{process}-{joinRequestId}-{userId}`, and a failed enqueue is logged and reported without changing the outcome.
 - Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`).
 - An id that does not belong to the resolved workspace is `WorkspaceJoinRequestNotFoundException` (404, `51617`).
 
@@ -548,6 +571,7 @@ After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writ
 | Member removal | `workspaceMemberRemoved` | `workspaceMemberRemovedByAdmin` | The removed member |
 | Ownership transfer | `workspaceOwnershipTransferred` | `workspaceOwnershipTransferredByOwner` | The new owner |
 | Invite create | `workspaceInviteCreated` | `workspaceInviteCreatedByAdmin` | The active account whose email matches the invite |
+| Invite resend | `workspaceInviteResent` | `workspaceInviteResentByAdmin` | The active account whose email matches the invite |
 | Invite revoke | `workspaceInviteRevoked` | `workspaceInviteRevokedByAdmin` | The active account whose email matches the invite |
 | Invite claim, or sign-up with `inviteToken` | `workspaceInviteAccepted` (the invitee) | `workspaceInviteAcceptedByInvitee` | The inviter |
 | Join request accept | `workspaceJoinAccepted` (the reviewer) | `workspaceJoinAcceptedByAdmin` | The requester |
@@ -557,7 +581,6 @@ After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writ
 
 - The invite actor row carries `workspaceInviteId`, and also `targetUserId` when the email belongs to an active account.
 - An email with no account gets no target row.
-- Resend writes no row.
 
 **Onboarding**
 

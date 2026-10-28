@@ -25,8 +25,10 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationWorkspaceDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
     const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
@@ -85,9 +87,11 @@ describe('NotificationWorkspaceDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         notificationRepository.createMany.mockResolvedValue([notification]);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationWorkspaceDomain,
                 NotificationUtil,
                 {
@@ -159,7 +163,7 @@ describe('NotificationWorkspaceDomain', () => {
                 expiredAt: data.expiredAt,
             });
             expect(result).toEqual({
-                message: 'Workspace invite notification processed',
+                message: 'notification.queue.workspaceInvite',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -272,7 +276,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceInvite
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Workspace invite notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -301,8 +305,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceInvite
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Workspace invite notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -411,6 +414,7 @@ describe('NotificationWorkspaceDomain', () => {
             workspaceId: 'workspace-id',
             workspaceName: 'Acme',
             requesterName: 'Omar',
+            joinRequestId: 'join-request-id',
             encryptedJoinRequestReviewLink: 'cipher-review-link',
         };
 
@@ -452,7 +456,7 @@ describe('NotificationWorkspaceDomain', () => {
                 requesterName: data.requesterName,
             });
             expect(result).toEqual({
-                message: 'Workspace join request notification processed',
+                message: 'notification.queue.workspaceJoinRequest',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -565,7 +569,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinRequest
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Workspace join request notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -594,8 +598,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinRequest
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Workspace join request notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -738,7 +741,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinAccepted
             ).toHaveBeenCalledWith(pushPayload, data);
             expect(result).toEqual({
-                message: 'Workspace join accepted notification processed',
+                message: 'notification.queue.workspaceJoinAccepted',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -851,7 +854,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinAccepted
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Workspace join accepted notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -880,8 +883,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinAccepted
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Workspace join accepted notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -1026,7 +1028,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinRejected
             ).toHaveBeenCalledWith(pushPayload, data);
             expect(result).toEqual({
-                message: 'Workspace join rejected notification processed',
+                message: 'notification.queue.workspaceJoinRejected',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -1139,7 +1141,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinRejected
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Workspace join rejected notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -1168,8 +1170,7 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinRejected
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Workspace join rejected notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });

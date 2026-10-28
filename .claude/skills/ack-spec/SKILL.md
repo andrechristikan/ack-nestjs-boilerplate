@@ -75,7 +75,7 @@ Read the per-file rows, not the exit code (`references/sweep-log.md`, Coverage r
 
 ## 6. Sweep log
 
-`generated/docs/report-src-sweep.md` is additive. Append one open row per flow or decision finding, under its heading; at the end of every run re-read every row against `src/` and mark gone defects SOLVED (`references/sweep-log.md`). Do not delete a row.
+`generated/docs/report-src-sweep.md` holds open defects only. Append one open row per flow or decision finding, under its heading; at the end of every run re-read every row against `src/` and delete each row whose defect is gone (`references/sweep-log.md`). No SOLVED marker.
 
 ## 7. Verify
 
@@ -87,7 +87,7 @@ Do not write a spec or a repair yourself; dispatch. Do not delete, `.skip`, or w
 
 ## Hand back
 
-Specs written or repaired by file; every no-flow bug fixed (file, line, change); every flow or decision handed back or logged; per-file coverage with the command; files at 100 and files short with the reason; sweep rows opened and rows marked SOLVED; one line per thing noticed outside the scope.
+Specs written or repaired by file; every no-flow bug fixed (file, line, change); every flow or decision handed back or logged; per-file coverage with the command; files at 100 and files short with the reason; sweep rows opened and rows deleted; one line per thing noticed outside the scope.
 
 ## Next
 

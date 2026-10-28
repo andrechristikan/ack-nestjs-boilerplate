@@ -74,7 +74,7 @@ The App Module is the root module. It:
 
 CommonModule registers shared infrastructure and the global feature modules. Its `imports` array holds three groups, in this order:
 
-- **Infrastructure:** `ConfigModule` (loading `src/configs/index.ts`), `MessageModule`, `LoggerModule`, `SentryModule` (which exports `SentryService`), `RedisCacheModule`, `QueueModule` (the BullMQ producer and processor connections), `CacheMainModule`, `DatabaseModule`, `RequestModule`, and `ResponseModule`
+- **Infrastructure:** `ConfigModule` (loading `src/configs/index.ts`), `MessageModule`, `LoggerModule`, `SentryModule` (which exports `SentryService`), `RedisCacheModule`, `QueueModule` (the BullMQ producer connection), `CacheMainModule`, `DatabaseModule`, `RequestModule`, and `ResponseModule`
 - **Shared utilities:** `HelperModule`, `PaginationModule`, `FileModule`, and `FirebaseModule`
 - **The `@Global()` feature domains:** `ActivityLogDomainModule`, `ApiKeyDomainModule`, `AuthDomainModule`, `FeatureFlagDomainModule`, `RoleDomainModule`, `PolicyDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, and `NotificationDomainModule`
 
@@ -109,8 +109,10 @@ MongoDB has no migration files. `pnpm db:migrate` (`prisma db push`) applies the
 
 It includes:
 
-- `migration.module.ts`: registers every seed command as a provider
+- `migration.module.ts`: registers every seed command as a provider and imports `CommonModule`, `AwsModule`, and `UserDomainModule` but no feature repository module
 - Subfolders for migration bases, data, enums, interfaces, and seeds
+
+A seed writes every model through `DatabaseService` directly, never through a feature repository, a writing domain method, or a queue.
 
 Seed commands:
 
@@ -134,7 +136,7 @@ Seed commands:
 
 The queues folder is the BullMQ framework layer. It includes:
 
-- `queue.module.ts`: `QueueModule.forRoot()` holds the two BullMQ root connections (producer and processor)
+- `queue.module.ts`: `QueueModule.forRoot()` holds the BullMQ producer root connection; each `@QueueProcessor` opens its own worker connection
 - Subfolders for queue bases, constants, decorators, enums, exceptions, interfaces
 
 Named queues:

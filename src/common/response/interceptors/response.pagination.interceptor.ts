@@ -23,7 +23,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import type {
     IPaginationOrderBy,
-    IPaginationQuery,
+    IPaginationQueryPatch,
 } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaginationShapeInvalidException } from '@common/response/exceptions/response.pagination-shape-invalid.exception';
 import { ResponsePaginationTypeInvalidException } from '@common/response/exceptions/response.pagination-type-invalid.exception';
@@ -179,7 +179,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                     }
 
                     const storedPagination =
-                        this.requestStoreService.get<Partial<IPaginationQuery>>(
+                        this.requestStoreService.get<IPaginationQueryPatch>(
                             PaginationStoreKey
                         );
                     const pagination = storedPagination ?? {};

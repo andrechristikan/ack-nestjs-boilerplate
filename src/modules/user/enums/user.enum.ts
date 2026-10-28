@@ -16,3 +16,11 @@ export enum EnumUserCreateMode {
     social = 'social',
     admin = 'admin',
 }
+
+/**
+ * Job names on the user queue.
+ * @public
+ */
+export enum EnumUserProcess {
+    deletePhoto = 'deletePhoto',
+}

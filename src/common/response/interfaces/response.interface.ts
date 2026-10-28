@@ -52,3 +52,5 @@ export type IResponseFileReturn = IResponseCsvReturn | IResponsePdfReturn;
 export interface IResponseFileInterceptorOptions {
     maxDataExportConfigKey?: string;
 }
+
+export type IResponseFileMediaTypes = Record<EnumFileExtensionDocument, string>;

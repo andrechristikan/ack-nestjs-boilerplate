@@ -411,7 +411,6 @@ describe('DeviceDomain', () => {
             const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -452,7 +451,6 @@ describe('DeviceDomain', () => {
             activityLogDomain.prepare.mockReturnValue({
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -485,7 +483,6 @@ describe('DeviceDomain', () => {
             activityLogDomain.prepare.mockReturnValue({
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -516,7 +513,6 @@ describe('DeviceDomain', () => {
             activityLogDomain.prepare.mockReturnValue({
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -536,7 +532,6 @@ describe('DeviceDomain', () => {
             activityLogDomain.prepare.mockReturnValue({
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -584,7 +579,6 @@ describe('DeviceDomain', () => {
             const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userRemoveDevice,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -707,7 +701,6 @@ describe('DeviceDomain', () => {
             const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminDeviceRemove,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -764,7 +757,6 @@ describe('DeviceDomain', () => {
             const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminDeviceRemove,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -772,7 +764,6 @@ describe('DeviceDomain', () => {
             const targetActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                 metadata: {},
-                onError: false,
                 userId: 'user-1',
                 createdBy: 'admin-1',
                 workspaceId: null,

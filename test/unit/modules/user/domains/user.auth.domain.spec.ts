@@ -20,7 +20,7 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
-import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
+import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -57,8 +57,8 @@ describe('UserAuthDomain', () => {
     const userLoginDomain: MockProxy<UserLoginDomain> = mock<UserLoginDomain>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
-    const featureFlagCache: MockProxy<FeatureFlagCache> =
-        mock<FeatureFlagCache>();
+    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
+        mock<FeatureFlagDomain>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
@@ -174,7 +174,7 @@ describe('UserAuthDomain', () => {
                 },
                 { provide: UserLoginDomain, useValue: userLoginDomain },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
-                { provide: FeatureFlagCache, useValue: featureFlagCache },
+                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 {
@@ -386,7 +386,7 @@ describe('UserAuthDomain', () => {
         };
 
         it('returns null when the user already exists', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
@@ -407,7 +407,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('returns null when sign-up is disabled by the feature flag', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: false,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
@@ -423,7 +423,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('returns null when the feature flag metadata is absent', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue(null);
+            featureFlagDomain.getMetadataByKey.mockResolvedValue(null);
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
             await expect(
@@ -434,13 +434,13 @@ describe('UserAuthDomain', () => {
                     workspaceContext
                 )
             ).resolves.toBeNull();
-            expect(
-                featureFlagCache.getMetadataByKeyAndCache
-            ).toHaveBeenCalledWith('loginWithApple');
+            expect(featureFlagDomain.getMetadataByKey).toHaveBeenCalledWith(
+                'loginWithApple'
+            );
         });
 
         it('prepares a Google social create input', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
@@ -482,7 +482,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('prepares an Apple social create input with no optional term policy accepted', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
@@ -513,7 +513,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('defaults name to null and accepts marketing when no name is given', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
@@ -542,7 +542,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('throws RoleNotFoundException when the default role is missing', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
@@ -565,7 +565,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('throws UserUsernameNotAllowedException when the username breaks the pattern', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
@@ -597,7 +597,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('throws UserUsernameContainBadWordException when the username is profane', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
@@ -629,7 +629,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('throws UserUsernameExistException when the username is taken', async () => {
-            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
@@ -980,15 +980,18 @@ describe('UserAuthDomain', () => {
             helperDateService.formatToIso.mockReturnValue(
                 '2026-03-05T00:00:00.000Z'
             );
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
+            notificationRecipientDomain.buildNewUserRecipient.mockReturnValue(
                 recipient
             );
 
             await domain.notifyWelcome(recipientUser, emailVerification);
 
             expect(
-                notificationRecipientDomain.getRecipient
+                notificationRecipientDomain.buildNewUserRecipient
             ).toHaveBeenCalledWith(recipientUser, EnumNotificationKind.welcome);
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).not.toHaveBeenCalled();
             expect(notificationQueue.sendWelcome).toHaveBeenCalledWith(
                 recipient,
                 {
@@ -1013,18 +1016,21 @@ describe('UserAuthDomain', () => {
         };
 
         it('enqueues the social welcome for the user', async () => {
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
+            notificationRecipientDomain.buildNewUserRecipient.mockReturnValue(
                 recipient
             );
 
             await domain.notifyWelcomeSocial(recipientUser);
 
             expect(
-                notificationRecipientDomain.getRecipient
+                notificationRecipientDomain.buildNewUserRecipient
             ).toHaveBeenCalledWith(
                 recipientUser,
                 EnumNotificationKind.welcomeSocial
             );
+            expect(
+                notificationRecipientDomain.getRecipient
+            ).not.toHaveBeenCalled();
             expect(notificationQueue.sendWelcomeSocial).toHaveBeenCalledWith(
                 recipient
             );

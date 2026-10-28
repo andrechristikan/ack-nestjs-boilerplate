@@ -1,4 +1,7 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -20,11 +23,12 @@ import type {
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import type {
     INotificationRecipient,
-    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceInvitePushPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -48,6 +52,7 @@ import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exce
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
 import type {
     IWorkspaceInviteCreate,
+    IWorkspaceInviteInvitee,
     IWorkspaceInviteList,
     IWorkspaceInviteNotificationTarget,
     IWorkspaceInvitePreview,
@@ -168,28 +173,58 @@ export class WorkspaceInviteDomain {
         );
     }
 
-    private async getInviteeRecipientByEmail(
-        email: string
-    ): Promise<INotificationRecipient | null> {
-        const existingUser = await this.userDomain.getOneActiveByEmail(email);
+    private async getInviterName(
+        workspace: Workspace,
+        actorId: string
+    ): Promise<string> {
+        const inviter = await this.userDomain.getNameById(actorId);
 
-        return this.getInviteeRecipient(existingUser);
+        return inviter?.name ?? inviter?.username ?? workspace.name;
     }
 
-    private async getNotificationTarget(
-        workspace: Workspace,
-        actorId: string,
-        recipient: Promise<INotificationRecipient | null>
-    ): Promise<IWorkspaceInviteNotificationTarget> {
-        const [inviter, inviteeRecipient] = await Promise.all([
-            this.userDomain.getNameById(actorId),
-            recipient,
-        ]);
+    private async getInviteeByEmail(
+        email: string
+    ): Promise<IWorkspaceInviteInvitee> {
+        const existingUser = await this.userDomain.getOneActiveByEmail(email);
+        const recipient = await this.getInviteeRecipient(existingUser);
 
-        return {
-            inviterName: inviter?.name ?? inviter?.username ?? workspace.name,
-            recipient: inviteeRecipient,
-        };
+        return { existingUser, recipient };
+    }
+
+    private prepareInviteActivityLogs(
+        action: EnumActivityLogAction,
+        byAdminAction: EnumActivityLogAction,
+        workspaceId: string,
+        actorId: string,
+        workspaceInviteId: string,
+        existingUser: User | null
+    ): IActivityLogStaged[] {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId,
+                metadata: existingUser
+                    ? {
+                          workspaceInviteId,
+                          targetUserId: existingUser.id,
+                      }
+                    : { workspaceInviteId },
+            }),
+        ];
+        if (existingUser && existingUser.id !== actorId) {
+            const byAdminActivityLog = this.activityLogDomain.prepare({
+                action: byAdminAction,
+                userId: existingUser.id,
+                createdBy: actorId,
+                workspaceId,
+                metadata: { actorUserId: actorId },
+            });
+            activityLogs.push(byAdminActivityLog);
+        }
+
+        return activityLogs;
     }
 
     private async sendInviteNotification(
@@ -200,10 +235,7 @@ export class WorkspaceInviteDomain {
         { inviterName, recipient }: IWorkspaceInviteNotificationTarget
     ): Promise<void> {
         const expiredAt = this.helperDateService.formatToIso(invite.expiredAt);
-        const payloadBase: Omit<
-            INotificationWorkspaceInvitePayload,
-            'inviteAcceptLink'
-        > = {
+        const payloadBase: INotificationWorkspaceInvitePushPayload = {
             workspaceId: invite.workspaceId,
             workspaceName: workspace.name,
             inviterName,
@@ -226,6 +258,68 @@ export class WorkspaceInviteDomain {
             invite.email,
             { ...payloadBase, inviteAcceptLink: tokenData.signUpLink }
         );
+    }
+
+    private async acceptPendingInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceInviteId: string,
+        userId: string,
+        acceptedAt: Date
+    ): Promise<void> {
+        try {
+            const accepted = await this.workspaceInviteRepository.acceptInTx(
+                tx,
+                workspaceInviteId,
+                userId,
+                acceptedAt
+            );
+            if (!accepted) {
+                throw new WorkspaceInviteAlreadyProcessedException();
+            }
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceInviteAlreadyProcessedException();
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    private async rotateForResend(
+        workspaceInviteId: string,
+        hashedToken: string,
+        reference: string,
+        expiredAt: Date
+    ): Promise<WorkspaceInvite> {
+        try {
+            const invite = await this.workspaceInviteRepository.rotateForResend(
+                workspaceInviteId,
+                hashedToken,
+                reference,
+                expiredAt
+            );
+            if (!invite) {
+                throw new WorkspaceInviteAlreadyProcessedException();
+            }
+
+            return invite;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceInviteAlreadyProcessedException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 
     async validateInviteToken(token: string): Promise<WorkspaceInvite> {
@@ -338,39 +432,20 @@ export class WorkspaceInviteDomain {
         const tokenData = this.createInviteTokenData(create.expiryDuration);
 
         const workspaceInviteId = this.databaseUtil.createId();
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: workspace.id,
-                metadata: existingUser
-                    ? {
-                          workspaceInviteId,
-                          targetUserId: existingUser.id,
-                      }
-                    : { workspaceInviteId },
-            }),
-        ];
-        if (existingUser && existingUser.id !== actorId) {
-            const workspaceInviteCreatedByAdminActivityLog =
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
-                    userId: existingUser.id,
-                    createdBy: actorId,
-                    workspaceId: workspace.id,
-                    metadata: { actorUserId: actorId },
-                });
-            activityLogs.push(workspaceInviteCreatedByAdminActivityLog);
-        }
-
-        const inviteeRecipient = this.getInviteeRecipient(existingUser);
-        // Sequential by design: write must not run if an earlier step throws
-        const target = await this.getNotificationTarget(
-            workspace,
+        const activityLogs = this.prepareInviteActivityLogs(
+            EnumActivityLogAction.workspaceInviteCreated,
+            EnumActivityLogAction.workspaceInviteCreatedByAdmin,
+            workspace.id,
             actorId,
-            inviteeRecipient
+            workspaceInviteId,
+            existingUser
         );
+
+        // Sequential by design: write must not run if an earlier step throws
+        const [inviterName, recipient] = await Promise.all([
+            this.getInviterName(workspace, actorId),
+            this.getInviteeRecipient(existingUser),
+        ]);
         const invite = await this.workspaceInviteRepository.createPending({
             workspaceInviteId,
             workspaceId: workspace.id,
@@ -391,7 +466,7 @@ export class WorkspaceInviteDomain {
             invite,
             tokenData,
             actorId,
-            target
+            { inviterName, recipient }
         );
 
         return invite;
@@ -419,28 +494,36 @@ export class WorkspaceInviteDomain {
 
         const tokenData = this.createInviteTokenData(expiryDuration);
 
-        const inviteeRecipient = this.getInviteeRecipientByEmail(
-            existing.email
-        );
-        // Sequential by design: write must not run if an earlier step throws
-        const target = await this.getNotificationTarget(
-            workspace,
+        const [inviterName, { existingUser, recipient }] = await Promise.all([
+            this.getInviterName(workspace, actorId),
+            this.getInviteeByEmail(existing.email),
+        ]);
+
+        const activityLogs = this.prepareInviteActivityLogs(
+            EnumActivityLogAction.workspaceInviteResent,
+            EnumActivityLogAction.workspaceInviteResentByAdmin,
+            workspace.id,
             actorId,
-            inviteeRecipient
+            workspaceInviteId,
+            existingUser
         );
-        const invite = await this.workspaceInviteRepository.rotateForResend(
+
+        // Sequential by design: write must not run if an earlier step throws
+        const invite = await this.rotateForResend(
             workspaceInviteId,
             tokenData.hashedToken,
             tokenData.reference,
             tokenData.expiredAt
         );
 
+        this.activityLogDomain.stagePrepared(activityLogs);
+
         await this.sendInviteNotification(
             workspace,
             invite,
             tokenData,
             actorId,
-            target
+            { inviterName, recipient }
         );
 
         return invite;
@@ -495,7 +578,11 @@ export class WorkspaceInviteDomain {
             activityLogs.push(workspaceInviteRevokedByAdminActivityLog);
         }
 
-        await this.workspaceInviteRepository.revoke(workspaceInviteId);
+        const revoked =
+            await this.workspaceInviteRepository.revoke(workspaceInviteId);
+        if (!revoked) {
+            throw new WorkspaceInviteAlreadyProcessedException();
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
     }
@@ -514,7 +601,7 @@ export class WorkspaceInviteDomain {
             context.workspaceMemberRole,
             userId
         );
-        await this.workspaceInviteRepository.acceptInTx(
+        await this.acceptPendingInTx(
             tx,
             context.workspaceInviteId,
             userId,
@@ -583,12 +670,7 @@ export class WorkspaceInviteDomain {
                 invite.workspaceRole,
                 userId
             );
-            await this.workspaceInviteRepository.acceptInTx(
-                tx,
-                invite.id,
-                userId,
-                today
-            );
+            await this.acceptPendingInTx(tx, invite.id, userId, today);
             await this.userDomain.setLastWorkspaceInTx(
                 tx,
                 userId,

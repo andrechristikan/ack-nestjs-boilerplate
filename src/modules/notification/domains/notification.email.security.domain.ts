@@ -3,6 +3,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
+    INotificationEmailResult,
     INotificationEmailSendEncryptedPayload,
     INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
@@ -12,7 +13,7 @@ import { HelperEncryptionService } from '@common/helper/services/helper.encrypti
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { flatten } from 'flat';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { MessageService } from '@common/message/services/message.service';
 
 /** Renders and sends the password, two-factor and new-device login emails. */
 @Injectable()
@@ -31,7 +32,8 @@ export class NotificationEmailSecurityDomain {
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
-        private readonly helperEncryptionService: HelperEncryptionService
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly messageService: MessageService
     ) {
         // AppEnvSchema requires both addresses once AWS SES credentials are set, and
         // AwsSESService.send is a no-op while SES is uninitialized, so neither is read as null.
@@ -73,7 +75,7 @@ export class NotificationEmailSecurityDomain {
             passwordExpiredAt,
             passwordCreatedAt,
         }: INotificationTemporaryPasswordEncryptedPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const password = this.helperEncryptionService.aes256Decrypt(
             encryptedPassword,
@@ -105,7 +107,11 @@ export class NotificationEmailSecurityDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
-        return { message: 'Temporary password email processed', result };
+        const message = this.messageService.setMessage(
+            'notification.queue.email.temporaryPasswordByAdmin'
+        );
+
+        return { message, result };
     }
 
     async processChangePassword({
@@ -114,7 +120,7 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
         userId,
-    }: INotificationEmailSendEncryptedPayload): Promise<IQueueResponse> {
+    }: INotificationEmailSendEncryptedPayload): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.changePassword,
@@ -128,7 +134,11 @@ export class NotificationEmailSecurityDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
-        return { message: 'Change password email processed', result };
+        const message = this.messageService.setMessage(
+            'notification.queue.email.changePassword'
+        );
+
+        return { message, result };
     }
 
     async processResetPassword({
@@ -137,7 +147,7 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
         userId,
-    }: INotificationEmailSendEncryptedPayload): Promise<IQueueResponse> {
+    }: INotificationEmailSendEncryptedPayload): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.resetPassword,
@@ -151,7 +161,11 @@ export class NotificationEmailSecurityDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
-        return { message: 'Reset password email processed', result };
+        const message = this.messageService.setMessage(
+            'notification.queue.email.resetPassword'
+        );
+
+        return { message, result };
     }
 
     async processForgotPassword(
@@ -168,7 +182,7 @@ export class NotificationEmailSecurityDomain {
             reference,
             expiredInMinutes,
         }: INotificationForgotPasswordEncryptedPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const link = this.helperEncryptionService.aes256Decrypt(
             encryptedLink,
@@ -196,7 +210,11 @@ export class NotificationEmailSecurityDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
-        return { message: 'Forgot password email processed', result };
+        const message = this.messageService.setMessage(
+            'notification.queue.email.forgotPassword'
+        );
+
+        return { message, result };
     }
 
     async processResetTwoFactorByAdmin({
@@ -205,7 +223,7 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
         userId,
-    }: INotificationEmailSendEncryptedPayload): Promise<IQueueResponse> {
+    }: INotificationEmailSendEncryptedPayload): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
@@ -219,8 +237,12 @@ export class NotificationEmailSecurityDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
+        const message = this.messageService.setMessage(
+            'notification.queue.email.resetTwoFactorByAdmin'
+        );
+
         return {
-            message: 'Reset two factor by admin email processed',
+            message,
             result,
         };
     }
@@ -239,7 +261,7 @@ export class NotificationEmailSecurityDomain {
             loginAt,
             requestLog: { userAgent, ipAddress },
         }: INotificationNewDeviceLoginPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
         const loginAtDate = this.helperDateService.createFromIso(loginAt);
         const loginAtFormatted =
@@ -261,6 +283,10 @@ export class NotificationEmailSecurityDomain {
             ...(bcc.length > 0 && { bcc }),
         });
 
-        return { message: 'New device login email processed', result };
+        const message = this.messageService.setMessage(
+            'notification.queue.email.newDeviceLogin'
+        );
+
+        return { message, result };
     }
 }

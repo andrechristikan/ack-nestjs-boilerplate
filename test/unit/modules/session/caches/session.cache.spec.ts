@@ -9,20 +9,13 @@ import type KeyvRedis from '@keyv/redis';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
-import {
-    SessionCacheProvider,
-    SessionCachePurgeScanCount,
-} from '@modules/session/constants/session.constant';
+import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import type { ISessionCache } from '@modules/session/interfaces/session.interface';
-import { iterateBatches } from '@test/unit/helpers/test.unit.redis.helper';
 
 type RedisClientConnection = Awaited<
     ReturnType<KeyvRedis<string>['getClient']>
 >;
-type RedisMasterNode = Awaited<
-    ReturnType<KeyvRedis<string>['getMasterNodes']>
->[number];
 
 interface IStubRedisClient {
     set: (
@@ -30,8 +23,6 @@ interface IStubRedisClient {
         value: string,
         options: unknown
     ) => Promise<string | null>;
-    scanIterator: (options: unknown) => AsyncIterable<string[]>;
-    unlink: (keys: string[]) => Promise<number>;
 }
 
 describe('SessionCache', () => {
@@ -70,7 +61,7 @@ describe('SessionCache', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionCache,
-                { provide: SessionCacheProvider, useValue: cacheManager },
+                { provide: CacheMainProvider, useValue: cacheManager },
                 { provide: RedisClientCachedProvider, useValue: keyv },
                 { provide: ConfigService, useValue: configService },
                 {
@@ -236,70 +227,9 @@ describe('SessionCache', () => {
         });
     });
 
-    describe('deleteLoginsByUser', () => {
-        it('unlinks every non-empty scanned batch across every master node', async () => {
-            store.createKeyPrefix.mockReturnValue('prefix-match');
-            store.namespace = 'session';
-            const client: MockProxy<IStubRedisClient> =
-                mock<IStubRedisClient>();
-            client.scanIterator.mockReturnValue(
-                iterateBatches([['key-1', 'key-2'], []])
-            );
-            store.getMasterNodes.mockResolvedValue([
-                client as unknown as RedisMasterNode,
-            ]);
-
-            await cache.deleteLoginsByUser('user-1');
-
-            expect(store.createKeyPrefix).toHaveBeenCalledWith(
-                'user-1:*',
-                'session'
-            );
-            expect(client.scanIterator).toHaveBeenCalledWith({
-                MATCH: 'prefix-match',
-                COUNT: SessionCachePurgeScanCount,
-                TYPE: 'string',
-            });
-            expect(client.unlink).toHaveBeenCalledTimes(1);
-            expect(client.unlink).toHaveBeenCalledWith(['key-1', 'key-2']);
-        });
-
-        it('unlinks matching keys on every master node', async () => {
-            store.createKeyPrefix.mockReturnValue('prefix-match');
-            const first: MockProxy<IStubRedisClient> = mock<IStubRedisClient>();
-            const second: MockProxy<IStubRedisClient> =
-                mock<IStubRedisClient>();
-            first.scanIterator.mockReturnValue(iterateBatches([['key-1']]));
-            second.scanIterator.mockReturnValue(iterateBatches([['key-2']]));
-            store.getMasterNodes.mockResolvedValue([
-                first as unknown as RedisMasterNode,
-                second as unknown as RedisMasterNode,
-            ]);
-
-            await cache.deleteLoginsByUser('user-1');
-
-            expect(first.unlink).toHaveBeenCalledWith(['key-1']);
-            expect(second.unlink).toHaveBeenCalledWith(['key-2']);
-        });
-
-        it('scans no keys when the user has no cached logins', async () => {
-            store.createKeyPrefix.mockReturnValue('prefix-match');
-            const client: MockProxy<IStubRedisClient> =
-                mock<IStubRedisClient>();
-            client.scanIterator.mockReturnValue(iterateBatches([[]]));
-            store.getMasterNodes.mockResolvedValue([
-                client as unknown as RedisMasterNode,
-            ]);
-
-            await cache.deleteLoginsByUser('user-1');
-
-            expect(client.unlink).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('buildKey', () => {
+    describe('buildLoginKey', () => {
         it('fills the configured key pattern with the user and session ids', () => {
-            const result = cache['buildKey']('user-1', 'session-1');
+            const result = cache['buildLoginKey']('user-1', 'session-1');
 
             expect(result).toBe('user-1:session-1');
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(

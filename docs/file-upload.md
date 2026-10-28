@@ -23,6 +23,7 @@ Two upload transports:
 - [Third Party Integration][ref-doc-third-party]: S3 credentials, the unconfigured state, bucket setup
 - [Environment Documentation][ref-doc-environment]: `AWS_S3_*` variables
 - [Term Policy Documentation][ref-doc-term-policy]: Admin content GET and content upload that use presign
+- [Queue Documentation][ref-doc-queue]: The `user` queue that deletes a replaced profile photo
 
 ## Table of Contents
 
@@ -52,6 +53,7 @@ Two upload transports:
     - [Configuration Options](#configuration-options)
     - [Response Structure](#response-structure)
     - [Flow Diagram](#flow-diagram)
+    - [Replaced photo cleanup](#replaced-photo-cleanup)
     - [Term Policy Content Presign](#term-policy-content-presign)
     - [Multipart Part Presign](#multipart-part-presign)
 
@@ -354,7 +356,7 @@ async uploadPhotoProfile(
 }
 ```
 
-`UserProfileDomain.uploadPhotoProfile` derives the extension, builds the key, and writes the object:
+`UserProfileDomain.uploadPhotoProfile` derives the extension, builds the key, then loads the user and writes the object in parallel:
 
 ```typescript
 const extension: EnumFileExtensionImage =
@@ -366,14 +368,17 @@ const key: string = this.createRandomFilenamePhotoProfileWithPath(userId, {
     extension,
 });
 
-const aws: IAwsS3 | null = await this.awsS3Service.putItem(
-    {
-        key,
-        size: file.size,
-        file: file.buffer,
-    },
-    { access: EnumAwsS3Accessibility.public }
-);
+const [user, aws] = await Promise.all([
+    this.userRepository.findOneById(userId),
+    this.awsS3Service.putItem(
+        {
+            key,
+            size: file.size,
+            file: file.buffer,
+        },
+        { access: EnumAwsS3Accessibility.public }
+    ),
+]);
 ```
 
 - `options.access` is a required argument on every `AwsS3Service` method that reaches a bucket.
@@ -386,7 +391,10 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 - otherwise the domain:
     1. prepares `userUpdatePhotoProfile`
     2. stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction)
-    3. stages the activity log
+    3. enqueues the delete of the previous photo (see [Replaced photo cleanup](#replaced-photo-cleanup))
+    4. stages the activity log
+
+A missing user answers `UserNotFoundException`. Because the object and the user load run in parallel, the new object stays in S3 when the user is missing.
 
 **Multiple Files Upload:**
 
@@ -657,7 +665,8 @@ async presignGetItem(
 2. Backend generates a unique S3 key and time-limited presigned URL
 3. Client uploads the file **directly to S3** using the presigned URL via HTTP PUT
 4. Client notifies the backend of successful upload with the S3 key
-5. Backend saves file reference to database with audit trail
+5. Backend rejects a key outside the user's own profile photo path, then saves the file reference to the database with audit trail
+6. Backend enqueues the delete of the replaced photo
 
 > [!NOTE] **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). A call overrides it via the `expiredInSeconds` option.
 
@@ -789,11 +798,21 @@ export class UserProfileDomain {
             throw new AwsS3NotConfiguredException();
         }
 
+        const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, key);
+        if (!isOwned) {
+            throw new UserPhotoKeyInvalidException();
+        }
+
         try {
             const aws: IAwsS3 = this.awsS3Service.mapPresign(
                 { key, size },
                 { access: EnumAwsS3Accessibility.public }
             );
+
+            const user = await this.userRepository.findOneById(userId);
+            if (!user) {
+                throw new UserNotFoundException();
+            }
 
             const activityLogs = [
                 this.activityLogDomain.prepare({
@@ -802,6 +821,7 @@ export class UserProfileDomain {
             ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
+            await this.deletePreviousPhoto(userId, user.photo, aws.key);
             this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
@@ -825,6 +845,13 @@ S3 not configured:
 
 - `presignPutItem` returns `null`, and the domain converts that into `AwsS3NotConfiguredException` (404, `51406`).
 - `updatePhotoProfile` checks `AwsS3Service.isInitialized()` first and throws the same exception, since `mapPresign` builds the reference without calling S3.
+
+Key ownership:
+
+- `updatePhotoProfile` takes the `key` from the request body, so it checks the key before it stores anything.
+- `UserUtil.isPhotoProfileKeyOwned(userId, key)` is true only when the key starts with the user's own profile photo path (`user.uploadPhotoProfilePath` with `{userId}` filled) followed by `/`.
+- A key outside that path throws `UserPhotoKeyInvalidException` (400, `51028`, `user.error.photoKeyInvalid`). Nothing is written and nothing is enqueued.
+- The check runs after the S3 configuration check and before the user is loaded.
 
 `createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileDomain`:
 
@@ -928,6 +955,7 @@ sequenceDiagram
     participant AwsS3Service
     participant S3 as AWS S3
     participant Repository as Database
+    participant Queue as user queue
 
     Client->>Backend: POST /profile/photo/presign/generate<br/>{extension, size}
     Backend->>UserProfileDomain: createRandomFilenamePhotoProfileWithPath()
@@ -954,7 +982,9 @@ sequenceDiagram
         Backend->>Repository: updatePhotoProfile(userId, aws)
         Repository->>Repository: Save S3 reference + audit trail (request log read from store)
         Repository-->>Backend: Success
+        Backend->>Queue: user queue deletePhoto (previous photo, when one exists)
         Backend-->>Client: 200 OK
+        Queue->>S3: delete previous object
 
         Note over Client,Repository: Upload Complete
     else Upload failed
@@ -983,10 +1013,28 @@ sequenceDiagram
 
 3. **Database Update Stage:**
     - Client notifies backend with S3 key and file size
+    - `UserProfileDomain` rejects a key outside the user's own profile photo path with `UserPhotoKeyInvalidException` (400, `51028`)
     - Backend maps presign data to `IAwsS3`
     - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
-    - After the update the activity log is staged.
+    - After the update the delete of the previous photo is enqueued, then the activity log is staged.
     - `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
+
+### Replaced photo cleanup
+
+Both profile photo routes (`POST /shared/user/profile/photo/upload` and `PUT /shared/user/profile/photo/update`) delete the photo they replace.
+
+1. `UserProfileDomain.deletePreviousPhoto` runs after the `User.photo` update.
+2. It enqueues nothing when the user had no photo, when the previous key equals the new key, or when the previous key is not under the user's own profile path (`user.uploadPhotoProfilePath` with `{userId}` filled, followed by `/`).
+3. Otherwise `UserQueue.deletePhoto` adds a `deletePhoto` job to the `user` queue with the user id, the previous key, and its stored `access`.
+4. `UserProcessor` runs the job, and `UserProcessorService.processDeletePhoto` calls `UserProfileDomain.deletePhotoObject`, which calls `AwsS3Service.deleteItem` with that key and access.
+
+- The job is a side effect of a committed write: `UserQueue.deletePhoto` enqueues through `QueueBase.addSideEffect`, so a failed enqueue is logged and reported to Sentry and the request still succeeds.
+- A stored `access` that names no S3 bucket fails the job as fatal, with no retry.
+- The path check keeps the cleanup from deleting an object another feature owns.
+- Self account deletion (`DELETE /user/user/self/delete`) enqueues the same `deletePhoto` job for the deleted user's photo through `UserQueue.deletePhoto`.
+    - `UserDomain.deleteSelf` enqueues it after the transaction commits, alongside the session cache purge, and only when the deleted user has a photo whose key sits under the user's own profile photo path (`UserUtil.isPhotoProfileKeyOwned`).
+    - The job carries the stored key and `access` of the photo being removed.
+- Queue settings for the `user` queue are in [Queue Documentation][ref-doc-queue].
 
 ### Term Policy Content Presign
 
@@ -1047,3 +1095,4 @@ async generate(
 [ref-doc-third-party]: third-party-integration.md
 [ref-doc-environment]: environment.md
 [ref-doc-term-policy]: term-policy.md
+[ref-doc-queue]: queue.md

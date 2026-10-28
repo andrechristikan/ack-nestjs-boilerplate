@@ -37,7 +37,7 @@ This page is the human catalog.
 | `50700` | `api-key`      | `50700`–`50707` | 8       |
 | `50800` | `auth`         | `50800`–`50820` | 21      |
 | `50900` | `country`      | `50900`–`50902` | 3       |
-| `51000` | `user`         | `51000`–`51027` | 28      |
+| `51000` | `user`         | `51000`–`51028` | 29      |
 | `51100` | `policy`       | `51100`–`51103` | 4       |
 | `51200` | `notification` | `51200`–`51203` | 4       |
 | `51300` | `device`       | `51300`         | 1       |
@@ -268,9 +268,11 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `importEmailExist` | `51025` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
 | `importUsernameExist` | `51026` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
 | `guardMissing` | `51027` | `guardMissing` | 401 (`UNAUTHORIZED`) | `user.error.guardMissing` | Your account could not be verified. Please sign in again. |
+| `photoKeyInvalid` | `51028` | `photoKeyInvalid` | 400 (`BAD_REQUEST`) | `user.error.photoKeyInvalid` | This photo does not belong to your profile. |
 
 - `accountNotFound` is raised by `UserDomain.validateUserGuard` when a valid token names a user whose row no longer exists.
 - `guardMissing` is raised by the role, policy, term-policy, workspace-member, and project-member guards, and by `@UserCurrent()` and `@RoleCurrent()`, when `UserGuard` stored no user.
+- `photoKeyInvalid` is raised by `UserProfileDomain.updatePhotoProfile` when the submitted key is not under the user's own profile photo path (`UserUtil.isPhotoProfileKeyOwned`). See [File Upload](file-upload.md#presign-upload).
 
 ## `policy`
 

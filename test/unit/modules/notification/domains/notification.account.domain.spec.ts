@@ -18,8 +18,10 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationAccountDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
     const helperStringService: MockProxy<HelperStringService> =
@@ -62,9 +64,11 @@ describe('NotificationAccountDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         notificationRepository.createMany.mockResolvedValue([notification]);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationAccountDomain,
                 NotificationUtil,
                 {
@@ -117,7 +121,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendWelcomeByAdmin
             ).toHaveBeenCalledWith(emailPayload, data);
             expect(result).toEqual({
-                message: 'Welcome by admin notification processed',
+                message: 'notification.queue.welcomeByAdmin',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -164,7 +168,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendWelcomeByAdmin
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Welcome by admin notification processed',
+                message: 'notification.queue.welcomeByAdmin',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -231,7 +235,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendWelcomeByAdmin
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Welcome by admin notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -257,8 +261,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendWelcomeByAdmin
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Welcome by admin notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -393,7 +396,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerificationEmail
             ).toHaveBeenCalledWith(verificationEmailPayload, data);
             expect(result).toEqual({
-                message: 'Welcome notification processed',
+                message: 'notification.queue.welcome',
                 completedSteps: allSteps,
                 failedSteps: [],
             });
@@ -503,7 +506,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerificationEmail
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Welcome notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -663,7 +666,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendWelcomeSocial
             ).toHaveBeenCalledWith(emailPayload);
             expect(result).toEqual({
-                message: 'Welcome social notification processed',
+                message: 'notification.queue.welcomeSocial',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -706,7 +709,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendWelcomeSocial
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Welcome social notification processed',
+                message: 'notification.queue.welcomeSocial',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -767,7 +770,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendWelcomeSocial
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Welcome social notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -791,8 +794,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendWelcomeSocial
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Welcome social notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -888,7 +890,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerifiedEmail
             ).toHaveBeenCalledWith(emailPayload, data);
             expect(result).toEqual({
-                message: 'Verified email notification processed',
+                message: 'notification.queue.verifiedEmail',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -933,7 +935,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerifiedEmail
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Verified email notification processed',
+                message: 'notification.queue.verifiedEmail',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -997,7 +999,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerifiedEmail
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Verified email notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -1022,8 +1024,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerifiedEmail
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Verified email notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -1127,7 +1128,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerificationEmail
             ).toHaveBeenCalledWith(emailPayload, data);
             expect(result).toEqual({
-                message: 'Verification email notification processed',
+                message: 'notification.queue.verificationEmail',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendVerificationEmail,
@@ -1172,7 +1173,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerificationEmail
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Verification email notification processed',
+                message: 'notification.queue.verificationEmail',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendVerificationEmail,
@@ -1239,7 +1240,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerificationEmail
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Verification email notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -1264,8 +1265,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerificationEmail
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Verification email notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -1375,7 +1375,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerifiedMobileNumber
             ).toHaveBeenCalledWith(emailPayload, data);
             expect(result).toEqual({
-                message: 'Mobile number verified notification processed',
+                message: 'notification.queue.verifiedMobileNumber',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -1420,7 +1420,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerifiedMobileNumber
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Mobile number verified notification processed',
+                message: 'notification.queue.verifiedMobileNumber',
                 completedSteps: [
                     EnumNotificationStep.createNotification,
                     EnumNotificationStep.sendEmail,
@@ -1484,7 +1484,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerifiedMobileNumber
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Mobile number verified notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {
@@ -1509,8 +1509,7 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerifiedMobileNumber
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'Verified mobile number notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });

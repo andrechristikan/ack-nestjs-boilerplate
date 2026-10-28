@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -11,7 +10,11 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { Country, TwoFactor } from '@generated/prisma-client/client';
+import type {
+    Country,
+    TwoFactor,
+    UserPhoto,
+} from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type {
@@ -29,9 +32,11 @@ import { CountryDomain } from '@modules/country/domains/country.domain';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
@@ -44,17 +49,13 @@ describe('UserProfileDomain', () => {
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
 
     let domain: UserProfileDomain;
 
     const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userUpdateProfile,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -143,11 +144,28 @@ describe('UserProfileDomain', () => {
         country,
     };
 
+    const previousPhoto: UserPhoto = {
+        bucket: 'bucket',
+        key: 'photo-profile/user-persimmon/previous.png',
+        cdnUrl: null,
+        completedUrl: 'https://cdn.example.com/previous.png',
+        mime: 'image/png',
+        extension: 'png',
+        access: 'public',
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        configGet.mockImplementation(() => 'photo-profile/{userId}');
+        userUtil.buildPhotoProfilePath.mockImplementation(
+            userId => `photo-profile/${userId}`
+        );
+        userUtil.isPhotoProfileKeyOwned.mockImplementation((userId, key) =>
+            key.startsWith(`photo-profile/${userId}/`)
+        );
         activityLogDomain.prepare.mockReturnValue(activityLog);
+        userRepository.findOneById.mockResolvedValue(profile);
+        userQueue.deletePhoto.mockResolvedValue();
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -158,7 +176,7 @@ describe('UserProfileDomain', () => {
                 { provide: UserUtil, useValue: userUtil },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
-                { provide: ConfigService, useValue: configService },
+                { provide: UserQueue, useValue: userQueue },
             ],
         }).compile();
         domain = module.get(UserProfileDomain);
@@ -360,6 +378,143 @@ describe('UserProfileDomain', () => {
             ]);
         });
 
+        it('enqueues the previous photo delete after the write when a different photo exists', async () => {
+            awsS3Service.isInitialized.mockReturnValue(true);
+            awsS3Service.mapPresign.mockReturnValue(aws);
+            const calls: string[] = [];
+            userRepository.findOneById.mockResolvedValue({
+                ...profile,
+                photo: previousPhoto,
+            });
+            userRepository.updatePhotoProfile.mockImplementation(async () => {
+                calls.push('write');
+
+                return profile;
+            });
+            userQueue.deletePhoto.mockImplementation(async () => {
+                calls.push('enqueue');
+            });
+
+            await domain.updatePhotoProfile(profile.id, {
+                key: aws.key,
+                size: aws.size,
+            });
+
+            expect(userQueue.deletePhoto).toHaveBeenCalledWith(
+                profile.id,
+                previousPhoto
+            );
+            expect(calls).toEqual(['write', 'enqueue']);
+        });
+
+        it.each([
+            'photo-profile/user-other/random.png',
+            'photo-profile/user-persimmon-sibling/random.png',
+            'term-policies/privacy/1/en.pdf',
+        ])(
+            'throws UserPhotoKeyInvalidException and writes nothing when the key %s is outside the user photo path',
+            async foreignKey => {
+                awsS3Service.isInitialized.mockReturnValue(true);
+                awsS3Service.mapPresign.mockReturnValue({
+                    ...aws,
+                    key: foreignKey,
+                });
+
+                const call = domain.updatePhotoProfile(profile.id, {
+                    key: foreignKey,
+                    size: aws.size,
+                });
+
+                await expect(call).rejects.toBeInstanceOf(
+                    UserPhotoKeyInvalidException
+                );
+                await expect(call).rejects.toMatchObject({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.photoKeyInvalid,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.photoKeyInvalid
+                        ],
+                    messagePath: 'user.error.photoKeyInvalid',
+                    httpStatus: 400,
+                });
+                expect(
+                    userRepository.updatePhotoProfile
+                ).not.toHaveBeenCalled();
+                expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+            }
+        );
+
+        it('enqueues nothing when the user has no previous photo', async () => {
+            awsS3Service.isInitialized.mockReturnValue(true);
+            awsS3Service.mapPresign.mockReturnValue(aws);
+
+            await domain.updatePhotoProfile(profile.id, {
+                key: aws.key,
+                size: aws.size,
+            });
+
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            'photo-profile/user-other/previous.png',
+            'photo-profile/user-persimmon-sibling/previous.png',
+            'term-policies/privacy/1/en.pdf',
+        ])(
+            'enqueues nothing when the previous photo key %s sits outside the user prefix',
+            async foreignKey => {
+                awsS3Service.isInitialized.mockReturnValue(true);
+                awsS3Service.mapPresign.mockReturnValue(aws);
+                userRepository.findOneById.mockResolvedValue({
+                    ...profile,
+                    photo: { ...previousPhoto, key: foreignKey },
+                });
+
+                await domain.updatePhotoProfile(profile.id, {
+                    key: aws.key,
+                    size: aws.size,
+                });
+
+                expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+            }
+        );
+
+        it('enqueues nothing when the previous photo has the same key', async () => {
+            awsS3Service.isInitialized.mockReturnValue(true);
+            awsS3Service.mapPresign.mockReturnValue(aws);
+            userRepository.findOneById.mockResolvedValue({
+                ...profile,
+                photo: { ...previousPhoto, key: aws.key },
+            });
+
+            await domain.updatePhotoProfile(profile.id, {
+                key: aws.key,
+                size: aws.size,
+            });
+
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it('enqueues nothing and writes nothing when the user is missing', async () => {
+            awsS3Service.isInitialized.mockReturnValue(true);
+            awsS3Service.mapPresign.mockReturnValue(aws);
+            userRepository.findOneById.mockResolvedValue(null);
+
+            const rejection = domain.updatePhotoProfile(profile.id, {
+                key: aws.key,
+                size: aws.size,
+            });
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+                messagePath: 'user.error.notFound',
+            });
+            expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
             awsS3Service.isInitialized.mockReturnValue(false);
 
@@ -469,6 +624,105 @@ describe('UserProfileDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
+        });
+
+        it('enqueues the previous photo delete after the write when a different photo exists', async () => {
+            fileService.extractExtensionFromFilename.mockReturnValue(
+                EnumFileExtensionImage.png
+            );
+            fileService.createRandomFilename.mockReturnValue(aws.key);
+            awsS3Service.putItem.mockResolvedValue(aws);
+            const calls: string[] = [];
+            userRepository.findOneById.mockResolvedValue({
+                ...profile,
+                photo: previousPhoto,
+            });
+            userRepository.updatePhotoProfile.mockImplementation(async () => {
+                calls.push('write');
+
+                return profile;
+            });
+            userQueue.deletePhoto.mockImplementation(async () => {
+                calls.push('enqueue');
+            });
+
+            await domain.uploadPhotoProfile(profile.id, file);
+
+            expect(userQueue.deletePhoto).toHaveBeenCalledWith(
+                profile.id,
+                previousPhoto
+            );
+            expect(calls).toEqual(['write', 'enqueue']);
+        });
+
+        it('enqueues nothing when the user has no previous photo', async () => {
+            fileService.extractExtensionFromFilename.mockReturnValue(
+                EnumFileExtensionImage.png
+            );
+            fileService.createRandomFilename.mockReturnValue(aws.key);
+            awsS3Service.putItem.mockResolvedValue(aws);
+
+            await domain.uploadPhotoProfile(profile.id, file);
+
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            'photo-profile/user-other/previous.png',
+            'photo-profile/user-persimmon-sibling/previous.png',
+            'term-policies/privacy/1/en.pdf',
+        ])(
+            'enqueues nothing when the previous photo key %s sits outside the user prefix',
+            async foreignKey => {
+                fileService.extractExtensionFromFilename.mockReturnValue(
+                    EnumFileExtensionImage.png
+                );
+                fileService.createRandomFilename.mockReturnValue(aws.key);
+                awsS3Service.putItem.mockResolvedValue(aws);
+                userRepository.findOneById.mockResolvedValue({
+                    ...profile,
+                    photo: { ...previousPhoto, key: foreignKey },
+                });
+
+                await domain.uploadPhotoProfile(profile.id, file);
+
+                expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+            }
+        );
+
+        it('enqueues nothing when the previous photo has the same key', async () => {
+            fileService.extractExtensionFromFilename.mockReturnValue(
+                EnumFileExtensionImage.png
+            );
+            fileService.createRandomFilename.mockReturnValue(aws.key);
+            awsS3Service.putItem.mockResolvedValue(aws);
+            userRepository.findOneById.mockResolvedValue({
+                ...profile,
+                photo: { ...previousPhoto, key: aws.key },
+            });
+
+            await domain.uploadPhotoProfile(profile.id, file);
+
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it('enqueues nothing and writes nothing when the user is missing', async () => {
+            fileService.extractExtensionFromFilename.mockReturnValue(
+                EnumFileExtensionImage.png
+            );
+            fileService.createRandomFilename.mockReturnValue(aws.key);
+            awsS3Service.putItem.mockResolvedValue(aws);
+            userRepository.findOneById.mockResolvedValue(null);
+
+            const rejection = domain.uploadPhotoProfile(profile.id, file);
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+                messagePath: 'user.error.notFound',
+            });
+            expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
 
         it('throws AwsS3NotConfiguredException when S3 answers null', async () => {
@@ -643,6 +897,32 @@ describe('UserProfileDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
+        });
+    });
+
+    describe('deletePhotoObject', () => {
+        it('deletes the photo object in the given bucket access', async () => {
+            await domain.deletePhotoObject(
+                'photo-profile/user-persimmon/previous.png',
+                EnumAwsS3Accessibility.public
+            );
+
+            expect(awsS3Service.deleteItem).toHaveBeenCalledWith(
+                'photo-profile/user-persimmon/previous.png',
+                { access: EnumAwsS3Accessibility.public }
+            );
+        });
+
+        it('rethrows the S3 failure', async () => {
+            const failure = new Error('s3 down');
+            awsS3Service.deleteItem.mockRejectedValue(failure);
+
+            const rejection = domain.deletePhotoObject(
+                'photo-profile/user-persimmon/previous.png',
+                EnumAwsS3Accessibility.public
+            );
+
+            await expect(rejection).rejects.toBe(failure);
         });
     });
 

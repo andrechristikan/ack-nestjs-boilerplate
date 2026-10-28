@@ -324,7 +324,7 @@ Credential checks run in a fixed order. Each one throws before the next is reach
 4. attempt limit not already reached (the lockout below runs, then `UserPasswordAttemptMaxException` is thrown)
 5. password matches (`UserLoginDomain.recordLoginFailed` increments the attempt counter and writes a `userLoginFailed` row, then `UserPasswordNotMatchException` is thrown)
 
-- Every row these two branches write is prepared with `onError: true`, which is what writes it although the request answers an error ([Activity Log][ref-doc-activity-log]).
+- The rows these two branches write are flushed although the request answers an error, because the error path flushes every staged activity log ([Activity Log][ref-doc-activity-log]).
 - A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
 
 **Lockout.** `UserPasswordDomain.reachMaxPasswordAttempt` prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` for the user, then runs one transaction that:
@@ -335,7 +335,7 @@ Credential checks run in a fixed order. Each one throws before the next is reach
 
 After the commit:
 
-1. The lockout deletes every session key of the user from Redis.
+1. The lockout enqueues the purge of the revoked session keys (`SessionDomain.finalizeRevokeAll`): one `purgeLogins` job on the `session` queue carrying the user id and the exact refs the transaction revoked.
 2. It stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`.
 
 Both rows are written on every lockout, including one where the user had no active session.
@@ -345,24 +345,24 @@ Both rows are written on every lockout, including one where the user had no acti
 The transaction runs once:
 
 - A domain exception raised inside it travels out as it is.
-- Every other failure is wrapped in `AppUnknownException`, and the filter maps a MongoDB write conflict (`P2034`) to 409 (`DatabaseWriteConflictException`, `51801`) and any unmapped failure to 500. On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
+- Every other failure is wrapped in `AppUnknownException`, and the filter maps a MongoDB write conflict (`P2034`) to 409 (`DatabaseWriteConflictException`, `51801`) and any unmapped failure to 500. On that path no purge job is enqueued and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
 
 ```mermaid
 sequenceDiagram
     participant API
     participant Database
-    participant Redis
+    participant Queue as Session queue
 
-    API->>API: prepare userRevokeAllSessions, userReachMaxPasswordAttempt (onError)
+    API->>API: prepare userRevokeAllSessions, userReachMaxPasswordAttempt
     API->>Database: withTransaction: set user inactive,<br/>revoke sessions, revoke device ownerships + clear push tokens
     alt Committed
         Database-->>API: Committed
-        API->>Redis: Delete every session key of the user
+        API->>Queue: Add purgeLogins job with the revoked session refs
         API->>API: stage userRevokeAllSessions, then userReachMaxPasswordAttempt
         API->>API: throw UserPasswordAttemptMaxException
     else Aborted
         Database-->>API: Aborted
-        API->>API: 409 (write conflict) or 500 (AppUnknownException), nothing purged or staged
+        API->>API: 409 (write conflict) or 500 (AppUnknownException), no purge job and nothing staged
     end
 ```
 
@@ -371,7 +371,7 @@ Two branches then short-circuit before any session or token is created:
 - **Email not verified**:
     - A new email verification is issued.
     - The recipient snapshot (address, enabled channels, device tokens) is read before the verification row is written.
-    - The verification email job is enqueued with that snapshot.
+    - The verification email job is enqueued with that snapshot. A failed enqueue is logged and reported, and the login still fails with `UserEmailNotVerifiedException`.
     - The login fails with `UserEmailNotVerifiedException`.
 - **Two-factor enabled**: no session and no tokens are created.
     - The challenge is written to Redis (`AuthCache.createChallenge`), concurrently with the secret provisioning when setup is required. A Redis failure there answers 500, or 503 (`52400`) when Redis is not connected.
@@ -401,13 +401,13 @@ Ordering around the transaction:
 After the commit, one parallel batch runs:
 
 - the new session key is written (`SessionCache.setLogin`)
-- exactly the superseded session ids are purged (`SessionDomain.purgeRevokedLogins`)
-- the new-device login notification runs when the device ownership was created rather than reused: it reads the recipient snapshot, then enqueues the job with it
+- the purge of exactly the superseded session ids is enqueued (`SessionDomain.purgeRevokedLogins`)
+- the new-device login notification is enqueued when the device ownership was created rather than reused, with the recipient snapshot read before the transaction and the session id as the event id of the job
 
 Then:
 
 - The login row is staged once that batch settles.
-- A purge failure is logged and the login still succeeds.
+- A purge or notification enqueue failure is logged and reported, and the login still succeeds.
 - A failed session key write answers 500, or 503 (`52400`) when Redis is not connected, and stages no row.
 
 #### JWT Refresh Token Flow
@@ -488,8 +488,8 @@ The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access
     - `DeviceDomain.clearNotificationInTx` resolves the device only through a live ownership: the `deviceOwnershipId` from the token, belonging to the caller, not revoked.
     - When no such ownership exists (missing, owned by another user, or already revoked), the domain logs a warning and clears no push token. The session revoke still commits.
     - Otherwise `DeviceRepository.clearNotificationByIdsInTx` clears the device's push token, stamps `lastActiveAt`, and sets `updatedBy` to the user.
-3. After the commit, `SessionDomain.purgeRevokedLogins` deletes the session's Redis key.
-    - A purge failure is logged and the logout still succeeds.
+3. After the commit, `SessionDomain.purgeRevokedLogins` enqueues the purge of the session's Redis key.
+    - An enqueue failure is logged and reported, and the logout still succeeds.
 4. Stages `userLogout`.
     - `ActivityLogInterceptor` writes the row once the handler returns.
 
@@ -497,7 +497,7 @@ The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access
 sequenceDiagram
     participant Client
     participant API
-    participant Redis
+    participant Queue as Session queue
     participant Database
 
     Client->>API: POST /shared/user/logout (Bearer access token)
@@ -507,7 +507,7 @@ sequenceDiagram
         API->>Database: withTransaction: revoke the session if not yet revoked,<br/>clear the device push token of a live ownership
         alt Revoke matched the session
             Database-->>API: Committed (push token cleared when a live ownership of the caller exists)
-            API->>Redis: Delete session login key
+            API->>Queue: Add purgeLogins job for the session
             API->>API: stage userLogout
             API-->>Client: 200 OK (user.logout)
         else Already revoked by a concurrent request
@@ -862,7 +862,7 @@ When the account does not exist:
     1. The default user role is resolved.
     2. The username is checked against the allowed pattern, the bad-word list, and existing usernames.
     3. The record is created already verified.
-    4. Once the login has completed, the welcome notification is enqueued with a recipient snapshot taken from the created user row.
+    4. Once the login has completed, the welcome notification is enqueued with a recipient snapshot built from the written user values (`NotificationRecipientDomain.buildNewUserRecipient`). A failed enqueue is logged and reported, and the login still succeeds.
 - If `signUpAllowed` is false, the login fails with `UserNotFoundException`.
 
 ### Google Authentication
@@ -1354,13 +1354,13 @@ Route guards:
 
 Outcome:
 
-- When that write matches nothing (a concurrent revoke of the same session got there first), the request answers `SessionNotFoundException` (404, `50400`), and nothing is purged or written to the activity log.
-- Otherwise the session's Redis key is deleted, then the rows are staged.
+- When that write matches nothing (a concurrent revoke of the same session got there first), the request answers `SessionNotFoundException` (404, `50400`), and no purge is enqueued and nothing is written to the activity log.
+- Otherwise the purge of the session's Redis key is enqueued, then the rows are staged.
 
 **Revoke all (admin).** `DELETE /admin/user/:userId/session/revoke-all`:
 
 1. revokes every active session of the user in one transaction (`SessionRepository.revokeActiveByUser`).
-2. deletes every session key of the user from Redis (`SessionDomain.purgeLoginsByUser`).
+2. enqueues the purge of the revoked session keys (`SessionDomain.finalizeRevokeAll`).
 3. stages its activity rows.
 
 It answers with the message `session.revokeAll`.
@@ -1474,8 +1474,8 @@ graph TB
     Q --> R[Display Active Sessions List]
 
     T[Revoke Session] --> S[Mark Revoked in Database]
-    S --> U[Purge from Redis after the commit:<br/>the revoked ids, or every key of the user]
-    U --> V[All Tokens Invalid Immediately<br/>session lookup fails]
+    S --> U[Enqueue the purge after the commit:<br/>the exact revoked session ids]
+    U --> V[All Tokens Invalid When the Job Runs<br/>session lookup fails]
 ```
 
 #### What Happens on Revocation
@@ -1486,14 +1486,14 @@ When a session is revoked:
     - `isRevoked = true`
     - `revokedAt = now`
     - `revokedById = userId` (who initiated the revocation)
-2. **Redis**: After the commit:
-    - A path that revokes one session or a subset calls `SessionDomain.purgeRevokedLogins(userId, sessions)`, which deletes exactly the revoked session ids.
-    - A path that revokes every session of the user calls `SessionDomain.purgeLoginsByUser(userId)`, which deletes every session key of the user found by `SCAN`, including a stale key whose row was already revoked.
-    - A purge failure is logged and the request still succeeds. An unpurged key keeps passing the session check until its TTL expires.
-3. **Activity log**: The rows are staged after the purge.
-4. **Access Tokens**: All access tokens for this session become invalid immediately (jti validation fails)
-5. **Refresh Tokens**: All refresh tokens for this session become invalid immediately (jti validation fails). A refresh already running when the key is purged answers 401, because its Redis rewrite requires the key to exist
-6. **Active Requests**: Any subsequent API calls with tokens from this session will be rejected with 401 Unauthorized
+2. **Redis**: After the commit, `SessionDomain.purgeRevokedLogins(userId, sessions)` enqueues one `purgeLogins` job on the `session` queue.
+    - The job carries the user id and the exact session refs the revoke returned, whether the path revoked one session, a subset, or every session of the user.
+    - `SessionProcessorService` runs it and `SessionCache.deleteLogins` deletes exactly those keys. A login made after the revoke keeps its key.
+    - An enqueue failure is logged and reported, and the request still succeeds. An unpurged key keeps passing the session check until its TTL expires.
+3. **Activity log**: The rows are staged after the enqueue.
+4. **Access Tokens**: All access tokens for this session become invalid once the purge job runs (jti validation fails)
+5. **Refresh Tokens**: All refresh tokens for this session become invalid once the purge job runs (jti validation fails). A refresh already running when the key is purged answers 401, because its Redis rewrite requires the key to exist
+6. **Active Requests**: Any subsequent API calls with tokens from this session are rejected with 401 Unauthorized once the job has run
 
 ### Session Lifecycle
 
@@ -1532,53 +1532,55 @@ When a session is revoked:
 5. **Revocation**
     - User or admin revokes session
     - Database record marked as revoked
-    - Revoked session id purged from Redis after the commit, then the activity row staged
-    - All tokens for this session become invalid immediately
+    - Revoked session id purge enqueued after the commit, then the activity row staged
+    - All tokens for this session become invalid when the purge job runs
 
 **What invalidates sessions.** Every trigger follows one order:
 
 1. Revoke the session rows in the database.
 2. Commit.
-3. Purge Redis.
+3. Enqueue the session purge.
 4. Stage the activity rows.
 
 Around that order:
 
-- The JWT guards read Redis, so a revoked token fails on the first request after the purge.
-- A purge failure is logged and does not fail the request.
-- The password change, forgot-password reset, admin temporary password, and admin two-factor reset enqueue their notification last, after the purge and the staged rows.
-- Each of those four reads the recipient snapshot (address, enabled channels, device tokens) before the transaction opens. The order commit, purge, stage is unchanged.
+- The JWT guards read Redis, so a revoked token fails on the first request after the purge job has run.
+- The purge job carries the user id and the exact revoked session refs. No purge matches a key pattern.
+- An enqueue failure is logged and reported, and does not fail the request.
+- The password change, forgot-password reset, admin temporary password, and admin two-factor reset enqueue their notification concurrently with the purge enqueue, after the commit and before the activity rows are staged. A notification enqueue failure is logged and reported, and the request still succeeds.
+- Each of those four reads the recipient snapshot (address, enabled channels, device tokens) before the transaction opens. The order commit, enqueue, stage is unchanged.
+- The admin two-factor reset also clears the user's two-factor attempt lock after the commit.
 
-| Trigger | Scope | Redis purge |
+| Trigger | Scope | Purge job carries |
 | --- | --- | --- |
-| Password change (`PATCH /shared/user/password/change`) | All sessions of the user | Every key of the user |
-| Forgot-password reset (`PATCH /public/user/password/reset`) | All sessions of the user | Every key of the user |
-| Admin temporary password | All sessions of the target user | Every key of the user |
-| Two-factor disable, and admin two-factor reset | All sessions of the user | Every key of the user |
-| Self account deletion (`DELETE /user/user/self/delete`) | All sessions of the user, revoked in the same transaction as the soft-delete and the device-ownership revoke | Every key of the user |
-| Credential login that reaches the password-attempt limit | All sessions of the user, revoked in the same transaction as the `inactive` status write and the device-ownership revoke | Every key of the user |
-| Admin revoke-all (`DELETE /admin/user/:userId/session/revoke-all`) | All sessions of the target user | Every key of the user |
-| Admin status change to `blocked` or `inactive` (`PATCH /admin/user/update/:userId/status`) | All sessions of the target user | Every key of the user |
-| Device removal, by the user or an admin | All sessions bound to that device ownership | The revoked ids |
-| Re-login from an already-owned device | Prior active sessions on that device-user pair | The revoked ids |
-| Logout (`POST /shared/user/logout`) | The current session only | That session's key |
-| Session revoke, by the user or an admin | The named session only | That session's key |
+| Password change (`PATCH /shared/user/password/change`) | All sessions of the user | The revoked session refs |
+| Forgot-password reset (`PATCH /public/user/password/reset`) | All sessions of the user | The revoked session refs |
+| Admin temporary password | All sessions of the target user | The revoked session refs |
+| Two-factor disable, and admin two-factor reset | All sessions of the user | The revoked session refs |
+| Self account deletion (`DELETE /user/user/self/delete`) | All sessions of the user, revoked in the same transaction as the soft-delete and the device-ownership revoke | The revoked session refs |
+| Credential login that reaches the password-attempt limit | All sessions of the user, revoked in the same transaction as the `inactive` status write and the device-ownership revoke | The revoked session refs |
+| Admin revoke-all (`DELETE /admin/user/:userId/session/revoke-all`) | All sessions of the target user | The revoked session refs |
+| Admin status change to `blocked` or `inactive` (`PATCH /admin/user/update/:userId/status`) | All sessions of the target user | The revoked session refs |
+| Device removal, by the user or an admin | All sessions bound to that device ownership | The revoked session refs |
+| Re-login from an already-owned device | Prior active sessions on that device-user pair | The revoked session refs |
+| Logout (`POST /shared/user/logout`) | The current session only | That session's ref |
+| Session revoke, by the user or an admin | The named session only | That session's ref |
 
 **Self account deletion.** `UserDomain.deleteSelf`:
 
 1. Prepares `userRevokeAllSessions` (with the user passed explicitly as `userId` and `createdBy`) and `userDeleteSelf`.
 2. Runs one transaction that soft-deletes the user and sets it `inactive`, revokes every active session, and revokes every live device ownership with its device's push token cleared ([Device][ref-doc-device]).
-3. After the commit, purges every session key of the user.
+3. After the commit, enqueues the purge of the revoked session keys and, when the user has a profile photo under their own profile photo path, the `user` queue job that deletes the photo from S3 (see [File Upload][ref-doc-file-upload]).
 4. Stages `userRevokeAllSessions`, then `userDeleteSelf`.
 
 Both rows are written on every self-deletion, including one with no active session.
 
 **Status change by an admin.**
 
-- Setting a user to `blocked` or `inactive` revokes every active session of that user in the same transaction as the status write, then deletes every session key of the user from Redis.
+- Setting a user to `blocked` or `inactive` revokes every active session of that user in the same transaction as the status write, then enqueues the purge of the revoked session keys.
 - A user with no active session changes status without an error, and no revoke-all rows are written.
 - When at least one session was revoked, the call stages `adminSessionRevokeAll` and `userRevokeAllSessionsByAdmin` first, then the status pair (`adminUserUpdateStatus` with `userBlocked` or `userUpdateStatus`).
-- Setting a user to `active` revokes nothing and purges nothing.
+- Setting a user to `active` revokes nothing and enqueues no purge.
 
 Account status is also enforced per request. `UserGuard`, applied through `@UserProtected()`, re-reads the user from the database on every call:
 
@@ -1593,8 +1595,8 @@ The same re-read is why a password that expires mid-session locks the caller out
 
 Which deletion answers `UserAccountNotFoundException` and which answers `SessionRevokedException`:
 
-- A self-deleted user (`DELETE /user/user/self/delete`) is soft-deleted, and every session is revoked and purged from Redis. The next request with an old token fails at the JWT guard with `SessionRevokedException` (401, `50401`), before `UserGuard` runs.
-- `UserAccountNotFoundException` needs a session key that still validates while the user row is gone. That happens when the Redis purge after a self-deletion failed (the failure is logged and swallowed) and the key has not yet expired, or when the row was removed outside the API.
+- A self-deleted user (`DELETE /user/user/self/delete`) is soft-deleted, and every session is revoked and its purge is enqueued. The next request with an old token fails at the JWT guard with `SessionRevokedException` (401, `50401`), before `UserGuard` runs.
+- `UserAccountNotFoundException` needs a session key that still validates while the user row is gone. That happens when the purge enqueue after a self-deletion failed (the failure is logged and reported) or its job has not run yet, and the key has not expired, or when the row was removed outside the API.
 
 ### Session Validation Flow
 
@@ -1660,3 +1662,4 @@ sequenceDiagram
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-status-codes]: status-codes.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-file-upload]: file-upload.md

@@ -21,6 +21,7 @@ import type {
     INotificationAcceptTermPolicyPayload,
     INotificationBulkQueuePayload,
     INotificationNewDeviceLoginPayload,
+    INotificationPublishTermPolicyResult,
     INotificationQueuePayload,
     INotificationStepResult,
     INotificationWelcomeEncryptedPayload,
@@ -29,11 +30,12 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationProcessorService', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationAccountDomain: MockProxy<NotificationAccountDomain> =
         mock<NotificationAccountDomain>();
     const notificationSecurityDomain: MockProxy<NotificationSecurityDomain> =
@@ -44,7 +46,6 @@ describe('NotificationProcessorService', () => {
         mock<NotificationWorkspaceDomain>();
     let service: NotificationProcessorService;
 
-    const response: IQueueResponse = { message: 'processed' };
     const completed: INotificationStepResult = {
         message: 'm',
         completedSteps: [EnumNotificationStep.createNotification],
@@ -58,8 +59,10 @@ describe('NotificationProcessorService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationProcessorService,
                 NotificationUtil,
                 {
@@ -146,7 +149,7 @@ describe('NotificationProcessorService', () => {
                 service.processWelcomeByAdmin(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -221,7 +224,7 @@ describe('NotificationProcessorService', () => {
                 service.processWelcome(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -285,7 +288,7 @@ describe('NotificationProcessorService', () => {
                 service.processWelcomeSocial(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -352,7 +355,7 @@ describe('NotificationProcessorService', () => {
                 service.processVerifiedEmail(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -424,7 +427,7 @@ describe('NotificationProcessorService', () => {
                 service.processVerificationEmail(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -495,7 +498,7 @@ describe('NotificationProcessorService', () => {
                 service.processVerifiedMobileNumber(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -568,7 +571,7 @@ describe('NotificationProcessorService', () => {
                 service.processTemporaryPasswordByAdmin(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -632,7 +635,7 @@ describe('NotificationProcessorService', () => {
                 service.processChangePassword(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -705,7 +708,7 @@ describe('NotificationProcessorService', () => {
                 service.processForgotPassword(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -769,7 +772,7 @@ describe('NotificationProcessorService', () => {
                 service.processResetPassword(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -834,7 +837,7 @@ describe('NotificationProcessorService', () => {
                 service.processResetTwoFactorByAdmin(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -918,7 +921,7 @@ describe('NotificationProcessorService', () => {
                 service.processNewDeviceLogin(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -935,8 +938,14 @@ describe('NotificationProcessorService', () => {
                 recipientCutoffAt: '2024-01-01T00:00:00.000Z',
                 resendNonce: null,
             };
+            const publishResponse: INotificationPublishTermPolicyResult = {
+                message: 'processed',
+                candidateCounts: 2,
+                createdCounts: 2,
+                batches: 1,
+            };
             notificationTermPolicyDomain.processPublishTermPolicy.mockResolvedValue(
-                response
+                publishResponse
             );
             const job = buildQueueJob<
                 INotificationBulkQueuePayload<typeof data>,
@@ -952,7 +961,7 @@ describe('NotificationProcessorService', () => {
             expect(
                 notificationTermPolicyDomain.processPublishTermPolicy
             ).toHaveBeenCalledWith('admin-id', data);
-            expect(result).toBe(response);
+            expect(result).toBe(publishResponse);
         });
     });
     describe('processUserAcceptTermPolicy', () => {
@@ -1016,7 +1025,7 @@ describe('NotificationProcessorService', () => {
                 service.processUserAcceptTermPolicy(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -1092,7 +1101,7 @@ describe('NotificationProcessorService', () => {
                 service.processWorkspaceInvite(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -1106,6 +1115,7 @@ describe('NotificationProcessorService', () => {
             workspaceId: 'workspace-id',
             workspaceName: 'Acme',
             requesterName: 'Omar',
+            joinRequestId: 'join-request-id',
             encryptedJoinRequestReviewLink: 'cipher-review-link',
         };
 
@@ -1165,7 +1175,7 @@ describe('NotificationProcessorService', () => {
                 service.processWorkspaceJoinRequest(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -1233,7 +1243,7 @@ describe('NotificationProcessorService', () => {
                 service.processWorkspaceJoinAccepted(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
@@ -1305,12 +1315,27 @@ describe('NotificationProcessorService', () => {
                 service.processWorkspaceJoinRejected(queueJob)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: sendEmail:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(queueJob.updateData).toHaveBeenCalledWith({
                 ...queueJob.data,
                 completedSteps: [EnumNotificationStep.createNotification],
             });
+        });
+    });
+
+    describe('processUnknown', () => {
+        it('throws a fatal QueueException naming the unknown process', () => {
+            expect(() => service.processUnknown('unknownProcess')).toThrow(
+                expect.objectContaining({
+                    message: 'notification.queue.error.unknownProcess',
+                    isFatal: true,
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.error.unknownProcess',
+                { properties: { process: 'unknownProcess' } }
+            );
         });
     });
 });

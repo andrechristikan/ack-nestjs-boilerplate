@@ -21,28 +21,20 @@ export class HealthHttpService {
      * Unwraps the health result Terminus reports through `ServiceUnavailableException`, re-throws a
      * `ServiceUnavailableException` carrying no health result, and wraps any other error.
      */
-    private async resolveResponse(
-        check: Promise<HealthCheckResult>
-    ): Promise<HealthResponseDto> {
-        try {
-            const result = await check;
+    private resolveFailure(error: unknown): HealthResponseDto {
+        if (error instanceof ServiceUnavailableException) {
+            const response = error.getResponse();
 
-            return this.mapResponse(result);
-        } catch (error: unknown) {
-            if (error instanceof ServiceUnavailableException) {
-                const response = error.getResponse();
-
-                const isHealthCheckResult =
-                    this.healthUtil.isHealthCheckResult(response);
-                if (isHealthCheckResult) {
-                    return this.mapResponse(response);
-                }
-
-                throw error;
+            const isHealthCheckResult =
+                this.healthUtil.isHealthCheckResult(response);
+            if (isHealthCheckResult) {
+                return this.mapResponse(response);
             }
 
-            throw new AppUnknownException(error);
+            throw error;
         }
+
+        throw new AppUnknownException(error);
     }
 
     private mapResponse(result: HealthCheckResult): HealthResponseDto {
@@ -57,32 +49,56 @@ export class HealthHttpService {
     }
 
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
-        const check = this.healthDomain.checkAws();
-        const data = await this.resolveResponse(check);
+        try {
+            const result = await this.healthDomain.checkAws();
+            const data = this.mapResponse(result);
 
-        return { data };
+            return { data };
+        } catch (error: unknown) {
+            const data = this.resolveFailure(error);
+
+            return { data };
+        }
     }
 
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
-        const check = this.healthDomain.checkDatabase();
-        const data = await this.resolveResponse(check);
+        try {
+            const result = await this.healthDomain.checkDatabase();
+            const data = this.mapResponse(result);
 
-        return { data };
+            return { data };
+        } catch (error: unknown) {
+            const data = this.resolveFailure(error);
+
+            return { data };
+        }
     }
 
     async checkThirdParty(): Promise<
         IResponseReturn<HealthThirdPartyResponseDto>
     > {
-        const check = this.healthDomain.checkThirdParty();
-        const data = await this.resolveResponse(check);
+        try {
+            const result = await this.healthDomain.checkThirdParty();
+            const data = this.mapResponse(result);
 
-        return { data };
+            return { data };
+        } catch (error: unknown) {
+            const data = this.resolveFailure(error);
+
+            return { data };
+        }
     }
 
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
-        const check = this.healthDomain.checkInstance();
-        const data = await this.resolveResponse(check);
+        try {
+            const result = await this.healthDomain.checkInstance();
+            const data = this.mapResponse(result);
 
-        return { data };
+            return { data };
+        } catch (error: unknown) {
+            const data = this.resolveFailure(error);
+
+            return { data };
+        }
     }
 }

@@ -149,7 +149,7 @@ Work that does not touch the database runs before the transaction:
 - An upsert's `create` branch writes `createdBy` and `updatedBy` as `MigrationUserSuperAdminId`, and its `update` branch writes `updatedBy`.
     - A re-run therefore updates `updatedBy` / `updatedAt` on seeded rows that have those columns.
     - A re-run leaves `createdBy` and `_id` untouched.
-- The `workspace` seed writes the same actor on each workspace and passes it to `WorkspaceMemberRepository.createInTx` for the owner membership (`createdBy` and `updatedBy`).
+- The `workspace` seed writes the same actor on each workspace and on the owner membership it creates with `tx.workspaceMember.create` (`createdBy` and `updatedBy`).
 - `createdBy` does not mark a row as seeded.
     - A row the superadmin later creates through the admin API carries the same id, so no `remove()` filters on it.
     - The `workspace` seed's `remove()` finds its rows by the name `<username>'s Workspace` together with an owner membership of that user.
@@ -719,12 +719,12 @@ What that means for callers:
 - Outside the seeds (the `user` seed writes its activity rows on `tx`), `ActivityLogRepository.createMany` is the only writer of `ActivityLog`. See [Activity Log][ref-doc-activity-log].
     - Feature domains prepare activity logs with `ActivityLogDomain.prepare`.
     - They stage them with `ActivityLogDomain.stagePrepared` after the audited write.
-    - `ActivityLogInterceptor` flushes them after the handler settles.
+    - `ActivityLogInterceptor` flushes them after the handler settles, as a job on the `activityLog` queue whose processor calls `ActivityLogRepository.createMany`.
 - Who opens the transaction depends on how many statements and repositories the write spans:
     - A single-statement write against one document runs on `databaseService.client` with no transaction. MongoDB applies a single-document write atomically.
     - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`.
-        - `SessionRepository.revokeActiveByUser` and `NotificationRepository.createMany` are examples.
-        - `ActivityLogRepository.createMany` is one `createMany` statement and runs on `client` with no transaction.
+        - `SessionRepository.revokeActiveByUser`, `NotificationRepository.createMany`, and `ActivityLogRepository.createMany` are examples.
+        - `ActivityLogRepository.createMany` reads which row ids exist and inserts only the absent ones in one transaction.
     - A write that spans more than one repository: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`.
         - A method that does not join a caller-owned transaction takes no `tx`.
         - `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.touchInTx` and `DeviceRepository.refreshInTx`.
@@ -790,7 +790,7 @@ Methods:
     - calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`)
     - revokes every live session of the user
     - revokes every live device ownership of the user with its device's push token cleared
-3. After the commit, it purges every session cache entry of the user.
+3. After the commit, it enqueues the purge of the session cache entries of the sessions it revoked.
 4. It stages `userRevokeAllSessions`, then `userDeleteSelf`.
 
 **Reads are not filtered.** The extension only writes audit fields and never rewrites a `where`. Excluding soft-deleted rows stays explicit:

@@ -76,7 +76,6 @@ describe('ProjectDomain', () => {
     const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.projectCreated,
         metadata: {},
-        onError: false,
         userId: '507f1f77bcf86cd799439015',
         createdBy: '507f1f77bcf86cd799439015',
         workspaceId: '507f1f77bcf86cd799439012',

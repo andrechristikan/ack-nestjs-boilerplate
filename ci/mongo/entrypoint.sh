@@ -6,8 +6,8 @@ set -eu
 # plain, with no --keyFile, no --auth, and no root user, even when the keyfile is mounted; the member host
 # defaults to host.docker.internal so the host machine and containers share the same RS URI.
 # With a keyfile mounted at KEYFILE and MONGO_INITDB_ROOT_PASSWORD set: mongod runs with --keyFile and --auth;
-# rs.initiate and the root user come from the localhost exception on the first boot and
-# are skipped on a restart. The member host is RS_HOST, a name on the compose network.
+# rs.initiate runs on a fresh volume; every start tries createUser for the root user in admin over the
+# localhost exception, and an Unauthorized reply means a user already exists. The member host is RS_HOST.
 RS_ID="${RS_ID:-rs0}"
 RS_HOST="${RS_HOST:-host.docker.internal:27017}"
 MONGO_PORT="${MONGO_PORT:-27017}"

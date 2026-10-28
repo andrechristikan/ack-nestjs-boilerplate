@@ -40,6 +40,14 @@
     "loginSetupTwoFactor": "Two-factor setup initiated successfully.",
     "loginVerifyTwoFactor": "Two-factor verification successful.",
     "logout": "Logged out successfully.",
+    "queue": {
+        "deletePhoto": "Deleted previous user photo.",
+        "error": {
+            "unknownProcess": "No {process} job handler exists.",
+            "photoAccessInvalid": "User photo {key} names no S3 bucket access {access}.",
+            "enqueueDeletePhoto": "Enqueue previous user photo delete failed."
+        }
+    },
     "error": {
         "notFound": "Sorry, we couldn't find the user you requested.",
         "notSelf": "You cannot perform this action on your own account.",
@@ -67,6 +75,7 @@
         "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}",
         "importUsernameExist": "There are existing users with the provided usernames. Username: {usernames}",
         "accountNotFound": "The account of this session no longer exists.",
-        "guardMissing": "Your account could not be verified. Please sign in again."
+        "guardMissing": "Your account could not be verified. Please sign in again.",
+        "photoKeyInvalid": "This photo does not belong to your profile."
     }
 }

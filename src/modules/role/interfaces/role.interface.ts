@@ -23,3 +23,9 @@ export interface IRoleUpdate {
 export interface IRoleCreate extends IRoleUpdate {
     name: Lowercase<string>;
 }
+
+export type IRoleWithPoliciesField = Extract<keyof IRoleWithPolicies, string>;
+
+export type IRoleWithPoliciesFieldValue = NonNullable<
+    IRoleWithPolicies[IRoleWithPoliciesField]
+>;

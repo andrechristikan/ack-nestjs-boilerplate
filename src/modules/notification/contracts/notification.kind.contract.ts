@@ -4,16 +4,13 @@ import {
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationKindContract } from '@modules/notification/interfaces/notification.interface';
+import type { INotificationKindContracts } from '@modules/notification/interfaces/notification.interface';
 
 /**
  * Per-kind notification rule: type, priority, whether the user may opt out, i18n title and body, and the pending and delivered channels of the stored row.
  * @public
  */
-export const NotificationKindContract: Record<
-    EnumNotificationKind,
-    INotificationKindContract
-> = {
+export const NotificationKindContract: INotificationKindContracts = {
     [EnumNotificationKind.welcome]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,

@@ -13,7 +13,6 @@ import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';
 import { UserDomainModule } from '@modules/user/user.domain.module';
-import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.repository.module';
 
 /**
  * Registers all `nest-commander` seed/remove commands for initial data migration.
@@ -34,11 +33,6 @@ import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.reposito
         MigrationAwsS3ConfigSeed,
     ],
     exports: [],
-    imports: [
-        CommonModule,
-        AwsModule,
-        UserDomainModule,
-        WorkspaceRepositoryModule,
-    ],
+    imports: [CommonModule, AwsModule, UserDomainModule],
 })
 export class MigrationModule {}

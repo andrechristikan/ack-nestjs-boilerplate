@@ -7,7 +7,10 @@ import { RequestContextService } from '@common/request/services/request.context.
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
-import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationPushProcess,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
     INotificationPushSendOutcome,
@@ -117,9 +120,17 @@ export class NotificationPushSecurityDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process: EnumNotificationPushProcess.newDeviceLogin,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping new login notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -170,8 +181,17 @@ export class NotificationPushSecurityDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationPushProcess.newDeviceLogin,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'New login notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -225,8 +245,12 @@ export class NotificationPushSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.newDeviceLogin'
+        );
+
         return {
-            message: 'New login notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,
@@ -247,9 +271,18 @@ export class NotificationPushSecurityDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process:
+                            EnumNotificationPushProcess.resetTwoFactorByAdmin,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping reset two-factor notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -290,8 +323,18 @@ export class NotificationPushSecurityDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationPushProcess.resetTwoFactorByAdmin,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Reset two-factor notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -345,8 +388,12 @@ export class NotificationPushSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.resetTwoFactorByAdmin'
+        );
+
         return {
-            message: 'Reset two-factor notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,
@@ -368,9 +415,18 @@ export class NotificationPushSecurityDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process:
+                            EnumNotificationPushProcess.temporaryPasswordByAdmin,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping temporary password notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -417,8 +473,18 @@ export class NotificationPushSecurityDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationPushProcess.temporaryPasswordByAdmin,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Temporary password notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -472,8 +538,12 @@ export class NotificationPushSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.temporaryPasswordByAdmin'
+        );
+
         return {
-            message: 'Temporary password notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,
@@ -494,9 +564,17 @@ export class NotificationPushSecurityDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process: EnumNotificationPushProcess.resetPassword,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping reset password notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -537,8 +615,17 @@ export class NotificationPushSecurityDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationPushProcess.resetPassword,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Reset password notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -592,8 +679,12 @@ export class NotificationPushSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.resetPassword'
+        );
+
         return {
-            message: 'Reset password notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,
@@ -614,9 +705,17 @@ export class NotificationPushSecurityDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process: EnumNotificationPushProcess.forgotPassword,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping forgot password notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -657,8 +756,17 @@ export class NotificationPushSecurityDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process: EnumNotificationPushProcess.forgotPassword,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Forgot password notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -712,8 +820,12 @@ export class NotificationPushSecurityDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.forgotPassword'
+        );
+
         return {
-            message: 'Forgot password notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,

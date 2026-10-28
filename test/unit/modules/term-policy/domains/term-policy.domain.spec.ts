@@ -43,6 +43,7 @@ import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-p
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 
@@ -61,6 +62,7 @@ describe('TermPolicyDomain', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const tx = {} as IDatabaseTransactionClient;
@@ -109,7 +111,6 @@ describe('TermPolicyDomain', () => {
     const preparedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.adminTermPolicyCreate,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -125,6 +126,7 @@ describe('TermPolicyDomain', () => {
         helperDateService.formatToIso.mockImplementation((date: Date) =>
             date.toISOString()
         );
+        termPolicyQueue.deleteContent.mockResolvedValue();
         termPolicyUtil.mapActivityLogMetadata.mockReturnValue({
             termPolicyId: 'term-policy-1',
             termPolicyType: EnumTermPolicyType.privacy,
@@ -150,6 +152,7 @@ describe('TermPolicyDomain', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: UserDomain, useValue: userDomain },
+                { provide: TermPolicyQueue, useValue: termPolicyQueue },
             ],
         }).compile();
 
@@ -515,6 +518,28 @@ describe('TermPolicyDomain', () => {
         });
     });
 
+    describe('deleteContentDir', () => {
+        it('deletes the private content directory', async () => {
+            await domain.deleteContentDir('term-policies/privacy/1');
+
+            expect(awsS3Service.deleteDir).toHaveBeenCalledWith(
+                'term-policies/privacy/1',
+                { access: EnumAwsS3Accessibility.private }
+            );
+        });
+
+        it('rethrows the S3 failure', async () => {
+            const failure = new Error('s3 down');
+            awsS3Service.deleteDir.mockRejectedValue(failure);
+
+            const rejection = domain.deleteContentDir(
+                'term-policies/privacy/1'
+            );
+
+            await expect(rejection).rejects.toBe(failure);
+        });
+    });
+
     describe('deleteByAdmin', () => {
         it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(null);
@@ -552,11 +577,10 @@ describe('TermPolicyDomain', () => {
             });
         });
 
-        it('deletes the draft term policy and its S3 content, and stages the delete activity log', async () => {
+        it('deletes the draft term policy, stages the delete activity log, and enqueues the content delete', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
             termPolicyRepository.delete.mockResolvedValue(draftTermPolicy);
-            awsS3Service.deleteDir.mockResolvedValue(undefined);
 
             const result = await domain.deleteByAdmin('term-policy-1');
 
@@ -564,13 +588,54 @@ describe('TermPolicyDomain', () => {
             expect(termPolicyRepository.delete).toHaveBeenCalledWith(
                 'term-policy-1'
             );
-            expect(awsS3Service.deleteDir).toHaveBeenCalledWith(
-                'term-policies/privacy/1',
-                { access: EnumAwsS3Accessibility.private }
+            expect(termPolicyQueue.deleteContent).toHaveBeenCalledWith(
+                'term-policies/privacy/1'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 preparedActivityLog,
             ]);
+        });
+
+        it('does not call S3 in the request', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
+            termPolicyRepository.delete.mockResolvedValue(draftTermPolicy);
+
+            await domain.deleteByAdmin('term-policy-1');
+
+            expect(awsS3Service.deleteDir).not.toHaveBeenCalled();
+        });
+
+        it('enqueues the content delete after the repository delete resolves', async () => {
+            const calls: string[] = [];
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
+            termPolicyRepository.delete.mockImplementation(async () => {
+                calls.push('delete');
+
+                return draftTermPolicy;
+            });
+            termPolicyQueue.deleteContent.mockImplementation(async () => {
+                calls.push('enqueue');
+            });
+
+            await domain.deleteByAdmin('term-policy-1');
+
+            expect(calls).toEqual(['delete', 'enqueue']);
+        });
+
+        it('enqueues nothing when the repository delete rejects', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
+            termPolicyRepository.delete.mockRejectedValue(
+                new Error('delete failed')
+            );
+
+            await expect(
+                domain.deleteByAdmin('term-policy-1')
+            ).rejects.toBeInstanceOf(AppUnknownException);
+            expect(termPolicyQueue.deleteContent).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised while deleting', async () => {
@@ -600,7 +665,6 @@ describe('TermPolicyDomain', () => {
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
             const cause = new Error('delete failed');
             termPolicyRepository.delete.mockRejectedValue(cause);
-            awsS3Service.deleteDir.mockResolvedValue(undefined);
 
             await expect(
                 domain.deleteByAdmin('term-policy-1')
@@ -798,47 +862,8 @@ describe('TermPolicyDomain', () => {
                 expect(activityLogDomain.prepare).toHaveBeenCalledWith(
                     expect.objectContaining({
                         action: EnumActivityLogAction.adminTermPolicyPublish,
-                        onError: true,
                     })
                 );
-                expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                    preparedActivityLog,
-                ]);
-            });
-
-            it('stages the activity log and throws when the enqueue fails after the commit', async () => {
-                const cause = new Error('redis down');
-                notificationQueue.sendPublishTermPolicy.mockRejectedValue(
-                    cause
-                );
-
-                await expect(
-                    domain.publishByAdmin('term-policy-1', 'user-1')
-                ).rejects.toMatchObject({
-                    constructor: AppUnknownException,
-                    module: 'app',
-                    statusCode: EnumAppStatusCodeError.unknown,
-                    statusCodeKey:
-                        EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                    messagePath: 'http.serverError.internalServerError',
-                    rawError: cause,
-                    description:
-                        'Enqueueing the term policy publish notification failed',
-                });
-                expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                    preparedActivityLog,
-                ]);
-            });
-
-            it('stages the activity log and rethrows an AppBaseException raised by the enqueue unchanged', async () => {
-                const error = new TermPolicyNotFoundException();
-                notificationQueue.sendPublishTermPolicy.mockRejectedValue(
-                    error
-                );
-
-                await expect(
-                    domain.publishByAdmin('term-policy-1', 'user-1')
-                ).rejects.toBe(error);
                 expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                     preparedActivityLog,
                 ]);
@@ -1190,7 +1215,6 @@ describe('TermPolicyDomain', () => {
             expect(activityLogDomain.prepare).toHaveBeenCalledWith(
                 expect.objectContaining({
                     action: EnumActivityLogAction.adminTermPolicyResendEmail,
-                    onError: false,
                 })
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
@@ -1249,8 +1273,7 @@ describe('TermPolicyDomain', () => {
                     type: EnumTermPolicyType.privacy,
                     version: 1,
                 },
-                timestamp,
-                true
+                timestamp
             );
 
             expect(result).toBe(preparedActivityLog);
@@ -1270,7 +1293,6 @@ describe('TermPolicyDomain', () => {
                     termPolicyVersion: 1,
                     timestamp,
                 },
-                onError: true,
             });
         });
     });

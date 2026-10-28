@@ -69,7 +69,6 @@ describe('RoleDomain', () => {
     const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.adminRoleCreate,
         metadata: { roleId: role.id },
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,

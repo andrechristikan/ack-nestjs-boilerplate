@@ -26,7 +26,7 @@ import type { User } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
-    IAuthJwtAccessTokenPayload,
+    IAuthJwtAccessTokenPayloadUser,
     IAuthPassword,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -38,6 +38,7 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
@@ -65,6 +66,7 @@ import type {
     IUserProfile,
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
@@ -92,7 +94,8 @@ export class UserDomain {
         private readonly helperDateService: HelperDateService,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly sessionDomain: SessionDomain
+        private readonly sessionDomain: SessionDomain,
+        private readonly userQueue: UserQueue
     ) {}
 
     /** Builds the used-and-verified email verification an admin-created account is verified by. */
@@ -119,7 +122,7 @@ export class UserDomain {
     }
 
     async validateUserGuard(
-        payload: Pick<IAuthJwtAccessTokenPayload, 'userId'>,
+        payload: IAuthJwtAccessTokenPayloadUser,
         requiredVerified: boolean
     ): Promise<IUser> {
         if (!payload.userId) {
@@ -390,10 +393,11 @@ export class UserDomain {
             this.helperDateService.formatToIso(passwordCreated);
         const passwordExpiredAt =
             this.helperDateService.formatToIso(passwordExpired);
-        const recipient = await this.notificationRecipientDomain.getRecipient(
-            user,
-            EnumNotificationKind.welcomeByAdmin
-        );
+        const recipient =
+            this.notificationRecipientDomain.buildNewUserRecipient(
+                user,
+                EnumNotificationKind.welcomeByAdmin
+            );
         await this.notificationQueue.sendWelcomeByAdmin(
             recipient,
             {
@@ -431,7 +435,7 @@ export class UserDomain {
 
         try {
             // Sequential by design: write must not run if an earlier step throws
-            const { statusActivityLogs, revokeAllActivityLogs } =
+            const { statusActivityLogs, revokeAllActivityLogs, revoked } =
                 await this.databaseService.withTransaction(async tx => {
                     const row =
                         await this.userRepository.updateStatusByAdminInTx(
@@ -459,6 +463,7 @@ export class UserDomain {
                         }),
                     ];
                     let revokeAll: IActivityLogStaged[] = [];
+                    let revokedSessions: ISessionRef[] = [];
                     if (revokesAccess) {
                         const sessions =
                             await this.sessionDomain.revokeActiveByUserInTx(
@@ -467,6 +472,7 @@ export class UserDomain {
                                 updatedBy,
                                 now
                             );
+                        revokedSessions = sessions;
                         revokeAll = this.sessionDomain.prepareRevokeAllByAdmin(
                             userId,
                             updatedBy,
@@ -477,11 +483,13 @@ export class UserDomain {
                     return {
                         statusActivityLogs: prepared,
                         revokeAllActivityLogs: revokeAll,
+                        revoked: revokedSessions,
                     };
                 });
             if (revokesAccess) {
                 await this.sessionDomain.finalizeRevokeAll(
                     userId,
+                    revoked,
                     revokeAllActivityLogs
                 );
             }
@@ -527,7 +535,7 @@ export class UserDomain {
     async deleteSelf(userId: string): Promise<void> {
         try {
             const revokeAllActivityLogs =
-                this.sessionDomain.prepareRevokeAllSelf(userId, false);
+                this.sessionDomain.prepareRevokeAllSelf(userId);
             const deleteSelfActivityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userDeleteSelf,
@@ -535,25 +543,51 @@ export class UserDomain {
             ];
             const now = this.helperDateService.create();
             // Sequential by design: write must not run if an earlier step throws
-            await this.databaseService.withTransaction(async tx => {
-                await this.userRepository.deleteSelfInTx(tx, userId, now);
-                await this.sessionDomain.revokeActiveByUserInTx(
-                    tx,
+            const { deleted, revoked } =
+                await this.databaseService.withTransaction(async tx => {
+                    const deleted = await this.userRepository.deleteSelfInTx(
+                        tx,
+                        userId,
+                        now
+                    );
+                    const sessions =
+                        await this.sessionDomain.revokeActiveByUserInTx(
+                            tx,
+                            userId,
+                            userId,
+                            now
+                        );
+                    await this.deviceDomain.revokeAllByUserInTx(
+                        tx,
+                        userId,
+                        userId,
+                        now
+                    );
+
+                    return { deleted, revoked: sessions };
+                });
+            const sideEffects: Promise<void>[] = [
+                this.sessionDomain.finalizeRevokeAll(
                     userId,
+                    revoked,
+                    revokeAllActivityLogs
+                ),
+            ];
+            const { photo } = deleted;
+            if (photo !== null) {
+                const isPhotoOwned = this.userUtil.isPhotoProfileKeyOwned(
                     userId,
-                    now
+                    photo.key
                 );
-                await this.deviceDomain.revokeAllByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-            });
-            await this.sessionDomain.finalizeRevokeAll(
-                userId,
-                revokeAllActivityLogs
-            );
+                if (isPhotoOwned) {
+                    const photoDelete = this.userQueue.deletePhoto(
+                        userId,
+                        photo
+                    );
+                    sideEffects.push(photoDelete);
+                }
+            }
+            await Promise.all(sideEffects);
 
             this.activityLogDomain.stagePrepared(deleteSelfActivityLogs);
 

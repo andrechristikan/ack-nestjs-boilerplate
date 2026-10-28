@@ -5,7 +5,10 @@ import { MessageService } from '@common/message/services/message.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
-import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationPushProcess,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import type {
     INotificationPushSendOutcome,
     INotificationPushStepResult,
@@ -115,9 +118,17 @@ export class NotificationPushWorkspaceDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process: EnumNotificationPushProcess.workspaceInvite,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping workspace invite notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -162,8 +173,18 @@ export class NotificationPushWorkspaceDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationPushProcess.workspaceInvite,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Workspace invite notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -217,8 +238,12 @@ export class NotificationPushWorkspaceDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.workspaceInvite'
+        );
+
         return {
-            message: 'Workspace invite notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,
@@ -240,9 +265,18 @@ export class NotificationPushWorkspaceDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process:
+                            EnumNotificationPushProcess.workspaceJoinRequest,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping workspace join request notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -287,8 +321,18 @@ export class NotificationPushWorkspaceDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationPushProcess.workspaceJoinRequest,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Workspace join request notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -342,8 +386,12 @@ export class NotificationPushWorkspaceDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.workspaceJoinRequest'
+        );
+
         return {
-            message: 'Workspace join request notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,
@@ -365,9 +413,18 @@ export class NotificationPushWorkspaceDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process:
+                            EnumNotificationPushProcess.workspaceJoinAccepted,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping workspace join accepted notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -411,8 +468,18 @@ export class NotificationPushWorkspaceDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationPushProcess.workspaceJoinAccepted,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Workspace join accepted notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -466,8 +533,12 @@ export class NotificationPushWorkspaceDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.workspaceJoinAccepted'
+        );
+
         return {
-            message: 'Workspace join accepted notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,
@@ -489,9 +560,18 @@ export class NotificationPushWorkspaceDomain {
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.firebaseNotInitialized',
+                {
+                    properties: {
+                        process:
+                            EnumNotificationPushProcess.workspaceJoinRejected,
+                    },
+                }
+            );
+
             return {
-                message:
-                    'Firebase not initialized, skipping workspace join rejected notification',
+                message,
                 completedSteps,
                 failedSteps: [],
                 encryptedFailureTokens,
@@ -539,8 +619,18 @@ export class NotificationPushWorkspaceDomain {
             tokens = sent.encryptedFailureTokens;
             pending = sent.encryptedPendingTokens;
             if (sent.failure !== null) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.failed',
+                    {
+                        properties: {
+                            process:
+                                EnumNotificationPushProcess.workspaceJoinRejected,
+                        },
+                    }
+                );
+
                 return {
-                    message: 'Workspace join rejected notification failed',
+                    message,
                     completedSteps: done,
                     failedSteps: [sent.failure],
                     encryptedFailureTokens: tokens,
@@ -594,8 +684,12 @@ export class NotificationPushWorkspaceDomain {
             failedSteps.push(failure);
         }
 
+        const message = this.messageService.setMessage(
+            'notification.queue.push.workspaceJoinRejected'
+        );
+
         return {
-            message: 'Workspace join rejected notification processed',
+            message,
             completedSteps: done,
             failedSteps,
             encryptedFailureTokens: tokens,

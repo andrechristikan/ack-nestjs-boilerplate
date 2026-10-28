@@ -19,7 +19,10 @@ import {
 import { ApiKeyHeaderName } from '@modules/api-key/constants/api-key.constant';
 import { AuthHeaderName } from '@modules/auth/constants/auth.constant';
 import { FeatureFlagAnonymousIdHeaderName } from '@modules/feature-flag/constants/feature-flag.constant';
-import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestThrottlePolicy,
+    IRequestThrottleRoutePolicies,
+} from '@common/request/interfaces/request.interface';
 import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';
@@ -46,7 +49,7 @@ export interface IConfigRequest {
     throttle: {
         default: IRequestThrottlePolicy;
         user: IRequestThrottlePolicy;
-        route: Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>;
+        route: IRequestThrottleRoutePolicies;
         keyPattern: string;
         blockKeyPattern: string;
         sequenceKeyPattern: string;

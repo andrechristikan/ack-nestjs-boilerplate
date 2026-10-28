@@ -12,7 +12,7 @@ export class HelperPatternTokenMissingException extends AppBaseException {
     readonly statusCodeKey = EnumHelperStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 
-    constructor(token: string) {
+    constructor(readonly token: string) {
         super('helper.error.patternTokenMissing', {
             messageProperties: { token },
         });

@@ -1,6 +1,6 @@
 # ack-nestjs-boilerplate
 
-An opinionated, production-shaped NestJS starter. It is a boilerplate: no external client depends on it, so build the correct shape and change every call site. No compat flag, no `v1`/`v2` pair, no deprecated-but-kept field. Four domain groups:
+An opinionated, production-shaped NestJS starter. It is a boilerplate: no external client depends on it, so replace an old shape with the best-practice shape directly and change every call site. No backward compatibility, compat flag, `v1`/`v2` pair, deprecated-but-kept field, backfill, data-migration note, or existing-rows consequence. Four domain groups:
 
 - identity and auth: JWT with JWKS, social sign-in, API keys, sessions, devices, two-factor
 - access control: roles, CASL policy abilities, term-policy gating, feature flags
@@ -42,7 +42,7 @@ generated/              swagger, vault init, agent reports under docs/, gitignor
 
 ## Layering
 
-Every feature module carries one shape: `Controller → HTTP Service → Domain → Repository`, with `Processor → Processor Service` joining at the domain (`.claude/rules/layering.md`). Only a repository queries `databaseService.client`, seeds and health indicators excepted (`.claude/rules/database.md`). `src/app/app.module.ts` registers the `APP_FILTER` providers general → http → validation → validation-import; NestJS evaluates them in reverse, so the most specific runs first.
+Every feature module carries one shape: `Controller → HTTP Service → Domain → Repository`, with `Processor → Processor Service` joining at the domain (`.claude/rules/layering.md`). Only a repository queries `databaseService.client`, health indicators excepted (`.claude/rules/database.md`). `src/migration/` sits outside this layering: a seed writes every model through `DatabaseService` directly, never through a feature repository, a feature domain method that writes, or a queue (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers the `APP_FILTER` providers general → http → validation → validation-import; NestJS evaluates them in reverse, so the most specific runs first.
 
 ## Commands
 
@@ -55,7 +55,7 @@ Every feature module carries one shape: `Controller → HTTP Service → Domain 
 
 ## Prisma schema
 
-`prisma/schema.prisma` is editable. Applying it is the owner's: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`, `pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`, `prisma migrate *`, `prisma studio` (bare, `npx`, `pnpm exec`, `pnpm dlx`), `mongosh`, `redis-cli`. Edit the schema, then hand back the commands the owner runs.
+`prisma/schema.prisma` is editable. Applying it is the owner's: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`, `pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`, `prisma migrate *`, `prisma studio` (bare, `npx`, `pnpm`, `pnpm exec`, `pnpm dlx`), `mongosh`, `redis-cli`. Edit the schema, then hand back the commands the owner runs.
 
 ## Commit gates
 

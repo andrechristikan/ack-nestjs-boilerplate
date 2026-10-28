@@ -85,6 +85,7 @@ describe('NotificationPushWorkspaceDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockReturnValue('secret-key');
         stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
@@ -124,9 +125,13 @@ describe('NotificationPushWorkspaceDomain', () => {
         };
 
         beforeEach(() => {
-            messageService.setMessage
-                .mockReturnValueOnce('Workspace invite')
-                .mockReturnValueOnce('Omar invited you to Acme');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.endsWith('.title')
+                    ? 'Workspace invite'
+                    : path.endsWith('.body')
+                      ? 'Omar invited you to Acme'
+                      : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -141,8 +146,7 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping workspace invite notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [],
                 failedSteps: [],
                 encryptedFailureTokens: null,
@@ -188,7 +192,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 doubles,
                 send,
                 result,
-                'Workspace invite notification processed'
+                'notification.queue.push.workspaceInvite'
             );
         });
 
@@ -340,9 +344,13 @@ describe('NotificationPushWorkspaceDomain', () => {
         };
 
         beforeEach(() => {
-            messageService.setMessage
-                .mockReturnValueOnce('Join request')
-                .mockReturnValueOnce('Omar requested to join Acme');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.endsWith('.title')
+                    ? 'Join request'
+                    : path.endsWith('.body')
+                      ? 'Omar requested to join Acme'
+                      : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -357,8 +365,7 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping workspace join request notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [],
                 failedSteps: [],
                 encryptedFailureTokens: null,
@@ -400,7 +407,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 doubles,
                 send,
                 result,
-                'Workspace join request notification processed'
+                'notification.queue.push.workspaceJoinRequest'
             );
         });
 
@@ -534,9 +541,13 @@ describe('NotificationPushWorkspaceDomain', () => {
         };
 
         beforeEach(() => {
-            messageService.setMessage
-                .mockReturnValueOnce('Join accepted')
-                .mockReturnValueOnce('You joined Acme');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.endsWith('.title')
+                    ? 'Join accepted'
+                    : path.endsWith('.body')
+                      ? 'You joined Acme'
+                      : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -551,8 +562,7 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping workspace join accepted notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [],
                 failedSteps: [],
                 encryptedFailureTokens: null,
@@ -593,7 +603,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 doubles,
                 send,
                 result,
-                'Workspace join accepted notification processed'
+                'notification.queue.push.workspaceJoinAccepted'
             );
         });
 
@@ -728,10 +738,15 @@ describe('NotificationPushWorkspaceDomain', () => {
         };
 
         beforeEach(() => {
-            messageService.setMessage
-                .mockReturnValueOnce('Workspace is full')
-                .mockReturnValueOnce('Join rejected')
-                .mockReturnValueOnce('Your request to join Acme was rejected');
+            messageService.setMessage.mockImplementation((path: string) =>
+                path.startsWith('notification.rejectReason')
+                    ? 'Workspace is full'
+                    : path.endsWith('.title')
+                      ? 'Join rejected'
+                      : path.endsWith('.body')
+                        ? 'Your request to join Acme was rejected'
+                        : path
+            );
         });
 
         it('returns the progress as passed when Firebase is not initialized', async () => {
@@ -746,8 +761,7 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping workspace join rejected notification',
+                message: 'notification.queue.push.error.firebaseNotInitialized',
                 completedSteps: [],
                 failedSteps: [],
                 encryptedFailureTokens: null,
@@ -793,7 +807,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 doubles,
                 send,
                 result,
-                'Workspace join rejected notification processed'
+                'notification.queue.push.workspaceJoinRejected'
             );
         });
 

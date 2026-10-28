@@ -65,7 +65,8 @@ export class UserTwoFactorDomain {
         challengeToken: string,
         { code, backupCode, method }: IAuthTwoFactorVerify
     ): Promise<IAuthToken> {
-        const challenge = await this.authCache.getChallenge(challengeToken);
+        const challenge =
+            await this.authCache.getTwoFactorChallenge(challengeToken);
         if (!challenge) {
             throw new AuthTwoFactorChallengeInvalidException();
         }
@@ -117,7 +118,7 @@ export class UserTwoFactorDomain {
                     challenge.loginWith,
                     loginAt
                 ),
-                this.authCache.clearChallenge(challengeToken),
+                this.authCache.deleteTwoFactorChallenge(challengeToken),
             ]);
 
             return tokens;
@@ -134,7 +135,8 @@ export class UserTwoFactorDomain {
         challengeToken: string,
         code: string
     ): Promise<string[]> {
-        const challenge = await this.authCache.getChallenge(challengeToken);
+        const challenge =
+            await this.authCache.getTwoFactorChallenge(challengeToken);
         if (!challenge) {
             throw new AuthTwoFactorChallengeInvalidException();
         }
@@ -327,19 +329,22 @@ export class UserTwoFactorDomain {
             ];
             const now = this.helperDateService.create();
             // Sequential by design: write must not run if an earlier step throws
-            await this.databaseService.withTransaction(async tx => {
-                await this.userTwoFactorRepository.disableTwoFactorInTx(
-                    tx,
-                    user.id
-                );
-                await this.sessionDomain.revokeActiveByUserInTx(
-                    tx,
-                    user.id,
-                    user.id,
-                    now
-                );
-            });
-            await this.sessionDomain.purgeLoginsByUser(user.id);
+            const revoked = await this.databaseService.withTransaction(
+                async tx => {
+                    await this.userTwoFactorRepository.disableTwoFactorInTx(
+                        tx,
+                        user.id
+                    );
+
+                    return this.sessionDomain.revokeActiveByUserInTx(
+                        tx,
+                        user.id,
+                        user.id,
+                        now
+                    );
+                }
+            );
+            await this.sessionDomain.purgeRevokedLogins(user.id, revoked);
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
@@ -435,30 +440,31 @@ export class UserTwoFactorDomain {
                     user,
                     EnumNotificationKind.resetTwoFactorByAdmin
                 );
-            await Promise.all([
-                this.databaseService.withTransaction(async tx => {
+            const revoked = await this.databaseService.withTransaction(
+                async tx => {
                     await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
                         tx,
                         userId
                     );
-                    await this.sessionDomain.revokeActiveByUserInTx(
+
+                    return this.sessionDomain.revokeActiveByUserInTx(
                         tx,
                         userId,
                         updatedBy,
                         now
                     );
-                }),
-                this.authCache.clearLockTwoFactorAttempt(user),
+                }
+            );
+            await Promise.all([
+                this.authCache.deleteTwoFactorLock(user),
+                this.sessionDomain.purgeRevokedLogins(userId, revoked),
+                this.notificationQueue.sendResetTwoFactorByAdmin(
+                    recipient,
+                    updatedBy
+                ),
             ]);
-            // Sequential by design: side effects whose order is part of the contract
-            await this.sessionDomain.purgeLoginsByUser(userId);
 
             this.activityLogDomain.stagePrepared(activityLogs);
-
-            await this.notificationQueue.sendResetTwoFactorByAdmin(
-                recipient,
-                updatedBy
-            );
 
             return;
         } catch (err: unknown) {

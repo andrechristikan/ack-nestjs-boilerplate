@@ -41,5 +41,5 @@ export interface IActivityLogRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
-    createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload>;
+    createMany(rows: IActivityLogCreate[]): Promise<void>;
 }

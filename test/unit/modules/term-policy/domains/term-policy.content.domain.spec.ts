@@ -48,7 +48,6 @@ describe('TermPolicyContentDomain', () => {
     const preparedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.adminTermPolicyUpdateContent,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,

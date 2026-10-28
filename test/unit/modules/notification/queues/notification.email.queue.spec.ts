@@ -2,6 +2,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -27,9 +28,12 @@ import type {
     INotificationWorkspaceJoinRejectedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationEmailQueue', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const emailQueue: MockProxy<Queue> = mock<Queue>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
@@ -46,25 +50,30 @@ describe('NotificationEmailQueue', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, unknown> = {
-                'notification.dedupTtlInMs': 60_000,
-                'verification.expiredInMs': 900_000,
-                'verification.resendInMs': 120_000,
-                'forgotPassword.resendInMs': 300_000,
                 'app.encryptionSecretKey': 'secret-key',
                 'email.batchDelayInMs': 1000,
+                'notification.jobId.referencePattern': '{process}-{reference}',
+                'notification.jobId.stepPattern': '{notificationId}-{step}',
+                'notification.jobId.termPolicyBatchPattern':
+                    '{process}-{termPolicyId}-{batchId}',
+                'notification.jobId.termPolicyBatchResendPattern':
+                    '{process}-{termPolicyId}-{batchId}-{resendNonce}',
             };
 
             return values[key];
         });
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationEmailQueue,
                 {
                     provide: getQueueToken(EnumQueue.notificationEmail),
                     useValue: emailQueue,
                 },
+                { provide: SentryService, useValue: sentryService },
                 { provide: ConfigService, useValue: configService },
                 HelperStringService,
                 {
@@ -91,10 +100,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     jobId: 'notification-id-sendEmail',
-                    deduplication: {
-                        id: 'welcomeByAdmin-user-id',
-                        ttl: 60_000,
-                    },
                     priority: EnumQueuePriority.medium,
                 }
             );
@@ -116,10 +121,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     jobId: 'notification-id-sendEmail',
-                    deduplication: {
-                        id: 'temporaryPasswordByAdmin-user-id',
-                        ttl: 60_000,
-                    },
                     priority: EnumQueuePriority.medium,
                 }
             );
@@ -136,10 +137,6 @@ describe('NotificationEmailQueue', () => {
                 {
                     jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.low,
-                    deduplication: {
-                        id: 'resetPassword-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
@@ -159,10 +156,6 @@ describe('NotificationEmailQueue', () => {
                 {
                     jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.low,
-                    deduplication: {
-                        id: 'resetPassword-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
@@ -178,17 +171,13 @@ describe('NotificationEmailQueue', () => {
                 {
                     jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.low,
-                    deduplication: {
-                        id: 'changePassword-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
     });
 
     describe('sendVerificationEmail', () => {
-        it('enqueues the verificationEmail job deduplicated by the verification TTL, high priority', async () => {
+        it('enqueues the verificationEmail job with a step job id, high priority', async () => {
             const data = {
                 expiredAt: '2024-02-01T00:00:00.000Z',
                 expiredInMinutes: 30,
@@ -203,10 +192,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     jobId: 'notification-id-sendVerificationEmail',
-                    deduplication: {
-                        id: 'verificationEmail-user-id',
-                        ttl: 900_000,
-                    },
                     priority: EnumQueuePriority.high,
                 }
             );
@@ -222,13 +207,18 @@ describe('NotificationEmailQueue', () => {
                 { send, data: null },
                 {
                     jobId: 'notification-id-sendWelcomeEmail',
-                    deduplication: {
-                        id: 'welcome-user-id',
-                        ttl: 60_000,
-                    },
                     priority: EnumQueuePriority.low,
                 }
             );
+        });
+
+        it('rejects and reports nothing when the add rejects', async () => {
+            const error = new Error('redis down');
+            emailQueue.add.mockRejectedValue(error);
+
+            await expect(queue.sendWelcome(send)).rejects.toBe(error);
+
+            expect(sentryService.captureException).not.toHaveBeenCalled();
         });
     });
 
@@ -241,10 +231,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data: null },
                 {
                     jobId: 'notification-id-sendEmail',
-                    deduplication: {
-                        id: 'welcomeSocial-user-id',
-                        ttl: 60_000,
-                    },
                     priority: EnumQueuePriority.low,
                 }
             );
@@ -262,10 +248,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     jobId: 'notification-id-sendEmail',
-                    deduplication: {
-                        id: 'verifiedEmail-user-id',
-                        ttl: 60_000,
-                    },
                     priority: EnumQueuePriority.low,
                 }
             );
@@ -273,7 +255,7 @@ describe('NotificationEmailQueue', () => {
     });
 
     describe('sendForgotPassword', () => {
-        it('enqueues the forgotPassword job deduplicated by the forgot-password resend TTL, high priority', async () => {
+        it('enqueues the forgotPassword job with a step job id, high priority', async () => {
             const data = {
                 expiredAt: '2024-02-01T00:00:00.000Z',
                 expiredInMinutes: 15,
@@ -289,10 +271,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     jobId: 'notification-id-sendEmail',
-                    deduplication: {
-                        id: 'forgotPassword-user-id',
-                        ttl: 300_000,
-                    },
                     priority: EnumQueuePriority.high,
                 }
             );
@@ -300,7 +278,7 @@ describe('NotificationEmailQueue', () => {
     });
 
     describe('sendVerifiedMobileNumber', () => {
-        it('enqueues the verifiedMobileNumber job deduplicated by the verification resend TTL, low priority', async () => {
+        it('enqueues the verifiedMobileNumber job with a step job id, low priority', async () => {
             const data = {
                 mobileNumber: '+15551234567',
                 reference: 'ref-1',
@@ -314,10 +292,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     jobId: 'notification-id-sendEmail',
-                    deduplication: {
-                        id: 'verifiedMobileNumber-user-id',
-                        ttl: 120_000,
-                    },
                     priority: EnumQueuePriority.low,
                 }
             );
@@ -333,10 +307,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data: null },
                 {
                     jobId: 'notification-id-sendEmail',
-                    deduplication: {
-                        id: 'resetTwoFactorByAdmin-user-id',
-                        ttl: 60_000,
-                    },
                     priority: EnumQueuePriority.high,
                 }
             );
@@ -371,10 +341,6 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     jobId: 'notification-id-sendEmail',
-                    deduplication: {
-                        id: 'newDeviceLogin-user-id',
-                        ttl: 60_000,
-                    },
                     priority: EnumQueuePriority.high,
                 }
             );
@@ -531,7 +497,7 @@ describe('NotificationEmailQueue', () => {
     });
 
     describe('sendWorkspaceInvite', () => {
-        it('enqueues the workspaceInvite job deduplicated by reference, high priority', async () => {
+        it('enqueues the workspaceInvite job with a step job id, high priority', async () => {
             const data = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -550,17 +516,13 @@ describe('NotificationEmailQueue', () => {
                 {
                     jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'workspaceInvite-ref-1',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
     });
 
     describe('sendWorkspaceInviteUnregistered', () => {
-        it('encrypts the invite link and enqueues the workspaceInviteUnregistered job deduplicated by reference', async () => {
+        it('encrypts the invite link and enqueues the workspaceInviteUnregistered job under a reference job id', async () => {
             const invite: INotificationWorkspaceInviteUnregisteredPayload = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -612,22 +574,45 @@ describe('NotificationEmailQueue', () => {
                     },
                 },
                 {
+                    jobId: 'workspaceInviteUnregistered-ref-1',
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'workspaceInviteUnregistered-ref-1',
-                        ttl: 60_000,
-                    },
                 }
+            );
+        });
+
+        it('resolves and reports the failure when the add rejects', async () => {
+            const error = new Error('redis down');
+            emailQueue.add.mockRejectedValue(error);
+
+            await expect(
+                queue.sendWorkspaceInviteUnregistered('invitee@example.com', {
+                    workspaceId: 'workspace-id',
+                    workspaceName: 'Acme',
+                    inviterName: 'Omar',
+                    workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                    inviteAcceptLink: 'https://invite.example.com',
+                    reference: 'ref-1',
+                    expiredAt: '2024-02-01T00:00:00.000Z',
+                })
+            ).resolves.toBeUndefined();
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    rawError: error,
+                    message:
+                        'notification.queue.email.error.enqueueWorkspaceInviteUnregistered',
+                })
             );
         });
     });
 
     describe('sendWorkspaceJoinRequest', () => {
-        it('enqueues the workspaceJoinRequest job deduplicated by workspace and user, medium priority', async () => {
+        it('enqueues the workspaceJoinRequest job with a step job id, medium priority', async () => {
             const data = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
                 requesterName: 'Omar',
+                joinRequestId: 'join-request-id',
                 encryptedJoinRequestReviewLink: 'cipher-review-link',
             };
 
@@ -639,17 +624,13 @@ describe('NotificationEmailQueue', () => {
                 {
                     jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinRequest-workspace-id-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
     });
 
     describe('sendWorkspaceJoinAccepted', () => {
-        it('enqueues the workspaceJoinAccepted job deduplicated by workspace and user, medium priority', async () => {
+        it('enqueues the workspaceJoinAccepted job with a step job id, medium priority', async () => {
             const data = { workspaceId: 'workspace-id', workspaceName: 'Acme' };
 
             await queue.sendWorkspaceJoinAccepted(send, data);
@@ -660,17 +641,13 @@ describe('NotificationEmailQueue', () => {
                 {
                     jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinAccepted-workspace-id-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });
     });
 
     describe('sendWorkspaceJoinRejected', () => {
-        it('enqueues the workspaceJoinRejected job deduplicated by workspace and user, medium priority', async () => {
+        it('enqueues the workspaceJoinRejected job with a step job id, medium priority', async () => {
             const data: INotificationWorkspaceJoinRejectedPayload = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -686,10 +663,6 @@ describe('NotificationEmailQueue', () => {
                 {
                     jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinRejected-workspace-id-user-id',
-                        ttl: 60_000,
-                    },
                 }
             );
         });

@@ -16,7 +16,9 @@ import { NotificationEmailWorkspaceDomain } from '@modules/notification/domains/
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationEmailBulkQueuePayload,
+    INotificationEmailPublishTermPolicyResult,
     INotificationEmailQueuePayload,
+    INotificationEmailResult,
     INotificationEmailUnregisteredQueuePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -28,8 +30,10 @@ import type {
 import { NotificationEmailProcessorService } from '@modules/notification/services/notification.email.processor.service';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationEmailProcessorService', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationEmailAccountDomain: MockProxy<NotificationEmailAccountDomain> =
         mock<NotificationEmailAccountDomain>();
     const notificationEmailSecurityDomain: MockProxy<NotificationEmailSecurityDomain> =
@@ -48,12 +52,20 @@ describe('NotificationEmailProcessorService', () => {
         cc: [],
         bcc: [],
     };
-    const response: IQueueResponse = { message: 'processed' };
+    const response: INotificationEmailResult = {
+        message: 'processed',
+        result: { $metadata: {}, MessageId: 'message-id' },
+    };
+    const publishResponse: INotificationEmailPublishTermPolicyResult = {
+        message: 'processed',
+    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationEmailProcessorService,
                 {
                     provide: NotificationEmailAccountDomain,
@@ -382,7 +394,7 @@ describe('NotificationEmailProcessorService', () => {
                     },
                 ];
             notificationEmailTermPolicyDomain.processPublishTermPolicy.mockResolvedValue(
-                response
+                publishResponse
             );
             const job = buildQueueJob<
                 INotificationEmailBulkQueuePayload<typeof data>,
@@ -395,7 +407,7 @@ describe('NotificationEmailProcessorService', () => {
             expect(
                 notificationEmailTermPolicyDomain.processPublishTermPolicy
             ).toHaveBeenCalledWith(data, 'batch-id', 'admin-id', recipients);
-            expect(result).toBe(response);
+            expect(result).toBe(publishResponse);
         });
     });
 
@@ -470,6 +482,7 @@ describe('NotificationEmailProcessorService', () => {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
                 requesterName: 'Omar',
+                joinRequestId: 'join-request-id',
                 encryptedJoinRequestReviewLink: 'cipher-review-link',
             };
             notificationEmailWorkspaceDomain.processWorkspaceJoinRequest.mockResolvedValue(
@@ -534,6 +547,21 @@ describe('NotificationEmailProcessorService', () => {
                 notificationEmailWorkspaceDomain.processWorkspaceJoinRejected
             ).toHaveBeenCalledWith(send, data);
             expect(result).toBe(response);
+        });
+    });
+
+    describe('processUnknown', () => {
+        it('throws a fatal QueueException naming the unknown process', () => {
+            expect(() => service.processUnknown('unknownProcess')).toThrow(
+                expect.objectContaining({
+                    message: 'notification.queue.email.error.unknownProcess',
+                    isFatal: true,
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.email.error.unknownProcess',
+                { properties: { process: 'unknownProcess' } }
+            );
         });
     });
 });

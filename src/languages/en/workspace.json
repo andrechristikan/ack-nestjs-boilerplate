@@ -36,6 +36,12 @@
             "list": "List of workspace members"
         }
     },
+    "queue": {
+        "expireStaleInvites": "Processed stale workspace invite expiry sweep.",
+        "error": {
+            "unknownProcess": "No {process} job handler exists."
+        }
+    },
     "error": {
         "notFound": "Sorry, we couldn't find the workspace.",
         "memberForbidden": "You are not a member of this workspace.",

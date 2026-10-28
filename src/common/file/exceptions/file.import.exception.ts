@@ -12,11 +12,8 @@ export class FileImportException extends AppBaseException {
     readonly statusCode = EnumRequestStatusCodeError.validation;
     readonly statusCodeKey = EnumRequestStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
-    readonly errors: IMessageValidationImportErrorParam[];
 
-    constructor(errors: IMessageValidationImportErrorParam[]) {
+    constructor(readonly errors: IMessageValidationImportErrorParam[]) {
         super('file.error.validationDto');
-
-        this.errors = errors;
     }
 }

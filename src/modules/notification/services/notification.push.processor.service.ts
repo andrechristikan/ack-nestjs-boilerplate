@@ -20,6 +20,7 @@ import type { OnModuleInit } from '@nestjs/common';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { Job } from 'bullmq';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()
 export class NotificationPushProcessorService implements OnModuleInit {
@@ -28,7 +29,8 @@ export class NotificationPushProcessorService implements OnModuleInit {
         private readonly notificationPushWorkspaceDomain: NotificationPushWorkspaceDomain,
         private readonly notificationPushMaintenanceDomain: NotificationPushMaintenanceDomain,
         private readonly notificationPushQueue: NotificationPushQueue,
-        private readonly notificationUtil: NotificationUtil
+        private readonly notificationUtil: NotificationUtil,
+        private readonly messageService: MessageService
     ) {}
 
     private async recordSteps<T>(
@@ -302,5 +304,13 @@ export class NotificationPushProcessorService implements OnModuleInit {
 
     async processCleanupStaleTokens(): Promise<IQueueResponse> {
         return this.notificationPushMaintenanceDomain.processCleanupStaleTokens();
+    }
+    processUnknown(process: string): never {
+        const message = this.messageService.setMessage(
+            'notification.queue.push.error.unknownProcess',
+            { properties: { process } }
+        );
+
+        throw new QueueException(message, true);
     }
 }

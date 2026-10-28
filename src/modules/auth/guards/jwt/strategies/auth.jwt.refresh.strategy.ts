@@ -18,8 +18,8 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
     AuthJwtRefreshGuardKey
 ) {
     constructor(
-        private readonly authDomain: AuthDomain,
-        configService: ConfigService
+        protected readonly configService: ConfigService,
+        private readonly authDomain: AuthDomain
     ) {
         // jti is not validated here.
         super({

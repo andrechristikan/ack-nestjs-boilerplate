@@ -57,12 +57,36 @@ export class FeatureFlagDomain {
         return percentage < rolloutPercent;
     }
 
+    /** Read-through: the cached flag, or the row loaded from the database and cached. */
+    async getByKey(key: string): Promise<FeatureFlag | null> {
+        const cached = await this.featureFlagCache.getFeatureFlag(key);
+        if (cached) {
+            return cached;
+        }
+
+        const featureFlag = await this.featureFlagRepository.findOneByKey(key);
+        if (featureFlag) {
+            await this.featureFlagCache.setFeatureFlag(key, featureFlag);
+        }
+
+        return featureFlag;
+    }
+
+    async getMetadataByKey<T>(key: string): Promise<T | null> {
+        const featureFlag = await this.getByKey(key);
+        if (featureFlag && featureFlag.metadata) {
+            return featureFlag.metadata as T;
+        }
+
+        return null;
+    }
+
     async validateFeatureFlag(
         key: string,
         userId: string | null,
         anonymousId: string | null
     ): Promise<void> {
-        const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
+        const featureFlag = await this.getByKey(key);
         if (!featureFlag) {
             throw new FeatureFlagNotConfiguredException(key);
         } else if (!featureFlag.isEnable) {
@@ -94,7 +118,7 @@ export class FeatureFlagDomain {
         key: string,
         metadataKey: string
     ): Promise<void> {
-        const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
+        const featureFlag = await this.getByKey(key);
         if (!featureFlag) {
             throw new FeatureFlagNotConfiguredException(key);
         } else if (!featureFlag.isEnable) {
@@ -137,7 +161,7 @@ export class FeatureFlagDomain {
 
         const updated = await this.featureFlagRepository.updateStatus(id, data);
         // Sequential by design: side effects whose order is part of the contract
-        await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
+        await this.featureFlagCache.deleteFeatureFlag(featureFlag.key);
 
         return updated;
     }
@@ -165,7 +189,7 @@ export class FeatureFlagDomain {
             data
         );
         // Sequential by design: side effects whose order is part of the contract
-        await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
+        await this.featureFlagCache.deleteFeatureFlag(featureFlag.key);
 
         return updated;
     }

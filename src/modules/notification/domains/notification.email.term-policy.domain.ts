@@ -10,6 +10,7 @@ import { NotificationPayloadEncryptionPurpose } from '@modules/notification/cons
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import type {
+    INotificationEmailPublishTermPolicyResult,
     INotificationPublishTermPolicyPayload,
     INotificationTermPolicyBatchRecipientEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
@@ -17,7 +18,7 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QueueException } from '@queues/exceptions/queue.exception';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { MessageService } from '@common/message/services/message.service';
 
 /** Renders and sends the term-policy publication email to one batch of recipients. */
 @Injectable()
@@ -38,7 +39,8 @@ export class NotificationEmailTermPolicyDomain {
         private readonly notificationRepository: NotificationRepository,
         private readonly helperDateService: HelperDateService,
         private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly messageService: MessageService
     ) {
         // AppEnvSchema requires both addresses once AWS SES credentials are set, and
         // AwsSESService.send is a no-op while SES is uninitialized, so neither is read as null.
@@ -112,9 +114,12 @@ export class NotificationEmailTermPolicyDomain {
         batchId: string,
         proceedBy: string,
         batchRecipients: INotificationTermPolicyBatchRecipientEncryptedPayload[]
-    ): Promise<IQueueResponse> {
-        const processed: IQueueResponse = {
-            message: 'Publish term policy email processed',
+    ): Promise<INotificationEmailPublishTermPolicyResult> {
+        const message = this.messageService.setMessage(
+            'notification.queue.email.publishTermPolicy'
+        );
+        const processed: INotificationEmailPublishTermPolicyResult = {
+            message,
         };
 
         const isSESInitialized = this.awsSESService.isInitialized();
@@ -200,10 +205,18 @@ export class NotificationEmailTermPolicyDomain {
         }
 
         if (failedUserIds.length > 0) {
-            throw new QueueException(
-                `Term policy email batch ${batchId} failed for ${failedUserIds.length} of ${claimedUserIds.length} recipients`,
-                true
+            const message = this.messageService.setMessage(
+                'notification.queue.email.error.batchFailed',
+                {
+                    properties: {
+                        batchId,
+                        failedCount: failedUserIds.length,
+                        claimedCount: claimedUserIds.length,
+                    },
+                }
             );
+
+            throw new QueueException(message, true);
         }
 
         if (unknownCount > 0) {

@@ -24,6 +24,12 @@ import { RequestContextMissingException } from '@common/request/exceptions/reque
 import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/workspace.guard-missing.exception';
 import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
 import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
+import type {
+    IWorkspaceField,
+    IWorkspaceFieldValue,
+    IWorkspaceMemberField,
+    IWorkspaceMemberFieldValue,
+} from '@modules/workspace/interfaces/workspace.interface';
 
 /**
  * Requires `x-workspace-id` to resolve to an existing, non-deleted workspace. Place directly above `@UserProtected()`.
@@ -43,35 +49,31 @@ export function WorkspaceProtected(): MethodDecorator {
  * @public
  */
 export const WorkspaceCurrent = createParamDecorator<
-    Extract<keyof Workspace, string> | undefined,
-    Workspace | NonNullable<Workspace[Extract<keyof Workspace, string>]>
->(
-    (
-        field: Extract<keyof Workspace, string> | undefined
-    ): Workspace | NonNullable<Workspace[Extract<keyof Workspace, string>]> => {
-        const workspace =
-            ClsServiceManager.getClsService().get<Workspace | null>(
-                WorkspaceStoreKey
-            ) ?? null;
-        if (workspace === null) {
-            throw new WorkspaceGuardMissingException();
-        }
-
-        const fieldKey = field ?? null;
-        if (fieldKey === null) {
-            return workspace;
-        }
-
-        const value = workspace[fieldKey] ?? null;
-        if (value === null) {
-            throw new RequestContextMissingException(
-                `${WorkspaceStoreKey}.${field}`
-            );
-        }
-
-        return value;
+    IWorkspaceField | undefined,
+    Workspace | IWorkspaceFieldValue
+>((field: IWorkspaceField | undefined): Workspace | IWorkspaceFieldValue => {
+    const workspace =
+        ClsServiceManager.getClsService().get<Workspace | null>(
+            WorkspaceStoreKey
+        ) ?? null;
+    if (workspace === null) {
+        throw new WorkspaceGuardMissingException();
     }
-);
+
+    const fieldKey = field ?? null;
+    if (fieldKey === null) {
+        return workspace;
+    }
+
+    const value = workspace[fieldKey] ?? null;
+    if (value === null) {
+        throw new RequestContextMissingException(
+            `${WorkspaceStoreKey}.${field}`
+        );
+    }
+
+    return value;
+});
 
 /**
  * Requires the caller to be a member of the workspace resolved by `@WorkspaceProtected()`. Stack
@@ -105,17 +107,12 @@ export function WorkspaceMemberProtected(
  * @public
  */
 export const WorkspaceMemberCurrent = createParamDecorator<
-    Extract<keyof WorkspaceMember, string> | undefined,
-    | WorkspaceMember
-    | NonNullable<WorkspaceMember[Extract<keyof WorkspaceMember, string>]>
+    IWorkspaceMemberField | undefined,
+    WorkspaceMember | IWorkspaceMemberFieldValue
 >(
     (
-        field: Extract<keyof WorkspaceMember, string> | undefined
-    ):
-        | WorkspaceMember
-        | NonNullable<
-              WorkspaceMember[Extract<keyof WorkspaceMember, string>]
-          > => {
+        field: IWorkspaceMemberField | undefined
+    ): WorkspaceMember | IWorkspaceMemberFieldValue => {
         const workspaceMember =
             ClsServiceManager.getClsService().get<WorkspaceMember | null>(
                 WorkspaceMemberStoreKey

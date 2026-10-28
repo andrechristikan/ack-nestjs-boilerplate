@@ -52,6 +52,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
     ): Prisma.ActivityLogCreateManyInput[] {
         return rows.map(
             ({
+                id,
                 userId,
                 createdBy,
                 workspaceId,
@@ -59,6 +60,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
                 description,
                 requestLog: { ipAddress, userAgent, geoLocation },
                 metadata,
+                createdAt,
             }) => {
                 const plainUserAgent =
                     this.databaseUtil.toPlainObject(userAgent);
@@ -66,6 +68,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
                     this.databaseUtil.toPlainObject(geoLocation);
 
                 return {
+                    id,
                     userId,
                     workspaceId,
                     action,
@@ -78,6 +81,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
                             ? (metadata as Prisma.InputJsonValue)
                             : null,
                     createdBy,
+                    createdAt,
                 };
             }
         );
@@ -185,11 +189,22 @@ export class ActivityLogRepository implements IActivityLogRepository {
         });
     }
 
-    async createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload> {
-        const createManyData = this.mapCreateManyData(rows);
+    async createMany(rows: IActivityLogCreate[]): Promise<void> {
+        const ids = rows.map(({ id }) => id);
 
-        return this.databaseService.client.activityLog.createMany({
-            data: createManyData,
+        await this.databaseService.withTransaction(async tx => {
+            const existing = await tx.activityLog.findMany({
+                where: { id: { in: ids } },
+                select: { id: true },
+            });
+            const existingIds = new Set(existing.map(row => row.id));
+            const absentRows = rows.filter(({ id }) => !existingIds.has(id));
+            if (absentRows.length === 0) {
+                return;
+            }
+
+            const data = this.mapCreateManyData(absentRows);
+            await tx.activityLog.createMany({ data });
         });
     }
 }

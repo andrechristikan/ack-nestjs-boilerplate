@@ -27,6 +27,7 @@ import { Injectable } from '@nestjs/common';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { Job } from 'bullmq';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()
 export class NotificationProcessorService {
@@ -35,7 +36,8 @@ export class NotificationProcessorService {
         private readonly notificationSecurityDomain: NotificationSecurityDomain,
         private readonly notificationTermPolicyDomain: NotificationTermPolicyDomain,
         private readonly notificationWorkspaceDomain: NotificationWorkspaceDomain,
-        private readonly notificationUtil: NotificationUtil
+        private readonly notificationUtil: NotificationUtil,
+        private readonly messageService: MessageService
     ) {}
 
     private async recordSteps<T>(
@@ -449,5 +451,13 @@ export class NotificationProcessorService {
             );
 
         return this.recordSteps(job, result);
+    }
+    processUnknown(process: string): never {
+        const message = this.messageService.setMessage(
+            'notification.queue.error.unknownProcess',
+            { properties: { process } }
+        );
+
+        throw new QueueException(message, true);
     }
 }

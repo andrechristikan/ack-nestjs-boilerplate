@@ -20,8 +20,9 @@ import type {
     ISessionList,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
-import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { SessionRepository } from '@modules/session/repositories/session.repository';
+import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -29,8 +30,9 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 describe('SessionDomain', () => {
     const sessionRepository: MockProxy<SessionRepository> =
         mock<SessionRepository>();
-    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
+    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
+    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -81,7 +83,6 @@ describe('SessionDomain', () => {
     const baseActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userRevokeSession,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -93,13 +94,41 @@ describe('SessionDomain', () => {
             providers: [
                 SessionDomain,
                 { provide: SessionRepository, useValue: sessionRepository },
-                { provide: SessionUtil, useValue: sessionUtil },
                 { provide: SessionCache, useValue: sessionCache },
+                { provide: SessionUtil, useValue: sessionUtil },
+                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         domain = module.get(SessionDomain);
+    });
+
+    describe('deleteLogins', () => {
+        it('deletes exactly the given session logins from the cache', async () => {
+            const sessions: ISessionRef[] = [
+                { id: 'session-1' },
+                { id: 'session-2' },
+            ];
+
+            await domain.deleteLogins('user-1', sessions);
+
+            expect(sessionCache.deleteLogins).toHaveBeenCalledWith(
+                'user-1',
+                sessions
+            );
+        });
+
+        it('rethrows the cache failure', async () => {
+            const failure = new Error('redis down');
+            sessionCache.deleteLogins.mockRejectedValue(failure);
+
+            const rejection = domain.deleteLogins('user-1', [
+                { id: 'session-1' },
+            ]);
+
+            await expect(rejection).rejects.toBe(failure);
+        });
     });
 
     describe('getListOffsetByAdmin', () => {
@@ -360,7 +389,7 @@ describe('SessionDomain', () => {
     });
 
     describe('revoke', () => {
-        it('revokes the session, purges the cache and stages the activity log', async () => {
+        it('revokes the session, enqueues the purge and stages the activity log', async () => {
             sessionRepository.findOneActive.mockResolvedValue(session);
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
@@ -379,7 +408,7 @@ describe('SessionDomain', () => {
                 'user-1',
                 revokedAt
             );
-            expect(sessionCache.deleteLogins).toHaveBeenCalledWith('user-1', [
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith('user-1', [
                 { id: 'session-1' },
             ]);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
@@ -406,7 +435,7 @@ describe('SessionDomain', () => {
                     ],
                 messagePath: 'session.error.notFound',
             });
-            expect(sessionCache.deleteLogins).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
@@ -516,48 +545,20 @@ describe('SessionDomain', () => {
                     ],
                 messagePath: 'session.error.notFound',
             });
-            expect(sessionCache.deleteLogins).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
     describe('purgeRevokedLogins', () => {
-        it('deletes exactly the revoked sessions from the cache', async () => {
+        it('enqueues a purge job with exactly the revoked sessions', async () => {
+            sessionQueue.purgeLogins.mockResolvedValue();
+
             await domain.purgeRevokedLogins('user-1', [{ id: 'session-1' }]);
 
-            expect(sessionCache.deleteLogins).toHaveBeenCalledWith('user-1', [
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith('user-1', [
                 { id: 'session-1' },
             ]);
-        });
-
-        it('swallows a thrown cache purge', async () => {
-            sessionCache.deleteLogins.mockRejectedValue(
-                new Error('redis down')
-            );
-
-            await expect(
-                domain.purgeRevokedLogins('user-1', [{ id: 'session-1' }])
-            ).resolves.toBeUndefined();
-        });
-    });
-
-    describe('purgeLoginsByUser', () => {
-        it('deletes every login of the user from the cache', async () => {
-            await domain.purgeLoginsByUser('user-1');
-
-            expect(sessionCache.deleteLoginsByUser).toHaveBeenCalledWith(
-                'user-1'
-            );
-        });
-
-        it('swallows a thrown cache purge', async () => {
-            sessionCache.deleteLoginsByUser.mockRejectedValue(
-                new Error('redis down')
-            );
-
-            await expect(
-                domain.purgeLoginsByUser('user-1')
-            ).resolves.toBeUndefined();
         });
     });
 
@@ -623,34 +624,34 @@ describe('SessionDomain', () => {
     });
 
     describe('prepareRevokeAllSelf', () => {
-        it('prepares the self revoke-all activity log carrying onError', () => {
+        it('prepares the self revoke-all activity log', () => {
             const activityLog = {
                 ...baseActivityLog,
                 action: EnumActivityLogAction.userRevokeAllSessions,
-                onError: true,
             };
             activityLogDomain.prepare.mockReturnValue(activityLog);
 
-            const result = domain.prepareRevokeAllSelf('user-1', true);
+            const result = domain.prepareRevokeAllSelf('user-1');
 
             expect(result).toEqual([activityLog]);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-1',
                 createdBy: 'user-1',
-                onError: true,
             });
         });
     });
 
     describe('finalizeRevokeAll', () => {
-        it('purges every login of the user and stages the prepared activity logs', async () => {
+        it('enqueues the purge of exactly the revoked sessions and stages the prepared activity logs', async () => {
             const activityLogs = [baseActivityLog];
+            const refs: ISessionRef[] = [{ id: 'session-1' }];
 
-            await domain.finalizeRevokeAll('user-1', activityLogs);
+            await domain.finalizeRevokeAll('user-1', refs, activityLogs);
 
-            expect(sessionCache.deleteLoginsByUser).toHaveBeenCalledWith(
-                'user-1'
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-1',
+                refs
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
                 activityLogs
@@ -691,7 +692,7 @@ describe('SessionDomain', () => {
             });
         });
 
-        it('purges the cache and stages the revoke-all activity logs', async () => {
+        it('enqueues the purge and stages the revoke-all activity logs', async () => {
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
             const refs: ISessionRef[] = [{ id: 'session-1' }];
@@ -715,8 +716,9 @@ describe('SessionDomain', () => {
                 'admin-1',
                 revokedAt
             );
-            expect(sessionCache.deleteLoginsByUser).toHaveBeenCalledWith(
-                'user-1'
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-1',
+                refs
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 adminActivityLog,

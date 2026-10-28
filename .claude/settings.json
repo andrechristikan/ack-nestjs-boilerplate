@@ -41,7 +41,10 @@
             "Bash(git commit:*)",
             "Bash(git add:*)",
             "Bash(git stash:*)",
-            "Bash(git reset:*)"
+            "Bash(git reset:*)",
+            "Bash(git rm *)",
+            "Bash(git mv *)",
+            "Bash(git restore *)"
         ],
         "deny": [
             "Bash(pnpm db:migrate*)",
@@ -66,11 +69,17 @@
             "Bash(pnpm dlx prisma db*)",
             "Bash(pnpm dlx prisma migrate*)",
             "Bash(pnpm dlx prisma studio*)",
+            "Bash(pnpm prisma db*)",
+            "Bash(pnpm prisma migrate*)",
+            "Bash(pnpm prisma studio*)",
             "Bash(node dist/migration.js*)",
             "Bash(mongosh:*)",
             "Bash(mongo:*)",
             "Bash(redis-cli:*)",
-            "Edit(docs/superpowers/**)",
+            "Edit(/docs/superpowers/**)",
+            "Read(/.env)",
+            "Read(/keys/**)",
+            "Read(/generated/vault/**)",
             "Skill(caveman:caveman-compress)",
             "Skill(caveman:caveman-compress *)",
             "Skill(caveman:caveman-init)",
@@ -115,7 +124,9 @@
             "Agent(caveman:docs:AGENTS)",
             "Agent(caveman:docs:CLAUDE)",
             "Monitor",
-            "Workflow"
+            "Workflow",
+            "ScheduleWakeup",
+            "CronCreate"
         ],
         "additionalDirectories": ["/tmp", "/private/tmp"]
     },
@@ -130,14 +141,21 @@
             "source": { "source": "github", "repo": "blader/humanizer" }
         },
         "diagram-design": {
-            "source": { "source": "github", "repo": "cathrynlavery/diagram-design" }
+            "source": {
+                "source": "github",
+                "repo": "cathrynlavery/diagram-design"
+            }
+        },
+        "anthropic-agent-skills": {
+            "source": { "source": "github", "repo": "anthropics/skills" }
         }
     },
     "enabledPlugins": {
         "superpowers@claude-plugins-official": true,
         "caveman@caveman": true,
         "humanizer@humanizer": true,
-        "diagram-design@diagram-design": true
+        "diagram-design@diagram-design": true,
+        "example-skills@anthropic-agent-skills": true
     },
     "hooks": {
         "PreToolUse": [

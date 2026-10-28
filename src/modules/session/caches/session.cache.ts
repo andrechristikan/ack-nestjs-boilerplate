@@ -1,12 +1,8 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import type KeyvRedis from '@keyv/redis';
-import type { RedisClientType } from '@keyv/redis';
-import {
-    SessionCacheProvider,
-    SessionCachePurgeScanCount,
-} from '@modules/session/constants/session.constant';
 import type {
     ISessionCache,
     ISessionRef,
@@ -19,20 +15,21 @@ import Keyv from 'keyv';
 /** Manages TTL-based session cache entries. */
 @Injectable()
 export class SessionCache {
-    private readonly keyPattern: string;
+    private readonly loginKeyPattern: string;
 
     constructor(
-        @Inject(SessionCacheProvider) private cacheManager: Cache,
+        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService
     ) {
-        this.keyPattern = this.configService.get<string>('session.keyPattern')!;
+        this.loginKeyPattern =
+            this.configService.get<string>('session.keyPattern')!;
     }
 
-    private buildKey(userId: string, sessionId: string): string {
-        return this.helperStringService.fillPattern(this.keyPattern, {
+    private buildLoginKey(userId: string, sessionId: string): string {
+        return this.helperStringService.fillPattern(this.loginKeyPattern, {
             userId,
             sessionId,
         });
@@ -42,27 +39,12 @@ export class SessionCache {
         return this.keyv.store as KeyvRedis<string>;
     }
 
-    private async deleteMatchingOnNode(
-        client: RedisClientType,
-        match: string
-    ): Promise<void> {
-        for await (const keys of client.scanIterator({
-            MATCH: match,
-            COUNT: SessionCachePurgeScanCount,
-            TYPE: 'string',
-        })) {
-            if (keys.length > 0) {
-                await client.unlink(keys);
-            }
-        }
-    }
-
     /** Reads the login entry through the Keyv client so a store failure throws; the cache manager would report it as a miss. */
     async getLogin(
         userId: string,
         sessionId: string
     ): Promise<ISessionCache | null> {
-        const key = this.buildKey(userId, sessionId);
+        const key = this.buildLoginKey(userId, sessionId);
         const cached = await this.keyv.get<ISessionCache>(key);
 
         return cached ?? null;
@@ -78,7 +60,7 @@ export class SessionCache {
         const now = this.helperDateService.create();
         const ttl = Math.floor(expiredAt.getTime() - now.getTime());
 
-        const key = this.buildKey(userId, sessionId);
+        const key = this.buildLoginKey(userId, sessionId);
         await this.cacheManager.set<ISessionCache>(
             key,
             {
@@ -100,7 +82,7 @@ export class SessionCache {
         expiredInMs: number
     ): Promise<boolean> {
         const store = this.getStore();
-        const sessionKey = this.buildKey(userId, sessionId);
+        const sessionKey = this.buildLoginKey(userId, sessionId);
         const key = store.createKeyPrefix(sessionKey, store.namespace);
         const now = this.helperDateService.create();
         const [value, client] = await Promise.all([
@@ -125,18 +107,7 @@ export class SessionCache {
         }
 
         await this.cacheManager.mdel(
-            sessions.map(session => this.buildKey(userId, session.id))
-        );
-    }
-
-    /** Deletes every session login entry of a user, found by `SCAN` on every master node of the shared client. */
-    async deleteLoginsByUser(userId: string): Promise<void> {
-        const store = this.getStore();
-        const userKey = this.buildKey(userId, '*');
-        const match = store.createKeyPrefix(userKey, store.namespace);
-        const clients = await store.getMasterNodes();
-        await Promise.all(
-            clients.map(client => this.deleteMatchingOnNode(client, match))
+            sessions.map(session => this.buildLoginKey(userId, session.id))
         );
     }
 }

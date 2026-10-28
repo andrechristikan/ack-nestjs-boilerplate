@@ -11,6 +11,13 @@
     "resendEmail": "Term policy email resend started successfully.",
     "accept": "Term policy accepted successfully.",
     "generateContentPresign": "Presigned URL for content upload generated successfully.",
+    "queue": {
+        "deleteContent": "Deleted term policy content.",
+        "error": {
+            "unknownProcess": "No {process} job handler exists.",
+            "enqueueDeleteContent": "Enqueue term policy content delete failed."
+        }
+    },
     "error": {
         "notFound": "Term policy not found.",
         "exist": "A term policy with this name already exists.",

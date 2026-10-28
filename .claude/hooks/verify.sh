@@ -22,7 +22,7 @@ out=$(pnpm typecheck 2>&1) || {
     block "pnpm typecheck failed: $line"
 }
 
-out=$(pnpm test 2>&1) || {
+out=$(NODE_ENV=test pnpm test 2>&1) || {
     line=$(printf '%s\n' "$out" | grep -m1 -E '^ *FAIL ' || printf '%s\n' "$out" | grep -m1 -E 'Error:|✗|×' || echo 'pnpm test failed')
     block "pnpm test failed: $line"
 }

@@ -12,7 +12,7 @@ export class ActivityLogContractInvalidException extends AppBaseException {
     readonly statusCodeKey = EnumActivityLogStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 
-    constructor(rawError?: unknown) {
+    constructor(readonly rawError: unknown = null) {
         super('activityLog.error.contractInvalid', { rawError });
     }
 }

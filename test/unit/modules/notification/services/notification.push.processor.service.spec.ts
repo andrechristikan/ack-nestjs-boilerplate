@@ -17,7 +17,9 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
+    INotificationPushCleanupStaleTokensResult,
     INotificationPushCleanupTokenEncryptedPayload,
+    INotificationPushCleanupTokensResult,
     INotificationPushQueuePayload,
     INotificationPushStepResult,
     INotificationSendPushEncryptedPayload,
@@ -27,10 +29,12 @@ import type {
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
+import { MessageService } from '@common/message/services/message.service';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 describe('NotificationPushProcessorService', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationPushSecurityDomain: MockProxy<NotificationPushSecurityDomain> =
         mock<NotificationPushSecurityDomain>();
     const notificationPushWorkspaceDomain: MockProxy<NotificationPushWorkspaceDomain> =
@@ -41,7 +45,6 @@ describe('NotificationPushProcessorService', () => {
         mock<NotificationPushQueue>();
     let service: NotificationPushProcessorService;
 
-    const response: IQueueResponse = { message: 'processed' };
     const send: INotificationSendPushEncryptedPayload = {
         userId: 'user-id',
         notificationId: 'notification-id',
@@ -88,8 +91,10 @@ describe('NotificationPushProcessorService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationPushProcessorService,
                 NotificationUtil,
                 {
@@ -202,7 +207,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processNewDeviceLogin(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -226,8 +231,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processNewDeviceLogin(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -294,7 +298,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processResetTwoFactorByAdmin(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -318,8 +322,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processResetTwoFactorByAdmin(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -391,7 +394,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processTemporaryPasswordByAdmin(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -415,8 +418,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processTemporaryPasswordByAdmin(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -483,7 +485,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processResetPassword(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -507,8 +509,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processResetPassword(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -575,7 +576,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processForgotPassword(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -599,8 +600,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processForgotPassword(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -676,7 +676,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processWorkspaceInvite(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -700,8 +700,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processWorkspaceInvite(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -774,7 +773,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processWorkspaceJoinRequest(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -798,8 +797,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processWorkspaceJoinRequest(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -868,7 +866,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processWorkspaceJoinAccepted(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -892,8 +890,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processWorkspaceJoinAccepted(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -966,7 +963,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processWorkspaceJoinRejected(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message: 'Notification steps failed: cleanupTokens:redis',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -990,8 +987,7 @@ describe('NotificationPushProcessorService', () => {
                 service.processWorkspaceJoinRejected(job)
             ).rejects.toMatchObject({
                 isFatal: true,
-                message:
-                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+                message: 'notification.queue.error.stepsFailed',
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -1008,8 +1004,13 @@ describe('NotificationPushProcessorService', () => {
                 userId: 'user-id',
                 encryptedFailureTokens: ['cipher(token-1)'],
             };
+            const cleanupResponse: INotificationPushCleanupTokensResult = {
+                message: 'processed',
+                countRequestedTokens: 1,
+                countRemovedTokens: 1,
+            };
             notificationPushMaintenanceDomain.processCleanupTokens.mockResolvedValue(
-                response
+                cleanupResponse
             );
             const job = buildQueueJob<
                 INotificationPushCleanupTokenEncryptedPayload,
@@ -1022,14 +1023,18 @@ describe('NotificationPushProcessorService', () => {
             expect(
                 notificationPushMaintenanceDomain.processCleanupTokens
             ).toHaveBeenCalledWith('user-id', ['cipher(token-1)']);
-            expect(result).toBe(response);
+            expect(result).toBe(cleanupResponse);
         });
     });
 
     describe('processCleanupStaleTokens', () => {
         it('forwards to the maintenance domain', async () => {
+            const staleResponse: INotificationPushCleanupStaleTokensResult = {
+                message: 'processed',
+                countRemovedTokens: 3,
+            };
             notificationPushMaintenanceDomain.processCleanupStaleTokens.mockResolvedValue(
-                response
+                staleResponse
             );
 
             const result = await service.processCleanupStaleTokens();
@@ -1037,7 +1042,22 @@ describe('NotificationPushProcessorService', () => {
             expect(
                 notificationPushMaintenanceDomain.processCleanupStaleTokens
             ).toHaveBeenCalledWith();
-            expect(result).toBe(response);
+            expect(result).toBe(staleResponse);
+        });
+    });
+
+    describe('processUnknown', () => {
+        it('throws a fatal QueueException naming the unknown process', () => {
+            expect(() => service.processUnknown('unknownProcess')).toThrow(
+                expect.objectContaining({
+                    message: 'notification.queue.push.error.unknownProcess',
+                    isFatal: true,
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.push.error.unknownProcess',
+                { properties: { process: 'unknownProcess' } }
+            );
         });
     });
 });

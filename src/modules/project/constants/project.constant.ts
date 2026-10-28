@@ -1,11 +1,9 @@
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import type { IProjectActiveFilter } from '@modules/project/interfaces/project.interface';
 
 /**
  * Request-store key holding the project the project guard resolved.
@@ -102,8 +100,10 @@ export const DocProjectRoleErrorResponses = {
  * explicitly `null`. This OR restores "active" semantics for that data, top-level or nested.
  * @public
  */
-export const ProjectActiveFilter: NonNullable<Prisma.ProjectWhereInput['OR']> =
-    [{ deletedAt: null }, { deletedAt: { isSet: false } }];
+export const ProjectActiveFilter: IProjectActiveFilter = [
+    { deletedAt: null },
+    { deletedAt: { isSet: false } },
+];
 
 /**
  * The only workspace role that sees and manages every project without a `ProjectMember` row.

@@ -27,8 +27,10 @@ import { NotificationNotFoundException } from '@modules/notification/exceptions/
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
     const notificationUserSettingRepository: MockProxy<NotificationUserSettingRepository> =
@@ -57,8 +59,10 @@ describe('NotificationDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationDomain,
                 {
                     provide: NotificationRepository,
@@ -249,7 +253,6 @@ describe('NotificationDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userUpdateNotificationSetting,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,

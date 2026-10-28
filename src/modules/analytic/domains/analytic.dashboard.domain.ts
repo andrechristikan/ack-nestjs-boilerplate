@@ -94,284 +94,404 @@ export class AnalyticDashboardDomain {
         );
     }
 
-    private async cached<T>(
+    private async readCache<T>(
+        metric: string,
+        start: Date | null,
+        end: Date | null
+    ): Promise<T | null> {
+        const startToken = this.analyticDateUtil.cacheToken(start);
+        const endToken = this.analyticDateUtil.cacheToken(end);
+
+        return this.analyticCache.getDashboard<T>(metric, startToken, endToken);
+    }
+
+    private async writeCache<T>(
         metric: string,
         start: Date | null,
         end: Date | null,
-        compute: () => Promise<T>
-    ): Promise<T> {
-        const s = this.analyticDateUtil.cacheToken(start);
-        const e = this.analyticDateUtil.cacheToken(end);
-        const hit = await this.analyticCache.getDashboard<T>(metric, s, e);
-        if (hit) {
-            return hit;
-        }
-        const value = await compute();
-        await this.analyticCache.setDashboard(metric, s, e, value);
-        return value;
+        value: T
+    ): Promise<void> {
+        const startToken = this.analyticDateUtil.cacheToken(start);
+        const endToken = this.analyticDateUtil.cacheToken(end);
+
+        await this.analyticCache.setDashboard(
+            metric,
+            startToken,
+            endToken,
+            value
+        );
     }
 
-    usersRegistrations(
+    async usersRegistrations(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersRegistrations,
+        const metric = EnumAnalyticDashboardMetric.usersRegistrations;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.userAnalyticDomain.getCountRegistrations(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count = await this.userAnalyticDomain.getCountRegistrations(
+            startDate,
+            endDate
+        );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersChurn(startDate: Date, endDate: Date): Promise<IAnalyticMetricRate> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersChurn,
+    async usersChurn(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticMetricRate> {
+        const metric = EnumAnalyticDashboardMetric.usersChurn;
+        const cached = await this.readCache<IAnalyticMetricRate>(
+            metric,
             startDate,
-            endDate,
-            () => this.userAnalyticDomain.getChurnRate(startDate, endDate)
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.userAnalyticDomain.getChurnRate(
+            startDate,
+            endDate
+        );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersBlocked(
+    async usersBlocked(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticBlockedUsers> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersBlocked,
+        const metric = EnumAnalyticDashboardMetric.usersBlocked;
+        const cached = await this.readCache<IAnalyticBlockedUsers>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const [trend, current] = await Promise.all([
-                    this.activityLogAnalyticDomain.getCountByActionsInRange(
-                        [EnumActivityLogAction.userBlocked],
-                        startDate,
-                        endDate
-                    ),
-                    this.userAnalyticDomain.getCountByStatus(
-                        EnumUserStatus.blocked
-                    ),
-                ]);
-                return { trend, current };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const [trend, current] = await Promise.all([
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userBlocked],
+                startDate,
+                endDate
+            ),
+            this.userAnalyticDomain.getCountByStatus(EnumUserStatus.blocked),
+        ]);
+
+        const result = { trend, current };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersSignUpWith(
+    async usersSignUpWith(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersSignUpWith,
+        const metric = EnumAnalyticDashboardMetric.usersSignUpWith;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const rows = await this.userAnalyticDomain.getGroupBySignUpWith(
-                    startDate,
-                    endDate
-                );
-                return {
-                    buckets: rows.map(r => ({
-                        key: String(r.key),
-                        count: r.count,
-                    })),
-                };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.userAnalyticDomain.getGroupBySignUpWith(
+            startDate,
+            endDate
+        );
+
+        const result = {
+            buckets: rows.map(r => ({
+                key: String(r.key),
+                count: r.count,
+            })),
+        };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersSignUpFrom(
+    async usersSignUpFrom(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersSignUpFrom,
+        const metric = EnumAnalyticDashboardMetric.usersSignUpFrom;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const rows = await this.userAnalyticDomain.getGroupBySignUpFrom(
-                    startDate,
-                    endDate
-                );
-                return {
-                    buckets: rows.map(r => ({
-                        key: String(r.key),
-                        count: r.count,
-                    })),
-                };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.userAnalyticDomain.getGroupBySignUpFrom(
+            startDate,
+            endDate
+        );
+
+        const result = {
+            buckets: rows.map(r => ({
+                key: String(r.key),
+                count: r.count,
+            })),
+        };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersEmailVerification(
+    async usersEmailVerification(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticMetricRate> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersEmailVerification,
+        const metric = EnumAnalyticDashboardMetric.usersEmailVerification;
+        const cached = await this.readCache<IAnalyticMetricRate>(
+            metric,
             startDate,
-            endDate,
-            () => this.userAnalyticDomain.getEmailVerificationRate()
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.userAnalyticDomain.getEmailVerificationRate();
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersMobileVerification(
+    async usersMobileVerification(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticMetricRate> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersMobileVerification,
+        const metric = EnumAnalyticDashboardMetric.usersMobileVerification;
+        const cached = await this.readCache<IAnalyticMetricRate>(
+            metric,
             startDate,
-            endDate,
-            () => this.userMobileNumberAnalyticDomain.getVerificationRate()
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.userMobileNumberAnalyticDomain.getVerificationRate();
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersStatusDistribution(): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersStatus,
+    async usersStatusDistribution(): Promise<IAnalyticBucketsResult> {
+        const metric = EnumAnalyticDashboardMetric.usersStatus;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             null,
-            null,
-            async () => {
-                const rows = await this.userAnalyticDomain.getGroupByStatus();
-                return {
-                    buckets: rows.map(r => ({
-                        key: String(r.key),
-                        count: r.count,
-                    })),
-                };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.userAnalyticDomain.getGroupByStatus();
+
+        const result = {
+            buckets: rows.map(r => ({
+                key: String(r.key),
+                count: r.count,
+            })),
+        };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    usersCountryDistribution(): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersCountry,
+    async usersCountryDistribution(): Promise<IAnalyticBucketsResult> {
+        const metric = EnumAnalyticDashboardMetric.usersCountry;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             null,
-            null,
-            async () => {
-                const rows = await this.userAnalyticDomain.getGroupByCountry();
-                return { buckets: rows };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.userAnalyticDomain.getGroupByCountry();
+
+        const result = { buckets: rows };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    usersRoleDistribution(): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersRole,
+    async usersRoleDistribution(): Promise<IAnalyticBucketsResult> {
+        const metric = EnumAnalyticDashboardMetric.usersRole;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             null,
-            null,
-            async () => {
-                const rows = await this.userAnalyticDomain.getGroupByRole();
-                return { buckets: rows };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.userAnalyticDomain.getGroupByRole();
+
+        const result = { buckets: rows };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    usersSelfDelete(
+    async usersSelfDelete(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersSelfDelete,
+        const metric = EnumAnalyticDashboardMetric.usersSelfDelete;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
-                        [EnumActivityLogAction.userDeleteSelf],
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userDeleteSelf],
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersClaimUsername(
+    async usersClaimUsername(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersClaimUsername,
+        const metric = EnumAnalyticDashboardMetric.usersClaimUsername;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
-                        [EnumActivityLogAction.userClaimUsername],
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userClaimUsername],
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    usersMobileChurn(
+    async usersMobileChurn(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMobileChurn> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.usersMobileChurn,
+        const metric = EnumAnalyticDashboardMetric.usersMobileChurn;
+        const cached = await this.readCache<IAnalyticMobileChurn>(
+            metric,
             startDate,
-            endDate,
-            () =>
-                this.userMobileNumberAnalyticDomain.getChurn(startDate, endDate)
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.userMobileNumberAnalyticDomain.getChurn(
+            startDate,
+            endDate
+        );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authLoginFrequency(
+    async authLoginFrequency(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authLoginFrequency,
+        const metric = EnumAnalyticDashboardMetric.authLoginFrequency;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.userLoginAnalyticDomain.getLoginFrequency(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count = await this.userLoginAnalyticDomain.getLoginFrequency(
+            startDate,
+            endDate
+        );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authLoginMethod(
+    async authLoginMethod(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authLoginMethod,
+        const metric = EnumAnalyticDashboardMetric.authLoginMethod;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const rows =
-                    await this.userLoginAnalyticDomain.getLoginMethodMix(
-                        startDate ?? null,
-                        endDate ?? null
-                    );
-                return {
-                    buckets: rows.map(r => ({
-                        key: r.action,
-                        count: r.count,
-                    })),
-                };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.userLoginAnalyticDomain.getLoginMethodMix(
+            startDate ?? null,
+            endDate ?? null
+        );
+
+        const result = {
+            buckets: rows.map(r => ({
+                key: r.action,
+                count: r.count,
+            })),
+        };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
     authLoginSource(
@@ -381,577 +501,805 @@ export class AnalyticDashboardDomain {
         return this.authLoginMethod(startDate, endDate);
     }
 
-    authLockout(
+    async authLockout(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticLockoutMetrics> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authLockout,
+        const metric = EnumAnalyticDashboardMetric.authLockout;
+        const cached = await this.readCache<IAnalyticLockoutMetrics>(
+            metric,
             startDate,
-            endDate,
-            () =>
-                this.userLoginAnalyticDomain.getLockoutMetrics(
-                    startDate,
-                    endDate
-                )
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.userLoginAnalyticDomain.getLockoutMetrics(
+            startDate,
+            endDate
+        );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authSessionRevoke(
+    async authSessionRevoke(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authSessionRevoke,
+        const metric = EnumAnalyticDashboardMetric.authSessionRevoke;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
-                        [
-                            EnumActivityLogAction.userRevokeSession,
-                            EnumActivityLogAction.userRevokeSessionByAdmin,
-                            EnumActivityLogAction.userRevokeAllSessions,
-                            EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                        ],
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [
+                    EnumActivityLogAction.userRevokeSession,
+                    EnumActivityLogAction.userRevokeSessionByAdmin,
+                    EnumActivityLogAction.userRevokeAllSessions,
+                    EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                ],
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authConcurrentSessions(): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authConcurrent,
+    async authConcurrentSessions(): Promise<IAnalyticBucketsResult> {
+        const metric = EnumAnalyticDashboardMetric.authConcurrent;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             null,
-            null,
-            async () => {
-                const rows =
-                    await this.sessionAnalyticDomain.getCountActiveByUser();
-                return {
-                    buckets: rows.map(r => ({
-                        key: r.userId,
-                        count: r.count,
-                    })),
-                };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.sessionAnalyticDomain.getCountActiveByUser();
+
+        const result = {
+            buckets: rows.map(r => ({
+                key: r.userId,
+                count: r.count,
+            })),
+        };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    authSessionsGeo(
+    async authSessionsGeo(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authSessionsGeo,
+        const metric = EnumAnalyticDashboardMetric.authSessionsGeo;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const rows = await this.sessionAnalyticDomain.getGroupByCountry(
-                    startDate,
-                    endDate
-                );
-                return { buckets: rows };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.sessionAnalyticDomain.getGroupByCountry(
+            startDate,
+            endDate
+        );
+
+        const result = { buckets: rows };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authSessionsUserAgent(
+    async authSessionsUserAgent(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authSessionsUa,
+        const metric = EnumAnalyticDashboardMetric.authSessionsUa;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const sessions =
-                    await this.sessionAnalyticDomain.getActiveWithGeoInRange(
-                        startDate,
-                        endDate
-                    );
-                const map = new Map<string, number>();
-                for (const s of sessions) {
-                    const key =
-                        s.userAgent?.browser?.name ??
-                        s.userAgent?.os?.name ??
-                        'unknown';
-                    map.set(key, (map.get(key) ?? 0) + 1);
-                }
-                return {
-                    buckets: [...map.entries()].map(([key, count]) => ({
-                        key,
-                        count,
-                    })),
-                };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const sessions =
+            await this.sessionAnalyticDomain.getActiveWithGeoInRange(
+                startDate,
+                endDate
+            );
+        const map = new Map<string, number>();
+        for (const s of sessions) {
+            const key =
+                s.userAgent?.browser?.name ??
+                s.userAgent?.os?.name ??
+                'unknown';
+            map.set(key, (map.get(key) ?? 0) + 1);
+        }
+
+        const result = {
+            buckets: [...map.entries()].map(([key, count]) => ({
+                key,
+                count,
+            })),
+        };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authRefreshTokenVolume(
+    async authRefreshTokenVolume(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authRefresh,
+        const metric = EnumAnalyticDashboardMetric.authRefresh;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
-                        [EnumActivityLogAction.userRefreshToken],
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userRefreshToken],
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authLogoutRate(
+    async authLogoutRate(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authLogout,
+        const metric = EnumAnalyticDashboardMetric.authLogout;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
-                        [EnumActivityLogAction.userLogout],
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userLogout],
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authVerificationFunnel(
+    async authVerificationFunnel(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticVerificationFunnels> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authVerificationFunnel,
+        const metric = EnumAnalyticDashboardMetric.authVerificationFunnel;
+        const cached = await this.readCache<IAnalyticVerificationFunnels>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const [email, mobile] = await Promise.all([
-                    this.userVerificationAnalyticDomain.getFunnel(
-                        EnumVerificationType.email,
-                        startDate,
-                        endDate
-                    ),
-                    this.userVerificationAnalyticDomain.getFunnel(
-                        EnumVerificationType.mobileNumber,
-                        startDate,
-                        endDate
-                    ),
-                ]);
-                return { email, mobile };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const [email, mobile] = await Promise.all([
+            this.userVerificationAnalyticDomain.getFunnel(
+                EnumVerificationType.email,
+                startDate,
+                endDate
+            ),
+            this.userVerificationAnalyticDomain.getFunnel(
+                EnumVerificationType.mobileNumber,
+                startDate,
+                endDate
+            ),
+        ]);
+
+        const result = { email, mobile };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authPasswordExpiry(): Promise<IAnalyticPasswordExpiry> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authPasswordExpiry,
+    async authPasswordExpiry(): Promise<IAnalyticPasswordExpiry> {
+        const metric = EnumAnalyticDashboardMetric.authPasswordExpiry;
+        const cached = await this.readCache<IAnalyticPasswordExpiry>(
+            metric,
             null,
-            null,
-            () => this.userPasswordAnalyticDomain.getPasswordExpiryCompliance()
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.userPasswordAnalyticDomain.getPasswordExpiryCompliance();
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    authPasswordChange(
+    async authPasswordChange(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authPasswordChange,
+        const metric = EnumAnalyticDashboardMetric.authPasswordChange;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.userPasswordAnalyticDomain.getPasswordChangeCount(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.userPasswordAnalyticDomain.getPasswordChangeCount(
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authForgotPasswordConversion(
+    async authForgotPasswordConversion(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticForgotPasswordConversion> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authForgotConversion,
+        const metric = EnumAnalyticDashboardMetric.authForgotConversion;
+        const cached = await this.readCache<IAnalyticForgotPasswordConversion>(
+            metric,
             startDate,
-            endDate,
-            () =>
-                this.userForgotPasswordAnalyticDomain.getConversion(
-                    startDate,
-                    endDate
-                )
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.userForgotPasswordAnalyticDomain.getConversion(
+                startDate,
+                endDate
+            );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authAdminForcePassword(
+    async authAdminForcePassword(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authAdminForcePassword,
+        const metric = EnumAnalyticDashboardMetric.authAdminForcePassword;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.userPasswordAnalyticDomain.getAdminForcePasswordCount(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.userPasswordAnalyticDomain.getAdminForcePasswordCount(
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authTwoFactorAdoption(): Promise<IAnalyticTwoFactorAdoption> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authTwoFactorAdoption,
+    async authTwoFactorAdoption(): Promise<IAnalyticTwoFactorAdoption> {
+        const metric = EnumAnalyticDashboardMetric.authTwoFactorAdoption;
+        const cached = await this.readCache<IAnalyticTwoFactorAdoption>(
+            metric,
             null,
-            null,
-            () => this.userTwoFactorAnalyticDomain.getAdoption()
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.userTwoFactorAnalyticDomain.getAdoption();
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    authTwoFactorAdminReset(
+    async authTwoFactorAdminReset(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authTwoFactorAdminReset,
+        const metric = EnumAnalyticDashboardMetric.authTwoFactorAdminReset;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.userTwoFactorAnalyticDomain.getAdminResetCount(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count = await this.userTwoFactorAnalyticDomain.getAdminResetCount(
+            startDate,
+            endDate
+        );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authTwoFactorVerifySuccess(
+    async authTwoFactorVerifySuccess(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authTwoFactorVerify,
+        const metric = EnumAnalyticDashboardMetric.authTwoFactorVerify;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.userTwoFactorAnalyticDomain.getVerifySuccessCount(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.userTwoFactorAnalyticDomain.getVerifySuccessCount(
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authBackupCodeRegeneration(
+    async authBackupCodeRegeneration(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authBackupCodeRegeneration,
+        const metric = EnumAnalyticDashboardMetric.authBackupCodeRegeneration;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.userTwoFactorAnalyticDomain.getBackupCodeRegenerationCount(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.userTwoFactorAnalyticDomain.getBackupCodeRegenerationCount(
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    authTwoFactorAttempt(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.authTwoFactorAttempt,
+    async authTwoFactorAttempt(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
+        const metric = EnumAnalyticDashboardMetric.authTwoFactorAttempt;
+        const cached = await this.readCache<IAnalyticTwoFactorAttemptSnapshot>(
+            metric,
             null,
-            null,
-            () => this.userTwoFactorAnalyticDomain.getAttemptSnapshot()
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.userTwoFactorAnalyticDomain.getAttemptSnapshot();
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    devicesRegistration(
+    async devicesRegistration(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.devicesRegistration,
+        const metric = EnumAnalyticDashboardMetric.devicesRegistration;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.deviceAnalyticDomain.getCountRegistrations(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count = await this.deviceAnalyticDomain.getCountRegistrations(
+            startDate,
+            endDate
+        );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    devicesPlatform(): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.devicesPlatform,
+    async devicesPlatform(): Promise<IAnalyticBucketsResult> {
+        const metric = EnumAnalyticDashboardMetric.devicesPlatform;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             null,
-            null,
-            async () => {
-                const rows =
-                    await this.deviceAnalyticDomain.getGroupByPlatform();
-                return { buckets: rows };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.deviceAnalyticDomain.getGroupByPlatform();
+
+        const result = { buckets: rows };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    devicesPushToken(): Promise<IAnalyticMetricRate> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.devicesPushToken,
+    async devicesPushToken(): Promise<IAnalyticMetricRate> {
+        const metric = EnumAnalyticDashboardMetric.devicesPushToken;
+        const cached = await this.readCache<IAnalyticMetricRate>(
+            metric,
             null,
-            null,
-            () => this.deviceAnalyticDomain.getPushTokenRate()
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.deviceAnalyticDomain.getPushTokenRate();
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    devicesInfoRefresh(
+    async devicesInfoRefresh(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.devicesInfoRefresh,
+        const metric = EnumAnalyticDashboardMetric.devicesInfoRefresh;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
-                        [EnumActivityLogAction.userDeviceRefresh],
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count =
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userDeviceRefresh],
+                startDate,
+                endDate
+            );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    devicesSessionRatio(): Promise<IAnalyticSessionDeviceRatio> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.devicesSessionRatio,
+    async devicesSessionRatio(): Promise<IAnalyticSessionDeviceRatio> {
+        const metric = EnumAnalyticDashboardMetric.devicesSessionRatio;
+        const cached = await this.readCache<IAnalyticSessionDeviceRatio>(
+            metric,
             null,
-            null,
-            async () => {
-                const [sessions, devices] = await Promise.all([
-                    this.sessionAnalyticDomain.getCountActive(),
-                    this.deviceAnalyticDomain.getCountOwnerships(),
-                ]);
-                return {
-                    sessions,
-                    devices,
-                    ratio: devices === 0 ? 0 : sessions / devices,
-                };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const [sessions, devices] = await Promise.all([
+            this.sessionAnalyticDomain.getCountActive(),
+            this.deviceAnalyticDomain.getCountOwnerships(),
+        ]);
+
+        const result = {
+            sessions,
+            devices,
+            ratio: devices === 0 ? 0 : sessions / devices,
+        };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    devicesPerUser(): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.devicesPerUser,
+    async devicesPerUser(): Promise<IAnalyticBucketsResult> {
+        const metric = EnumAnalyticDashboardMetric.devicesPerUser;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             null,
-            null,
-            async () => {
-                const rows = await this.deviceAnalyticDomain.getCountPerUser();
-                return {
-                    buckets: rows.map(r => ({
-                        key: r.userId,
-                        count: r.count,
-                    })),
-                };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.deviceAnalyticDomain.getCountPerUser();
+
+        const result = {
+            buckets: rows.map(r => ({
+                key: r.userId,
+                count: r.count,
+            })),
+        };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    devicesInactivity(): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.devicesInactivity,
+    async devicesInactivity(): Promise<IAnalyticMetricCount> {
+        const metric = EnumAnalyticDashboardMetric.devicesInactivity;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             null,
-            null,
-            async () => {
-                const now = this.helperDateService.create();
-                const before = this.helperDateService.backward(
-                    now,
-                    Duration.fromObject({ days: 30 })
-                );
-                const rows =
-                    await this.deviceAnalyticDomain.getInactive(before);
-                return { count: rows.length };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const now = this.helperDateService.create();
+        const before = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ days: 30 })
+        );
+        const rows = await this.deviceAnalyticDomain.getInactive(before);
+
+        const result = { count: rows.length };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    apiKeysLifecycle(
+    async apiKeysLifecycle(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticApiKeyLifecycle> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.apiKeysLifecycle,
+        const metric = EnumAnalyticDashboardMetric.apiKeysLifecycle;
+        const cached = await this.readCache<IAnalyticApiKeyLifecycle>(
+            metric,
             startDate,
-            endDate,
-            () => this.apiKeyAnalyticDomain.getLifecycle(startDate, endDate)
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.apiKeyAnalyticDomain.getLifecycle(
+            startDate,
+            endDate
+        );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    apiKeysActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.apiKeysActiveExpired,
+    async apiKeysActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
+        const metric = EnumAnalyticDashboardMetric.apiKeysActiveExpired;
+        const cached = await this.readCache<IAnalyticApiKeyActiveExpired>(
+            metric,
             null,
-            null,
-            () => this.apiKeyAnalyticDomain.getActiveExpired()
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.apiKeyAnalyticDomain.getActiveExpired();
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    apiKeysTypeMix(): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.apiKeysTypeMix,
+    async apiKeysTypeMix(): Promise<IAnalyticBucketsResult> {
+        const metric = EnumAnalyticDashboardMetric.apiKeysTypeMix;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             null,
-            null,
-            async () => {
-                const rows = await this.apiKeyAnalyticDomain.getTypeMix();
-                return { buckets: rows };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.apiKeyAnalyticDomain.getTypeMix();
+
+        const result = { buckets: rows };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    termPoliciesAcceptanceRate(
+    async termPoliciesAcceptanceRate(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticTermPolicyAcceptanceRate> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.termPoliciesAcceptance,
+        const metric = EnumAnalyticDashboardMetric.termPoliciesAcceptance;
+        const cached = await this.readCache<IAnalyticTermPolicyAcceptanceRate>(
+            metric,
             startDate,
-            endDate,
-            () =>
-                this.termPolicyAcceptanceAnalyticDomain.getAcceptanceRate(
-                    startDate ?? null,
-                    endDate ?? null
-                )
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.termPolicyAcceptanceAnalyticDomain.getAcceptanceRate(
+                startDate ?? null,
+                endDate ?? null
+            );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    termPoliciesTimeToAccept(
+    async termPoliciesTimeToAccept(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticTermPolicyTimeToAccept> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.termPoliciesTimeToAccept,
+        const metric = EnumAnalyticDashboardMetric.termPoliciesTimeToAccept;
+        const cached = await this.readCache<IAnalyticTermPolicyTimeToAccept>(
+            metric,
             startDate,
-            endDate,
-            () =>
-                this.termPolicyAcceptanceAnalyticDomain.getTimeToAccept(
-                    startDate ?? null,
-                    endDate ?? null
-                )
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.termPolicyAcceptanceAnalyticDomain.getTimeToAccept(
+                startDate ?? null,
+                endDate ?? null
+            );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    workspacesCreation(
+    async workspacesCreation(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.workspacesCreation,
+        const metric = EnumAnalyticDashboardMetric.workspacesCreation;
+        const cached = await this.readCache<IAnalyticMetricCount>(
+            metric,
             startDate,
-            endDate,
-            async () => {
-                const count =
-                    await this.workspaceAnalyticDomain.getCountCreated(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const count = await this.workspaceAnalyticDomain.getCountCreated(
+            startDate,
+            endDate
+        );
+
+        const result = { count };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    workspacesVisibility(): Promise<IAnalyticBucketsResult> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.workspacesVisibility,
+    async workspacesVisibility(): Promise<IAnalyticBucketsResult> {
+        const metric = EnumAnalyticDashboardMetric.workspacesVisibility;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
             null,
-            null,
-            async () => {
-                const rows =
-                    await this.workspaceAnalyticDomain.getGroupByVisibility();
-                return { buckets: rows };
-            }
+            null
         );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.workspaceAnalyticDomain.getGroupByVisibility();
+
+        const result = { buckets: rows };
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    workspacesInviteFunnel(
+    async workspacesInviteFunnel(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.workspacesInviteFunnel,
+        const metric = EnumAnalyticDashboardMetric.workspacesInviteFunnel;
+        const cached = await this.readCache<IAnalyticStatusCount[]>(
+            metric,
+            startDate,
+            endDate
+        );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.workspaceInviteAnalyticDomain.getFunnel(
             startDate,
             endDate,
-            () =>
-                this.workspaceInviteAnalyticDomain.getFunnel(
-                    startDate,
-                    endDate,
-                    null
-                )
+            null
         );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    workspacesJoinOutcomes(
+    async workspacesJoinOutcomes(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.workspacesJoinOutcomes,
+        const metric = EnumAnalyticDashboardMetric.workspacesJoinOutcomes;
+        const cached = await this.readCache<IAnalyticStatusCount[]>(
+            metric,
             startDate,
-            endDate,
-            () =>
-                this.workspaceJoinRequestAnalyticDomain.getOutcomes(
-                    startDate,
-                    endDate,
-                    null
-                )
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.workspaceJoinRequestAnalyticDomain.getOutcomes(
+                startDate,
+                endDate,
+                null
+            );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    workspacesMembership(
+    async workspacesMembership(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const metric = this.pagedMetric(
@@ -959,14 +1307,23 @@ export class AnalyticDashboardDomain {
             params
         );
 
-        return this.cached(metric, null, null, () =>
-            this.workspaceMemberAnalyticDomain.getMembershipDistributionOffset(
+        const cached = await this.readCache<
+            IResponsePaginationReturn<IAnalyticWorkspaceCount>
+        >(metric, null, null);
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.workspaceMemberAnalyticDomain.getMembershipDistributionOffset(
                 params
-            )
-        );
+            );
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 
-    workspacesActivityVolume(
+    async workspacesActivityVolume(
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
@@ -976,28 +1333,48 @@ export class AnalyticDashboardDomain {
             params
         );
 
-        return this.cached(metric, startDate, endDate, () =>
-            this.activityLogAnalyticDomain.getGroupActivityByWorkspaceOffset(
+        const cached = await this.readCache<
+            IResponsePaginationReturn<IAnalyticWorkspaceCount>
+        >(metric, startDate, endDate);
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.activityLogAnalyticDomain.getGroupActivityByWorkspaceOffset(
                 startDate,
                 endDate,
                 params
-            )
-        );
+            );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    projectsCreation(
+    async projectsCreation(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticProjectCreation> {
-        return this.cached(
-            EnumAnalyticDashboardMetric.projectsCreation,
+        const metric = EnumAnalyticDashboardMetric.projectsCreation;
+        const cached = await this.readCache<IAnalyticProjectCreation>(
+            metric,
             startDate,
-            endDate,
-            () => this.projectAnalyticDomain.getCreation(startDate, endDate)
+            endDate
         );
+        if (cached) {
+            return cached;
+        }
+
+        const result = await this.projectAnalyticDomain.getCreation(
+            startDate,
+            endDate
+        );
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
-    projectsMembership(
+    async projectsMembership(
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const metric = this.pagedMetric(
@@ -1005,10 +1382,19 @@ export class AnalyticDashboardDomain {
             params
         );
 
-        return this.cached(metric, null, null, () =>
-            this.projectMemberAnalyticDomain.getMembershipDistributionOffset(
+        const cached = await this.readCache<
+            IResponsePaginationReturn<IAnalyticProjectCount>
+        >(metric, null, null);
+        if (cached) {
+            return cached;
+        }
+
+        const result =
+            await this.projectMemberAnalyticDomain.getMembershipDistributionOffset(
                 params
-            )
-        );
+            );
+        await this.writeCache(metric, null, null, result);
+
+        return result;
     }
 }

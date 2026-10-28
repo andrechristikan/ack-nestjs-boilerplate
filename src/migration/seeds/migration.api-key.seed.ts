@@ -110,7 +110,7 @@ export class MigrationApiKeySeed
                     apiKey.key
                 );
 
-                return this.apiKeyCache.deleteCacheByKey(cacheKey);
+                return this.apiKeyCache.deleteApiKey(cacheKey);
             });
             await Promise.all(deletions);
         } catch (error: unknown) {

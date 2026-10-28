@@ -2,18 +2,6 @@ import { Prisma } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 
 /**
- * Injection token of the cache manager the session cache stores logins in.
- * @public
- */
-export const SessionCacheProvider = 'SessionCacheProvider';
-
-/**
- * Keys a per-user session purge asks Redis to examine on each `SCAN` call.
- * @public
- */
-export const SessionCachePurgeScanCount = 1000;
-
-/**
  * Columns a session list read returns; the token identifier is never among them.
  * @public
  */

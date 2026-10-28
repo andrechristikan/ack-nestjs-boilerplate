@@ -138,13 +138,14 @@ export class SessionCache {
 ```
 
 - `SessionCache` is the only injection site of `SessionCacheProvider`.
-- `SessionCache` also injects `RedisClientCachedProvider` for the three operations the cache manager cannot express: `getLogin`, `updateLogin`, and `deleteLoginsByUser` (see [Session Cache](#session-cache)).
+- `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express: `getLogin` and `updateLogin` (see [Session Cache](#session-cache)).
 
 `SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it. The module:
 
 - imports `SessionRepositoryModule`
-- provides `SessionDomain`, `SessionCache`, `SessionUtil`, and `SessionAnalyticDomain`
-- exports `SessionDomain`, `SessionCache`, and `SessionAnalyticDomain`
+- registers the `session` BullMQ queue
+- provides `SessionDomain`, `SessionCache`, `SessionUtil`, `SessionAnalyticDomain`, and `SessionQueue`
+- exports `SessionDomain`, `SessionCache`, `SessionAnalyticDomain`, `SessionQueue`, and `BullModule`
 
 Both cache modules:
 
@@ -164,24 +165,24 @@ Both cache modules:
 | `setLogin(userId, sessionId, jti, expiredAt)` | Writes the entry through the cache manager, with a TTL running to `expiredAt` |
 | `updateLogin(userId, sessionId, session, jti, expiredInMs)` | Rewrites the entry with the new `jti` and TTL on the shared client (see below); returns whether it wrote |
 | `deleteLogins(userId, sessions)` | Deletes exactly the given session entries through `mdel`; nothing when the list is empty |
-| `deleteLoginsByUser(userId)` | Walks every master node concurrently, one `SCAN` per node (`MATCH` on the user's key prefix, `COUNT` `SessionCachePurgeScanCount` = 1000, `TYPE string`), and `UNLINK`s each batch it finds |
 
 `updateLogin` details:
 
 - It issues `SET … PX … XX`, so it writes only while the entry still exists.
 - It serializes the value with Keyv and prefixes the key with the store namespace, so the stored shape matches what `setLogin` writes.
 
-`SessionDomain` wraps the two deletes:
+`SessionDomain` reaches `deleteLogins` through the session queue:
 
-| Wrapper | Calls | Serves |
-| --- | --- | --- |
-| `purgeRevokedLogins` | `deleteLogins` | Paths that revoke one session or a subset: logout, a single self or admin revoke, device removal, and the sessions a login revokes on a known device |
-| `purgeLoginsByUser` | `deleteLoginsByUser` | Paths that revoke every session of a user: account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, and admin two-factor reset |
+1. A path that revokes sessions commits the revoke first.
+2. It calls `SessionDomain.purgeRevokedLogins(userId, sessions)`, which enqueues a `purgeLogins` job on the `session` queue through `SessionQueue`. The job carries the user id and the exact revoked session refs.
+3. `SessionProcessorService.processPurgeLogins` runs `SessionDomain.deleteLogins`, which calls `SessionCache.deleteLogins`.
 
-- Both run after the revoke has committed.
-- Both log and swallow a failure, so the committed revoke still answers success.
+- The paths that call `purgeRevokedLogins` or `finalizeRevokeAll`: logout, a single self or admin revoke, device removal, the sessions a login revokes on a known device, account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, admin two-factor reset, and the credential lockout.
+- A revoke of every session of a user purges the refs the revoke returned.
+- `SessionQueue.purgeLogins` enqueues through `QueueBase.addSideEffect`, so a failed enqueue is logged and reported to Sentry and the committed revoke still answers success.
+- A revocation takes effect for cached logins when the job runs.
 - Each path then stages its activity rows.
-- Flow narrative: [Authentication][ref-doc-authentication].
+- Queue behaviour: [Queue][ref-doc-queue]. Flow narrative: [Authentication][ref-doc-authentication].
 
 A refresh rotates the entry with `updateLogin` after its database commit. When the entry is gone (a revoke purged it while the refresh ran), nothing is written and the refresh answers `SessionRevokedException` (401, `50401`).
 
@@ -197,7 +198,7 @@ The remaining calls split into three groups:
 | --- | --- | --- |
 | Propagate | `SessionCache.getLogin` (the session check of every JWT access and refresh token, and the refresh endpoint), `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `AuthCache.lockTwoFactorAttempt` (the lock set when a failed verification reaches the attempt limit), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500, or 503 (`52400`) when the failure is the Keyv not-connected error |
 | Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
-| Caught in `SessionDomain` and logged | `SessionCache.deleteLogins`, `SessionCache.deleteLoginsByUser` | The request continues |
+| Retried as a job | `SessionCache.deleteLogins`, run by the `purgeLogins` job | The request has already answered; the job fails and BullMQ retries it |
 
 `AppGeneralFilter` maps the Keyv not-connected error through `RedisUtil.toException` to `RedisUnavailableException` (503, `52400`). Any other Redis error that reaches the filter answers 500 (`50000`). See [Handling Error][ref-doc-handling-error].
 
@@ -206,12 +207,12 @@ The remaining calls split into three groups:
 An API key admin write that changes or deletes a key runs, in order:
 
 1. Database write.
-2. Stages its activity row with `onError: true`.
+2. Stages its activity row.
 3. Deletes the key's cache entry.
 
 Writes covered: status, name, dates, reset, delete.
 
-- When the delete fails, the request answers 500 (503 for the not-connected error) with the database change applied and its activity row written.
+- When the delete fails, the request answers 500 (503 for the not-connected error) with the database change applied and its activity row written, because the error path flushes every staged row.
 - `MigrationApiKeySeed.remove` deletes the `ApiKey` rows first, then the cache entries of the seeded keys.
 
 ## Configuration
@@ -300,6 +301,7 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-authentication]: authentication.md
+[ref-doc-queue]: queue.md
 [ref-doc-response]: response.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-security-and-middleware]: security-and-middleware.md

@@ -97,9 +97,78 @@ describe('FeatureFlagDomain', () => {
         });
     });
 
+    describe('getByKey', () => {
+        it('returns the cached flag without reading the repository', async () => {
+            featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
+
+            const result = await domain.getByKey('loginWithGoogle');
+
+            expect(result).toEqual(baseFlag);
+            expect(featureFlagRepository.findOneByKey).not.toHaveBeenCalled();
+        });
+
+        it('loads from the repository and caches it on a cache miss', async () => {
+            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
+            featureFlagRepository.findOneByKey.mockResolvedValue(baseFlag);
+
+            const result = await domain.getByKey('loginWithGoogle');
+
+            expect(result).toEqual(baseFlag);
+            expect(featureFlagRepository.findOneByKey).toHaveBeenCalledWith(
+                'loginWithGoogle'
+            );
+            expect(featureFlagCache.setFeatureFlag).toHaveBeenCalledWith(
+                'loginWithGoogle',
+                baseFlag
+            );
+        });
+
+        it('returns null with no cache write when the repository finds nothing', async () => {
+            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
+            featureFlagRepository.findOneByKey.mockResolvedValue(null);
+
+            const result = await domain.getByKey('loginWithGoogle');
+
+            expect(result).toBeNull();
+            expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('getMetadataByKey', () => {
+        it('returns the metadata of the flag', async () => {
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
+                ...baseFlag,
+                metadata: { newFeature: true },
+            });
+
+            const result = await domain.getMetadataByKey<{
+                newFeature: boolean;
+            }>('loginWithGoogle');
+
+            expect(result).toEqual({ newFeature: true });
+        });
+
+        it('returns null when no flag is found', async () => {
+            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
+            featureFlagRepository.findOneByKey.mockResolvedValue(null);
+
+            const result = await domain.getMetadataByKey('loginWithGoogle');
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null when the flag carries no metadata', async () => {
+            featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
+
+            const result = await domain.getMetadataByKey('loginWithGoogle');
+
+            expect(result).toBeNull();
+        });
+    });
+
     describe('validateFeatureFlag', () => {
         it('throws FeatureFlagNotConfiguredException (500) when the flag is unregistered', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
+            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
 
             await expect(
                 domain.validateFeatureFlag('unknownFlag', null, null)
@@ -118,13 +187,13 @@ describe('FeatureFlagDomain', () => {
                         'FeatureFlagNotConfiguredException: no feature flag row for "unknownFlag"',
                 }),
             });
-            expect(featureFlagCache.getByKeyAndCache).toHaveBeenCalledWith(
+            expect(featureFlagCache.getFeatureFlag).toHaveBeenCalledWith(
                 'unknownFlag'
             );
         });
 
         it('throws FeatureFlagDisabledException when the flag is disabled', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 isEnable: false,
             });
@@ -144,7 +213,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('resolves for a targeted user, bypassing rollout entirely', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 0,
                 targetUserIds: ['user-1'],
@@ -157,7 +226,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('resolves for an authenticated caller whose bucket is under rollout', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 50,
                 targetUserIds: [],
@@ -173,7 +242,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('throws FeatureFlagDisabledException for an authenticated caller whose bucket misses rollout', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 10,
                 targetUserIds: [],
@@ -195,7 +264,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('resolves with no user when the rollout is 100%, ignoring any anonymous header', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 100,
             });
@@ -207,7 +276,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('throws FeatureFlagDisabledException with no user, rollout under 100%, and no anonymous id', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 50,
             });
@@ -227,7 +296,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('resolves with no user, rollout under 100%, and an anonymous id under rollout', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 50,
             });
@@ -242,7 +311,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('throws FeatureFlagDisabledException with no user, rollout under 100%, and an anonymous id missing rollout', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 10,
             });
@@ -265,7 +334,7 @@ describe('FeatureFlagDomain', () => {
 
     describe('validateFeatureFlagMetadata', () => {
         it('throws FeatureFlagNotConfiguredException (500) when the flag is unregistered', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
+            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
 
             await expect(
                 domain.validateFeatureFlagMetadata('unknownFlag', 'enabled')
@@ -287,7 +356,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('throws FeatureFlagDisabledException when the flag is disabled', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 isEnable: false,
             });
@@ -307,7 +376,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('resolves when the metadata sub-key holds true', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 metadata: { enabled: true },
             });
@@ -318,7 +387,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('throws FeatureFlagDisabledException when the metadata sub-key holds false', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 metadata: { enabled: false },
             });
@@ -338,7 +407,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('throws FeatureFlagDisabledException (404) when the metadata sub-key is not boolean', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 metadata: { enabled: 'yes' },
             });
@@ -359,7 +428,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('throws FeatureFlagDisabledException (404) when metadata carries no such sub-key', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 metadata: {},
             });
@@ -380,7 +449,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('throws FeatureFlagDisabledException (404) when the flag carries no metadata at all', async () => {
-            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
                 metadata: null,
             });
@@ -503,7 +572,7 @@ describe('FeatureFlagDomain', () => {
                 '507f1f77bcf86cd799439011',
                 statusUpdate
             );
-            expect(featureFlagCache.deleteCacheByKey).toHaveBeenCalledWith(
+            expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
                 stored.key
             );
         });
@@ -577,7 +646,7 @@ describe('FeatureFlagDomain', () => {
                 '507f1f77bcf86cd799439011',
                 metadataUpdate
             );
-            expect(featureFlagCache.deleteCacheByKey).toHaveBeenCalledWith(
+            expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
                 stored.key
             );
         });

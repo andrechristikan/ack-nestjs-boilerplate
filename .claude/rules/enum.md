@@ -21,6 +21,12 @@ Every enum a module owns sits in `<module>.enum.ts` in that module's `enums/` fo
 
 `EnumUserStatusCodeError.notFound`, never `51000`; `EnumQueue.notificationEmail`, never `'notificationEmail'`; `EnumPaginationType.offset`, never `'offset'`. A literal compiles and silently survives a rename. A decorator factory uses the member too (`@QueueProcessor(EnumQueue.notificationEmail)`).
 
+## Literal unions
+
+- A string naming a process, step, channel, kind, state, field, operator, or key this project declares is an enum member, never a literal.
+- A string-literal union on a signature this project owns (an audit field name, a filter operator) is an enum in `enums/<module>.enum.ts` of the owning module or `src/common/` sub-tree, and the signature takes the enum.
+- A literal a third-party contract defines stays: `code-style.md`, Literal strings.
+
 ## Enum-typed query filters
 
 A query param filtered against an enum is a field on the list schema; the HTTP service applies `PaginationQueryUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant in `<module>.list.constant.ts` (`UserDefaultStatus`, `src/modules/user/constants/user.list.constant.ts:26`; `pagination.md`). Never a hand-parsed `@Query` plus a manual `includes`.

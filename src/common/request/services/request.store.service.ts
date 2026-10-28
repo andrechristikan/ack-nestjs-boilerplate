@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
+import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
 
 @Injectable()
 export class RequestStoreService {
@@ -15,7 +16,7 @@ export class RequestStoreService {
         return storedValue ?? null;
     }
 
-    merge<T extends object>(key: string, value: Partial<T>): void {
+    merge<T extends object>(key: string, value: IRequestStorePatch<T>): void {
         const storedValue = this.get<T>(key);
         const existing = storedValue ?? ({} as T);
         this.set<T>(key, { ...existing, ...value });

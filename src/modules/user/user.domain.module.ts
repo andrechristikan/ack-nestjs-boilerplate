@@ -1,4 +1,9 @@
 import { AwsModule } from '@common/aws/aws.module';
+import { BullModule } from '@nestjs/bullmq';
+import { UserQueueFactory } from '@modules/user/factories/user.queue.factory';
+import { UserQueue } from '@modules/user/queues/user.queue';
+import { QueueConfigKey } from '@queues/constants/queue.constant';
+import { EnumQueue } from '@queues/enums/queue.enum';
 import { CountryDomainModule } from '@modules/country/country.domain.module';
 import { DeviceDomainModule } from '@modules/device/device.domain.module';
 import { PasswordHistoryDomainModule } from '@modules/password-history/password-history.domain.module';
@@ -47,8 +52,10 @@ import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobil
         UserTwoFactorAnalyticDomain,
         UserVerificationAnalyticDomain,
         UserMobileNumberAnalyticDomain,
+        UserQueue,
     ],
     exports: [
+        BullModule,
         UserDomain,
         UserAuthDomain,
         UserImportDomain,
@@ -67,6 +74,7 @@ import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobil
         UserTwoFactorAnalyticDomain,
         UserVerificationAnalyticDomain,
         UserMobileNumberAnalyticDomain,
+        UserQueue,
     ],
     imports: [
         UserRepositoryModule,
@@ -74,6 +82,11 @@ import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobil
         PasswordHistoryDomainModule,
         DeviceDomainModule,
         AwsModule,
+        BullModule.registerQueueAsync({
+            name: EnumQueue.user,
+            configKey: QueueConfigKey,
+            useClass: UserQueueFactory,
+        }),
     ],
 })
 export class UserDomainModule {}

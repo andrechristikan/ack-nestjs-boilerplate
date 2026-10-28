@@ -13,8 +13,8 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 @QueueProcessor(EnumQueue.workspace)
 export class WorkspaceProcessor extends QueueProcessorBase {
     constructor(
-        private readonly workspaceProcessorService: WorkspaceProcessorService,
-        sentryService: SentryService
+        protected readonly sentryService: SentryService,
+        private readonly workspaceProcessorService: WorkspaceProcessorService
     ) {
         super(sentryService);
     }
@@ -27,9 +27,7 @@ export class WorkspaceProcessor extends QueueProcessorBase {
             case EnumWorkspaceProcess.expireStaleInvites:
                 return await this.workspaceProcessorService.processExpireStaleInvites();
             default:
-                return {
-                    message: `No workspace processor found for the given job name ${job.name}`,
-                };
+                this.workspaceProcessorService.processUnknown(job.name);
         }
     }
 }

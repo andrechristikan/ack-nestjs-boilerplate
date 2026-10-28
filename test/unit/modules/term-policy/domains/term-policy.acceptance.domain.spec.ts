@@ -337,7 +337,6 @@ describe('TermPolicyAcceptanceDomain', () => {
             const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userAcceptTermPolicy,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,

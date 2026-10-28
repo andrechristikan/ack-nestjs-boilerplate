@@ -4,14 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Response } from 'express';
 import { RequestThrottleOptionsMetaKey } from '@common/request/constants/request.constant';
-import {
-    EnumRequestThrottleName,
-    EnumRequestThrottleRoute,
-} from '@common/request/enums/request.enum';
+import { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import type {
     IRequestApp,
     IRequestThrottleOptions,
-    IRequestThrottlePolicy,
+    IRequestThrottleRoutePolicies,
 } from '@common/request/interfaces/request.interface';
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 import { RequestUtil } from '@common/request/utils/request.util';
@@ -22,10 +19,7 @@ import { RequestUtil } from '@common/request/utils/request.util';
 @Injectable()
 export class RequestThrottleRouteGuard implements CanActivate {
     private readonly name = EnumRequestThrottleName.route;
-    private readonly policies: Record<
-        EnumRequestThrottleRoute,
-        IRequestThrottlePolicy
-    >;
+    private readonly policies: IRequestThrottleRoutePolicies;
 
     constructor(
         private readonly reflector: Reflector,
@@ -33,9 +27,9 @@ export class RequestThrottleRouteGuard implements CanActivate {
         private readonly requestUtil: RequestUtil,
         private readonly requestThrottleService: RequestThrottleService
     ) {
-        this.policies = this.configService.get<
-            Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>
-        >('request.throttle.route')!;
+        this.policies = this.configService.get<IRequestThrottleRoutePolicies>(
+            'request.throttle.route'
+        )!;
     }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {

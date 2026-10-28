@@ -6,7 +6,10 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyActivityLogSubject,
+    ITermPolicyContent,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
@@ -97,7 +100,7 @@ export class TermPolicyUtil {
     }
 
     mapActivityLogMetadata(
-        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        termPolicy: ITermPolicyActivityLogSubject,
         timestamp: Date
     ): IActivityLogMetadata {
         return {

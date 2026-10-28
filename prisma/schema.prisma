@@ -922,6 +922,7 @@ enum EnumActivityLogAction {
   workspaceMemberLeft
   workspaceOwnershipTransferred
   workspaceInviteCreated
+  workspaceInviteResent
   workspaceInviteAccepted
   workspaceInviteRevoked
   workspaceJoinRequested
@@ -932,6 +933,7 @@ enum EnumActivityLogAction {
   workspaceMemberRemovedByAdmin
   workspaceOwnershipTransferredByOwner
   workspaceInviteCreatedByAdmin
+  workspaceInviteResentByAdmin
   workspaceInviteAcceptedByInvitee
   workspaceInviteRevokedByAdmin
   workspaceJoinAcceptedByAdmin

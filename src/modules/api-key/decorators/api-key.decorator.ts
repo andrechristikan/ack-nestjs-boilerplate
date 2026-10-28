@@ -18,41 +18,38 @@ import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
+import type {
+    IApiKeyField,
+    IApiKeyFieldValue,
+} from '@modules/api-key/interfaces/api-key.interface';
 
 /**
  * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored. Throws `ApiKeyGuardMissingException` when the request carries no key and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const ApiKeyPayload = createParamDecorator<
-    Extract<keyof ApiKey, string> | undefined,
-    ApiKey | NonNullable<ApiKey[Extract<keyof ApiKey, string>]>
->(
-    (
-        field: Extract<keyof ApiKey, string> | undefined
-    ): ApiKey | NonNullable<ApiKey[Extract<keyof ApiKey, string>]> => {
-        const current =
-            ClsServiceManager.getClsService().get<ApiKey | null>(
-                ApiKeyStoreKey
-            ) ?? null;
-        if (current === null) {
-            throw new ApiKeyGuardMissingException();
-        }
-
-        const fieldKey = field ?? null;
-        if (fieldKey === null) {
-            return current;
-        }
-
-        const value = current[fieldKey] ?? null;
-        if (value === null) {
-            throw new RequestContextMissingException(
-                `${ApiKeyStoreKey}.${field}`
-            );
-        }
-
-        return value;
+    IApiKeyField | undefined,
+    ApiKey | IApiKeyFieldValue
+>((field: IApiKeyField | undefined): ApiKey | IApiKeyFieldValue => {
+    const current =
+        ClsServiceManager.getClsService().get<ApiKey | null>(ApiKeyStoreKey) ??
+        null;
+    if (current === null) {
+        throw new ApiKeyGuardMissingException();
     }
-);
+
+    const fieldKey = field ?? null;
+    if (fieldKey === null) {
+        return current;
+    }
+
+    const value = current[fieldKey] ?? null;
+    if (value === null) {
+        throw new RequestContextMissingException(`${ApiKeyStoreKey}.${field}`);
+    }
+
+    return value;
+});
 
 /**
  * Requires a valid X-API-Key and restricts the route to system-type API keys.

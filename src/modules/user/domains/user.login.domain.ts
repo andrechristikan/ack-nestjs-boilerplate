@@ -33,7 +33,6 @@ import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
@@ -78,19 +77,8 @@ export class UserLoginDomain {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    private async notifyNewDeviceLogin(
-        user: IUser,
-        newDevice: INotificationNewDeviceLoginPayload
-    ): Promise<void> {
-        const recipient = await this.notificationRecipientDomain.getRecipient(
-            user,
-            EnumNotificationKind.newDeviceLogin
-        );
-        await this.notificationQueue.sendNewDeviceLogin(recipient, newDevice);
-    }
-
     private async assertTwoFactorUnlocked(user: IUser): Promise<void> {
-        const remainingMs = await this.authCache.getLockTwoFactorAttempt(user);
+        const remainingMs = await this.authCache.getTwoFactorLockTtlInMs(user);
         if (remainingMs > 0) {
             throw new AuthTwoFactorAttemptTemporaryLockException(
                 Math.ceil(remainingMs / 1000)
@@ -108,7 +96,7 @@ export class UserLoginDomain {
         const isTwoFactorAttemptMaxed =
             this.authTwoFactorDomain.checkAttempt(user);
         if (isTwoFactorAttemptMaxed) {
-            await this.authCache.lockTwoFactorAttempt(user);
+            await this.authCache.setTwoFactorLock(user);
         }
     }
 
@@ -125,7 +113,6 @@ export class UserLoginDomain {
                 action: EnumActivityLogAction.userLoginFailed,
                 userId,
                 createdBy: userId,
-                onError: true,
             }),
         ];
         await this.userRepository.increasePasswordAttempt(userId);
@@ -166,6 +153,10 @@ export class UserLoginDomain {
         ];
         const now = this.helperDateService.create();
         // Sequential by design: write must not run if an earlier step throws
+        const recipient = await this.notificationRecipientDomain.getRecipient(
+            user,
+            EnumNotificationKind.newDeviceLogin
+        );
         const { isNewDevice, sessionShouldBeInactive, deviceOwnershipId } =
             await this.databaseService.withTransaction(async tx => {
                 const notificationProvider =
@@ -235,12 +226,17 @@ export class UserLoginDomain {
 
         if (isNewDevice) {
             const loginAtIso = this.helperDateService.formatToIso(loginAt);
-            const newDeviceLoginSent = this.notifyNewDeviceLogin(user, {
-                requestLog,
-                loginFrom,
-                loginWith,
-                loginAt: loginAtIso,
-            });
+            const newDeviceLoginSent =
+                this.notificationQueue.sendNewDeviceLogin(
+                    recipient,
+                    {
+                        requestLog,
+                        loginFrom,
+                        loginWith,
+                        loginAt: loginAtIso,
+                    },
+                    sessionId
+                );
             promises.push(newDeviceLoginSent);
         }
 
@@ -306,7 +302,7 @@ export class UserLoginDomain {
             };
         }
 
-        const challengePromise = this.authCache.createChallenge({
+        const challengePromise = this.authCache.setTwoFactorChallenge({
             userId: user.id,
             device,
             loginFrom,

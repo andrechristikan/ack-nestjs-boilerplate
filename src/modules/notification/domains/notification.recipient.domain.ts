@@ -39,4 +39,21 @@ export class NotificationRecipientDomain {
             channels,
         };
     }
+    /**
+     * Snapshots the delivery targets of a user the write just created from the values it stored: no device token, no setting row, so every channel of the kind.
+     */
+    buildNewUserRecipient(
+        { id, email, username }: IUserRecipient,
+        kind: EnumNotificationKind
+    ): INotificationRecipient {
+        const channels = this.notificationUtil.resolveChannels(kind, []);
+
+        return {
+            userId: id,
+            email,
+            username,
+            notificationTokens: [],
+            channels,
+        };
+    }
 }

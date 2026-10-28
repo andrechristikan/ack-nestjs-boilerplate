@@ -11,7 +11,7 @@ import type { Cache } from 'cache-manager';
 @Injectable()
 export class HealthRedisIndicator {
     constructor(
-        @Inject(CacheMainProvider) private cacheManager: Cache,
+        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 

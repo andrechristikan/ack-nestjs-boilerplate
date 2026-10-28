@@ -2,6 +2,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -35,9 +36,12 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationQueue', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationQueue: MockProxy<Queue> = mock<Queue>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
@@ -47,10 +51,21 @@ describe('NotificationQueue', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, unknown> = {
-                'notification.dedupTtlInMs': 60_000,
                 'app.encryptionSecretKey': 'secret-key',
+                'notification.jobId.userPattern': '{process}-{userId}',
+                'notification.jobId.referencePattern': '{process}-{reference}',
+                'notification.jobId.eventPattern': '{process}-{eventId}',
+                'notification.jobId.joinRequestPattern':
+                    '{process}-{joinRequestId}-{userId}',
+                'notification.jobId.termPolicyPublishPattern':
+                    '{process}-{termPolicyId}',
+                'notification.jobId.termPolicyResendPattern':
+                    '{process}-{termPolicyId}-{resendNonce}',
+                'notification.jobId.userTermPolicyPattern':
+                    '{process}-{userId}-{termPolicyId}',
             };
 
             return values[key];
@@ -61,11 +76,13 @@ describe('NotificationQueue', () => {
         );
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationQueue,
                 {
                     provide: getQueueToken(EnumQueue.notification),
                     useValue: notificationQueue,
                 },
+                { provide: SentryService, useValue: sentryService },
                 { provide: ConfigService, useValue: configService },
                 HelperStringService,
                 {
@@ -111,11 +128,132 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'welcomeByAdmin-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'welcomeByAdmin-user-id',
                 }
+            );
+        });
+
+        it('resolves and reports the failure when the add rejects', async () => {
+            const error = new Error('redis down');
+            notificationQueue.add.mockRejectedValue(error);
+
+            await expect(
+                queue.sendWelcomeByAdmin(
+                    recipient,
+                    {
+                        password: 'plain-password',
+                        passwordCreatedAt: '2024-01-01T00:00:00.000Z',
+                        passwordExpiredAt: '2024-02-01T00:00:00.000Z',
+                    },
+                    'admin-id'
+                )
+            ).resolves.toBeUndefined();
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    rawError: error,
+                    message: 'notification.queue.error.enqueueWelcomeByAdmin',
+                })
+            );
+        });
+    });
+
+    describe('sendWelcomeByAdminBulk', () => {
+        it('encrypts each password and adds one welcomeByAdmin job per user in one addBulk, each under a user job id', async () => {
+            const secondRecipient = { ...recipient, userId: 'user-2' };
+            const payload: INotificationWelcomeByAdminPayload = {
+                password: 'plain-password',
+                passwordCreatedAt: '2024-01-01T00:00:00.000Z',
+                passwordExpiredAt: '2024-02-01T00:00:00.000Z',
+            };
+            databaseUtil.createId
+                .mockReturnValueOnce('n-1')
+                .mockReturnValueOnce('n-2');
+
+            await queue.sendWelcomeByAdminBulk(
+                [
+                    { recipient, data: payload },
+                    { recipient: secondRecipient, data: payload },
+                ],
+                'admin-id'
+            );
+
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                payload.password,
+                'secret-key',
+                'notification.payload',
+                'user-2'
+            );
+            expect(notificationQueue.addBulk).toHaveBeenCalledTimes(1);
+            expect(notificationQueue.add).not.toHaveBeenCalled();
+            expect(notificationQueue.addBulk).toHaveBeenCalledWith([
+                {
+                    name: EnumNotificationProcess.welcomeByAdmin,
+                    data: {
+                        userId: 'user-id',
+                        notificationId: 'n-1',
+                        completedSteps: [],
+                        recipient: TestEncryptedRecipient,
+                        proceedBy: 'admin-id',
+                        data: {
+                            encryptedPassword: 'cipher(plain-password)',
+                            passwordCreatedAt: payload.passwordCreatedAt,
+                            passwordExpiredAt: payload.passwordExpiredAt,
+                        },
+                    },
+                    opts: {
+                        priority: EnumQueuePriority.medium,
+                        jobId: 'welcomeByAdmin-user-id',
+                    },
+                },
+                {
+                    name: EnumNotificationProcess.welcomeByAdmin,
+                    data: {
+                        userId: 'user-2',
+                        notificationId: 'n-2',
+                        completedSteps: [],
+                        recipient: TestEncryptedRecipient,
+                        proceedBy: 'admin-id',
+                        data: {
+                            encryptedPassword: 'cipher(plain-password)',
+                            passwordCreatedAt: payload.passwordCreatedAt,
+                            passwordExpiredAt: payload.passwordExpiredAt,
+                        },
+                    },
+                    opts: {
+                        priority: EnumQueuePriority.medium,
+                        jobId: 'welcomeByAdmin-user-2',
+                    },
+                },
+            ]);
+        });
+
+        it('resolves and reports the failure when the addBulk rejects', async () => {
+            const error = new Error('redis down');
+            notificationQueue.addBulk.mockRejectedValue(error);
+
+            await expect(
+                queue.sendWelcomeByAdminBulk(
+                    [
+                        {
+                            recipient,
+                            data: {
+                                password: 'plain-password',
+                                passwordCreatedAt: '2024-01-01T00:00:00.000Z',
+                                passwordExpiredAt: '2024-02-01T00:00:00.000Z',
+                            },
+                        },
+                    ],
+                    'admin-id'
+                )
+            ).resolves.toBeUndefined();
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    rawError: error,
+                    message:
+                        'notification.queue.error.enqueueWelcomeByAdminBulk',
+                })
             );
         });
     });
@@ -160,10 +298,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'welcome-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'welcome-user-id',
                 }
             );
         });
@@ -186,10 +321,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'welcomeSocial-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'welcomeSocial-user-id',
                 }
             );
         });
@@ -206,7 +338,8 @@ describe('NotificationQueue', () => {
             await queue.sendTemporaryPasswordByAdmin(
                 recipient,
                 payload,
-                'admin-id'
+                'admin-id',
+                'history-1'
             );
 
             expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
@@ -232,10 +365,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'temporaryPasswordByAdmin-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'temporaryPasswordByAdmin-history-1',
                 }
             );
         });
@@ -243,7 +373,7 @@ describe('NotificationQueue', () => {
 
     describe('sendChangePassword', () => {
         it('enqueues the changePassword job with no data, medium priority', async () => {
-            await queue.sendChangePassword(recipient);
+            await queue.sendChangePassword(recipient, 'history-1');
 
             expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
@@ -258,11 +388,28 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'changePassword-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'changePassword-history-1',
                 }
+            );
+        });
+    });
+
+    describe('sendChangePassword job ids', () => {
+        it('gives two calls with different password history ids different job ids', async () => {
+            await queue.sendChangePassword(recipient, 'history-1');
+            await queue.sendChangePassword(recipient, 'history-2');
+
+            expect(notificationQueue.add).toHaveBeenNthCalledWith(
+                1,
+                EnumNotificationProcess.changePassword,
+                expect.anything(),
+                expect.objectContaining({ jobId: 'changePassword-history-1' })
+            );
+            expect(notificationQueue.add).toHaveBeenNthCalledWith(
+                2,
+                EnumNotificationProcess.changePassword,
+                expect.anything(),
+                expect.objectContaining({ jobId: 'changePassword-history-2' })
             );
         });
     });
@@ -286,10 +433,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'verifiedEmail-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'verifiedEmail-ref-1',
                 }
             );
         });
@@ -330,10 +474,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'verificationEmail-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'verificationEmail-ref-1',
                 }
             );
         });
@@ -376,10 +517,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'forgotPassword-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'forgotPassword-ref-1',
                 }
             );
         });
@@ -387,7 +525,7 @@ describe('NotificationQueue', () => {
 
     describe('sendResetPassword', () => {
         it('enqueues the resetPassword job with no data, medium priority', async () => {
-            await queue.sendResetPassword(recipient);
+            await queue.sendResetPassword(recipient, 'reset-1');
 
             expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
@@ -402,10 +540,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'resetPassword-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'resetPassword-reset-1',
                 }
             );
         });
@@ -428,10 +563,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'resetTwoFactorByAdmin-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'resetTwoFactorByAdmin-n-1',
                 }
             );
         });
@@ -458,7 +590,7 @@ describe('NotificationQueue', () => {
                 requestLog,
             };
 
-            await queue.sendNewDeviceLogin(recipient, newDevice);
+            await queue.sendNewDeviceLogin(recipient, newDevice, 'session-1');
 
             expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
@@ -473,10 +605,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.high,
-                    deduplication: {
-                        id: 'newDeviceLogin-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'newDeviceLogin-session-1',
                 }
             );
         });
@@ -547,6 +676,17 @@ describe('NotificationQueue', () => {
                 })
             );
         });
+
+        it('rejects and reports nothing when the add rejects', async () => {
+            const error = new Error('redis down');
+            notificationQueue.add.mockRejectedValue(error);
+
+            await expect(
+                queue.sendResendPublishTermPolicy(basePayload, proceedBy)
+            ).rejects.toBe(error);
+
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
     });
 
     describe('sendVerifiedMobileNumber', () => {
@@ -572,17 +712,14 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'verifiedMobileNumber-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'verifiedMobileNumber-ref-1',
                 }
             );
         });
     });
 
     describe('sendUserAcceptTermPolicy', () => {
-        it('enqueues the userAcceptTermPolicy job deduplicated by user and term policy, low priority', async () => {
+        it('enqueues the userAcceptTermPolicy job under a fixed job id, low priority', async () => {
             const payload: INotificationAcceptTermPolicyPayload = {
                 type: EnumTermPolicyType.privacy,
                 version: 3,
@@ -604,17 +741,14 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.low,
-                    deduplication: {
-                        id: 'userAcceptTermPolicy-user-id-term-policy-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'userAcceptTermPolicy-user-id-term-policy-id',
                 }
             );
         });
     });
 
     describe('sendWorkspaceInvite', () => {
-        it('encrypts the invite link and enqueues the workspaceInvite job deduplicated by reference, medium priority', async () => {
+        it('encrypts the invite link and enqueues the workspaceInvite job under a fixed job id, medium priority', async () => {
             const payload: INotificationWorkspaceInvitePayload = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -655,26 +789,28 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceInvite-ref-1',
-                        ttl: 60_000,
-                    },
+                    jobId: 'workspaceInvite-ref-1',
                 }
             );
         });
     });
 
-    describe('sendWorkspaceJoinRequest', () => {
-        it('encrypts the review link and enqueues the workspaceJoinRequest job deduplicated by workspace and user, medium priority', async () => {
+    describe('sendWorkspaceJoinRequestBulk', () => {
+        it('encrypts the review link per reviewer and adds one job per reviewer in one addBulk, medium priority', async () => {
+            const secondRecipient = { ...recipient, userId: 'user-2' };
             const payload: INotificationWorkspaceJoinRequestPayload = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
                 requesterName: 'Omar',
+                joinRequestId: 'join-request-id',
                 joinRequestReviewLink: 'https://review.example.com',
             };
+            databaseUtil.createId
+                .mockReturnValueOnce('n-1')
+                .mockReturnValueOnce('n-2');
 
-            await queue.sendWorkspaceJoinRequest(
-                recipient,
+            await queue.sendWorkspaceJoinRequestBulk(
+                [recipient, secondRecipient],
                 payload,
                 'requester-id'
             );
@@ -685,36 +821,92 @@ describe('NotificationQueue', () => {
                 'notification.payload',
                 'user-id'
             );
-            expectRecipientEncrypted(helperEncryptionService, recipient);
-            expect(notificationQueue.add).toHaveBeenCalledWith(
-                EnumNotificationProcess.workspaceJoinRequest,
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                payload.joinRequestReviewLink,
+                'secret-key',
+                'notification.payload',
+                'user-2'
+            );
+            expect(notificationQueue.addBulk).toHaveBeenCalledTimes(1);
+            expect(notificationQueue.add).not.toHaveBeenCalled();
+            expect(notificationQueue.addBulk).toHaveBeenCalledWith([
                 {
-                    userId: 'user-id',
-                    notificationId: 'n-1',
-                    completedSteps: [],
-                    recipient: TestEncryptedRecipient,
-                    proceedBy: 'requester-id',
+                    name: EnumNotificationProcess.workspaceJoinRequest,
                     data: {
-                        workspaceId: payload.workspaceId,
-                        workspaceName: payload.workspaceName,
-                        requesterName: payload.requesterName,
-                        encryptedJoinRequestReviewLink:
-                            'cipher(https://review.example.com)',
+                        userId: 'user-id',
+                        notificationId: 'n-1',
+                        completedSteps: [],
+                        recipient: TestEncryptedRecipient,
+                        proceedBy: 'requester-id',
+                        data: {
+                            workspaceId: payload.workspaceId,
+                            workspaceName: payload.workspaceName,
+                            requesterName: payload.requesterName,
+                            joinRequestId: payload.joinRequestId,
+                            encryptedJoinRequestReviewLink:
+                                'cipher(https://review.example.com)',
+                        },
+                    },
+                    opts: {
+                        priority: EnumQueuePriority.medium,
+                        jobId: 'workspaceJoinRequest-join-request-id-user-id',
                     },
                 },
                 {
-                    priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinRequest-workspace-id-user-id',
-                        ttl: 60_000,
+                    name: EnumNotificationProcess.workspaceJoinRequest,
+                    data: {
+                        userId: 'user-2',
+                        notificationId: 'n-2',
+                        completedSteps: [],
+                        recipient: TestEncryptedRecipient,
+                        proceedBy: 'requester-id',
+                        data: {
+                            workspaceId: payload.workspaceId,
+                            workspaceName: payload.workspaceName,
+                            requesterName: payload.requesterName,
+                            joinRequestId: payload.joinRequestId,
+                            encryptedJoinRequestReviewLink:
+                                'cipher(https://review.example.com)',
+                        },
                     },
-                }
+                    opts: {
+                        priority: EnumQueuePriority.medium,
+                        jobId: 'workspaceJoinRequest-join-request-id-user-2',
+                    },
+                },
+            ]);
+        });
+
+        it('resolves and reports the failure when the addBulk rejects', async () => {
+            const error = new Error('redis down');
+            notificationQueue.addBulk.mockRejectedValue(error);
+
+            await expect(
+                queue.sendWorkspaceJoinRequestBulk(
+                    [recipient],
+                    {
+                        workspaceId: 'workspace-id',
+                        workspaceName: 'Acme',
+                        requesterName: 'Omar',
+                        joinRequestId: 'join-request-id',
+                        joinRequestReviewLink: 'https://review.example.com',
+                    },
+                    'requester-id'
+                )
+            ).resolves.toBeUndefined();
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    rawError: error,
+                    message:
+                        'notification.queue.error.enqueueWorkspaceJoinRequestBulk',
+                })
             );
         });
     });
 
     describe('sendWorkspaceJoinAccepted', () => {
-        it('enqueues the workspaceJoinAccepted job deduplicated by workspace and user, medium priority', async () => {
+        it('enqueues the workspaceJoinAccepted job under a fixed job id, medium priority', async () => {
             const payload: INotificationWorkspaceJoinAcceptedPayload = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -723,7 +915,8 @@ describe('NotificationQueue', () => {
             await queue.sendWorkspaceJoinAccepted(
                 recipient,
                 payload,
-                'reviewer-id'
+                'reviewer-id',
+                'join-request-id'
             );
 
             expectRecipientEncrypted(helperEncryptionService, recipient);
@@ -739,17 +932,14 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinAccepted-workspace-id-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'workspaceJoinAccepted-join-request-id-user-id',
                 }
             );
         });
     });
 
     describe('sendWorkspaceJoinRejected', () => {
-        it('enqueues the workspaceJoinRejected job deduplicated by workspace and user, medium priority', async () => {
+        it('enqueues the workspaceJoinRejected job under a fixed job id, medium priority', async () => {
             const payload: INotificationWorkspaceJoinRejectedPayload = {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
@@ -760,7 +950,8 @@ describe('NotificationQueue', () => {
             await queue.sendWorkspaceJoinRejected(
                 recipient,
                 payload,
-                'reviewer-id'
+                'reviewer-id',
+                'join-request-id'
             );
 
             expectRecipientEncrypted(helperEncryptionService, recipient);
@@ -776,10 +967,7 @@ describe('NotificationQueue', () => {
                 },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'workspaceJoinRejected-workspace-id-user-id',
-                        ttl: 60_000,
-                    },
+                    jobId: 'workspaceJoinRejected-join-request-id-user-id',
                 }
             );
         });

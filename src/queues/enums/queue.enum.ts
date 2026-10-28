@@ -3,9 +3,13 @@
  * @public
  */
 export enum EnumQueue {
+    activityLog = 'activityLog',
     notification = 'notification',
     notificationEmail = 'notificationEmail',
     notificationPush = 'notificationPush',
+    session = 'session',
+    termPolicy = 'termPolicy',
+    user = 'user',
     workspace = 'workspace',
 }
 

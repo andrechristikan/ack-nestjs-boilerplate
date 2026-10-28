@@ -8,29 +8,36 @@ import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 @Injectable()
 export class ApiKeyCache {
     private readonly logger = new Logger(ApiKeyCache.name);
-    private readonly keyPattern: string;
+    private readonly apiKeyKeyPattern: string;
 
     constructor(
-        @Inject(CacheMainProvider) private cacheManager: Cache,
+        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly configService: ConfigService
     ) {
-        this.keyPattern = this.configService.get<string>(
+        this.apiKeyKeyPattern = this.configService.get<string>(
             'auth.xApiKey.keyPattern'
         )!;
     }
 
-    async getCacheByKey(key: string): Promise<ApiKey | null> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
-        const cachedApiKey = await this.cacheManager.get<ApiKey>(cacheKey);
-        if (cachedApiKey) {
-            return cachedApiKey;
-        }
-
-        return null;
+    private buildApiKeyKey(key: string): string {
+        return this.apiKeyKeyPattern.replace('{key}', () => key);
     }
 
-    async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
+    async getApiKey(key: string): Promise<ApiKey | null> {
+        const cacheKey = this.buildApiKeyKey(key);
+        try {
+            const cached = await this.cacheManager.get<ApiKey>(cacheKey);
+
+            return cached ?? null;
+        } catch (error: unknown) {
+            this.logger.error(error, 'API key cache read failed');
+
+            return null;
+        }
+    }
+
+    async setApiKey(key: string, apiKey: ApiKey): Promise<void> {
+        const cacheKey = this.buildApiKeyKey(key);
         try {
             await this.cacheManager.set(cacheKey, apiKey);
         } catch (error: unknown) {
@@ -38,9 +45,8 @@ export class ApiKeyCache {
         }
     }
 
-    async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
+    async deleteApiKey(key: string): Promise<void> {
+        const cacheKey = this.buildApiKeyKey(key);
         await this.cacheManager.del(cacheKey);
-        return;
     }
 }

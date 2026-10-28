@@ -14,11 +14,11 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class AuthCache {
     private readonly logger = new Logger(AuthCache.name);
-    private readonly challengeKeyPattern: string;
-    private readonly challengeTtlInMs: number;
-    private readonly lockKeyPattern: string;
-    private readonly maxAttempt: number;
-    private readonly lockAttemptDurationInMs: number;
+    private readonly twoFactorChallengeKeyPattern: string;
+    private readonly twoFactorChallengeTtlInMs: number;
+    private readonly twoFactorLockKeyPattern: string;
+    private readonly twoFactorMaxAttempt: number;
+    private readonly twoFactorLockAttemptDurationInMs: number;
 
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
@@ -26,53 +26,61 @@ export class AuthCache {
         private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.challengeKeyPattern = this.configService.get<string>(
+        this.twoFactorChallengeKeyPattern = this.configService.get<string>(
             'auth.twoFactor.challengeKeyPattern'
         )!;
-        this.challengeTtlInMs = this.configService.get<number>(
+        this.twoFactorChallengeTtlInMs = this.configService.get<number>(
             'auth.twoFactor.challengeTtlInMs'
         )!;
-        this.lockKeyPattern = this.configService.get<string>(
+        this.twoFactorLockKeyPattern = this.configService.get<string>(
             'auth.twoFactor.lockKeyPattern'
         )!;
-        this.maxAttempt = this.configService.get<number>(
+        this.twoFactorMaxAttempt = this.configService.get<number>(
             'auth.twoFactor.maxAttempt'
         )!;
-        this.lockAttemptDurationInMs = this.configService.get<number>(
+        this.twoFactorLockAttemptDurationInMs = this.configService.get<number>(
             'auth.twoFactor.lockAttemptDurationInMs'
         )!;
     }
 
-    /** Stores the challenge payload in cache under a random token with a TTL. */
-    async createChallenge(
+    private buildTwoFactorChallengeKey(token: string): string {
+        return this.twoFactorChallengeKeyPattern.replace(
+            '{token}',
+            () => token
+        );
+    }
+
+    private buildTwoFactorLockKey(userId: string): string {
+        return this.twoFactorLockKeyPattern.replace('{userId}', () => userId);
+    }
+
+    /** Stores the challenge payload under a random token with a TTL; the write is the authority and throws. */
+    async setTwoFactorChallenge(
         cachePayload: IAuthTwoFactorChallengeCache
     ): Promise<IAuthTwoFactorChallenge> {
         const challengeToken = this.helperStringService.random(48);
-        const key = this.challengeKeyPattern.replace(
-            '{token}',
-            () => challengeToken
-        );
+        const key = this.buildTwoFactorChallengeKey(challengeToken);
         await this.cacheManager.set<IAuthTwoFactorChallengeCache>(
             key,
             cachePayload,
-            this.challengeTtlInMs
+            this.twoFactorChallengeTtlInMs
         );
 
-        return { challengeToken, expiresInMs: this.challengeTtlInMs };
+        return { challengeToken, expiresInMs: this.twoFactorChallengeTtlInMs };
     }
 
-    async getChallenge(
+    async getTwoFactorChallenge(
         token: string
     ): Promise<IAuthTwoFactorChallengeCache | null> {
-        const key = this.challengeKeyPattern.replace('{token}', () => token);
+        const key = this.buildTwoFactorChallengeKey(token);
         const cached =
             await this.cacheManager.get<IAuthTwoFactorChallengeCache>(key);
 
         return cached ?? null;
     }
 
-    async clearChallenge(token: string): Promise<void> {
-        const key = this.challengeKeyPattern.replace('{token}', () => token);
+    async deleteTwoFactorChallenge(token: string): Promise<void> {
+        const key = this.buildTwoFactorChallengeKey(token);
         try {
             await this.cacheManager.del(key);
         } catch (error: unknown) {
@@ -83,18 +91,20 @@ export class AuthCache {
         }
     }
 
-    /** Locks 2FA in cache with exponential backoff TTL `2^(attempt/maxAttempt) * lockAttemptDurationInMs` to throttle brute force. */
-    async lockTwoFactorAttempt(user: IUser): Promise<void> {
-        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
+    /** Locks two-factor with an exponential TTL `2^(attempt/maxAttempt) * lockAttemptDurationInMs`; the write is the authority and throws. */
+    async setTwoFactorLock(user: IUser): Promise<void> {
+        const key = this.buildTwoFactorLockKey(user.id);
         const ttlExponentialInMs =
-            Math.pow(2, (user.twoFactor?.attempt ?? 0) / this.maxAttempt) *
-            this.lockAttemptDurationInMs;
+            Math.pow(
+                2,
+                (user.twoFactor?.attempt ?? 0) / this.twoFactorMaxAttempt
+            ) * this.twoFactorLockAttemptDurationInMs;
         await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
     }
 
-    /** Returns the remaining 2FA lock duration in ms, or 0 when not locked. */
-    async getLockTwoFactorAttempt(user: IUser): Promise<number> {
-        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
+    /** Remaining lock duration in milliseconds, 0 when not locked. */
+    async getTwoFactorLockTtlInMs(user: IUser): Promise<number> {
+        const key = this.buildTwoFactorLockKey(user.id);
         const ttl = await this.cacheManager.ttl(key);
         const expiresAt = ttl ?? null;
         if (expiresAt === null) {
@@ -107,8 +117,8 @@ export class AuthCache {
         return Math.max(0, expiresAt - nowTimestamp);
     }
 
-    async clearLockTwoFactorAttempt(user: IUser): Promise<void> {
-        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
+    async deleteTwoFactorLock(user: IUser): Promise<void> {
+        const key = this.buildTwoFactorLockKey(user.id);
         try {
             await this.cacheManager.del(key);
         } catch (error: unknown) {

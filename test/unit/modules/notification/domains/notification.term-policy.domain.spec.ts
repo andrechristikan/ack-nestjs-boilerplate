@@ -25,8 +25,10 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationTermPolicyDomain', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
@@ -73,6 +75,7 @@ describe('NotificationTermPolicyDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
         helperDateService.createFromIso.mockReturnValue(cutoff);
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, number> = { 'email.batchSize': 3 };
@@ -81,6 +84,7 @@ describe('NotificationTermPolicyDomain', () => {
         });
         const module = await Test.createTestingModule({
             providers: [
+                { provide: MessageService, useValue: messageService },
                 NotificationTermPolicyDomain,
                 NotificationUtil,
                 {
@@ -239,7 +243,7 @@ describe('NotificationTermPolicyDomain', () => {
             ]);
             expect(calls).toEqual(['create', 'send', 'create', 'send']);
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 4,
                 createdCounts: 4,
                 batches: 2,
@@ -346,7 +350,7 @@ describe('NotificationTermPolicyDomain', () => {
                 },
             ]);
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 2,
                 createdCounts: 1,
                 batches: 1,
@@ -452,7 +456,7 @@ describe('NotificationTermPolicyDomain', () => {
                 },
             ]);
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 3,
                 createdCounts: 1,
                 batches: 3,
@@ -569,7 +573,7 @@ describe('NotificationTermPolicyDomain', () => {
                 notificationEmailQueue.sendPublishTermPolicyBatch
             ).toHaveBeenCalledWith(data, 'B', 'admin-id', 0, []);
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 1,
                 createdCounts: 0,
                 batches: 1,
@@ -796,7 +800,7 @@ describe('NotificationTermPolicyDomain', () => {
                 notificationRepository.createTermPolicyRecipients
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 4,
                 createdCounts: 0,
                 batches: 1,
@@ -850,7 +854,7 @@ describe('NotificationTermPolicyDomain', () => {
                 notificationEmailQueue.sendPublishTermPolicyBatch
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 3,
                 createdCounts: 0,
                 batches: 0,
@@ -926,7 +930,7 @@ describe('NotificationTermPolicyDomain', () => {
                 notificationRepository.createTermPolicyRecipients
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 3,
                 createdCounts: 0,
                 batches: 1,
@@ -967,7 +971,7 @@ describe('NotificationTermPolicyDomain', () => {
                 notificationRepository.createTermPolicyRecipients
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 2,
                 createdCounts: 0,
                 batches: 0,
@@ -992,7 +996,7 @@ describe('NotificationTermPolicyDomain', () => {
                 notificationEmailQueue.sendPublishTermPolicyBatch
             ).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'Publish term policy notification processed',
+                message: 'notification.queue.publishTermPolicy',
                 candidateCounts: 0,
                 createdCounts: 0,
                 batches: 0,
@@ -1032,7 +1036,7 @@ describe('NotificationTermPolicyDomain', () => {
                 },
             ]);
             expect(result).toEqual({
-                message: 'User accept term policy notification processed',
+                message: 'notification.queue.userAcceptTermPolicy',
                 completedSteps: [EnumNotificationStep.createNotification],
                 failedSteps: [],
             });
@@ -1049,8 +1053,7 @@ describe('NotificationTermPolicyDomain', () => {
 
             expect(notificationRepository.createMany).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message:
-                    'User accept term policy notification skipped, no channel enabled',
+                message: 'notification.queue.error.noChannel',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -1097,7 +1100,7 @@ describe('NotificationTermPolicyDomain', () => {
 
             expect(notificationRepository.createMany).not.toHaveBeenCalled();
             expect(result).toEqual({
-                message: 'User accept term policy notification processed',
+                message: 'notification.queue.userAcceptTermPolicy',
                 completedSteps: [EnumNotificationStep.createNotification],
                 failedSteps: [],
             });
@@ -1117,7 +1120,7 @@ describe('NotificationTermPolicyDomain', () => {
             );
 
             expect(result).toEqual({
-                message: 'User accept term policy notification failed',
+                message: 'notification.queue.error.failed',
                 completedSteps: [],
                 failedSteps: [
                     {

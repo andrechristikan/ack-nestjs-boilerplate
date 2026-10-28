@@ -11,6 +11,7 @@ import {
 } from '@common/pagination/constants/pagination.constant';
 import {
     EnumPaginationFilterDateBetweenType,
+    EnumPaginationFilterEnumOperator,
     EnumPaginationOrderDirectionType,
 } from '@common/pagination/enums/pagination.enum';
 import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
@@ -35,7 +36,6 @@ import type {
     IPaginationNotEqual,
     IPaginationOrderBy,
     IPaginationOrderByQuery,
-    IPaginationQuery,
     IPaginationQueryCursorOptions,
     IPaginationQueryCursorParams,
     IPaginationQueryFilterDateOptions,
@@ -44,6 +44,7 @@ import type {
     IPaginationQueryFilterResult,
     IPaginationQueryOffsetOptions,
     IPaginationQueryOffsetParams,
+    IPaginationQueryPatch,
     IPaginationSearchWhere,
 } from '@common/pagination/interfaces/pagination.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
@@ -111,7 +112,7 @@ export class PaginationQueryUtil {
         field: TField,
         value: unknown,
         defaultEnum: T[],
-        operator: 'in' | 'notIn',
+        operator: EnumPaginationFilterEnumOperator,
         options?: IPaginationQueryFilterOptions
     ): IPaginationQueryFilterResult | null {
         if (
@@ -146,7 +147,7 @@ export class PaginationQueryUtil {
         return {
             where: {
                 [customField]:
-                    operator === 'in'
+                    operator === EnumPaginationFilterEnumOperator.in
                         ? { in: finalValue }
                         : { notIn: finalValue },
             },
@@ -313,7 +314,7 @@ export class PaginationQueryUtil {
         options: IPaginationQueryOffsetOptions
     ): {
         params: IPaginationQueryOffsetParams<TArgsWhere>;
-        storePatch: Partial<IPaginationQuery>;
+        storePatch: IPaginationQueryPatch;
     } {
         try {
             const availableSearch = options.availableSearch ?? [];
@@ -360,7 +361,7 @@ export class PaginationQueryUtil {
         options: IPaginationQueryCursorOptions
     ): {
         params: IPaginationQueryCursorParams<TArgsWhere>;
-        storePatch: Partial<IPaginationQuery>;
+        storePatch: IPaginationQueryPatch;
     } {
         try {
             const availableSearch = options.availableSearch ?? [];
@@ -492,7 +493,7 @@ export class PaginationQueryUtil {
             field,
             value,
             defaultEnum,
-            'in',
+            EnumPaginationFilterEnumOperator.in,
             options
         ) as IPaginationQueryFilterResult<Record<string, IPaginationIn>> | null;
     }
@@ -507,7 +508,7 @@ export class PaginationQueryUtil {
             field,
             value,
             defaultEnum,
-            'notIn',
+            EnumPaginationFilterEnumOperator.notIn,
             options
         ) as IPaginationQueryFilterResult<
             Record<string, IPaginationNin>

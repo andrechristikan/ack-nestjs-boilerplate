@@ -37,6 +37,7 @@ import { NotificationRecipientDomain } from '@modules/notification/domains/notif
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -89,7 +90,6 @@ describe('UserPasswordDomain', () => {
     const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userChangePassword,
         metadata: {},
-        onError: false,
         userId: null,
         createdBy: null,
         workspaceId: null,
@@ -185,9 +185,25 @@ describe('UserPasswordDomain', () => {
         userId: baseUser.id,
     };
 
+    const createdPasswordHistory: PasswordHistory = {
+        id: 'history-created',
+        userId: baseUser.id,
+        password: 'hashed-new',
+        type: EnumPasswordHistoryType.profile,
+        expiredAt: new Date('2026-04-01T00:00:00.000Z'),
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+    };
+
+    const revokedSessions: ISessionRef[] = [{ id: 'session-one' }];
+
     beforeEach(async () => {
         vi.resetAllMocks();
+        sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedSessions);
         notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
+        passwordHistoryDomain.createInTx.mockResolvedValue(
+            createdPasswordHistory
+        );
 
         configGet.mockImplementation(key => configValues[key]);
         activityLogDomain.prepare.mockReturnValue(activityLog);
@@ -324,6 +340,7 @@ describe('UserPasswordDomain', () => {
             );
             expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
                 'user-hollow',
+                revokedSessions,
                 [activityLog]
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
@@ -387,7 +404,6 @@ describe('UserPasswordDomain', () => {
             const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminUserUpdatePassword,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -395,7 +411,6 @@ describe('UserPasswordDomain', () => {
             const targetActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -404,8 +419,8 @@ describe('UserPasswordDomain', () => {
                 .mockReturnValueOnce(actorActivityLog)
                 .mockReturnValueOnce(targetActivityLog);
             const callOrder: string[] = [];
-            sessionDomain.purgeLoginsByUser.mockImplementation(async () => {
-                callOrder.push('purgeLoginsByUser');
+            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
+                callOrder.push('purgeRevokedLogins');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -433,8 +448,9 @@ describe('UserPasswordDomain', () => {
                 password.passwordCreated,
                 'admin-hollow'
             );
-            expect(sessionDomain.purgeLoginsByUser).toHaveBeenCalledWith(
-                'user-hollow'
+            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
+                'user-hollow',
+                revokedSessions
             );
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.adminUserUpdatePassword,
@@ -465,12 +481,13 @@ describe('UserPasswordDomain', () => {
                     passwordCreatedAt: password.passwordCreated.toISOString(),
                     passwordExpiredAt: password.passwordExpired.toISOString(),
                 },
-                'admin-hollow'
+                'admin-hollow',
+                'history-created'
             );
             expect(callOrder).toEqual([
-                'purgeLoginsByUser',
-                'stagePrepared',
+                'purgeRevokedLogins',
                 'sendTemporaryPasswordByAdmin',
+                'stagePrepared',
             ]);
         });
 
@@ -492,7 +509,7 @@ describe('UserPasswordDomain', () => {
 
             await expect(call).rejects.toMatchObject({ rawError: error });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
@@ -629,11 +646,11 @@ describe('UserPasswordDomain', () => {
             sessionDomain.revokeActiveByUserInTx.mockImplementation(
                 async () => {
                     callOrder.push('revokeActiveByUserInTx');
-                    return [];
+                    return revokedSessions;
                 }
             );
-            sessionDomain.purgeLoginsByUser.mockImplementation(async () => {
-                callOrder.push('purgeLoginsByUser');
+            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
+                callOrder.push('purgeRevokedLogins');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -673,8 +690,9 @@ describe('UserPasswordDomain', () => {
             expect(
                 userLoginDomain.recordTwoFactorVerificationInTx
             ).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeLoginsByUser).toHaveBeenCalledWith(
-                user.id
+            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
+                user.id,
+                revokedSessions
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userChangePassword,
@@ -686,13 +704,14 @@ describe('UserPasswordDomain', () => {
                 notificationRecipientDomain.getRecipient
             ).toHaveBeenCalledWith(user, EnumNotificationKind.changePassword);
             expect(notificationQueue.sendChangePassword).toHaveBeenCalledWith(
-                recipient
+                recipient,
+                'history-created'
             );
             expect(callOrder).toEqual([
                 'revokeActiveByUserInTx',
-                'purgeLoginsByUser',
-                'stagePrepared',
+                'purgeRevokedLogins',
                 'sendChangePassword',
+                'stagePrepared',
             ]);
         });
 
@@ -721,7 +740,7 @@ describe('UserPasswordDomain', () => {
 
             await expect(call).rejects.toMatchObject({ rawError: error });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
@@ -741,7 +760,6 @@ describe('UserPasswordDomain', () => {
             const changePasswordActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userChangePassword,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -749,7 +767,6 @@ describe('UserPasswordDomain', () => {
             const verifyTwoFactorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userVerifyTwoFactor,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -979,7 +996,6 @@ describe('UserPasswordDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userForgotPassword,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1217,7 +1233,6 @@ describe('UserPasswordDomain', () => {
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userResetPassword,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1228,8 +1243,8 @@ describe('UserPasswordDomain', () => {
                 callOrder.push('markUsedInTx');
                 return resetRecord;
             });
-            sessionDomain.purgeLoginsByUser.mockImplementation(async () => {
-                callOrder.push('purgeLoginsByUser');
+            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
+                callOrder.push('purgeRevokedLogins');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1257,8 +1272,9 @@ describe('UserPasswordDomain', () => {
                 resetRecord.id,
                 password.passwordCreated
             );
-            expect(sessionDomain.purgeLoginsByUser).toHaveBeenCalledWith(
-                resetRecord.userId
+            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
+                resetRecord.userId,
+                revokedSessions
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userResetPassword,
@@ -1275,13 +1291,14 @@ describe('UserPasswordDomain', () => {
                 EnumNotificationKind.resetPassword
             );
             expect(notificationQueue.sendResetPassword).toHaveBeenCalledWith(
-                recipient
+                recipient,
+                'forgot-hollow'
             );
             expect(callOrder).toEqual([
                 'markUsedInTx',
-                'purgeLoginsByUser',
-                'stagePrepared',
+                'purgeRevokedLogins',
                 'sendResetPassword',
+                'stagePrepared',
             ]);
         });
 
@@ -1308,7 +1325,7 @@ describe('UserPasswordDomain', () => {
 
             await expect(call).rejects.toMatchObject({ rawError: error });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
@@ -1332,7 +1349,6 @@ describe('UserPasswordDomain', () => {
             const resetPasswordActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userResetPassword,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,
@@ -1340,7 +1356,6 @@ describe('UserPasswordDomain', () => {
             const verifyTwoFactorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userVerifyTwoFactor,
                 metadata: {},
-                onError: false,
                 userId: null,
                 createdBy: null,
                 workspaceId: null,

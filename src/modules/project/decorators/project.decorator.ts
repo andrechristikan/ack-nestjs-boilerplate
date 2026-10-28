@@ -24,6 +24,12 @@ import { ProjectGuardMissingException } from '@modules/project/exceptions/projec
 import { ProjectMemberGuardMissingException } from '@modules/project/exceptions/project.member-guard-missing.exception';
 import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
 import { DocWorkspaceErrorResponses } from '@modules/workspace/constants/workspace.constant';
+import type {
+    IProjectField,
+    IProjectFieldValue,
+    IProjectMemberField,
+    IProjectMemberFieldValue,
+} from '@modules/project/interfaces/project.interface';
 
 /**
  * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace. A route without a `:projectId` path param answers `RequestContextMissingException`, because the route path is not readable at decoration time.
@@ -49,35 +55,29 @@ export function ProjectProtected(): MethodDecorator {
  * @public
  */
 export const ProjectCurrent = createParamDecorator<
-    Extract<keyof Project, string> | undefined,
-    Project | NonNullable<Project[Extract<keyof Project, string>]>
->(
-    (
-        field: Extract<keyof Project, string> | undefined
-    ): Project | NonNullable<Project[Extract<keyof Project, string>]> => {
-        const project =
-            ClsServiceManager.getClsService().get<Project | null>(
-                ProjectStoreKey
-            ) ?? null;
-        if (project === null) {
-            throw new ProjectGuardMissingException();
-        }
-
-        const fieldKey = field ?? null;
-        if (fieldKey === null) {
-            return project;
-        }
-
-        const value = project[fieldKey] ?? null;
-        if (value === null) {
-            throw new RequestContextMissingException(
-                `${ProjectStoreKey}.${field}`
-            );
-        }
-
-        return value;
+    IProjectField | undefined,
+    Project | IProjectFieldValue
+>((field: IProjectField | undefined): Project | IProjectFieldValue => {
+    const project =
+        ClsServiceManager.getClsService().get<Project | null>(
+            ProjectStoreKey
+        ) ?? null;
+    if (project === null) {
+        throw new ProjectGuardMissingException();
     }
-);
+
+    const fieldKey = field ?? null;
+    if (fieldKey === null) {
+        return project;
+    }
+
+    const value = project[fieldKey] ?? null;
+    if (value === null) {
+        throw new RequestContextMissingException(`${ProjectStoreKey}.${field}`);
+    }
+
+    return value;
+});
 
 /**
  * Requires the caller to be a member of the project resolved by `@ProjectProtected()`. Stack above
@@ -115,15 +115,12 @@ export function ProjectMemberProtected(
  * @public
  */
 export const ProjectMemberCurrent = createParamDecorator<
-    Extract<keyof ProjectMember, string> | undefined,
-    | ProjectMember
-    | NonNullable<ProjectMember[Extract<keyof ProjectMember, string>]>
+    IProjectMemberField | undefined,
+    ProjectMember | IProjectMemberFieldValue
 >(
     (
-        field: Extract<keyof ProjectMember, string> | undefined
-    ):
-        | ProjectMember
-        | NonNullable<ProjectMember[Extract<keyof ProjectMember, string>]> => {
+        field: IProjectMemberField | undefined
+    ): ProjectMember | IProjectMemberFieldValue => {
         const projectMember =
             ClsServiceManager.getClsService().get<ProjectMember | null>(
                 ProjectMemberStoreKey
