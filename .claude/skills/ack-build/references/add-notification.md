@@ -1,6 +1,6 @@
 # Add a notification
 
-Invariants: `.claude/rules/queue.md` (Enqueuing, Messages, Notifications). Queue mechanics: `add-queue.md`. Reference: `workspaceInvite`; a broadcast: step 8. A feature domain injects `NotificationRecipientDomain` and `NotificationQueue` (`@Global()` `NotificationDomainModule`), reads the recipient snapshot, calls `send<Kind>` with plaintext values.
+Invariants: `.claude/rules/queue.md` (Enqueuing, Messages, Notifications). Queue mechanics: `add-queue.md`. Reference: `workspaceInvite`; a broadcast: step 8. The producing HTTP or processor service injects `NotificationRecipientDomain` and `NotificationQueue` (`@Global()` `NotificationDomainModule`), reads the recipient snapshot, and calls `send<Kind>` with plaintext values after commit.
 
 ## 1. Name the kind
 
@@ -9,7 +9,7 @@ One camelCase name in `src/modules/notification/enums/notification.enum.ts`: `En
 ## 2. Contract and messages
 
 - Add the row to `NotificationKindContract` (`src/modules/notification/contracts/notification.kind.contract.ts:167-181`): Prisma-enum `type` and `priority`, `isMandatory` (`true` ignores user settings), `title` and `body` i18n paths, `pendingChannels` (fan-out sends), `deliveredChannels` (row records at once).
-- Add `notify.<kind>.title` and `notify.<kind>.body` to `src/languages/<lang>/notification.json` in every language, placeholders matching the metadata the domain writes; plus `queue.[<channel>.]<kind>`, `queue.[<channel>.]error.<descriptor>`, `queue.[<channel>.]error.enqueue<Kind>` per queue the kind uses (channel `email`, `push`, or none on the main queue) (`.claude/rules/i18n.md`).
+- Add `notify.<kind>.title` and `notify.<kind>.body` to `src/languages/<lang>/notification.json` in every language, placeholders matching the domain's metadata; plus `queue.[<channel>.]<kind>`, `queue.[<channel>.]error.<descriptor>`, `queue.[<channel>.]error.enqueue<Kind>` per queue the kind uses (channel `email`, `push`, or none on the main queue) (`.claude/rules/i18n.md`).
 - Each processor's `default` throws its queue's `error.unknownProcess` (`add-queue.md`, New queue step 6).
 - A type a user may toggle is listed in `NotificationSettingContract` (`src/modules/notification/contracts/notification.setting.contract.ts:11-24`).
 
@@ -18,8 +18,8 @@ One camelCase name in `src/modules/notification/enums/notification.enum.ts`: `En
 1. Read the user as `IUserRecipient` (`src/modules/user/interfaces/user.interface.ts:46-48`, `UserRecipientSelect` in `src/modules/user/constants/user.constant.ts:81-85`) or a `User`.
 2. `NotificationRecipientDomain.getRecipient(user, kind)` (`src/modules/notification/domains/notification.recipient.domain.ts:20-41`) returns `INotificationRecipient`: identity, distinct device `notificationTokens`, `channels`.
 3. `channels` is `NotificationUtil.resolveChannels` (`src/modules/notification/utils/notification.util.ts:33-67`): the contract channels minus those the user disabled for a toggleable, non-mandatory type; `[]` when only `silent` survives (no row, no send).
-4. Read it before the transaction (`.claude/rules/queue.md`, Enqueuing).
-5. No account: call the unregistered email variant (`src/modules/workspace/domains/workspace.invite.domain.ts:260-263`).
+4. Read it before the transaction.
+5. No account: call the unregistered email variant (`NotificationEmailQueue.sendWorkspaceInviteUnregistered`).
 
 ## 4. Payload shapes
 
@@ -29,7 +29,7 @@ Reuse: `INotificationQueuePayload<T>` (`:249-256`, recipient `:38-43`), `INotifi
 
 ## 5. Main queue and fan-out
 
-1. `NotificationQueue.send<Kind>(recipient, data, proceedBy)` (`src/modules/notification/queues/notification.queue.ts:764-806`): `encryptRecipient` (`:101-119`) and `encryptValue` (`:92-99`) seal against `recipient.userId`; one `DatabaseUtil.createId()` per row (`sendWelcome`, `:250`); `completedSteps: []`; `this.addSideEffect` with `priority`, the `notification.queue.error.enqueue<Kind>` description, and a fixed `jobId` from a `notification.jobId.*Pattern` constructor field (`:48-54`): `referencePattern` here (`:789-795`), `userPattern` for a once-per-user kind, `eventPattern` for a repeat kind.
+1. `NotificationQueue.send<Kind>(recipient, data, proceedBy)` (`src/modules/notification/queues/notification.queue.ts:764-806`): `encryptRecipient` (`:101-119`) and `encryptValue` (`:92-99`) seal against `recipient.userId`; one `DatabaseUtil.createId()` per row (`:250`); `completedSteps: []`; `this.addSideEffect` with `priority`, the `notification.queue.error.enqueue<Kind>` description, and a fixed `jobId` from a `notification.jobId.*Pattern` constructor field (`:48-54`): `referencePattern` here (`:789-795`), `userPattern` for a once-per-user kind, `eventPattern` for a repeat kind.
 2. `NotificationProcessor.handle` case (`src/modules/notification/processors/notification.processor.ts:158-165`).
 3. `NotificationProcessorService.process<Kind>` (`src/modules/notification/services/notification.processor.service.ts:344-370`): pass `job.data` fields to the concern domain; return `recordSteps(job, result)` (`:41-63`), which throws `QueueException` with a `notification.queue.error.<descriptor>` message on a failed step.
 4. `Notification<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.workspace.domain.ts:33-157`):
@@ -63,8 +63,8 @@ Reuse: `INotificationQueuePayload<T>` (`:249-256`, recipient `:38-43`), `INotifi
 
 A bulk email follows `publishTermPolicy`: no per-user snapshot or steps.
 
-1. Producer: `NotificationQueue.sendPublishTermPolicy` (`notification.queue.ts:634-661`) adds `INotificationBulkQueuePayload` with a recipient bound and `resendNonce: null` through `addSideEffect` after commit (`src/modules/term-policy/domains/term-policy.domain.ts:330`).
-2. Fan-out: `NotificationTermPolicyDomain.processPublishTermPolicy` (`src/modules/notification/domains/notification.term-policy.domain.ts:175-264`) pages active recipients only (`UserDomain.getListActiveRecipientCursor`, `email.batchSize` per page); `getManyActiveRecipientsByIds` fills a pending batch's off-page recipients.
+1. Producer: `NotificationQueue.sendPublishTermPolicy` (`notification.queue.ts:634-661`) adds `INotificationBulkQueuePayload` with a recipient bound and `resendNonce: null` through `addSideEffect`, from the publishing HTTP service after commit.
+2. Fan-out: `NotificationProcessorService.processPublishTermPolicy` pages active recipients only (`UserDomain.getListActiveRecipientCursor`, `email.batchSize` per page), passing each page to `NotificationTermPolicyDomain.processPublishTermPolicy`; `UserDomain.getManyActiveRecipientsByIds` fills a pending batch's off-page recipients.
 3. Markers: an unmarked user gets a `Notification` row and one `TermPolicyRecipient` (unique per subject and user, `prisma/schema.prisma:399`) under a new `batchId`, in one transaction (`createTermPolicyRecipients`, `notification.repository.ts:164-193`), then `NotificationEmailQueue.sendPublishTermPolicyBatch` (`notification.email.queue.ts:611-646`) adds the batch. A pending batch is re-added with only its sendable rows (`sentAt: null, claimedAt: null`, `NotificationTermPolicyRecipientSendWhere`).
 4. Send: `NotificationEmailTermPolicyDomain.processPublishTermPolicy` (`src/modules/notification/domains/notification.email.term-policy.domain.ts:110-219`):
     - Claim the rows (`claimedAt`, `claimNonce`); `sendBulk` to the rows read back; mark each success sent.
@@ -88,6 +88,6 @@ Specs:
 - Each domain asserts the rows, fan-out, empty-channel skip, a skipped completed step, and a failed step.
 - A push domain asserts a pending token keeps `sendMulticast` failed and `sentAt` unset.
 - A broadcast send domain asserts the claim, the release on a definite failure, the claim kept on an unknown outcome, and the retry winning both.
-- Each processor service asserts `job.updateData` and the `QueueException`; processors are excluded from coverage.
+- Each processor service asserts `job.updateData` and the `QueueException`.
 
 Renames: `.claude/rules/queue.md`, Processors.

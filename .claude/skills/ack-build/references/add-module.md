@@ -18,7 +18,7 @@ Add the model to `prisma/schema.prisma` and run `pnpm db:generate`. Applying it 
 | repository | `repositories/<module>.repository.ts`, `implements I<Module>Repository` | `src/modules/device/repositories/device.repository.ts:19` |
 | data shapes | `interfaces/<module>.interface.ts` | `src/modules/device/interfaces/device.interface.ts` |
 | list fields | `constants/<module>.list.constant.ts`, `Prisma.<Model>ScalarFieldEnum` members `as const satisfies ReadonlyArray<…>` | `src/modules/device/constants/device.list.constant.ts:7-18` |
-| domain | `domains/<module>.domain.ts` | `src/modules/device/domains/device.domain.ts:34` |
+| domain | `domains/<module>.domain.ts`, its own module's collaborators plus another module's util | `src/modules/country/domains/country.domain.ts:10` |
 | util (optional) | `utils/<module>.util.ts` | `src/modules/device/utils/device.util.ts:10` |
 | exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `src/modules/device/exceptions/device.not-found.exception.ts:9-18` |
 | request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type; an update DTO requires every editable field (`.claude/rules/null-safety.md`, Update and create) | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |
@@ -26,15 +26,15 @@ Add the model to `prisma/schema.prisma` and run `pnpm db:generate`. Applying it 
 | HTTP service | `services/<module>.http.service.ts` | `src/modules/device/services/device.http.service.ts:19` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:39-64` |
 
-A queue, a processor, and a processor service follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module.
+A queue, a processor, and a processor service follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module. The domain injects its own module's classes, another module's util, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the HTTP or processor service around the domain call, and a write needing one transaction across modules goes in a composition domain (`.claude/rules/layering.md`, Roles).
 
 ## 4. The module files
 
 Copy the shape, not the names:
 
 - `<module>.repository.module.ts`: repositories in `providers` and `exports`, `imports: []` (`src/modules/device/device.repository.module.ts:7-22`).
-- `<module>.domain.module.ts`: domains, utils, caches, queue classes in `providers`; export what another module injects; import the repository module and the domain modules of the features it calls (`src/modules/device/device.domain.module.ts:8-13`; with a queue, `src/modules/workspace/workspace.domain.module.ts:22-60`).
-- `<module>.http.module.ts`: HTTP services in `providers` and `exports`, imports the domain module (`src/modules/device/device.http.module.ts:5-11`).
+- `<module>.domain.module.ts`: domains, utils, caches, queue classes in `providers`; export what another module's HTTP service, processor service, composition domain, or domain (a util) injects; import the repository module plus each non-`@Global()` feature domain module whose util a domain uses (`src/modules/device/device.domain.module.ts:8-13`; a util import, `src/modules/user/user.domain.module.ts:83`; a queue's registration and `BullModule` export, `src/modules/workspace/workspace.domain.module.ts:37,50-54`).
+- `<module>.http.module.ts`: HTTP services in `providers` and `exports`, imports its own domain module plus the domain and composition modules its services inject (`src/modules/device/device.http.module.ts:5-11`; with a composition module, `src/modules/user/user.http.module.ts:35`).
 - `<module>.processor.module.ts` only with a processor (`src/modules/workspace/workspace.processor.module.ts:6-11`).
 
 `controllers: []` in all four. Only a file with something to provide exists.
