@@ -3,7 +3,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -37,6 +36,7 @@ import { NotificationRecipientDomain } from '@modules/notification/domains/notif
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
@@ -50,11 +50,16 @@ import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-fac
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 
 /** Owns the login lifecycle: the token and session pair, the two-factor challenge and the session revocation. */
 @Injectable()
 export class UserLoginDomain {
+    private readonly passwordAttemptEnabled: boolean;
+    private readonly passwordMaxAttempt: number;
+    private readonly twoFactorMaxAttempt: number;
+
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userTwoFactorRepository: UserTwoFactorRepository,
@@ -73,9 +78,38 @@ export class UserLoginDomain {
         private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly helperDateService: HelperDateService,
-        private readonly helperHashService: HelperHashService,
-        private readonly requestStoreService: RequestStoreService
-    ) {}
+        private readonly requestStoreService: RequestStoreService,
+        private readonly configService: ConfigService
+    ) {
+        this.passwordAttemptEnabled = this.configService.get<boolean>(
+            'auth.password.attempt'
+        )!;
+        this.passwordMaxAttempt = this.configService.get<number>(
+            'auth.password.maxAttempt'
+        )!;
+        this.twoFactorMaxAttempt = this.configService.get<number>(
+            'auth.twoFactor.maxAttempt'
+        )!;
+    }
+
+    /** A replayed refresh token: revokes the session, enqueues its cache purge after the commit, then stages the activity row. */
+    private async revokeReusedSession(
+        userId: string,
+        sessionId: string
+    ): Promise<void> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userRevokeSession,
+            }),
+        ];
+        const revoked = await this.sessionDomain.revokeOnReuse(
+            userId,
+            sessionId
+        );
+        await this.sessionDomain.purgeRevokedLogins(userId, revoked);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
+    }
 
     private async assertTwoFactorUnlocked(user: IUser): Promise<void> {
         const remainingMs = await this.authCache.getTwoFactorLockTtlInMs(user);
@@ -86,18 +120,27 @@ export class UserLoginDomain {
         }
     }
 
-    private async recordTwoFactorFailure(user: IUser): Promise<void> {
-        const attempted =
-            await this.userTwoFactorRepository.increaseTwoFactorAttempt(
-                user.id
-            );
-        user.twoFactor = attempted;
-
-        const isTwoFactorAttemptMaxed =
-            this.authTwoFactorDomain.checkAttempt(user);
-        if (isTwoFactorAttemptMaxed) {
-            await this.authCache.setTwoFactorLock(user);
+    /** Counts one verification attempt before the code is checked; a count on a multiple of the max locks two-factor with the escalating TTL and any other count re-checks the lock a parallel request set; both answer the lock exception without verifying. */
+    private async incrementTwoFactorAttempt(user: IUser): Promise<void> {
+        const attempt = await this.userTwoFactorRepository.incrementAttempt(
+            user.id
+        );
+        if (user.twoFactor !== null) {
+            user.twoFactor = { ...user.twoFactor, attempt };
         }
+
+        if (attempt % this.twoFactorMaxAttempt !== 0) {
+            await this.assertTwoFactorUnlocked(user);
+
+            return;
+        }
+
+        await this.authCache.setTwoFactorLock(user);
+        const remainingMs = await this.authCache.getTwoFactorLockTtlInMs(user);
+
+        throw new AuthTwoFactorAttemptTemporaryLockException(
+            Math.ceil(remainingMs / 1000)
+        );
     }
 
     async assertWorkspaceInvitationAllowed(): Promise<void> {
@@ -105,6 +148,20 @@ export class UserLoginDomain {
             'workspace',
             'invitationAllowed'
         );
+    }
+
+    /** Counts one password attempt before the password is compared; false when the attempt budget is spent. */
+    async incrementPasswordAttempt(userId: string): Promise<boolean> {
+        if (!this.passwordAttemptEnabled) {
+            return true;
+        }
+
+        const attempt = await this.userRepository.incrementPasswordAttempt(
+            userId,
+            this.passwordMaxAttempt
+        );
+
+        return attempt !== null;
     }
 
     async recordLoginFailed(userId: string): Promise<void> {
@@ -115,7 +172,6 @@ export class UserLoginDomain {
                 createdBy: userId,
             }),
         ];
-        await this.userRepository.increasePasswordAttempt(userId);
 
         this.activityLogDomain.stagePrepared(activityLogs);
     }
@@ -212,9 +268,7 @@ export class UserLoginDomain {
             loginFrom,
             loginWith
         );
-        const promises = [
-            this.sessionCache.setLogin(user.id, sessionId, jti, expiredAt),
-        ];
+        const promises = [this.sessionCache.setLogin(user.id, sessionId, jti)];
 
         if (sessionShouldBeInactive && sessionShouldBeInactive.length > 0) {
             const purged = this.sessionDomain.purgeRevokedLogins(
@@ -370,6 +424,9 @@ export class UserLoginDomain {
             throw new AuthTwoFactorMethodRequiredException();
         }
 
+        // Sequential by design: gate before the work it guards
+        await this.incrementTwoFactorAttempt(user);
+
         const verified = await this.authTwoFactorDomain.verifyTwoFactor(
             user.twoFactor!,
             {
@@ -379,8 +436,6 @@ export class UserLoginDomain {
             }
         );
         if (!verified.isValid) {
-            await this.recordTwoFactorFailure(user);
-
             throw new AuthTwoFactorInvalidException();
         }
 
@@ -397,6 +452,8 @@ export class UserLoginDomain {
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
         await this.assertTwoFactorUnlocked(user);
+        // Sequential by design: gate before the work it guards
+        await this.incrementTwoFactorAttempt(user);
 
         const isValid = this.authTwoFactorDomain.verifySetupCode(
             encryptedPendingSecret,
@@ -404,8 +461,6 @@ export class UserLoginDomain {
             code
         );
         if (!isValid) {
-            await this.recordTwoFactorFailure(user);
-
             throw new AuthTwoFactorInvalidException();
         }
 
@@ -468,28 +523,19 @@ export class UserLoginDomain {
             throw new AuthJwtRefreshTokenInvalidException();
         }
 
-        // Sequential by design: gate before the work it guards
-        const session = await this.sessionCache.getLogin(userId, sessionId);
+        const session = await this.sessionDomain.findOneActive(
+            userId,
+            sessionId
+        );
         if (!session) {
             throw new SessionRevokedException();
         }
 
-        const sessionJtiHash = this.helperHashService.sha256Hash(session.jti);
-        const oldJtiHash = this.helperHashService.sha256Hash(oldJti);
-        const isJtiMatch = this.helperHashService.sha256Compare(
-            sessionJtiHash,
-            oldJtiHash
-        );
-        if (!isJtiMatch) {
-            throw new SessionRevokedException();
-        }
-
         try {
-            const {
-                jti: newJti,
-                tokens,
-                expiredInMs,
-            } = this.authJwtDomain.refreshToken(user, refreshToken);
+            const { jti: newJti, tokens } = this.authJwtDomain.refreshToken(
+                user,
+                refreshToken
+            );
 
             const activityLogs = [
                 this.activityLogDomain.prepare({
@@ -497,28 +543,51 @@ export class UserLoginDomain {
                 }),
             ];
             // Sequential by design: write must not run if an earlier step throws
-            await this.databaseService.withTransaction(async tx => {
-                await this.sessionDomain.updateJtiInTx(tx, sessionId, newJti);
-                const now = this.helperDateService.create();
-                await this.userRepository.updateLoginInTx(
-                    tx,
-                    userId,
-                    loginFrom,
-                    loginWith,
-                    requestLog.ipAddress,
-                    now
-                );
-            });
+            const isRotated = await this.databaseService.withTransaction(
+                async tx => {
+                    const isJtiUpdated = await this.sessionDomain.updateJtiInTx(
+                        tx,
+                        sessionId,
+                        oldJti,
+                        newJti
+                    );
+                    if (!isJtiUpdated) {
+                        return false;
+                    }
 
-            const isRotated = await this.sessionCache.updateLogin(
-                userId,
-                sessionId,
-                session,
-                newJti,
-                expiredInMs
+                    const now = this.helperDateService.create();
+                    await this.userRepository.updateLoginInTx(
+                        tx,
+                        userId,
+                        loginFrom,
+                        loginWith,
+                        requestLog.ipAddress,
+                        now
+                    );
+
+                    return true;
+                }
             );
             if (!isRotated) {
+                await this.revokeReusedSession(userId, sessionId);
+
                 throw new SessionRevokedException();
+            }
+
+            const cacheUpdate = await this.sessionCache.updateLogin(
+                userId,
+                sessionId,
+                oldJti,
+                newJti
+            );
+            if (cacheUpdate === EnumSessionCacheUpdate.mismatch) {
+                await this.revokeReusedSession(userId, sessionId);
+
+                throw new SessionRevokedException();
+            }
+
+            if (cacheUpdate === EnumSessionCacheUpdate.absent) {
+                await this.sessionCache.setLogin(userId, sessionId, newJti);
             }
 
             this.activityLogDomain.stagePrepared(activityLogs);

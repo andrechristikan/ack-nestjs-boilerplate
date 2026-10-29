@@ -12,5 +12,5 @@ export interface INotificationUserSettingRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         { channel, type, isActive }: INotificationUserSettingUpdate
-    ): Promise<NotificationUserSetting>;
+    ): Promise<boolean>;
 }

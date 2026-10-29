@@ -95,20 +95,20 @@ describe('TermPolicyAcceptanceAnalyticDomain', () => {
             expect(result).toEqual({ count: 0, averageMs: 0 });
         });
 
-        it('averages the acceptance delay across acceptances', async () => {
+        it('averages the delay from the policy publish time to the acceptance', async () => {
             const rows: ITermPolicyAcceptanceAnalytic[] = [
                 {
                     id: 'acceptance-1',
                     userId: 'user-1',
                     termPolicyId: 'term-policy-1',
-                    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
                     acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
                 },
                 {
                     id: 'acceptance-2',
                     userId: 'user-2',
                     termPolicyId: 'term-policy-1',
-                    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
                     acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
                 },
             ];
@@ -119,6 +119,32 @@ describe('TermPolicyAcceptanceAnalyticDomain', () => {
             const result = await domain.getTimeToAccept(startDate, endDate);
 
             expect(result).toEqual({ count: 2, averageMs: 120000 });
+        });
+
+        it('skips an acceptance whose policy has no publish time', async () => {
+            const rows: ITermPolicyAcceptanceAnalytic[] = [
+                {
+                    id: 'acceptance-1',
+                    userId: 'user-1',
+                    termPolicyId: 'term-policy-1',
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
+                },
+                {
+                    id: 'acceptance-2',
+                    userId: 'user-2',
+                    termPolicyId: 'term-policy-2',
+                    publishedAt: null,
+                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
+                },
+            ];
+            termPolicyAcceptanceAnalyticRepository.findAcceptances.mockResolvedValue(
+                rows
+            );
+
+            const result = await domain.getTimeToAccept(startDate, endDate);
+
+            expect(result).toEqual({ count: 1, averageMs: 60000 });
         });
     });
 });

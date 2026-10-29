@@ -18,4 +18,11 @@ describe('AnalyticForgotPasswordConversionResponseSchema', () => {
 
         expect(result).toEqual(row);
     });
+
+    it('describes the rate on a 0-100 scale', () => {
+        expect(
+            AnalyticForgotPasswordConversionResponseSchema.shape.rate.meta()
+                ?.description
+        ).toContain('0-100');
+    });
 });

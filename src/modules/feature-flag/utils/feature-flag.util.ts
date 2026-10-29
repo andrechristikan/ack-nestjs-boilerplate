@@ -15,11 +15,15 @@ export class FeatureFlagUtil {
         return typeof value;
     }
 
-    /** True only when both have identical keys and matching value types, with no empty/nullish value. */
-    checkMetadataKey(
-        oldMetadata: IFeatureFlagMetadata,
+    /** True only when both have identical keys and matching value types, with no empty/nullish value; false when the stored metadata is null. */
+    isMetadataValid(
+        oldMetadata: IFeatureFlagMetadata | null,
         newMetadata: IFeatureFlagMetadata
     ): boolean {
+        if (oldMetadata === null) {
+            return false;
+        }
+
         const oldKeys = Object.keys(oldMetadata).sort();
         const newKeys = Object.keys(newMetadata).sort();
 

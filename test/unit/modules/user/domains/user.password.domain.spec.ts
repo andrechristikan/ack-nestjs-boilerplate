@@ -1,3 +1,7 @@
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -20,7 +24,9 @@ import type {
 } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -65,6 +71,7 @@ describe('UserPasswordDomain', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const notificationQueue: MockProxy<NotificationQueue> =
@@ -82,6 +89,8 @@ describe('UserPasswordDomain', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
+
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
 
     let domain: UserPasswordDomain;
 
@@ -146,12 +155,6 @@ describe('UserPasswordDomain', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -205,6 +208,7 @@ describe('UserPasswordDomain', () => {
             createdPasswordHistory
         );
 
+        userPasswordRepository.markUsedInTx.mockResolvedValue(true);
         configGet.mockImplementation(key => configValues[key]);
         activityLogDomain.prepare.mockReturnValue(activityLog);
         databaseService.withTransaction.mockImplementation(
@@ -235,6 +239,7 @@ describe('UserPasswordDomain', () => {
                 { provide: SessionDomain, useValue: sessionDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 {
@@ -243,6 +248,7 @@ describe('UserPasswordDomain', () => {
                 },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: RoleDomain, useValue: roleDomain },
                 { provide: ConfigService, useValue: configService },
                 {
                     provide: HelperStringService,
@@ -320,6 +326,9 @@ describe('UserPasswordDomain', () => {
     describe('reachMaxPasswordAttempt', () => {
         it('deactivates the account and revokes sessions and devices', async () => {
             sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
+            userDomain.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
+                true
+            );
 
             await domain.reachMaxPasswordAttempt('user-hollow');
 
@@ -346,6 +355,44 @@ describe('UserPasswordDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
+        });
+
+        it('throws UserPasswordAttemptMaxException with no revoke, purge or activity when the account was already deactivated', async () => {
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
+            userDomain.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
+                false
+            );
+
+            const call = domain.reachMaxPasswordAttempt('user-hollow');
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                messagePath: 'user.error.passwordAttemptMax',
+            });
+            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
+            expect(deviceDomain.revokeAllByUserInTx).not.toHaveBeenCalled();
+            expect(sessionDomain.finalizeRevokeAll).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict from the lockout transaction to UserPasswordAttemptMaxException', async () => {
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
+            const conflict = new Error('write-conflict');
+            databaseService.withTransaction.mockRejectedValueOnce(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            const call = domain.reachMaxPasswordAttempt('user-hollow');
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                messagePath: 'user.error.passwordAttemptMax',
+            });
+            expect(sessionDomain.finalizeRevokeAll).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
@@ -384,13 +431,64 @@ describe('UserPasswordDomain', () => {
     });
 
     describe('updatePasswordByAdmin', () => {
+        const adminActor: IRoleActor = {
+            roleId: 'role-admin-hollow',
+            roleType: EnumRoleType.admin,
+        };
+
+        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
+                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
+            });
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw new RoleRankForbiddenException();
+            });
+
+            const call = domain.updatePasswordByAdmin(
+                'user-hollow',
+                'admin-hollow',
+                adminActor
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.superAdmin
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('checks the actor role type against the target role type before reading the recipient', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.updatePasswordByAdmin(
+                'user-hollow',
+                'admin-hollow',
+                adminActor
+            );
+
+            await expect(call).rejects.toMatchObject({ rawError: error });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                baseUser.role.type
+            );
+        });
         it('sets a temporary password, revokes sessions, stages both activity logs in order, and notifies the user', async () => {
             const user = baseUser;
-            userRepository.findOneById.mockResolvedValue(user);
+            userRepository.findOneWithRoleById.mockResolvedValue(user);
             authPasswordUtil.createPasswordRandom.mockReturnValue(
                 'random-password'
             );
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             userDomain.updatePasswordInTx.mockResolvedValue(user);
             helperDateService.formatToIso.mockImplementation(date =>
                 date.toISOString()
@@ -431,7 +529,11 @@ describe('UserPasswordDomain', () => {
                 }
             );
 
-            await domain.updatePasswordByAdmin('user-hollow', 'admin-hollow');
+            await domain.updatePasswordByAdmin(
+                'user-hollow',
+                'admin-hollow',
+                adminActor
+            );
 
             expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -492,11 +594,11 @@ describe('UserPasswordDomain', () => {
         });
 
         it('commits nothing and purges nothing when the recipient read rejects', async () => {
-            userRepository.findOneById.mockResolvedValue(baseUser);
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             authPasswordUtil.createPasswordRandom.mockReturnValue(
                 'random-password'
             );
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new Error('recipient-unavailable');
             notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
                 error
@@ -504,7 +606,8 @@ describe('UserPasswordDomain', () => {
 
             const call = domain.updatePasswordByAdmin(
                 'user-hollow',
-                'admin-hollow'
+                'admin-hollow',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({ rawError: error });
@@ -516,7 +619,8 @@ describe('UserPasswordDomain', () => {
         it('throws UserNotSelfException when the admin targets themselves', async () => {
             const call = domain.updatePasswordByAdmin(
                 'admin-hollow',
-                'admin-hollow'
+                'admin-hollow',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -529,11 +633,12 @@ describe('UserPasswordDomain', () => {
         });
 
         it('throws UserNotFoundException when the target user does not exist', async () => {
-            userRepository.findOneById.mockResolvedValue(null);
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             const call = domain.updatePasswordByAdmin(
                 'user-hollow',
-                'admin-hollow'
+                'admin-hollow',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -546,14 +651,15 @@ describe('UserPasswordDomain', () => {
         });
 
         it('throws UserBlockedInvalidException when the target user is blocked', async () => {
-            userRepository.findOneById.mockResolvedValue({
+            userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 status: EnumUserStatus.blocked,
             });
 
             const call = domain.updatePasswordByAdmin(
                 'user-hollow',
-                'admin-hollow'
+                'admin-hollow',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -568,17 +674,18 @@ describe('UserPasswordDomain', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userRepository.findOneById.mockResolvedValue(baseUser);
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             authPasswordUtil.createPasswordRandom.mockReturnValue(
                 'random-password'
             );
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new UserNotFoundException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
             const call = domain.updatePasswordByAdmin(
                 'user-hollow',
-                'admin-hollow'
+                'admin-hollow',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -592,17 +699,18 @@ describe('UserPasswordDomain', () => {
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {
-            userRepository.findOneById.mockResolvedValue(baseUser);
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             authPasswordUtil.createPasswordRandom.mockReturnValue(
                 'random-password'
             );
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
             const call = domain.updatePasswordByAdmin(
                 'user-hollow',
-                'admin-hollow'
+                'admin-hollow',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -637,11 +745,11 @@ describe('UserPasswordDomain', () => {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
             };
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const callOrder: string[] = [];
             sessionDomain.revokeActiveByUserInTx.mockImplementation(
                 async () => {
@@ -720,11 +828,11 @@ describe('UserPasswordDomain', () => {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
             };
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new Error('recipient-unavailable');
             notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
                 error
@@ -749,11 +857,11 @@ describe('UserPasswordDomain', () => {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: true },
             };
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
                 verifiedResult
             );
@@ -803,7 +911,7 @@ describe('UserPasswordDomain', () => {
                 password: null,
                 twoFactor: { ...baseTwoFactor, enabled: false },
             };
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
 
             await domain.changePassword(user, {
                 newPassword: 'new-password',
@@ -814,7 +922,7 @@ describe('UserPasswordDomain', () => {
             });
 
             expect(
-                authPasswordUtil.checkPasswordAttempt
+                userLoginDomain.incrementPasswordAttempt
             ).not.toHaveBeenCalled();
             expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -827,9 +935,9 @@ describe('UserPasswordDomain', () => {
             ]);
         });
 
-        it('throws UserPasswordAttemptMaxException at the attempt limit', async () => {
+        it('throws UserPasswordAttemptMaxException without comparing when the attempt budget is spent', async () => {
             const user = baseUser;
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(false);
 
             const call = domain.changePassword(user, {
                 newPassword: 'new-password',
@@ -848,12 +956,13 @@ describe('UserPasswordDomain', () => {
                     ],
                 messagePath: 'user.error.passwordAttemptMax',
             });
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
         });
 
-        it('increases the attempt and throws UserPasswordNotMatchException on a wrong old password', async () => {
+        it('counts the attempt before comparing and throws UserPasswordNotMatchException on a wrong old password', async () => {
             const user = baseUser;
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(false);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(false);
 
             const call = domain.changePassword(user, {
                 newPassword: 'new-password',
@@ -872,17 +981,20 @@ describe('UserPasswordDomain', () => {
                     ],
                 messagePath: 'user.error.passwordNotMatch',
             });
-            expect(userDomain.increasePasswordAttempt).toHaveBeenCalledWith(
-                user.id
-            );
+            expect(
+                userLoginDomain.incrementPasswordAttempt
+            ).toHaveBeenCalledWith(user.id);
+            expect(
+                userLoginDomain.incrementPasswordAttempt
+            ).toHaveBeenCalledBefore(authPasswordUtil.validatePassword);
         });
 
         it('throws UserPasswordMustNewException when the password was used recently', async () => {
             const user = baseUser;
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([history]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(history);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(history);
             authPasswordUtil.getPasswordPeriodInDays.mockReturnValue(90);
 
             const call = domain.changePassword(user, {
@@ -910,11 +1022,11 @@ describe('UserPasswordDomain', () => {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
             };
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new UserNotFoundException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -941,11 +1053,11 @@ describe('UserPasswordDomain', () => {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
             };
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -1228,8 +1340,8 @@ describe('UserPasswordDomain', () => {
                 resetRecord
             );
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userResetPassword,
                 metadata: {},
@@ -1241,7 +1353,7 @@ describe('UserPasswordDomain', () => {
             const callOrder: string[] = [];
             userPasswordRepository.markUsedInTx.mockImplementation(async () => {
                 callOrder.push('markUsedInTx');
-                return resetRecord;
+                return true;
             });
             sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
                 callOrder.push('purgeRevokedLogins');
@@ -1308,8 +1420,8 @@ describe('UserPasswordDomain', () => {
                 resetRecord
             );
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new Error('recipient-unavailable');
             notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
                 error
@@ -1341,8 +1453,8 @@ describe('UserPasswordDomain', () => {
                 }
             );
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
                 verifiedResult
             );
@@ -1390,6 +1502,73 @@ describe('UserPasswordDomain', () => {
             ]);
         });
 
+        it('throws UserTokenInvalidException and commits nothing after the guard when the token was already used', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+                resetRecord
+            );
+            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
+            userPasswordRepository.markUsedInTx.mockResolvedValue(false);
+
+            const call = domain.resetPassword({
+                newPassword: 'new-password',
+                token: 'raw-token',
+                method: null,
+                code: null,
+                backupCode: null,
+            });
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.tokenInvalid
+                    ],
+                messagePath: 'user.error.verificationTokenInvalid',
+            });
+            expect(userPasswordRepository.markUsedInTx).toHaveBeenCalledWith(
+                tx,
+                resetRecord.id,
+                password.passwordCreated
+            );
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
+            expect(notificationQueue.sendResetPassword).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to UserTokenInvalidException', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+                resetRecord
+            );
+            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
+            const conflict = new Error('write-conflict');
+            userPasswordRepository.markUsedInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            const call = domain.resetPassword({
+                newPassword: 'new-password',
+                token: 'raw-token',
+                method: null,
+                code: null,
+                backupCode: null,
+            });
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
+        });
+
         it('throws UserNotFoundException when the token is unknown', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
@@ -1428,7 +1607,7 @@ describe('UserPasswordDomain', () => {
                 createdAt: new Date('2026-01-01T00:00:00.000Z'),
                 createdBy: null,
             };
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(history);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(history);
             authPasswordUtil.getPasswordPeriodInDays.mockReturnValue(90);
 
             const call = domain.resetPassword({
@@ -1457,8 +1636,8 @@ describe('UserPasswordDomain', () => {
                 resetRecord
             );
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new UserNotFoundException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -1486,8 +1665,8 @@ describe('UserPasswordDomain', () => {
                 resetRecord
             );
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
-            authPasswordUtil.createPassword.mockReturnValue(password);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            authPasswordUtil.createPassword.mockResolvedValue(password);
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 

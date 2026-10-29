@@ -87,16 +87,23 @@ export interface IConfigAnalytic {
             reviewMax: number;
             elevateMax: number;
         };
+        riskScore: {
+            candidateLimit: number;
+            lookbackInMs: number;
+        };
         concurrency: number;
+    };
+    project: {
+        perWorkspaceLimit: number;
     };
 }
 
 export default registerAs('analytic', (): IConfigAnalytic => ({
     cache: {
-        dashboardTtlInMs: ms('1h'),
+        dashboardTtlInMs: ms('5m'),
         anomalySummaryTtlInMs: ms('5m'),
         fraudSummaryTtlInMs: ms('5m'),
-        riskScoreTtlInMs: ms('10m'),
+        riskScoreTtlInMs: ms('5m'),
         keyPatterns: {
             dashboard: 'Analytic:Dashboard:{metric}:{start}:{end}',
             anomaly: 'Analytic:Anomaly:{signal}:{window}',
@@ -177,6 +184,13 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             reviewMax: 60,
             elevateMax: 90,
         },
+        riskScore: {
+            candidateLimit: 100,
+            lookbackInMs: ms('24h'),
+        },
         concurrency: 10,
+    },
+    project: {
+        perWorkspaceLimit: 100,
     },
 }));

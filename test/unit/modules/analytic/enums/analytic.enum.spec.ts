@@ -43,8 +43,14 @@ describe('analytic enums', () => {
 
     it('keeps the contributing signal wire values', () => {
         expect({ ...EnumAnalyticFraudContributingSignal }).toEqual({
-            nearLockout: 'nearLockout',
+            sessionAfterAdmin: 'sessionAfterAdmin',
+            impossibleTravel: 'impossibleTravel',
+            newDeviceAfterPasswordChange: 'newDeviceAfterPasswordChange',
+            credentialStuffingIp: 'credentialStuffingIp',
             sharedFingerprint: 'sharedFingerprint',
+            nearLockout: 'nearLockout',
+            massRegistrationIp: 'massRegistrationIp',
+            forgotPasswordAbuse: 'forgotPasswordAbuse',
         });
     });
 
@@ -65,6 +71,7 @@ describe('analytic enums', () => {
             usersMobileChurn: 'users.mobileChurn',
             authLoginFrequency: 'auth.loginFrequency',
             authLoginMethod: 'auth.loginMethod',
+            authLoginSource: 'auth.loginSource',
             authLockout: 'auth.lockout',
             authSessionRevoke: 'auth.sessionRevoke',
             authConcurrent: 'auth.concurrent',

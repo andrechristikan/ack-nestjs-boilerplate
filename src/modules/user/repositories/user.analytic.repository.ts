@@ -9,11 +9,11 @@ import type { IUserAnalyticRepository } from '@modules/user/interfaces/user.anal
 import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
-    IUserAnalyticSignUp,
     IUserNearLockout,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -88,6 +88,29 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         return rows.map(r => ({ key: r.signUpFrom, count: r._count._all }));
     }
 
+    async groupLoginSource(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IUserAnalyticGroupCount<EnumUserLoginFrom>[]> {
+        const rows = await this.databaseService.client.user.groupBy({
+            by: ['lastLoginFrom'],
+            where: {
+                deletedAt: null,
+                lastLoginFrom: { not: null },
+                ...(startDate &&
+                    endDate && {
+                        lastLoginAt: { gte: startDate, lt: endDate },
+                    }),
+            },
+            _count: { _all: true },
+        });
+        return rows.flatMap(row =>
+            row.lastLoginFrom === null
+                ? []
+                : [{ key: row.lastLoginFrom, count: row._count._all }]
+        );
+    }
+
     async groupByStatus(): Promise<IUserAnalyticGroupCount<EnumUserStatus>[]> {
         const rows = await this.databaseService.client.user.groupBy({
             by: ['status'],
@@ -115,9 +138,30 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         return rows.map(r => ({ key: r.roleId, count: r._count._all }));
     }
 
-    async countVerifiedEmail(): Promise<number> {
+    async countVerifiedEmail(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<number> {
         return this.databaseService.client.user.count({
-            where: { deletedAt: null, isVerified: true },
+            where: {
+                deletedAt: null,
+                isVerified: true,
+                ...(startDate &&
+                    endDate && { signUpAt: { gte: startDate, lt: endDate } }),
+            },
+        });
+    }
+
+    async countSignedUp(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<number> {
+        return this.databaseService.client.user.count({
+            where: {
+                deletedAt: null,
+                ...(startDate &&
+                    endDate && { signUpAt: { gte: startDate, lt: endDate } }),
+            },
         });
     }
 
@@ -166,6 +210,13 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         });
     }
 
+    async findManyByIds(ids: string[]): Promise<IUserAnalyticRef[]> {
+        return this.databaseService.client.user.findMany({
+            where: { id: { in: ids }, deletedAt: null },
+            select: { id: true, email: true, passwordAttempt: true },
+        });
+    }
+
     async findNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
@@ -184,24 +235,6 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
                 ],
             },
             select: UserAdminNearLockoutSelect,
-        });
-    }
-
-    async findSignUpsInRange(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IUserAnalyticSignUp[]> {
-        return this.databaseService.client.user.findMany({
-            where: {
-                deletedAt: null,
-                signUpAt: { gte: startDate, lt: endDate },
-            },
-            select: {
-                id: true,
-                email: true,
-                signUpAt: true,
-                signUpFrom: true,
-            },
         });
     }
 }

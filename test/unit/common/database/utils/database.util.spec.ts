@@ -34,14 +34,14 @@ describe('DatabaseUtil', () => {
     describe('censorUrl', () => {
         it('masks the password and keeps the first letter of the username', () => {
             expect(
-                util.censorUrl('mongodb://admin:s3cret@localhost:27017/ack')
+                util.censorUrl('mongodb://admin:hunter2@localhost:27017/ack')
             ).toBe('mongodb://a***@localhost:27017/ack');
         });
 
         it('keeps every host of a replica-set url and drops the query', () => {
             expect(
                 util.censorUrl(
-                    'mongodb://admin:s3cret@h1:27017,h2:27017,h3:27017/ack?replicaSet=rs0&authSource=admin'
+                    'mongodb://admin:hunter2@h1:27017,h2:27017,h3:27017/ack?replicaSet=rs0&authSource=admin'
                 )
             ).toBe('mongodb://a***@h1:27017,h2:27017,h3:27017/ack');
         });
@@ -55,7 +55,7 @@ describe('DatabaseUtil', () => {
         it('handles the srv scheme', () => {
             expect(
                 util.censorUrl(
-                    'mongodb+srv://admin:s3cret@cluster0.example.com/ack'
+                    'mongodb+srv://admin:hunter2@cluster0.example.com/ack'
                 )
             ).toBe('mongodb+srv://a***@cluster0.example.com/ack');
         });

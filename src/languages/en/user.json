@@ -76,6 +76,7 @@
         "importUsernameExist": "There are existing users with the provided usernames. Username: {usernames}",
         "accountNotFound": "The account of this session no longer exists.",
         "guardMissing": "Your account could not be verified. Please sign in again.",
-        "photoKeyInvalid": "This photo does not belong to your profile."
+        "photoKeyInvalid": "This photo does not belong to your profile.",
+        "photoSizeExceeded": "This photo is larger than the allowed size."
     }
 }

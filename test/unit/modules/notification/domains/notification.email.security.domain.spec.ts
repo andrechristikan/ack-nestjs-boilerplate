@@ -17,6 +17,12 @@ import { EnumNotificationProcess } from '@modules/notification/enums/notificatio
 import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 import type { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
 import { MessageService } from '@common/message/services/message.service';
+import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import {
+    expectEmailSentNotStamped,
+    expectEmailStampOrder,
+    stubEmailStampOrder,
+} from '@test/unit/helpers/test.unit.notification-email.helper';
 
 describe('NotificationEmailSecurityDomain', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -26,6 +32,8 @@ describe('NotificationEmailSecurityDomain', () => {
         mock<HelperDateService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
+    const notificationRepository: MockProxy<NotificationRepository> =
+        mock<NotificationRepository>();
     let domain: NotificationEmailSecurityDomain;
 
     const send = {
@@ -68,6 +76,10 @@ describe('NotificationEmailSecurityDomain', () => {
                 { provide: MessageService, useValue: messageService },
                 NotificationEmailSecurityDomain,
                 { provide: AwsSESService, useValue: awsSESService },
+                {
+                    provide: NotificationRepository,
+                    useValue: notificationRepository,
+                },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
@@ -137,6 +149,35 @@ describe('NotificationEmailSecurityDomain', () => {
             await expect(
                 domain.processTemporaryPasswordByAdmin(send, encrypted)
             ).rejects.toBe(error);
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processTemporaryPasswordByAdmin(send, encrypted);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processTemporaryPasswordByAdmin(send, encrypted)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 
@@ -214,6 +255,35 @@ describe('NotificationEmailSecurityDomain', () => {
                 error
             );
         });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processChangePassword(send);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(domain.processChangePassword(send)).rejects.toThrow(
+                'ses down'
+            );
+
+            expectEmailSentNotStamped(notificationRepository);
+        });
     });
 
     describe('processResetPassword', () => {
@@ -248,6 +318,35 @@ describe('NotificationEmailSecurityDomain', () => {
             awsSESService.send.mockRejectedValue(error);
 
             await expect(domain.processResetPassword(send)).rejects.toBe(error);
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processResetPassword(send);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(domain.processResetPassword(send)).rejects.toThrow(
+                'ses down'
+            );
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 
@@ -313,6 +412,35 @@ describe('NotificationEmailSecurityDomain', () => {
                 domain.processForgotPassword(send, encrypted)
             ).rejects.toBe(error);
         });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processForgotPassword(send, encrypted);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processForgotPassword(send, encrypted)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
+        });
     });
 
     describe('processResetTwoFactorByAdmin', () => {
@@ -350,6 +478,35 @@ describe('NotificationEmailSecurityDomain', () => {
             await expect(
                 domain.processResetTwoFactorByAdmin(send)
             ).rejects.toBe(error);
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processResetTwoFactorByAdmin(send);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processResetTwoFactorByAdmin(send)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 
@@ -443,6 +600,35 @@ describe('NotificationEmailSecurityDomain', () => {
             await expect(domain.processNewDeviceLogin(send, data)).rejects.toBe(
                 error
             );
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processNewDeviceLogin(send, data);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processNewDeviceLogin(send, data)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 });

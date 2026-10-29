@@ -45,13 +45,15 @@ export class TermPolicyAcceptanceAnalyticDomain {
                 startDate,
                 endDate
             );
-        if (rows.length === 0) {
+        const deltas = rows.flatMap(row =>
+            row.publishedAt === null
+                ? []
+                : [row.acceptedAt.getTime() - row.publishedAt.getTime()]
+        );
+        if (deltas.length === 0) {
             return { count: 0, averageMs: 0 };
         }
-        const deltas = rows.map(
-            r => r.acceptedAt.getTime() - r.createdAt.getTime()
-        );
         const averageMs = deltas.reduce((s, d) => s + d, 0) / deltas.length;
-        return { count: rows.length, averageMs };
+        return { count: deltas.length, averageMs };
     }
 }

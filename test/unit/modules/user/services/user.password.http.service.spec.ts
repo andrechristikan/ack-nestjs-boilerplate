@@ -48,12 +48,6 @@ describe('UserPasswordHttpService', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -93,11 +87,17 @@ describe('UserPasswordHttpService', () => {
     describe('updatePasswordByAdmin', () => {
         it('delegates to the domain and returns an empty response', async () => {
             await expect(
-                service.updatePasswordByAdmin('user-linden', 'admin-linden')
+                service.updatePasswordByAdmin('user-linden', {
+                    ...user,
+                    id: 'admin-linden',
+                })
             ).resolves.toEqual({});
             expect(
                 userPasswordDomain.updatePasswordByAdmin
-            ).toHaveBeenCalledWith('user-linden', 'admin-linden');
+            ).toHaveBeenCalledWith('user-linden', 'admin-linden', {
+                roleId: user.roleId,
+                roleType: user.role.type,
+            });
         });
     });
 

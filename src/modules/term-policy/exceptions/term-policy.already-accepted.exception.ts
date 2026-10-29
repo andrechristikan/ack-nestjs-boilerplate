@@ -10,7 +10,7 @@ export class TermPolicyAlreadyAcceptedException extends AppBaseException {
     readonly module = 'termPolicy';
     readonly statusCode = EnumTermPolicyStatusCodeError.alreadyAccepted;
     readonly statusCodeKey = EnumTermPolicyStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.CONFLICT;
+    readonly httpStatus = HttpStatus.BAD_REQUEST;
 
     constructor() {
         super('termPolicy.error.alreadyAccepted');

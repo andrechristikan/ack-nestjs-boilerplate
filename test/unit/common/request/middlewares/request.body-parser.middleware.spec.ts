@@ -5,6 +5,9 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
+import { RequestPayloadTooLargeException } from '@common/request/exceptions/request.payload-too-large.exception';
+import { RequestUnsupportedMediaTypeException } from '@common/request/exceptions/request.unsupported-media-type.exception';
+import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { RequestBodyParserMiddleware } from '@common/request/middlewares/request.body-parser.middleware';
 
 vi.mock('body-parser', () => ({
@@ -87,7 +90,11 @@ describe('RequestBodyParserMiddleware', () => {
                 limit: 1000,
                 type: 'application/json',
             });
-            expect(jsonHandler).toHaveBeenCalledWith(req, res, next);
+            expect(jsonHandler).toHaveBeenCalledWith(
+                req,
+                res,
+                expect.any(Function)
+            );
         });
 
         it('parses a urlencoded body', () => {
@@ -102,7 +109,11 @@ describe('RequestBodyParserMiddleware', () => {
                 limit: 3000,
                 type: 'application/x-www-form-urlencoded',
             });
-            expect(urlencodedHandler).toHaveBeenCalledWith(req, res, next);
+            expect(urlencodedHandler).toHaveBeenCalledWith(
+                req,
+                res,
+                expect.any(Function)
+            );
         });
 
         it('parses a text body', () => {
@@ -114,7 +125,11 @@ describe('RequestBodyParserMiddleware', () => {
                 limit: 2000,
                 type: 'text/*',
             });
-            expect(textHandler).toHaveBeenCalledWith(req, res, next);
+            expect(textHandler).toHaveBeenCalledWith(
+                req,
+                res,
+                expect.any(Function)
+            );
         });
 
         it('parses an octet-stream body', () => {
@@ -128,7 +143,147 @@ describe('RequestBodyParserMiddleware', () => {
                 limit: 4000,
                 type: 'application/octet-stream',
             });
-            expect(rawHandler).toHaveBeenCalledWith(req, res, next);
+            expect(rawHandler).toHaveBeenCalledWith(
+                req,
+                res,
+                expect.any(Function)
+            );
+        });
+
+        it('passes a clean parse through to next with no error', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) => done()
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith();
+        });
+
+        it('maps a 413 parser error to RequestPayloadTooLargeException', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) =>
+                    done(
+                        Object.assign(new Error('too large'), {
+                            status: 413,
+                            type: 'entity.too.large',
+                        })
+                    )
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith(
+                expect.any(RequestPayloadTooLargeException)
+            );
+        });
+
+        it('maps a 415 parser error to RequestUnsupportedMediaTypeException', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) =>
+                    done(
+                        Object.assign(new Error('unsupported'), {
+                            status: 415,
+                            type: 'encoding.unsupported',
+                        })
+                    )
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith(
+                expect.any(RequestUnsupportedMediaTypeException)
+            );
+        });
+
+        it('maps an entity.parse.failed error to RequestValidationException', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) =>
+                    done(
+                        Object.assign(new SyntaxError('Unexpected token'), {
+                            status: 400,
+                            type: 'entity.parse.failed',
+                        })
+                    )
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith(
+                expect.any(RequestValidationException)
+            );
+        });
+
+        it.each(['request.aborted', 'request.size.invalid'])(
+            'maps a 400 %s parser error to RequestValidationException',
+            type => {
+                (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                    'application/json'
+                );
+                jsonHandler.mockImplementation(
+                    (_req: Request, _res: Response, done: NextFunction) =>
+                        done(
+                            Object.assign(new Error('client error'), {
+                                status: 400,
+                                type,
+                            })
+                        )
+                );
+
+                middleware.use(req, res, next);
+
+                expect(next).toHaveBeenCalledWith(
+                    expect.any(RequestValidationException)
+                );
+            }
+        );
+
+        it('maps a 415 charset.unsupported parser error to RequestUnsupportedMediaTypeException', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) =>
+                    done(
+                        Object.assign(new Error('unsupported charset'), {
+                            status: 415,
+                            type: 'charset.unsupported',
+                        })
+                    )
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith(
+                expect.any(RequestUnsupportedMediaTypeException)
+            );
+        });
+
+        it('passes an unmapped parser error through untouched', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            const failure = Object.assign(new Error('boom'), { status: 500 });
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) =>
+                    done(failure)
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith(failure);
         });
 
         it('skips parsing and calls next for an unrecognized content-type', () => {

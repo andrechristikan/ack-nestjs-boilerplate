@@ -7,6 +7,12 @@ import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.d
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
+import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import {
+    expectEmailSentNotStamped,
+    expectEmailStampOrder,
+    stubEmailStampOrder,
+} from '@test/unit/helpers/test.unit.notification-email.helper';
 import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
@@ -27,6 +33,8 @@ describe('NotificationEmailWorkspaceDomain', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
+    const notificationRepository: MockProxy<NotificationRepository> =
+        mock<NotificationRepository>();
     let domain: NotificationEmailWorkspaceDomain;
 
     const send = {
@@ -68,6 +76,10 @@ describe('NotificationEmailWorkspaceDomain', () => {
             providers: [
                 NotificationEmailWorkspaceDomain,
                 { provide: AwsSESService, useValue: awsSESService },
+                {
+                    provide: NotificationRepository,
+                    useValue: notificationRepository,
+                },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: MessageService, useValue: messageService },
@@ -145,6 +157,35 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 domain.processWorkspaceInvite(send, encrypted)
             ).rejects.toBe(error);
         });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processWorkspaceInvite(send, encrypted);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processWorkspaceInvite(send, encrypted)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
+        });
     });
 
     describe('processWorkspaceInviteUnregistered', () => {
@@ -219,6 +260,26 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 )
             ).rejects.toBe(error);
         });
+
+        it('stamps no delivery because the invitee has no notification', async () => {
+            helperEncryptionService.aes256Decrypt.mockReturnValue('x');
+            awsSESService.send.mockResolvedValue({
+                $metadata: {},
+                MessageId: 'message-1',
+            });
+
+            await domain.processWorkspaceInviteUnregistered(
+                { encryptedEmail: 'cipher-email', cc: [], bcc: [] },
+                encrypted
+            );
+
+            expect(
+                notificationRepository.updateDeliveryProcessedAt
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationRepository.updateDeliverySentAt
+            ).not.toHaveBeenCalled();
+        });
     });
 
     describe('processWorkspaceJoinRequest', () => {
@@ -281,6 +342,35 @@ describe('NotificationEmailWorkspaceDomain', () => {
             await expect(
                 domain.processWorkspaceJoinRequest(send, encrypted)
             ).rejects.toBe(error);
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processWorkspaceJoinRequest(send, encrypted);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processWorkspaceJoinRequest(send, encrypted)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 
@@ -364,6 +454,35 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 domain.processWorkspaceJoinAccepted(send, data)
             ).rejects.toBe(error);
         });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processWorkspaceJoinAccepted(send, data);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processWorkspaceJoinAccepted(send, data)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
+        });
     });
 
     describe('processWorkspaceJoinRejected', () => {
@@ -424,6 +543,35 @@ describe('NotificationEmailWorkspaceDomain', () => {
             await expect(
                 domain.processWorkspaceJoinRejected(send, data)
             ).rejects.toBe(error);
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processWorkspaceJoinRejected(send, data);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processWorkspaceJoinRejected(send, data)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 });

@@ -105,14 +105,14 @@
         {
             "label": "Seed Template",
             "type": "shell",
-            "command": "pnpm migration templateEmailNotification --type seed && pnpm migration templateTermPolicy --type seed",
+            "command": "pnpm migration templateEmailNotification --type seed",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Remove Template",
             "type": "shell",
-            "command": "pnpm migration templateEmailNotification --type remove && pnpm migration templateTermPolicy --type remove",
+            "command": "pnpm migration templateEmailNotification --type remove",
             "group": "none",
             "problemMatcher": []
         },

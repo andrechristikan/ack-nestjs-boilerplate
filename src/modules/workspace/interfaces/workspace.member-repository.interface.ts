@@ -57,8 +57,16 @@ export interface IWorkspaceMemberRepository {
     ): Promise<WorkspaceMember>;
     updateRole(
         targetMemberId: string,
+        expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole
-    ): Promise<void>;
-    removeMember(targetMemberId: string): Promise<void>;
-    transferOwnership(fromMemberId: string, toMemberId: string): Promise<void>;
+    ): Promise<boolean>;
+    removeMember(
+        targetMemberId: string,
+        expectedRole: EnumWorkspaceMemberRole
+    ): Promise<boolean>;
+    transferOwnership(
+        workspaceId: string,
+        fromMemberId: string,
+        toMemberId: string
+    ): Promise<boolean>;
 }

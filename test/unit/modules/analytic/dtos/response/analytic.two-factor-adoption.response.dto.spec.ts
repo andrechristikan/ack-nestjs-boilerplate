@@ -17,4 +17,11 @@ describe('AnalyticTwoFactorAdoptionResponseSchema', () => {
 
         expect(result).toEqual(row);
     });
+
+    it('describes the rate on a 0-100 scale', () => {
+        expect(
+            AnalyticTwoFactorAdoptionResponseSchema.shape.rate.meta()
+                ?.description
+        ).toContain('0-100');
+    });
 });

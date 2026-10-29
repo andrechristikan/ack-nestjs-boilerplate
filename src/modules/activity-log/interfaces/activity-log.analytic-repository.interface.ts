@@ -4,6 +4,7 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type {
     IActivityLogAnalyticActionCount,
     IActivityLogAnalyticList,
+    IActivityLogIpGroup,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 
@@ -24,6 +25,12 @@ export interface IActivityLogAnalyticRepository {
         startDate: Date,
         endDate: Date
     ): Promise<IActivityLogAnalyticList[]>;
+    groupIpByActions(
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date,
+        min: number
+    ): Promise<IActivityLogIpGroup[]>;
     countByWorkspaceInRange(
         excludedActions: EnumActivityLogAction[],
         workspaceId: string,

@@ -8,6 +8,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { Duration } from 'luxon';
 import {
     EnumActivityLogAction,
+    EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -82,6 +83,7 @@ describe('AnalyticDashboardDomain', () => {
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
+    const now: Date = new Date('2026-03-01T00:00:00.000Z');
     const pagination = {
         skip: 0,
         limit: 20,
@@ -109,6 +111,7 @@ describe('AnalyticDashboardDomain', () => {
             date ? date.toISOString() : '_'
         );
         analyticCache.getDashboard.mockResolvedValue(null);
+        helperDateService.create.mockReturnValue(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -342,7 +345,7 @@ describe('AnalyticDashboardDomain', () => {
             expect(result).toEqual(rate);
             expect(
                 userAnalyticDomain.getEmailVerificationRate
-            ).toHaveBeenCalledWith();
+            ).toHaveBeenCalledWith(startDate, endDate);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -371,6 +374,9 @@ describe('AnalyticDashboardDomain', () => {
             );
 
             expect(result).toEqual(rate);
+            expect(
+                userMobileNumberAnalyticDomain.getVerificationRate
+            ).toHaveBeenCalledWith(startDate, endDate);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -589,21 +595,29 @@ describe('AnalyticDashboardDomain', () => {
     });
 
     describe('authLoginSource', () => {
-        it('reuses the login-method buckets', async () => {
-            userLoginAnalyticDomain.getLoginMethodMix.mockResolvedValue([
-                { action: EnumActivityLogAction.userLoginCredential, count: 7 },
+        it('maps login-source groups into counted buckets under its own cache key', async () => {
+            userAnalyticDomain.getGroupLoginSource.mockResolvedValue([
+                { key: EnumUserLoginFrom.website, count: 7 },
             ]);
 
             const result = await domain.authLoginSource(startDate, endDate);
 
             expect(result).toEqual({
-                buckets: [
-                    {
-                        key: EnumActivityLogAction.userLoginCredential,
-                        count: 7,
-                    },
-                ],
+                buckets: [{ key: EnumUserLoginFrom.website, count: 7 }],
             });
+            expect(userAnalyticDomain.getGroupLoginSource).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
+            expect(
+                userLoginAnalyticDomain.getLoginMethodMix
+            ).not.toHaveBeenCalled();
+            expect(analyticCache.setDashboard).toHaveBeenCalledWith(
+                EnumAnalyticDashboardMetric.authLoginSource,
+                startDate.toISOString(),
+                endDate.toISOString(),
+                result
+            );
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -682,6 +696,9 @@ describe('AnalyticDashboardDomain', () => {
             expect(result).toEqual({
                 buckets: [{ key: 'user-1', count: 2 }],
             });
+            expect(
+                sessionAnalyticDomain.getCountActiveByUser
+            ).toHaveBeenCalledWith(now);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -702,6 +719,9 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.authSessionsGeo(startDate, endDate);
 
             expect(result).toEqual({ buckets: rows });
+            expect(
+                sessionAnalyticDomain.getGroupByCountry
+            ).toHaveBeenCalledWith(startDate, endDate, now);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -792,6 +812,9 @@ describe('AnalyticDashboardDomain', () => {
                     { key: 'unknown', count: 1 },
                 ],
             });
+            expect(
+                sessionAnalyticDomain.getActiveWithGeoInRange
+            ).toHaveBeenCalledWith(startDate, endDate, now);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -1233,6 +1256,9 @@ describe('AnalyticDashboardDomain', () => {
             const result = await domain.devicesSessionRatio();
 
             expect(result).toEqual({ sessions: 10, devices: 5, ratio: 2 });
+            expect(sessionAnalyticDomain.getCountActive).toHaveBeenCalledWith(
+                now
+            );
         });
 
         it('returns a zero ratio when no devices exist', async () => {

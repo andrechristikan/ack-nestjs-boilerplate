@@ -7,7 +7,7 @@ import type {
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { PasswordHistory, User } from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
 
 /** Hashes passwords and evaluates password dates. See docs/authentication.md. */
 @Injectable()
@@ -16,8 +16,6 @@ export class AuthPasswordUtil {
     private readonly passwordExpiredTemporaryInMs: number;
     private readonly passwordSaltLength: number;
     private readonly passwordPeriodInDays: number;
-    private readonly passwordAttempt: boolean;
-    private readonly passwordMaxAttempt: number;
 
     constructor(
         private readonly helperHashService: HelperHashService,
@@ -37,35 +35,25 @@ export class AuthPasswordUtil {
         this.passwordPeriodInDays = this.configService.get<number>(
             'auth.password.periodInDays'
         )!;
-        this.passwordAttempt = this.configService.get<boolean>(
-            'auth.password.attempt'
-        )!;
-        this.passwordMaxAttempt = this.configService.get<number>(
-            'auth.password.maxAttempt'
-        )!;
     }
 
-    validatePassword(passwordString: string, passwordHash: string): boolean {
+    async validatePassword(
+        passwordString: string,
+        passwordHash: string
+    ): Promise<boolean> {
         return this.helperHashService.bcryptCompare(
             passwordString,
             passwordHash
         );
     }
 
-    /** True when the user exceeded the max password attempts; always false if attempt tracking is off. */
-    checkPasswordAttempt(user: User): boolean {
-        return this.passwordAttempt
-            ? (user.passwordAttempt ?? 0) >= this.passwordMaxAttempt
-            : false;
-    }
-
     /** Builds the bcrypt hash plus expiry and period dates; temporary uses a shorter expiry. */
-    createPassword(
+    async createPassword(
         password: string,
         options?: IAuthPasswordOptions
-    ): IAuthPassword {
+    ): Promise<IAuthPassword> {
         const today = this.helperDateService.create();
-        const salt: string = this.helperHashService.bcryptGenerateSalt(
+        const salt: string = await this.helperHashService.bcryptGenerateSalt(
             this.passwordSaltLength
         );
         const passwordExpiredDuration = this.helperDateService.createDuration({
@@ -77,7 +65,10 @@ export class AuthPasswordUtil {
             today,
             passwordExpiredDuration
         );
-        const passwordHash = this.helperHashService.bcryptHash(password, salt);
+        const passwordHash = await this.helperHashService.bcryptHash(
+            password,
+            salt
+        );
         const passwordPeriodDuration = this.helperDateService.createDuration({
             days: this.passwordPeriodInDays,
         });
@@ -109,21 +100,18 @@ export class AuthPasswordUtil {
     }
 
     /** Returns the matching history record if the password was used before, blocking recent reuse. */
-    checkPasswordPeriod(
+    async checkPasswordPeriod(
         histories: PasswordHistory[],
         password: string
-    ): PasswordHistory | null {
-        for (const history of histories) {
-            const isPasswordMatch = this.helperHashService.bcryptCompare(
-                password,
-                history.password
-            );
-            if (isPasswordMatch) {
-                return history;
-            }
-        }
+    ): Promise<PasswordHistory | null> {
+        const matches = await Promise.all(
+            histories.map(history =>
+                this.helperHashService.bcryptCompare(password, history.password)
+            )
+        );
+        const matchIndex = matches.indexOf(true);
 
-        return null;
+        return matchIndex === -1 ? null : histories[matchIndex]!;
     }
 
     getPasswordPeriodInDays(): number {

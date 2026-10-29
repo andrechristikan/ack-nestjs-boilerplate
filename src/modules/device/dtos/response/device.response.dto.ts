@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import {
-    EnumDeviceNotificationProvider,
-    EnumDevicePlatform,
-} from '@generated/prisma-client/client';
+import { EnumDevicePlatform } from '@generated/prisma-client/client';
 
 /**
  * Base device shape: the stored device row without the fingerprint and the notification token.
@@ -26,13 +23,6 @@ export const DeviceResponseSchema = DatabaseResponseSchema.omit({
         description: 'Last active date',
         example: faker.date.recent(),
     }),
-    notificationProvider: z
-        .enum(EnumDeviceNotificationProvider)
-        .nullable()
-        .meta({
-            description: 'Device notification provider',
-            example: EnumDeviceNotificationProvider.fcm,
-        }),
 });
 
 /**

@@ -131,18 +131,20 @@ export class SessionRepository implements ISessionRepository {
     async updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,
-        jti: string
+        oldJti: string,
+        newJti: string
     ): Promise<boolean> {
         const now = this.helperDateService.create();
         const { count } = await tx.session.updateMany({
             where: {
                 id: sessionId,
+                jti: oldJti,
                 isRevoked: false,
                 expiredAt: {
                     gte: now,
                 },
             },
-            data: { jti },
+            data: { jti: newJti },
         });
 
         return count > 0;

@@ -155,6 +155,10 @@ export class UserAdminController {
 
     @Doc({ summary: 'update status of user' })
     @Response('user.updateStatus')
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -169,19 +173,19 @@ export class UserAdminController {
     async updateStatus(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @AuthJwtPayload('userId') updatedBy: string,
+        @UserCurrent() user: IUser,
         @Body({ schema: UserUpdateStatusRequestSchema })
         body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userHttpService.updateStatusByAdmin(
-            userId,
-            body,
-            updatedBy
-        );
+        return this.userHttpService.updateStatusByAdmin(userId, body, user);
     }
 
     @Doc({ summary: 'update password of user' })
     @Response('user.updatePassword')
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -196,16 +200,17 @@ export class UserAdminController {
     async updatePassword(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @AuthJwtPayload('userId') updatedBy: string
+        @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.userPasswordHttpService.updatePasswordByAdmin(
-            userId,
-            updatedBy
-        );
+        return this.userPasswordHttpService.updatePasswordByAdmin(userId, user);
     }
 
     @Doc({ summary: 'reset user' })
     @Response('user.twoFactor.resetByAdmin')
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -220,11 +225,11 @@ export class UserAdminController {
     async resetTwoFactorByAdmin(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @AuthJwtPayload('userId') updatedBy: string
+        @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
         return this.userTwoFactorHttpService.resetTwoFactorByAdmin(
             userId,
-            updatedBy
+            user
         );
     }
 

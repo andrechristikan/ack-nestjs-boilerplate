@@ -13,6 +13,12 @@ describe('UserGeneratePhotoProfileRequestSchema', () => {
         expect(result).toEqual(payload);
     });
 
+    it('rejects a size of 0', () => {
+        expect(() =>
+            UserGeneratePhotoProfileRequestSchema.parse({ ...payload, size: 0 })
+        ).toThrow();
+    });
+
     it('rejects an extension outside EnumFileExtensionImage', () => {
         expect(() =>
             UserGeneratePhotoProfileRequestSchema.parse({

@@ -91,15 +91,20 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         workspaceJoinRequestId: string,
         reviewerId: string,
         reviewedAt: Date
-    ): Promise<void> {
-        await tx.workspaceJoinRequest.update({
-            where: { id: workspaceJoinRequestId },
+    ): Promise<boolean> {
+        const { count } = await tx.workspaceJoinRequest.updateMany({
+            where: {
+                id: workspaceJoinRequestId,
+                status: EnumWorkspaceJoinRequestStatus.pending,
+            },
             data: {
                 status: EnumWorkspaceJoinRequestStatus.accepted,
                 reviewedByUserId: reviewerId,
                 reviewedAt,
             },
         });
+
+        return count > 0;
     }
 
     async reject(
@@ -107,16 +112,22 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
-    ): Promise<void> {
-        await this.databaseService.client.workspaceJoinRequest.update({
-            where: { id: workspaceJoinRequestId },
-            data: {
-                status: EnumWorkspaceJoinRequestStatus.rejected,
-                rejectReasonCode,
-                reviewedByUserId: reviewerId,
-                reviewedAt,
-            },
-        });
+    ): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.workspaceJoinRequest.updateMany({
+                where: {
+                    id: workspaceJoinRequestId,
+                    status: EnumWorkspaceJoinRequestStatus.pending,
+                },
+                data: {
+                    status: EnumWorkspaceJoinRequestStatus.rejected,
+                    rejectReasonCode,
+                    reviewedByUserId: reviewerId,
+                    reviewedAt,
+                },
+            });
+
+        return count > 0;
     }
 
     async cancelPendingByWorkspaceInTx(

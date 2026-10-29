@@ -26,8 +26,8 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    Prisma,
 } from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -82,7 +82,7 @@ export class MigrationUserSeed
         const uniqueCountries = this.helperArrayService.unique(countryCodes);
         const emails = this.users.map(user => user.email.toLowerCase());
 
-        const [roles, countries, termPolicies, existingUsers] =
+        const [roles, countries, publishedTermPolicies, existingUsers] =
             await Promise.all([
                 this.databaseService.client.role.findMany({
                     where: { name: { in: uniqueRoles } },
@@ -97,6 +97,7 @@ export class MigrationUserSeed
                         type: { in: [...UserTermPolicyContract.requiredTypes] },
                         status: EnumTermPolicyStatus.published,
                     },
+                    orderBy: { version: Prisma.SortOrder.desc },
                     select: { id: true, type: true },
                 }),
                 this.databaseService.client.user.findMany({
@@ -115,9 +116,15 @@ export class MigrationUserSeed
             return;
         }
 
-        const requiredTermPolicyCount =
-            UserTermPolicyContract.requiredTypes.length;
-        if (termPolicies.length !== requiredTermPolicyCount) {
+        const termPolicies = UserTermPolicyContract.requiredTypes.flatMap(
+            type =>
+                publishedTermPolicies
+                    .filter(policy => policy.type === type)
+                    .slice(0, 1)
+        );
+        if (
+            termPolicies.length !== UserTermPolicyContract.requiredTypes.length
+        ) {
             this.logger.error('TermPolicies not found for users, cannot seed.');
             return;
         }
@@ -155,7 +162,11 @@ export class MigrationUserSeed
                 geoLocation: null,
             };
 
-            const rows = this.users.map(user => {
+            const createPasswords = this.users.map(user =>
+                this.authPasswordUtil.createPassword(user.password)
+            );
+            const passwords = await Promise.all(createPasswords);
+            const rows = this.users.map((user, index) => {
                 const email = user.email.toLowerCase();
                 const generatedUserId = this.databaseUtil.createId();
                 const userId = user.id ?? generatedUserId;
@@ -184,9 +195,7 @@ export class MigrationUserSeed
                         );
                 }
 
-                const password = this.authPasswordUtil.createPassword(
-                    user.password
-                );
+                const password = passwords[index]!;
                 const verification =
                     this.userVerificationDomain.verificationCreateVerification(
                         EnumVerificationType.email
@@ -278,9 +287,6 @@ export class MigrationUserSeed
                                 signUpWith: EnumUserSignUpWith.credential,
                                 signUpFrom: EnumUserSignUpFrom.system,
                                 status: EnumUserStatus.active,
-                                termPolicy: {
-                                    ...UserTermPolicyContract.defaults,
-                                },
                                 username: row.user.username,
                                 deletedAt: null,
                                 createdBy: MigrationUserSuperAdminId,

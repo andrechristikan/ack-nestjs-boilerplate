@@ -8,11 +8,11 @@ import type { IAnalyticNearLockout } from '@modules/analytic/interfaces/analytic
 import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
-    IUserAnalyticSignUp,
 } from '@modules/user/interfaces/user.interface';
 import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic.repository';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -71,6 +71,13 @@ export class UserAnalyticDomain {
         );
     }
 
+    getGroupLoginSource(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IUserAnalyticGroupCount<EnumUserLoginFrom>[]> {
+        return this.userAnalyticRepository.groupLoginSource(startDate, endDate);
+    }
+
     getGroupByStatus(): Promise<IUserAnalyticGroupCount<EnumUserStatus>[]> {
         return this.userAnalyticRepository.groupByStatus();
     }
@@ -83,10 +90,13 @@ export class UserAnalyticDomain {
         return this.userAnalyticRepository.groupByRole();
     }
 
-    async getEmailVerificationRate(): Promise<IAnalyticMetricRate> {
+    async getEmailVerificationRate(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticMetricRate> {
         const [verified, total] = await Promise.all([
-            this.userAnalyticRepository.countVerifiedEmail(),
-            this.userAnalyticRepository.countActive(),
+            this.userAnalyticRepository.countVerifiedEmail(startDate, endDate),
+            this.userAnalyticRepository.countSignedUp(startDate, endDate),
         ]);
         return {
             count: verified,
@@ -115,6 +125,10 @@ export class UserAnalyticDomain {
         return this.userAnalyticRepository.findOneById(id);
     }
 
+    getManyByIds(ids: string[]): Promise<IUserAnalyticRef[]> {
+        return this.userAnalyticRepository.findManyByIds(ids);
+    }
+
     getListNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
@@ -122,16 +136,6 @@ export class UserAnalyticDomain {
         return this.userAnalyticRepository.findNearLockoutOffset(
             minAttempt,
             params
-        );
-    }
-
-    getSignUpsInRange(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IUserAnalyticSignUp[]> {
-        return this.userAnalyticRepository.findSignUpsInRange(
-            startDate,
-            endDate
         );
     }
 }

@@ -9,6 +9,7 @@ import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/reque
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type {
     ITermPolicyContent,
+    ITermPolicyRef,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
@@ -46,15 +47,17 @@ export interface ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string
     ): Promise<TermPolicy | null>;
-    findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
-        id: string;
-        type: EnumTermPolicyType;
-        version: number;
-    } | null>;
-    existsAcceptanceByPolicyAndUser(
+    findLatestPublishedByTypes(
+        types: EnumTermPolicyType[]
+    ): Promise<ITermPolicyRef[]>;
+    findLatestPublishedByTypesInTx(
+        tx: IDatabaseTransactionClient,
+        types: EnumTermPolicyType[]
+    ): Promise<ITermPolicyRef[]>;
+    findAcceptedTermPolicyIdsByUser(
         userId: string,
-        termPolicyId: string
-    ): Promise<boolean>;
+        termPolicyIds: string[]
+    ): Promise<string[]>;
     existsByVersionAndType(
         version: number,
         type: EnumTermPolicyType
@@ -63,10 +66,6 @@ export interface ITermPolicyRepository {
         version: number,
         type: EnumTermPolicyType
     ): Promise<EnumTermPolicyStatus | null>;
-    findPublishedByTypesInTx(
-        tx: IDatabaseTransactionClient,
-        types: EnumTermPolicyType[]
-    ): Promise<{ id: string; type: EnumTermPolicyType }[]>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -84,19 +83,29 @@ export interface ITermPolicyRepository {
         termPolicyId: string,
         contents: ITermPolicyContent[],
         content: ITermPolicyContent
-    ): Promise<TermPolicy>;
+    ): Promise<boolean>;
     addContent(
         termPolicyId: string,
         newContent: ITermPolicyContent
-    ): Promise<TermPolicy>;
+    ): Promise<boolean>;
     removeContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
         { language }: TermPolicyRemoveContentRequestDto
-    ): Promise<TermPolicy>;
+    ): Promise<boolean>;
     publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[]
+    ): Promise<boolean>;
+    archivePublishedByTypeInTx(
+        tx: IDatabaseTransactionClient,
+        type: EnumTermPolicyType,
+        belowVersion: number
+    ): Promise<number>;
+    existsNewerPublishedInTx(
+        tx: IDatabaseTransactionClient,
+        type: EnumTermPolicyType,
+        version: number
     ): Promise<boolean>;
 }

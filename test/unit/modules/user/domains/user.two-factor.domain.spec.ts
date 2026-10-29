@@ -1,3 +1,7 @@
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -63,6 +67,8 @@ describe('UserTwoFactorDomain', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+
     let domain: UserTwoFactorDomain;
 
     const tx = {} as IDatabaseTransactionClient;
@@ -116,12 +122,6 @@ describe('UserTwoFactorDomain', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -209,6 +209,7 @@ describe('UserTwoFactorDomain', () => {
                     useValue: notificationRecipientDomain,
                 },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: RoleDomain, useValue: roleDomain },
             ],
         }).compile();
         domain = module.get(UserTwoFactorDomain);
@@ -1232,6 +1233,57 @@ describe('UserTwoFactorDomain', () => {
     });
 
     describe('resetTwoFactorByAdmin', () => {
+        const adminActor: IRoleActor = {
+            roleId: 'role-admin-quartz',
+            roleType: EnumRoleType.admin,
+        };
+
+        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
+                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
+            });
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw new RoleRankForbiddenException();
+            });
+
+            const call = domain.resetTwoFactorByAdmin(
+                'user-quartz',
+                'admin-quartz',
+                adminActor
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.superAdmin
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('checks the actor role type against the target role type before reading the recipient', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            const error = new Error('recipient-unavailable');
+            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
+                error
+            );
+
+            const call = domain.resetTwoFactorByAdmin(
+                'user-quartz',
+                'admin-quartz',
+                adminActor
+            );
+
+            await expect(call).rejects.toMatchObject({ rawError: error });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                baseUser.role.type
+            );
+        });
         it('resets two-factor, revokes sessions, stages both activity logs in order, and notifies the user', async () => {
             const user = baseUser;
             userRepository.findOneWithRoleById.mockResolvedValue(user);
@@ -1280,7 +1332,11 @@ describe('UserTwoFactorDomain', () => {
                 }
             );
 
-            await domain.resetTwoFactorByAdmin('user-quartz', 'admin-quartz');
+            await domain.resetTwoFactorByAdmin(
+                'user-quartz',
+                'admin-quartz',
+                adminActor
+            );
 
             expect(
                 userTwoFactorRepository.resetTwoFactorByAdminInTx
@@ -1337,7 +1393,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.resetTwoFactorByAdmin(
                 'user-quartz',
-                'admin-quartz'
+                'admin-quartz',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({ rawError: error });
@@ -1350,7 +1407,8 @@ describe('UserTwoFactorDomain', () => {
         it('throws UserNotSelfException when the admin targets themselves', async () => {
             const call = domain.resetTwoFactorByAdmin(
                 'admin-quartz',
-                'admin-quartz'
+                'admin-quartz',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1367,7 +1425,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.resetTwoFactorByAdmin(
                 'user-quartz',
-                'admin-quartz'
+                'admin-quartz',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1387,7 +1446,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.resetTwoFactorByAdmin(
                 'user-quartz',
-                'admin-quartz'
+                'admin-quartz',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1409,7 +1469,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.resetTwoFactorByAdmin(
                 'user-quartz',
-                'admin-quartz'
+                'admin-quartz',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1430,7 +1491,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.resetTwoFactorByAdmin(
                 'user-quartz',
-                'admin-quartz'
+                'admin-quartz',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1451,7 +1513,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.resetTwoFactorByAdmin(
                 'user-quartz',
-                'admin-quartz'
+                'admin-quartz',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({

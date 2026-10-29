@@ -15,6 +15,7 @@ export const AwsS3PresignRequestSchema = z.strictObject({
     size: z
         .number()
         .int()
+        .min(1)
         .meta({
             description: 'Object size in bytes',
             example: faker.number.int({ min: 1, max: 10_485_760 }),

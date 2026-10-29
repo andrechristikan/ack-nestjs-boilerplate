@@ -118,8 +118,10 @@ export class UserImportDomain {
         const passwords = Array(totalData)
             .fill(0)
             .map(() => this.authPasswordUtil.createPasswordRandom());
-        const passwordHasheds = passwords.map(password =>
-            this.authPasswordUtil.createPassword(password)
+        const passwordHasheds = await Promise.all(
+            passwords.map(password =>
+                this.authPasswordUtil.createPassword(password)
+            )
         );
         const workspaceContexts =
             this.userOnboardingDomain.buildPersonalWorkspaceContexts(usernames);
@@ -135,7 +137,6 @@ export class UserImportDomain {
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,
-                termPolicy: { ...UserTermPolicyContract.defaults },
                 acceptedTermPolicyTypes: [
                     ...UserTermPolicyContract.requiredTypes,
                 ],

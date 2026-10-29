@@ -225,15 +225,14 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    async increaseTwoFactorAttempt(userId: string): Promise<TwoFactor> {
-        return this.databaseService.client.twoFactor.update({
+    async incrementAttempt(userId: string): Promise<number> {
+        const { attempt } = await this.databaseService.client.twoFactor.update({
             where: { userId },
-            data: {
-                attempt: {
-                    increment: 1,
-                },
-            },
+            data: { attempt: { increment: 1 } },
+            select: { attempt: true },
         });
+
+        return attempt;
     }
 
     async resetTwoFactorAttempt(userId: string): Promise<TwoFactor> {

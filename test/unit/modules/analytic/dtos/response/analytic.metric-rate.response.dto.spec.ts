@@ -17,4 +17,10 @@ describe('AnalyticMetricRateResponseSchema', () => {
 
         expect(result).toEqual(row);
     });
+
+    it('describes the rate on a 0-100 scale', () => {
+        expect(
+            AnalyticMetricRateResponseSchema.shape.rate.meta()?.description
+        ).toContain('0-100');
+    });
 });

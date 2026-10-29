@@ -36,16 +36,14 @@ describe('RequestThrottleDefaultGuard', () => {
     });
 
     describe('getTracker', () => {
-        it('resolves the tracker through RequestUtil.resolveThrottleTrackerIp', async () => {
+        it('resolves the tracker through RequestUtil.getClientIp', async () => {
             const req: MockProxy<IRequestApp> = mock<IRequestApp>();
-            requestUtil.resolveThrottleTrackerIp.mockReturnValue('127.0.0.1');
+            requestUtil.getClientIp.mockReturnValue('127.0.0.1');
 
             const result = await guard['getTracker'](req);
 
             expect(result).toBe('127.0.0.1');
-            expect(requestUtil.resolveThrottleTrackerIp).toHaveBeenCalledWith(
-                req
-            );
+            expect(requestUtil.getClientIp).toHaveBeenCalledWith(req);
         });
     });
 

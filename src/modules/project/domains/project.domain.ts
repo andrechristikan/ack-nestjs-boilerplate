@@ -92,15 +92,15 @@ export class ProjectDomain {
         );
     }
 
-    /** Lists projects in the workspace: a workspace `owner` sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
+    /** Lists projects in the workspace: a workspace `owner` or `admin` sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
     async getListCursorByMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePaginationReturn<Project>> {
-        const isWorkspaceOwner =
-            this.projectUtil.isWorkspaceOwner(workspaceMember);
-        const memberUserId = isWorkspaceOwner ? null : workspaceMember.userId;
+        const hasWorkspaceBypass =
+            this.projectUtil.hasWorkspaceBypass(workspaceMember);
+        const memberUserId = hasWorkspaceBypass ? null : workspaceMember.userId;
 
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,

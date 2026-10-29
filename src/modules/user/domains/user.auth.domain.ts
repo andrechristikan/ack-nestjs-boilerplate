@@ -94,15 +94,15 @@ export class UserAuthDomain {
             throw new UserPasswordNotSetException();
         }
 
-        const isPasswordAttemptMaxed =
-            this.authPasswordUtil.checkPasswordAttempt(user);
-        if (isPasswordAttemptMaxed) {
+        const isAttemptCounted =
+            await this.userLoginDomain.incrementPasswordAttempt(user.id);
+        if (!isAttemptCounted) {
             await this.userPasswordDomain.reachMaxPasswordAttempt(user.id);
 
             throw new UserPasswordAttemptMaxException();
         }
 
-        const isPasswordValid = this.authPasswordUtil.validatePassword(
+        const isPasswordValid = await this.authPasswordUtil.validatePassword(
             password,
             user.password
         );
@@ -161,17 +161,21 @@ export class UserAuthDomain {
 
         const [
             role,
+            checkCountry,
             checkUsernamePattern,
             checkUsernameBadWord,
             usernameExist,
         ] = await Promise.all([
             this.roleDomain.getByName(this.userRoleName),
+            this.countryDomain.existsById(countryId),
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
             this.userRepository.existsByUsername(username),
         ]);
         if (!role) {
             throw new RoleNotFoundException();
+        } else if (!checkCountry) {
+            throw new CountryNotFoundException();
         } else if (checkUsernamePattern) {
             throw new UserUsernameNotAllowedException();
         } else if (checkUsernameBadWord) {
@@ -195,11 +199,6 @@ export class UserAuthDomain {
                     ? EnumUserSignUpWith.socialApple
                     : EnumUserSignUpWith.socialGoogle,
             isVerified: true,
-            termPolicy: {
-                ...UserTermPolicyContract.defaults,
-                [EnumTermPolicyType.cookies]: cookies,
-                [EnumTermPolicyType.marketing]: marketing,
-            },
             acceptedTermPolicyTypes: [
                 ...UserTermPolicyContract.requiredTypes,
                 ...(cookies ? [EnumTermPolicyType.cookies] : []),
@@ -295,7 +294,8 @@ export class UserAuthDomain {
         }
 
         const userId = this.databaseUtil.createId();
-        const password = this.authPasswordUtil.createPassword(passwordString);
+        const password =
+            await this.authPasswordUtil.createPassword(passwordString);
         const emailVerification =
             this.userVerificationDomain.verificationCreateVerification(
                 EnumVerificationType.email
@@ -312,11 +312,6 @@ export class UserAuthDomain {
                 signUpFrom: from,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
-                termPolicy: {
-                    ...UserTermPolicyContract.defaults,
-                    [EnumTermPolicyType.cookies]: cookies,
-                    [EnumTermPolicyType.marketing]: marketing,
-                },
                 acceptedTermPolicyTypes: [
                     ...UserTermPolicyContract.requiredTypes,
                     ...(cookies ? [EnumTermPolicyType.cookies] : []),

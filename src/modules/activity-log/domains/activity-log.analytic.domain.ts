@@ -4,6 +4,7 @@ import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contra
 import type {
     IActivityLogAnalyticActionCount,
     IActivityLogAnalyticList,
+    IActivityLogIpGroup,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositories/activity-log.analytic.repository';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
@@ -51,6 +52,20 @@ export class ActivityLogAnalyticDomain {
             actions,
             startDate,
             endDate
+        );
+    }
+
+    getGroupIpByActions(
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date,
+        min: number
+    ): Promise<IActivityLogIpGroup[]> {
+        return this.activityLogAnalyticRepository.groupIpByActions(
+            actions,
+            startDate,
+            endDate,
+            min
         );
     }
 

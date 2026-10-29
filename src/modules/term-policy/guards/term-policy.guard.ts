@@ -32,7 +32,7 @@ export class TermPolicyGuard implements CanActivate {
         }
 
         await this.termPolicyAcceptanceDomain.validateTermPolicyGuard(
-            user,
+            user.id,
             requiredTermPolicies
         );
 

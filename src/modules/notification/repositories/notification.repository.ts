@@ -21,6 +21,7 @@ import type { INotificationRepository } from '@modules/notification/interfaces/n
 import { Injectable } from '@nestjs/common';
 import {
     EnumNotificationChannel,
+    EnumNotificationType,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Notification } from '@generated/prisma-client/client';
@@ -81,7 +82,8 @@ export class NotificationRepository implements INotificationRepository {
         {
             where,
             ...params
-        }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
+        excludedTypes: EnumNotificationType[]
     ): Promise<IResponsePaginationReturn<Notification>> {
         return this.paginationService.cursor<
             Notification,
@@ -91,6 +93,12 @@ export class NotificationRepository implements INotificationRepository {
             where: {
                 ...where,
                 userId,
+                deliveries: {
+                    some: { channel: EnumNotificationChannel.inApp },
+                },
+                ...(excludedTypes.length > 0 && {
+                    type: { notIn: excludedTypes },
+                }),
             },
         });
     }
@@ -222,12 +230,23 @@ export class NotificationRepository implements INotificationRepository {
     async markTermPolicyRecipientsSent(
         claimNonce: string,
         userIds: string[],
+        notificationIds: string[],
         sentAt: Date,
         updatedBy: string
     ): Promise<void> {
-        await this.databaseService.client.termPolicyRecipient.updateMany({
-            where: { claimNonce, userId: { in: userIds }, sentAt: null },
-            data: { sentAt, updatedBy },
+        await this.databaseService.withTransaction(async tx => {
+            await tx.termPolicyRecipient.updateMany({
+                where: { claimNonce, userId: { in: userIds }, sentAt: null },
+                data: { sentAt, updatedBy },
+            });
+            await tx.notificationDelivery.updateMany({
+                where: {
+                    notificationId: { in: notificationIds },
+                    channel: EnumNotificationChannel.email,
+                    sentAt: null,
+                },
+                data: { processedAt: sentAt, sentAt },
+            });
         });
     }
 
@@ -242,23 +261,22 @@ export class NotificationRepository implements INotificationRepository {
         });
     }
 
-    async markAsRead(
-        userId: string,
-        notificationId: string
-    ): Promise<Notification> {
+    async markAsRead(notificationId: string, userId: string): Promise<boolean> {
         const readAt = this.helperDateService.create();
+        const { count } =
+            await this.databaseService.client.notification.updateMany({
+                where: {
+                    id: notificationId,
+                    userId,
+                    isRead: false,
+                },
+                data: {
+                    isRead: true,
+                    readAt,
+                },
+            });
 
-        return this.databaseService.client.notification.update({
-            where: {
-                id: notificationId,
-                userId,
-                isRead: false,
-            },
-            data: {
-                isRead: true,
-                readAt,
-            },
-        });
+        return count > 0;
     }
 
     async markAllAsRead(userId: string): Promise<Prisma.BatchPayload> {
@@ -276,57 +294,32 @@ export class NotificationRepository implements INotificationRepository {
         });
     }
 
-    async updateProcessAt(
-        userId: string,
-        notificationId: string,
-        channel: EnumNotificationChannel
-    ): Promise<void> {
-        const today = this.helperDateService.create();
-        await this.databaseService.client.notification.update({
-            where: { id: notificationId, userId },
-            data: {
-                deliveries: {
-                    update: {
-                        where: {
-                            notificationId_channel: {
-                                notificationId,
-                                channel,
-                            },
-                        },
-                        data: {
-                            processedAt: today,
-                        },
-                    },
-                },
-            },
-        });
-    }
-
-    async updateSentAt(
-        userId: string,
+    async updateDeliveryProcessedAt(
         notificationId: string,
         channel: EnumNotificationChannel,
+        at: Date
+    ): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.notificationDelivery.updateMany({
+                where: { notificationId, channel },
+                data: { processedAt: at },
+            });
+
+        return count > 0;
+    }
+
+    async updateDeliverySentAt(
+        notificationId: string,
+        channel: EnumNotificationChannel,
+        at: Date,
         failureTokens: string[]
-    ): Promise<void> {
-        const today = this.helperDateService.create();
-        await this.databaseService.client.notification.update({
-            where: { id: notificationId, userId },
-            data: {
-                deliveries: {
-                    update: {
-                        where: {
-                            notificationId_channel: {
-                                notificationId,
-                                channel,
-                            },
-                        },
-                        data: {
-                            failureTokens,
-                            sentAt: today,
-                        },
-                    },
-                },
-            },
-        });
+    ): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.notificationDelivery.updateMany({
+                where: { notificationId, channel },
+                data: { failureTokens, sentAt: at },
+            });
+
+        return count > 0;
     }
 }

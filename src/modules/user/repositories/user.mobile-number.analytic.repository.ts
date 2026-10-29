@@ -6,13 +6,28 @@ import { Injectable } from '@nestjs/common';
 export class UserMobileNumberAnalyticRepository implements IUserMobileNumberAnalyticRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
-    async countVerified(): Promise<number> {
+    async countVerified(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<number> {
         return this.databaseService.client.userMobileNumber.count({
-            where: { isVerified: true },
+            where: {
+                isVerified: true,
+                ...(startDate &&
+                    endDate && { createdAt: { gte: startDate, lt: endDate } }),
+            },
         });
     }
 
-    async countAll(): Promise<number> {
-        return this.databaseService.client.userMobileNumber.count();
+    async countAll(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<number> {
+        return this.databaseService.client.userMobileNumber.count({
+            where: {
+                ...(startDate &&
+                    endDate && { createdAt: { gte: startDate, lt: endDate } }),
+            },
+        });
     }
 }

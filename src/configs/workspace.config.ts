@@ -33,7 +33,7 @@ export default registerAs('workspace', (): IConfigWorkspace => ({
         tokenLength: 100,
         referencePrefix: 'WIN',
         referenceRandomLength: 25,
-        linkPattern: '{homeUrl}/workspace/invites/{token}',
+        linkPattern: '{homeUrl}/workspace/invites?inviteToken={token}',
         signUpLinkPattern: '{homeUrl}/sign-up?inviteToken={token}',
         expirySweepCron: '0 0 * * *',
     },

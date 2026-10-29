@@ -78,6 +78,7 @@ export class NotificationEmailTermPolicyDomain {
     private async markSent(
         claimNonce: string,
         userIds: string[],
+        notificationIds: string[],
         proceedBy: string
     ): Promise<void> {
         if (userIds.length === 0) {
@@ -88,6 +89,7 @@ export class NotificationEmailTermPolicyDomain {
         await this.notificationRepository.markTermPolicyRecipientsSent(
             claimNonce,
             userIds,
+            notificationIds,
             sentAt,
             proceedBy
         );
@@ -193,8 +195,18 @@ export class NotificationEmailTermPolicyDomain {
             }
         }
 
+        const sentUserIdSet = new Set(sentUserIds);
+        const sentNotificationIds = batchRecipients
+            .filter(({ userId }) => sentUserIdSet.has(userId))
+            .map(({ notificationId }) => notificationId);
+
         const [markOutcome, releaseOutcome] = await Promise.allSettled([
-            this.markSent(claimNonce, sentUserIds, proceedBy),
+            this.markSent(
+                claimNonce,
+                sentUserIds,
+                sentNotificationIds,
+                proceedBy
+            ),
             this.releaseFailed(claimNonce, failedUserIds, proceedBy),
         ]);
         if (markOutcome.status === 'rejected') {

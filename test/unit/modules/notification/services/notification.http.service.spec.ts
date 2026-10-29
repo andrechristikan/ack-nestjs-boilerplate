@@ -4,6 +4,8 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { MessageService } from '@common/message/services/message.service';
+import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
     Notification,
@@ -11,6 +13,7 @@ import type {
 } from '@generated/prisma-client/client';
 import {
     EnumNotificationChannel,
+    EnumNotificationPriority,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
@@ -26,6 +29,7 @@ describe('NotificationHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     let service: NotificationHttpService;
 
     const cursorParams = { limit: 20, orderBy: [] };
@@ -50,6 +54,7 @@ describe('NotificationHttpService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: MessageService, useValue: messageService },
             ],
         }).compile();
         service = module.get(NotificationHttpService);
@@ -79,6 +84,154 @@ describe('NotificationHttpService', () => {
                 cursorParams
             );
             expect(result).toEqual(cursorPage);
+        });
+
+        it('translates title and body in the request language with the primitive metadata values', async () => {
+            const stored: Notification = {
+                id: 'notification-id',
+                userId: 'user-id',
+                type: EnumNotificationType.userActivity,
+                priority: EnumNotificationPriority.normal,
+                title: 'notification.notify.welcome.title',
+                body: 'notification.notify.welcome.body',
+                metadata: { username: 'ana', age: 3, nested: { a: 1 } },
+                isRead: false,
+                readAt: null,
+                createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            };
+            paginationQueryUtil.cursor.mockReturnValue({
+                params: cursorParams,
+                storePatch: {},
+            });
+            notificationDomain.getListCursor.mockResolvedValue({
+                ...cursorPage,
+                data: [stored],
+            });
+            requestStoreService.get.mockReturnValue('en');
+            messageService.setMessage.mockImplementation(
+                (path: string) => `translated:${path}`
+            );
+
+            const result = await service.getListCursor('user-id', query);
+
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestLanguageStoreKey
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.notify.welcome.title',
+                {
+                    customLanguage: 'en',
+                    properties: { username: 'ana', age: 3 },
+                }
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.notify.welcome.body',
+                {
+                    customLanguage: 'en',
+                    properties: { username: 'ana', age: 3 },
+                }
+            );
+            expect(result.data).toEqual([
+                {
+                    ...stored,
+                    title: 'translated:notification.notify.welcome.title',
+                    body: 'translated:notification.notify.welcome.body',
+                },
+            ]);
+        });
+
+        it('translates the stored reject reason code into the label the body placeholder reads', async () => {
+            const stored: Notification = {
+                id: 'notification-id',
+                userId: 'user-id',
+                type: EnumNotificationType.userActivity,
+                priority: EnumNotificationPriority.normal,
+                title: 'notification.notify.workspaceJoinRejected.title',
+                body: 'notification.notify.workspaceJoinRejected.body',
+                metadata: {
+                    username: 'ana',
+                    workspaceName: 'Acme',
+                    rejectReasonCode: 'spam',
+                },
+                isRead: false,
+                readAt: null,
+                createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            };
+            paginationQueryUtil.cursor.mockReturnValue({
+                params: cursorParams,
+                storePatch: {},
+            });
+            notificationDomain.getListCursor.mockResolvedValue({
+                ...cursorPage,
+                data: [stored],
+            });
+            requestStoreService.get.mockReturnValue('en');
+            messageService.setMessage.mockImplementation(
+                (path: string) => `translated:${path}`
+            );
+
+            await service.getListCursor('user-id', query);
+
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.rejectReason.spam',
+                { customLanguage: 'en' }
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.notify.workspaceJoinRejected.body',
+                {
+                    customLanguage: 'en',
+                    properties: {
+                        username: 'ana',
+                        workspaceName: 'Acme',
+                        rejectReasonCode: 'spam',
+                        rejectReasonLabel:
+                            'translated:notification.rejectReason.spam',
+                    },
+                }
+            );
+        });
+
+        it('translates with no custom language and empty properties when none is stored and the metadata is null', async () => {
+            const stored: Notification = {
+                id: 'notification-id',
+                userId: 'user-id',
+                type: EnumNotificationType.securityAlert,
+                priority: EnumNotificationPriority.normal,
+                title: 'notification.notify.changePassword.title',
+                body: 'notification.notify.changePassword.body',
+                metadata: null,
+                isRead: false,
+                readAt: null,
+                createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            };
+            paginationQueryUtil.cursor.mockReturnValue({
+                params: cursorParams,
+                storePatch: {},
+            });
+            notificationDomain.getListCursor.mockResolvedValue({
+                ...cursorPage,
+                data: [stored],
+            });
+            requestStoreService.get.mockReturnValue(null);
+            messageService.setMessage.mockImplementation(
+                (path: string) => path
+            );
+
+            await service.getListCursor('user-id', query);
+
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.notify.changePassword.title',
+                { properties: {} }
+            );
         });
     });
 

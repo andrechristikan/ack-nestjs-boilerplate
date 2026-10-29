@@ -1,8 +1,10 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import type KeyvRedis from '@keyv/redis';
+import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import type {
     ISessionCache,
     ISessionRef,
@@ -16,16 +18,21 @@ import Keyv from 'keyv';
 @Injectable()
 export class SessionCache {
     private readonly loginKeyPattern: string;
+    private readonly loginTtlInMs: number;
 
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService
     ) {
         this.loginKeyPattern =
             this.configService.get<string>('session.keyPattern')!;
+        this.loginTtlInMs = this.configService.get<number>(
+            'session.loginCacheTtlInMs'
+        )!;
     }
 
     private buildLoginKey(userId: string, sessionId: string): string {
@@ -50,54 +57,65 @@ export class SessionCache {
         return cached ?? null;
     }
 
-    /** Stores a new login session with TTL derived from its expiry. */
+    /** Stores a login session for the access-token lifetime. */
     async setLogin(
         userId: string,
         sessionId: string,
-        jti: string,
-        expiredAt: Date
+        jti: string
     ): Promise<void> {
-        const now = this.helperDateService.create();
-        const ttl = Math.floor(expiredAt.getTime() - now.getTime());
-
         const key = this.buildLoginKey(userId, sessionId);
         await this.cacheManager.set<ISessionCache>(
             key,
             {
                 userId,
                 sessionId,
-                expiredAt,
                 jti,
             },
-            ttl
+            this.loginTtlInMs
         );
     }
 
-    /** Rotates the cached session's jti and resets its TTL only while the entry still exists; answers whether it wrote. */
+    /** Compare-and-set on the stored jti: rotates it and resets the access-token TTL only while the entry holds the old jti; answers the outcome: updated, absent (no entry, or it expired before the write), or mismatch. */
     async updateLogin(
         userId: string,
         sessionId: string,
-        session: ISessionCache,
-        jti: string,
-        expiredInMs: number
-    ): Promise<boolean> {
+        oldJti: string,
+        newJti: string
+    ): Promise<EnumSessionCacheUpdate> {
+        const session = await this.getLogin(userId, sessionId);
+        if (!session) {
+            return EnumSessionCacheUpdate.absent;
+        }
+
+        const storedJtiHash = this.helperHashService.sha256Hash(session.jti);
+        const oldJtiHash = this.helperHashService.sha256Hash(oldJti);
+        const isJtiMatch = this.helperHashService.sha256Compare(
+            storedJtiHash,
+            oldJtiHash
+        );
+        if (!isJtiMatch) {
+            return EnumSessionCacheUpdate.mismatch;
+        }
+
         const store = this.getStore();
         const sessionKey = this.buildLoginKey(userId, sessionId);
         const key = store.createKeyPrefix(sessionKey, store.namespace);
         const now = this.helperDateService.create();
         const [value, client] = await Promise.all([
             this.keyv.serializeData<ISessionCache>({
-                value: { ...session, jti },
-                expires: now.getTime() + expiredInMs,
+                value: { ...session, jti: newJti },
+                expires: now.getTime() + this.loginTtlInMs,
             }),
             store.getClient(),
         ]);
         const reply = await client.set(key, value as string, {
-            expiration: { type: 'PX', value: expiredInMs },
+            expiration: { type: 'PX', value: this.loginTtlInMs },
             condition: 'XX',
         });
 
-        return reply === 'OK';
+        return reply === 'OK'
+            ? EnumSessionCacheUpdate.updated
+            : EnumSessionCacheUpdate.absent;
     }
 
     /** Deletes exactly the given session login entries of a user. */

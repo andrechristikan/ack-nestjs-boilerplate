@@ -13,7 +13,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
+import { ProjectWorkspaceBypassStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
@@ -34,20 +34,20 @@ export class ProjectMemberDomain {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    private currentActorIsWorkspaceOwner(): boolean {
-        const isWorkspaceOwner = this.requestStoreService.get<boolean>(
-            ProjectWorkspaceOwnerStoreKey
+    private currentActorHasWorkspaceBypass(): boolean {
+        const hasWorkspaceBypass = this.requestStoreService.get<boolean>(
+            ProjectWorkspaceBypassStoreKey
         );
 
-        return isWorkspaceOwner ?? false;
+        return hasWorkspaceBypass ?? false;
     }
 
     private assertProjectMemberPeerAllowed(
-        isWorkspaceOwner: boolean,
+        hasWorkspaceBypass: boolean,
         ...rolesInvolved: EnumProjectMemberRole[]
     ): void {
         if (
-            !isWorkspaceOwner &&
+            !hasWorkspaceBypass &&
             rolesInvolved.includes(EnumProjectMemberRole.admin)
         ) {
             throw new ProjectMemberPeerForbiddenException();
@@ -75,9 +75,9 @@ export class ProjectMemberDomain {
         workspaceMember: WorkspaceMember,
         allowedProjectRoles: EnumProjectMemberRole[]
     ): Promise<boolean> {
-        const isWorkspaceOwner =
-            this.projectUtil.isWorkspaceOwner(workspaceMember);
-        if (isWorkspaceOwner) {
+        const hasWorkspaceBypass =
+            this.projectUtil.hasWorkspaceBypass(workspaceMember);
+        if (hasWorkspaceBypass) {
             return true;
         }
 
@@ -127,8 +127,8 @@ export class ProjectMemberDomain {
         targetMember: WorkspaceMember | null,
         role: EnumProjectMemberRole
     ): Promise<IProjectMember> {
-        const isWorkspaceOwner = this.currentActorIsWorkspaceOwner();
-        this.assertProjectMemberPeerAllowed(isWorkspaceOwner, role);
+        const hasWorkspaceBypass = this.currentActorHasWorkspaceBypass();
+        this.assertProjectMemberPeerAllowed(hasWorkspaceBypass, role);
 
         if (!targetMember || targetMember.workspaceId !== project.workspaceId) {
             throw new WorkspaceMemberNotFoundException();
@@ -191,9 +191,9 @@ export class ProjectMemberDomain {
             throw new ProjectMemberNotFoundException();
         }
 
-        const isWorkspaceOwner = this.currentActorIsWorkspaceOwner();
+        const hasWorkspaceBypass = this.currentActorHasWorkspaceBypass();
         this.assertProjectMemberPeerAllowed(
-            isWorkspaceOwner,
+            hasWorkspaceBypass,
             targetMember.role,
             newRole
         );
@@ -242,9 +242,9 @@ export class ProjectMemberDomain {
             throw new ProjectMemberPeerForbiddenException();
         }
 
-        const isWorkspaceOwner = this.currentActorIsWorkspaceOwner();
+        const hasWorkspaceBypass = this.currentActorHasWorkspaceBypass();
         this.assertProjectMemberPeerAllowed(
-            isWorkspaceOwner,
+            hasWorkspaceBypass,
             targetMember.role
         );
 

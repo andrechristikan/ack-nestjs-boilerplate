@@ -5,7 +5,11 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
+import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
+import {
+    AnalyticCacheEmptyToken,
+    AnalyticMassRegistrationActions,
+} from '@modules/analytic/constants/analytic.constant';
 import {
     AnalyticAccountTakeoverAvailableOrderBy,
     AnalyticBackupCodeNewDeviceAvailableOrderBy,
@@ -27,9 +31,11 @@ import type {
     IAnalyticApiKeyBurst,
     IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
+    IAnalyticCredentialStuffingGroup,
     IAnalyticForgotPasswordAbuse,
     IAnalyticFraudCredentialStuffingSummary,
     IAnalyticFraudRiskScore,
+    IAnalyticFraudSignalUsers,
     IAnalyticFraudSummary,
     IAnalyticMassRegistration,
     IAnalyticPasswordResetEnumeration,
@@ -77,8 +83,9 @@ export class AnalyticFraudDomain {
     private readonly weightNearLockout: number;
     private readonly weightMassRegistrationIp: number;
     private readonly weightForgotPasswordAbuse: number;
-    private readonly passwordMaxAttempt: number;
-    private readonly failedLoginSpikeNearLockoutOffset: number;
+    private readonly nearLockoutAttempt: number;
+    private readonly riskScoreCandidateLimit: number;
+    private readonly riskScoreLookbackInMs: number;
     private readonly bandMonitorMax: number;
     private readonly bandReviewMax: number;
     private readonly bandElevateMax: number;
@@ -92,6 +99,7 @@ export class AnalyticFraudDomain {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly helperArrayService: HelperArrayService,
+        private readonly analyticAnomalyDomain: AnalyticAnomalyDomain,
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain,
         private readonly userLoginAnalyticDomain: UserLoginAnalyticDomain,
         private readonly userAnalyticDomain: UserAnalyticDomain,
@@ -179,11 +187,18 @@ export class AnalyticFraudDomain {
         this.weightForgotPasswordAbuse = this.configService.get<number>(
             'analytic.fraud.weights.forgotPasswordAbuse'
         )!;
-        this.passwordMaxAttempt = this.configService.get<number>(
+        const passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
         )!;
-        this.failedLoginSpikeNearLockoutOffset = this.configService.get<number>(
+        const nearLockoutOffset = this.configService.get<number>(
             'analytic.anomaly.failedLoginSpike.nearLockoutOffset'
+        )!;
+        this.nearLockoutAttempt = passwordMaxAttempt - nearLockoutOffset;
+        this.riskScoreCandidateLimit = this.configService.get<number>(
+            'analytic.fraud.riskScore.candidateLimit'
+        )!;
+        this.riskScoreLookbackInMs = this.configService.get<number>(
+            'analytic.fraud.riskScore.lookbackInMs'
         )!;
         this.bandMonitorMax = this.configService.get<number>(
             'analytic.fraud.bands.monitorMax'
@@ -219,9 +234,9 @@ export class AnalyticFraudDomain {
         return EnumAnalyticFraudBand.critical;
     }
 
-    private async computeCredentialStuffing(
+    private async groupFlaggedCredentialStuffing(
         windowMs: number
-    ): Promise<IAnalyticCredentialStuffing[]> {
+    ): Promise<Map<string, IAnalyticCredentialStuffingGroup>> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
@@ -232,10 +247,7 @@ export class AnalyticFraudDomain {
                 start,
                 end
             );
-        const map = new Map<
-            string,
-            { users: Set<string>; failCount: number }
-        >();
+        const map = new Map<string, IAnalyticCredentialStuffingGroup>();
         for (const activityLog of activityLogs) {
             const ip = activityLog.ipAddress ?? 'unknown';
             if (!map.has(ip)) {
@@ -245,16 +257,30 @@ export class AnalyticFraudDomain {
             row.users.add(activityLog.userId);
             row.failCount++;
         }
-        return [...map.entries()]
-            .filter(
+        return new Map(
+            [...map.entries()].filter(
                 ([, v]) =>
                     v.users.size >= this.credentialStuffingMinUniqueAccounts
             )
-            .map(([ipAddress, v]) => ({
-                ipAddress,
-                uniqueUsers: v.users.size,
-                failCount: v.failCount,
-            }));
+        );
+    }
+
+    private async computeCredentialStuffing(
+        windowMs: number
+    ): Promise<IAnalyticCredentialStuffing[]> {
+        const flagged = await this.groupFlaggedCredentialStuffing(windowMs);
+        return [...flagged.entries()].map(([ipAddress, v]) => ({
+            ipAddress,
+            uniqueUsers: v.users.size,
+            failCount: v.failCount,
+        }));
+    }
+
+    private async collectCredentialStuffingUsers(
+        windowMs: number
+    ): Promise<Set<string>> {
+        const flagged = await this.groupFlaggedCredentialStuffing(windowMs);
+        return new Set([...flagged.values()].flatMap(v => [...v.users]));
     }
 
     private async computeAccountTakeover(
@@ -309,20 +335,46 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const users = await this.userAnalyticDomain.getSignUpsInRange(
+        const groups = await this.activityLogAnalyticDomain.getGroupIpByActions(
+            AnalyticMassRegistrationActions,
             start,
-            end
+            end,
+            this.massRegistrationMinAccountsPerIp
         );
-        const map = new Map<string, number>();
-        for (const u of users) {
-            const key = String(u.signUpFrom);
-            map.set(key, (map.get(key) ?? 0) + 1);
+        return groups.map(group => ({
+            key: group.ipAddress,
+            count: group.count,
+        }));
+    }
+
+    private async collectMassRegistrationUsers(
+        windowMs: number
+    ): Promise<Set<string>> {
+        const flagged = await this.computeMassRegistration(windowMs);
+        if (flagged.length === 0) {
+            return new Set();
         }
-        return [...map.entries()]
-            .filter(
-                ([, count]) => count >= this.massRegistrationMinAccountsPerIp
-            )
-            .map(([key, count]) => ({ key, count }));
+        const end = this.helperDateService.create();
+        const start = this.helperDateService.backward(
+            end,
+            Duration.fromMillis(windowMs)
+        );
+        const ips = new Set(flagged.map(row => row.key));
+        const created =
+            await this.activityLogAnalyticDomain.getManyByActionsInRange(
+                AnalyticMassRegistrationActions,
+                start,
+                end
+            );
+        return new Set(
+            created
+                .filter(
+                    activityLog =>
+                        activityLog.ipAddress !== null &&
+                        ips.has(activityLog.ipAddress)
+                )
+                .map(activityLog => activityLog.userId)
+        );
     }
 
     private async computePasswordResetEnumeration(
@@ -333,22 +385,16 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const rows =
-            await this.userForgotPasswordAnalyticDomain.getCreatedInRange(
-                start,
-                end
-            );
-        const map = new Map<string, number>();
-        for (const r of rows) {
-            const domain = r.to.includes('@') ? r.to.split('@')[1]! : r.to;
-            map.set(domain, (map.get(domain) ?? 0) + 1);
-        }
-        return [...map.entries()]
-            .filter(
-                ([, count]) =>
-                    count >= this.passwordResetEnumerationMinRequestsPerIp
-            )
-            .map(([key, count]) => ({ key, count }));
+        const groups = await this.activityLogAnalyticDomain.getGroupIpByActions(
+            [EnumActivityLogAction.userForgotPassword],
+            start,
+            end,
+            this.passwordResetEnumerationMinRequestsPerIp
+        );
+        return groups.map(group => ({
+            key: group.ipAddress,
+            count: group.count,
+        }));
     }
 
     private async computeSessionAfterAdmin(
@@ -515,6 +561,51 @@ export class AnalyticFraudDomain {
             .map(([userId, count]) => ({ userId, count }));
     }
 
+    private async collectSignalUsers(): Promise<IAnalyticFraudSignalUsers> {
+        const end = this.helperDateService.create();
+        const start = this.helperDateService.backward(
+            end,
+            Duration.fromMillis(this.riskScoreLookbackInMs)
+        );
+        const [
+            sessionAfterAdmin,
+            impossibleTravel,
+            accountTakeover,
+            credentialStuffing,
+            shared,
+            massRegistration,
+            forgotPasswordAbuse,
+        ] = await Promise.all([
+            this.computeSessionAfterAdmin(start, end),
+            this.analyticAnomalyDomain.getImpossibleTravelUserIds(start, end),
+            this.computeAccountTakeover(start, end),
+            this.collectCredentialStuffingUsers(
+                this.credentialStuffingWindowInMs
+            ),
+            this.deviceAnalyticDomain.getSharedFingerprints(
+                this.sharedFingerprintMinUsersPerFingerprint
+            ),
+            this.collectMassRegistrationUsers(this.massRegistrationWindowInMs),
+            this.computeForgotPasswordAbuse(
+                this.forgotPasswordTokenAbuseWindowInMs
+            ),
+        ]);
+
+        return {
+            sessionAfterAdmin: new Set(sessionAfterAdmin.map(r => r.userId)),
+            impossibleTravel: new Set(impossibleTravel),
+            newDeviceAfterPasswordChange: new Set(
+                accountTakeover.map(r => r.userId)
+            ),
+            credentialStuffingIp: credentialStuffing,
+            sharedFingerprint: new Set(shared.flatMap(s => s.userIds)),
+            massRegistrationIp: massRegistration,
+            forgotPasswordAbuse: new Set(
+                forgotPasswordAbuse.map(r => r.userId)
+            ),
+        };
+    }
+
     private async scoreCached(
         userId: string
     ): Promise<IAnalyticFraudRiskScore> {
@@ -532,16 +623,13 @@ export class AnalyticFraudDomain {
             throw new UserNotFoundException();
         }
 
-        const fingerprints =
-            await this.deviceAnalyticDomain.getSharedFingerprints(
-                this.sharedFingerprintMinUsersPerFingerprint
-            );
-        return this.scoreUser(user, fingerprints);
+        const signals = await this.collectSignalUsers();
+        return this.scoreUser(user, signals);
     }
 
     private async scoreListed(
         user: IUserAnalyticRef,
-        shared: IAnalyticSharedFingerprint[]
+        signals: IAnalyticFraudSignalUsers
     ): Promise<IAnalyticFraudRiskScore> {
         const cached =
             await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
@@ -551,47 +639,64 @@ export class AnalyticFraudDomain {
             return cached;
         }
 
-        return this.scoreUser(user, shared);
+        return this.scoreUser(user, signals);
     }
 
     private async scoreUser(
         user: IUserAnalyticRef,
-        shared: IAnalyticSharedFingerprint[]
+        signals: IAnalyticFraudSignalUsers
     ): Promise<IAnalyticFraudRiskScore> {
-        const weights = {
-            sessionAfterAdmin: this.weightSessionAfterAdmin,
-            impossibleTravel: this.weightImpossibleTravel,
-            newDeviceAfterPasswordChange:
-                this.weightNewDeviceAfterPasswordChange,
-            credentialStuffingIp: this.weightCredentialStuffingIp,
-            sharedFingerprint: this.weightSharedFingerprint,
-            nearLockout: this.weightNearLockout,
-            massRegistrationIp: this.weightMassRegistrationIp,
-            forgotPasswordAbuse: this.weightForgotPasswordAbuse,
-        };
+        const checks = [
+            {
+                signal: EnumAnalyticFraudContributingSignal.sessionAfterAdmin,
+                weight: this.weightSessionAfterAdmin,
+                hit: signals.sessionAfterAdmin.has(user.id),
+            },
+            {
+                signal: EnumAnalyticFraudContributingSignal.impossibleTravel,
+                weight: this.weightImpossibleTravel,
+                hit: signals.impossibleTravel.has(user.id),
+            },
+            {
+                signal: EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                weight: this.weightNewDeviceAfterPasswordChange,
+                hit: signals.newDeviceAfterPasswordChange.has(user.id),
+            },
+            {
+                signal: EnumAnalyticFraudContributingSignal.credentialStuffingIp,
+                weight: this.weightCredentialStuffingIp,
+                hit: signals.credentialStuffingIp.has(user.id),
+            },
+            {
+                signal: EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                weight: this.weightSharedFingerprint,
+                hit: signals.sharedFingerprint.has(user.id),
+            },
+            {
+                signal: EnumAnalyticFraudContributingSignal.nearLockout,
+                weight: this.weightNearLockout,
+                hit: (user.passwordAttempt ?? 0) >= this.nearLockoutAttempt,
+            },
+            {
+                signal: EnumAnalyticFraudContributingSignal.massRegistrationIp,
+                weight: this.weightMassRegistrationIp,
+                hit: signals.massRegistrationIp.has(user.id),
+            },
+            {
+                signal: EnumAnalyticFraudContributingSignal.forgotPasswordAbuse,
+                weight: this.weightForgotPasswordAbuse,
+                hit: signals.forgotPasswordAbuse.has(user.id),
+            },
+        ];
 
         const contributingSignalCodes: EnumAnalyticFraudContributingSignal[] =
             [];
         let score = 0;
-
-        if (
-            (user.passwordAttempt ?? 0) >=
-            Math.max(
-                1,
-                this.passwordMaxAttempt - this.failedLoginSpikeNearLockoutOffset
-            )
-        ) {
-            score += weights.nearLockout;
-            contributingSignalCodes.push(
-                EnumAnalyticFraudContributingSignal.nearLockout
-            );
-        }
-
-        if (shared.some(s => s.userIds.includes(user.id))) {
-            score += weights.sharedFingerprint;
-            contributingSignalCodes.push(
-                EnumAnalyticFraudContributingSignal.sharedFingerprint
-            );
+        for (const check of checks) {
+            if (check.hit) {
+                score += check.weight;
+                contributingSignalCodes.push(check.signal);
+            }
         }
 
         const band = this.resolveBand(score);
@@ -1112,22 +1217,35 @@ export class AnalyticFraudDomain {
         minScore: number | null,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
-        const [near, shared] = await Promise.all([
-            this.userAnalyticDomain.getNearLockout(1),
-            this.deviceAnalyticDomain.getSharedFingerprints(
-                this.sharedFingerprintMinUsersPerFingerprint
-            ),
+        const [signals, nearLockout] = await Promise.all([
+            this.collectSignalUsers(),
+            this.userAnalyticDomain.getNearLockout(this.nearLockoutAttempt),
         ]);
+
+        const candidateIds = [
+            ...new Set([
+                ...signals.sessionAfterAdmin,
+                ...signals.impossibleTravel,
+                ...signals.newDeviceAfterPasswordChange,
+                ...signals.credentialStuffingIp,
+                ...signals.sharedFingerprint,
+                ...nearLockout.map(user => user.id),
+                ...signals.massRegistrationIp,
+                ...signals.forgotPasswordAbuse,
+            ]),
+        ].slice(0, this.riskScoreCandidateLimit);
+        const candidates =
+            await this.userAnalyticDomain.getManyByIds(candidateIds);
 
         const all: IAnalyticFraudRiskScore[] = [];
         const batches = this.helperArrayService.chunk(
-            near.slice(0, 100),
+            candidates,
             this.concurrency
         );
         for (const batch of batches) {
             // Sequential by design: bounded chunks, concurrent within a chunk
             const batchScores = await Promise.all(
-                batch.map(u => this.scoreListed(u, shared))
+                batch.map(u => this.scoreListed(u, signals))
             );
             all.push(...batchScores);
         }

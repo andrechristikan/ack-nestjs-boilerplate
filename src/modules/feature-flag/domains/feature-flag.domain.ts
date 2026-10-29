@@ -160,8 +160,7 @@ export class FeatureFlagDomain {
         }
 
         const updated = await this.featureFlagRepository.updateStatus(id, data);
-        // Sequential by design: side effects whose order is part of the contract
-        await this.featureFlagCache.deleteFeatureFlag(featureFlag.key);
+        await this.featureFlagCache.setFeatureFlag(updated.key, updated);
 
         return updated;
     }
@@ -176,8 +175,8 @@ export class FeatureFlagDomain {
             throw new FeatureFlagNotFoundException();
         }
 
-        const validated = this.featureFlagUtil.checkMetadataKey(
-            featureFlag.metadata as IFeatureFlagMetadata,
+        const validated = this.featureFlagUtil.isMetadataValid(
+            featureFlag.metadata as IFeatureFlagMetadata | null,
             data.metadata
         );
         if (!validated) {
@@ -188,8 +187,7 @@ export class FeatureFlagDomain {
             id,
             data
         );
-        // Sequential by design: side effects whose order is part of the contract
-        await this.featureFlagCache.deleteFeatureFlag(featureFlag.key);
+        await this.featureFlagCache.setFeatureFlag(updated.key, updated);
 
         return updated;
     }

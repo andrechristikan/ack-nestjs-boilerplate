@@ -158,8 +158,11 @@ export const NotificationKindContract: INotificationKindContracts = {
         isMandatory: false,
         title: 'notification.notify.userAcceptTermPolicy.title',
         body: 'notification.notify.userAcceptTermPolicy.body',
-        pendingChannels: [EnumNotificationChannel.push],
-        deliveredChannels: [EnumNotificationChannel.silent],
+        pendingChannels: [],
+        deliveredChannels: [
+            EnumNotificationChannel.silent,
+            EnumNotificationChannel.inApp,
+        ],
     },
     [EnumNotificationKind.workspaceInvite]: {
         type: EnumNotificationType.userActivity,

@@ -70,6 +70,7 @@ import type {
 import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
 import { UserMobileNumberHttpService } from '@modules/user/services/user.mobile-number.http.service';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
+import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
 import { UserProfileHttpService } from '@modules/user/services/user.profile.http.service';
 import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
 import {
@@ -149,6 +150,7 @@ export class UserSharedController {
     }
 
     @Doc({ summary: 'generate upload photo profile presign' })
+    @DocUserErrorResponses.photoSizeExceeded
     @Response('user.generatePhotoProfilePresign', {
         schema: AwsS3PresignResponseSchema,
     })

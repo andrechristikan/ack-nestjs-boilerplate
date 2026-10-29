@@ -15,8 +15,8 @@ export const AnalyticForgotPasswordConversionResponseSchema = z.object({
         example: faker.number.int({ min: 0, max: 500 }),
     }),
     rate: z.number().meta({
-        description: 'Used divided by created, between 0 and 1',
-        example: faker.number.float({ min: 0, max: 1, fractionDigits: 2 }),
+        description: 'Used divided by created, as a percentage between 0-100',
+        example: faker.number.float({ min: 0, max: 100, fractionDigits: 2 }),
     }),
 });
 

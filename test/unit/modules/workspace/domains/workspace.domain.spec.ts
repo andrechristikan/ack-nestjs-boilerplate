@@ -43,6 +43,7 @@ import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.do
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import {
     EnumUserCreateMode,
@@ -183,12 +184,6 @@ describe('WorkspaceDomain', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: true,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -469,12 +464,6 @@ describe('WorkspaceDomain', () => {
             signUpFrom: EnumUserSignUpFrom.website,
             signUpWith: EnumUserSignUpWith.credential,
             isVerified: false,
-            termPolicy: {
-                [EnumTermPolicyType.termsOfService]: true,
-                [EnumTermPolicyType.privacy]: true,
-                [EnumTermPolicyType.cookies]: true,
-                [EnumTermPolicyType.marketing]: false,
-            },
             acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
             password: {
                 passwordHash: 'hashed',
@@ -511,12 +500,6 @@ describe('WorkspaceDomain', () => {
             signUpFrom: EnumUserSignUpFrom.website,
             signUpWith: EnumUserSignUpWith.credential,
             isVerified: false,
-            termPolicy: {
-                [EnumTermPolicyType.termsOfService]: true,
-                [EnumTermPolicyType.privacy]: true,
-                [EnumTermPolicyType.cookies]: true,
-                [EnumTermPolicyType.marketing]: false,
-            },
             acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
             password: null,
             passwordHistoryType: null,
@@ -632,6 +615,50 @@ describe('WorkspaceDomain', () => {
                 'user-2'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([]);
+        });
+
+        it.each([EnumUserCreateMode.signUp, EnumUserCreateMode.social])(
+            'asserts the required term policies are published before inserting the user for %s',
+            async mode => {
+                await domain.commitOnboarding([personalInput], mode, 5000);
+
+                expect(
+                    termPolicyAcceptanceDomain.assertRequiredPublishedInTx
+                ).toHaveBeenCalledWith(tx, [
+                    EnumTermPolicyType.termsOfService,
+                    EnumTermPolicyType.privacy,
+                ]);
+            }
+        );
+
+        it('skips the published assertion for an admin create', async () => {
+            await domain.commitOnboarding(
+                [personalInput],
+                EnumUserCreateMode.admin,
+                5000
+            );
+
+            expect(
+                termPolicyAcceptanceDomain.assertRequiredPublishedInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('inserts nothing when a required term policy is not published', async () => {
+            const error = new TermPolicyRequiredNotPublishedException();
+            termPolicyAcceptanceDomain.assertRequiredPublishedInTx.mockRejectedValue(
+                error
+            );
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+            userOnboardingUtil.mapCreateCollision.mockReturnValue(error);
+
+            await expect(
+                domain.commitOnboarding(
+                    [personalInput],
+                    EnumUserCreateMode.signUp,
+                    5000
+                )
+            ).rejects.toBe(error);
+            expect(userOnboardingDomain.createManyInTx).not.toHaveBeenCalled();
         });
 
         it('falls back to a single attempt when no personal-context input carries slug candidates', async () => {
@@ -1383,12 +1410,6 @@ describe('WorkspaceDomain', () => {
                 signUpFrom: EnumUserSignUpFrom.website,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
-                termPolicy: {
-                    [EnumTermPolicyType.termsOfService]: true,
-                    [EnumTermPolicyType.privacy]: true,
-                    [EnumTermPolicyType.cookies]: true,
-                    [EnumTermPolicyType.marketing]: false,
-                },
                 acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
                 password: null,
                 passwordHistoryType: null,
@@ -1411,12 +1432,6 @@ describe('WorkspaceDomain', () => {
                 signUpFrom: EnumUserSignUpFrom.website,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
-                termPolicy: {
-                    [EnumTermPolicyType.termsOfService]: true,
-                    [EnumTermPolicyType.privacy]: true,
-                    [EnumTermPolicyType.cookies]: true,
-                    [EnumTermPolicyType.marketing]: false,
-                },
                 acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
                 password: null,
                 passwordHistoryType: null,
@@ -1460,12 +1475,6 @@ describe('WorkspaceDomain', () => {
             signUpFrom: EnumUserSignUpFrom.website,
             signUpWith: EnumUserSignUpWith.credential,
             isVerified: false,
-            termPolicy: {
-                [EnumTermPolicyType.termsOfService]: true,
-                [EnumTermPolicyType.privacy]: true,
-                [EnumTermPolicyType.cookies]: true,
-                [EnumTermPolicyType.marketing]: false,
-            },
             acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
             password: null,
             passwordHistoryType: null,

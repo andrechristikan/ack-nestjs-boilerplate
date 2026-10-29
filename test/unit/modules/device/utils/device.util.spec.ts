@@ -21,6 +21,8 @@ describe('DeviceUtil', () => {
         isRevoked: false,
         revokedById: null,
         lastActiveAt: updatedAt,
+        notificationToken: null,
+        notificationProvider: EnumDeviceNotificationProvider.apns,
         biometricEnabled: false,
         biometricToken: null,
         biometricType: null,
@@ -35,8 +37,6 @@ describe('DeviceUtil', () => {
             name: 'iPhone 12',
             platform: EnumDevicePlatform.ios,
             lastActiveAt: updatedAt,
-            notificationToken: null,
-            notificationProvider: EnumDeviceNotificationProvider.apns,
         },
         user: {
             id: 'user-1',

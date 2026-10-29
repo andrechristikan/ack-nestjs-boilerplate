@@ -18,10 +18,10 @@ export const ProjectStoreKey = 'ProjectStoreKey';
 export const ProjectMemberStoreKey = 'ProjectMemberStoreKey';
 
 /**
- * Request-store key holding whether `ProjectRoleGuard` let the caller through on the workspace-owner bypass instead of a `ProjectMember` row.
+ * Request-store key holding whether `ProjectRoleGuard` let the caller through on the workspace owner or admin bypass instead of a `ProjectMember` row.
  * @public
  */
-export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStoreKey';
+export const ProjectWorkspaceBypassStoreKey = 'ProjectWorkspaceBypassStoreKey';
 
 /**
  * Route metadata key holding the project roles `@ProjectMemberProtected` requires.
@@ -106,7 +106,10 @@ export const ProjectActiveFilter: IProjectActiveFilter = [
 ];
 
 /**
- * The only workspace role that sees and manages every project without a `ProjectMember` row.
+ * The workspace roles that see and manage every project without a `ProjectMember` row.
  * @public
  */
-export const ProjectWorkspaceBypassRole = EnumWorkspaceMemberRole.owner;
+export const ProjectBypassRoles: EnumWorkspaceMemberRole[] = [
+    EnumWorkspaceMemberRole.owner,
+    EnumWorkspaceMemberRole.admin,
+];

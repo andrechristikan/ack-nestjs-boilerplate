@@ -38,13 +38,13 @@ export interface IWorkspaceJoinRequestRepository {
         workspaceJoinRequestId: string,
         reviewerId: string,
         reviewedAt: Date
-    ): Promise<void>;
+    ): Promise<boolean>;
     reject(
         workspaceJoinRequestId: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
-    ): Promise<void>;
+    ): Promise<boolean>;
     cancelPendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string

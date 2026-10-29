@@ -98,9 +98,12 @@ export class UserHttpService {
     async updateStatusByAdmin(
         userId: string,
         { status }: UserUpdateStatusRequestDto,
-        updatedBy: string
+        user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.userDomain.updateStatusByAdmin(userId, status, updatedBy);
+        await this.userDomain.updateStatusByAdmin(userId, status, user.id, {
+            roleId: user.roleId,
+            roleType: user.role.type,
+        });
 
         return {};
     }

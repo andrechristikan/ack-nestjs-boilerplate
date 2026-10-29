@@ -45,7 +45,7 @@ export class RequestThrottleRouteGuard implements CanActivate {
         const policy = this.policies[options.route];
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const response = context.switchToHttp().getResponse<Response>();
-        const ip = this.requestUtil.resolveThrottleTrackerIp(request);
+        const ip = this.requestUtil.getClientIp(request);
         const tracker = `${options.route}:${context.getClass().name}.${context.getHandler().name}:${ip}`;
 
         await this.requestThrottleService.evaluate(

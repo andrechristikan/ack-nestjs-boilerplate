@@ -5,10 +5,10 @@ import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
 import { createPrivateKey, createPublicKey } from 'node:crypto';
 import type {
+    IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
     IAuthLoginIdentifiers,
-    IAuthRefreshTokenGenerate,
     IAuthToken,
     IAuthTokenSignInput,
 } from '@modules/auth/interfaces/auth.interface';
@@ -266,7 +266,7 @@ export class AuthJwtDomain {
     refreshToken(
         user: IUser,
         refreshTokenFromRequest: string
-    ): IAuthRefreshTokenGenerate {
+    ): IAuthAccessTokenGenerate {
         const {
             deviceOwnershipId,
             sessionId,
@@ -329,7 +329,6 @@ export class AuthJwtDomain {
             tokens,
             jti,
             sessionId,
-            expiredInMs: newRefreshTokenExpire.milliseconds,
         };
     }
 }

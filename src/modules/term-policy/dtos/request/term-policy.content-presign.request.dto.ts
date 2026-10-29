@@ -14,7 +14,7 @@ export const TermPolicyContentPresignRequestSchema =
             description: 'Language of the term document',
             example: EnumMessageLanguage.en,
         }),
-        version: z.number().int().meta({
+        version: z.number().int().min(1).meta({
             description: 'Version of the terms policy',
             example: 1,
         }),

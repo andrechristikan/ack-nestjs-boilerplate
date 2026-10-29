@@ -4,7 +4,7 @@ import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import {
     ProjectRoleMetaKey,
     ProjectStoreKey,
-    ProjectWorkspaceOwnerStoreKey,
+    ProjectWorkspaceBypassStoreKey,
 } from '@modules/project/constants/project.constant';
 import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
@@ -17,7 +17,7 @@ import { Reflector } from '@nestjs/core';
 /**
  * Enforces the roles declared by `@ProjectMemberProtected(...roles)` against the project resolved by
  * `ProjectGuard` and the workspace membership resolved by `WorkspaceMemberGuard`, both of which must
- * run before this guard. A workspace owner passes without a `ProjectMember` row, and that bypass is
+ * run before this guard. A workspace owner or admin passes without a `ProjectMember` row, and that bypass is
  * published to the request context.
  */
 @Injectable()
@@ -47,7 +47,7 @@ export class ProjectRoleGuard implements CanActivate {
             throw new WorkspaceMemberGuardMissingException();
         }
 
-        const isWorkspaceOwner =
+        const hasWorkspaceBypass =
             await this.projectMemberDomain.validateProjectRoleGuard(
                 project.id,
                 workspaceMember,
@@ -55,8 +55,8 @@ export class ProjectRoleGuard implements CanActivate {
             );
 
         this.requestStoreService.set(
-            ProjectWorkspaceOwnerStoreKey,
-            isWorkspaceOwner
+            ProjectWorkspaceBypassStoreKey,
+            hasWorkspaceBypass
         );
 
         return true;

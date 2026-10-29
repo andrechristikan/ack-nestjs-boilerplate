@@ -19,10 +19,6 @@ describe('UserExportResponseSchema', () => {
         status: EnumUserStatus.active,
         countryId: 'country-1',
         photo: 'https://example.com/photo.jpg',
-        termPolicyTermsOfService: true,
-        termPolicyPrivacy: true,
-        termPolicyCookies: true,
-        termPolicyMarketing: false,
         role: 'admin',
     };
 

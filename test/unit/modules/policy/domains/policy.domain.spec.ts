@@ -23,6 +23,12 @@ import { PolicyRepository } from '@modules/policy/repositories/policy.repository
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import type {
+    IRole,
+    IRoleActor,
+} from '@modules/role/interfaces/role.interface';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
@@ -72,12 +78,6 @@ describe('PolicyDomain', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -97,6 +97,20 @@ describe('PolicyDomain', () => {
             policies: [policy],
         },
         twoFactor: null,
+    };
+
+    const targetRole: IRole = {
+        id: 'role-1',
+        name: 'Admin',
+        type: EnumRoleType.user,
+    };
+    const actor: IRoleActor = {
+        roleId: 'role-actor',
+        roleType: EnumRoleType.superAdmin,
+    };
+    const actorSelf: IRoleActor = {
+        roleId: 'role-1',
+        roleType: EnumRoleType.admin,
     };
 
     beforeEach(async () => {
@@ -224,9 +238,9 @@ describe('PolicyDomain', () => {
         };
 
         it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleDomain.existsById.mockResolvedValue(false);
+            roleDomain.getById.mockResolvedValue(null);
 
-            const promise = domain.createByAdmin('role-1', body);
+            const promise = domain.createByAdmin('role-1', body, actor);
 
             await expect(promise).rejects.toMatchObject({
                 module: 'role',
@@ -241,11 +255,55 @@ describe('PolicyDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
+        it('throws RoleSelfForbiddenException when the actor holds the target role', async () => {
+            roleDomain.getById.mockResolvedValue(targetRole);
+            roleDomain.assertNotSelf.mockImplementation(() => {
+                throw new RoleSelfForbiddenException();
+            });
+
+            const promise = domain.createByAdmin('role-1', body, actorSelf);
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.selfForbidden,
+                messagePath: 'role.error.selfForbidden',
+            });
+            expect(roleDomain.assertNotSelf).toHaveBeenCalledWith(
+                actorSelf.roleId,
+                targetRole.id
+            );
+            expect(
+                policyRepository.existsByRoleIdAndSubject
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
+            roleDomain.getById.mockResolvedValue(targetRole);
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw new RoleRankForbiddenException();
+            });
+
+            const promise = domain.createByAdmin('role-1', body, actor);
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                actor.roleType,
+                targetRole.type
+            );
+            expect(
+                policyRepository.existsByRoleIdAndSubject
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws PolicyExistException when the role already grants the subject', async () => {
-            roleDomain.existsById.mockResolvedValue(true);
+            roleDomain.getById.mockResolvedValue(targetRole);
             policyRepository.existsByRoleIdAndSubject.mockResolvedValue(true);
 
-            const promise = domain.createByAdmin('role-1', body);
+            const promise = domain.createByAdmin('role-1', body, actor);
 
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
@@ -259,7 +317,7 @@ describe('PolicyDomain', () => {
         });
 
         it('creates the policy and stages the admin-policy-create activity log', async () => {
-            roleDomain.existsById.mockResolvedValue(true);
+            roleDomain.getById.mockResolvedValue(targetRole);
             policyRepository.existsByRoleIdAndSubject.mockResolvedValue(false);
             policyRepository.create.mockResolvedValue(policy);
             const preparedActivityLog: IActivityLogStaged = {
@@ -271,7 +329,7 @@ describe('PolicyDomain', () => {
             };
             activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
 
-            const result = await domain.createByAdmin('role-1', body);
+            const result = await domain.createByAdmin('role-1', body, actor);
 
             expect(result).toBe(policy);
             expect(policyRepository.create).toHaveBeenCalledWith(
@@ -293,9 +351,14 @@ describe('PolicyDomain', () => {
         };
 
         it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleDomain.existsById.mockResolvedValue(false);
+            roleDomain.getById.mockResolvedValue(null);
 
-            const promise = domain.updateByAdmin('role-1', 'policy-1', body);
+            const promise = domain.updateByAdmin(
+                'role-1',
+                'policy-1',
+                body,
+                actor
+            );
 
             await expect(promise).rejects.toMatchObject({
                 module: 'role',
@@ -308,11 +371,66 @@ describe('PolicyDomain', () => {
             expect(policyRepository.existsByRoleIdAndId).not.toHaveBeenCalled();
         });
 
+        it('throws RoleSelfForbiddenException when the actor holds the target role', async () => {
+            roleDomain.getById.mockResolvedValue(targetRole);
+            roleDomain.assertNotSelf.mockImplementation(() => {
+                throw new RoleSelfForbiddenException();
+            });
+
+            const promise = domain.updateByAdmin(
+                'role-1',
+                'policy-1',
+                body,
+                actorSelf
+            );
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.selfForbidden,
+                messagePath: 'role.error.selfForbidden',
+            });
+            expect(roleDomain.assertNotSelf).toHaveBeenCalledWith(
+                actorSelf.roleId,
+                targetRole.id
+            );
+            expect(policyRepository.existsByRoleIdAndId).not.toHaveBeenCalled();
+        });
+
+        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
+            roleDomain.getById.mockResolvedValue(targetRole);
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw new RoleRankForbiddenException();
+            });
+
+            const promise = domain.updateByAdmin(
+                'role-1',
+                'policy-1',
+                body,
+                actor
+            );
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                actor.roleType,
+                targetRole.type
+            );
+            expect(policyRepository.existsByRoleIdAndId).not.toHaveBeenCalled();
+        });
+
         it('throws PolicyNotFoundException when the policy does not exist under the role', async () => {
-            roleDomain.existsById.mockResolvedValue(true);
+            roleDomain.getById.mockResolvedValue(targetRole);
             policyRepository.existsByRoleIdAndId.mockResolvedValue(false);
 
-            const promise = domain.updateByAdmin('role-1', 'policy-1', body);
+            const promise = domain.updateByAdmin(
+                'role-1',
+                'policy-1',
+                body,
+                actor
+            );
 
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
@@ -328,7 +446,7 @@ describe('PolicyDomain', () => {
         });
 
         it('updates the policy and stages the admin-policy-update activity log', async () => {
-            roleDomain.existsById.mockResolvedValue(true);
+            roleDomain.getById.mockResolvedValue(targetRole);
             policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
             policyRepository.update.mockResolvedValue(policy);
             const preparedActivityLog: IActivityLogStaged = {
@@ -343,7 +461,8 @@ describe('PolicyDomain', () => {
             const result = await domain.updateByAdmin(
                 'role-1',
                 'policy-1',
-                body
+                body,
+                actor
             );
 
             expect(result).toBe(policy);
@@ -362,9 +481,9 @@ describe('PolicyDomain', () => {
 
     describe('deleteByAdmin', () => {
         it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleDomain.existsById.mockResolvedValue(false);
+            roleDomain.getById.mockResolvedValue(null);
 
-            const promise = domain.deleteByAdmin('role-1', 'policy-1');
+            const promise = domain.deleteByAdmin('role-1', 'policy-1', actor);
 
             await expect(promise).rejects.toMatchObject({
                 module: 'role',
@@ -377,11 +496,55 @@ describe('PolicyDomain', () => {
             expect(policyRepository.existsByRoleIdAndId).not.toHaveBeenCalled();
         });
 
+        it('throws RoleSelfForbiddenException when the actor holds the target role', async () => {
+            roleDomain.getById.mockResolvedValue(targetRole);
+            roleDomain.assertNotSelf.mockImplementation(() => {
+                throw new RoleSelfForbiddenException();
+            });
+
+            const promise = domain.deleteByAdmin(
+                'role-1',
+                'policy-1',
+                actorSelf
+            );
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.selfForbidden,
+                messagePath: 'role.error.selfForbidden',
+            });
+            expect(roleDomain.assertNotSelf).toHaveBeenCalledWith(
+                actorSelf.roleId,
+                targetRole.id
+            );
+            expect(policyRepository.existsByRoleIdAndId).not.toHaveBeenCalled();
+        });
+
+        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
+            roleDomain.getById.mockResolvedValue(targetRole);
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw new RoleRankForbiddenException();
+            });
+
+            const promise = domain.deleteByAdmin('role-1', 'policy-1', actor);
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                actor.roleType,
+                targetRole.type
+            );
+            expect(policyRepository.existsByRoleIdAndId).not.toHaveBeenCalled();
+        });
+
         it('throws PolicyNotFoundException when the policy does not exist under the role', async () => {
-            roleDomain.existsById.mockResolvedValue(true);
+            roleDomain.getById.mockResolvedValue(targetRole);
             policyRepository.existsByRoleIdAndId.mockResolvedValue(false);
 
-            const promise = domain.deleteByAdmin('role-1', 'policy-1');
+            const promise = domain.deleteByAdmin('role-1', 'policy-1', actor);
 
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
@@ -397,7 +560,7 @@ describe('PolicyDomain', () => {
         });
 
         it('deletes the policy and stages the admin-policy-delete activity log', async () => {
-            roleDomain.existsById.mockResolvedValue(true);
+            roleDomain.getById.mockResolvedValue(targetRole);
             policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
             policyRepository.delete.mockResolvedValue(policy);
             const preparedActivityLog: IActivityLogStaged = {
@@ -409,7 +572,11 @@ describe('PolicyDomain', () => {
             };
             activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
 
-            const result = await domain.deleteByAdmin('role-1', 'policy-1');
+            const result = await domain.deleteByAdmin(
+                'role-1',
+                'policy-1',
+                actor
+            );
 
             expect(result).toBe(policy);
             expect(policyRepository.delete).toHaveBeenCalledWith('policy-1');

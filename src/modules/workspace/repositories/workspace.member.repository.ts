@@ -192,39 +192,72 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
 
     async updateRole(
         targetMemberId: string,
+        expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole
-    ): Promise<void> {
-        await this.databaseService.client.workspaceMember.update({
-            where: { id: targetMemberId },
-            data: {
-                role: newRole,
-            },
-        });
+    ): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.workspaceMember.updateMany({
+                where: { id: targetMemberId, role: expectedRole },
+                data: {
+                    role: newRole,
+                },
+            });
+
+        return count > 0;
     }
 
-    async removeMember(targetMemberId: string): Promise<void> {
-        await this.databaseService.client.workspaceMember.delete({
-            where: { id: targetMemberId },
-        });
+    async removeMember(
+        targetMemberId: string,
+        expectedRole: EnumWorkspaceMemberRole
+    ): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.workspaceMember.deleteMany({
+                where: { id: targetMemberId, role: expectedRole },
+            });
+
+        return count > 0;
     }
 
     async transferOwnership(
+        workspaceId: string,
         fromMemberId: string,
         toMemberId: string
-    ): Promise<void> {
-        await this.databaseService.withTransaction(async tx => {
-            await tx.workspaceMember.update({
-                where: { id: fromMemberId },
-                data: {
-                    role: EnumWorkspaceMemberRole.admin,
+    ): Promise<boolean> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count: promoted } = await tx.workspaceMember.updateMany({
+                where: {
+                    id: toMemberId,
+                    workspaceId,
+                    role: { not: EnumWorkspaceMemberRole.owner },
+                    workspace: {
+                        members: {
+                            some: {
+                                id: fromMemberId,
+                                role: EnumWorkspaceMemberRole.owner,
+                            },
+                        },
+                    },
                 },
-            });
-            await tx.workspaceMember.update({
-                where: { id: toMemberId },
                 data: {
                     role: EnumWorkspaceMemberRole.owner,
                 },
             });
+            if (promoted === 0) {
+                return false;
+            }
+
+            const { count: demoted } = await tx.workspaceMember.updateMany({
+                where: {
+                    id: fromMemberId,
+                    workspaceId,
+                    role: EnumWorkspaceMemberRole.owner,
+                },
+                data: {
+                    role: EnumWorkspaceMemberRole.admin,
+                },
+            });
+
+            return demoted > 0;
         });
     }
 }

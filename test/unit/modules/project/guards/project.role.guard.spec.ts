@@ -14,7 +14,7 @@ import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import {
     ProjectRoleMetaKey,
     ProjectStoreKey,
-    ProjectWorkspaceOwnerStoreKey,
+    ProjectWorkspaceBypassStoreKey,
 } from '@modules/project/constants/project.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -108,7 +108,7 @@ describe('ProjectRoleGuard', () => {
                 EnumProjectMemberRole.admin,
             ]);
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                ProjectWorkspaceOwnerStoreKey,
+                ProjectWorkspaceBypassStoreKey,
                 true
             );
         });
@@ -137,7 +137,7 @@ describe('ProjectRoleGuard', () => {
                 projectMemberDomain.validateProjectRoleGuard
             ).toHaveBeenCalledWith(stubProject.id, stubWorkspaceMember, []);
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                ProjectWorkspaceOwnerStoreKey,
+                ProjectWorkspaceBypassStoreKey,
                 false
             );
         });

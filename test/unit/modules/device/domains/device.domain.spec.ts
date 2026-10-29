@@ -60,8 +60,6 @@ describe('DeviceDomain', () => {
         name: 'iPhone 12',
         platform: EnumDevicePlatform.ios,
         lastActiveAt: now,
-        notificationToken: null,
-        notificationProvider: EnumDeviceNotificationProvider.apns,
     };
     const deviceOwnership: DeviceOwnership = {
         id: 'device-ownership-1',
@@ -75,6 +73,8 @@ describe('DeviceDomain', () => {
         isRevoked: false,
         revokedById: null,
         lastActiveAt: now,
+        notificationToken: null,
+        notificationProvider: null,
         biometricEnabled: false,
         biometricToken: null,
         biometricType: null,
@@ -210,8 +210,14 @@ describe('DeviceDomain', () => {
     });
 
     describe('getOwnershipsWithNotificationToken', () => {
-        it('delegates to the ownership repository', async () => {
-            const rows = [{ ...deviceOwnership, device }];
+        it('reads the push tokens from the ownership rows', async () => {
+            const rows: DeviceOwnership[] = [
+                {
+                    ...deviceOwnership,
+                    notificationToken: 'token-1',
+                    notificationProvider: EnumDeviceNotificationProvider.fcm,
+                },
+            ];
             deviceOwnershipRepository.findTokensByUserId.mockResolvedValue(
                 rows
             );
@@ -227,50 +233,49 @@ describe('DeviceDomain', () => {
     });
 
     describe('cleanupNotificationTokens', () => {
-        it('clears tokens for the devices found by user and tokens', async () => {
-            deviceOwnershipRepository.findDeviceIdsByUserAndTokens.mockResolvedValue(
-                ['device-1', 'device-2']
-            );
-            deviceRepository.clearTokens.mockResolvedValue({ count: 2 });
+        it('clears the given tokens on the ownership rows of the user', async () => {
+            deviceOwnershipRepository.clearTokens.mockResolvedValue({
+                count: 2,
+            });
 
             const result = await domain.cleanupNotificationTokens('user-1', [
                 'token-1',
             ]);
 
             expect(result).toBe(2);
-            expect(
-                deviceOwnershipRepository.findDeviceIdsByUserAndTokens
-            ).toHaveBeenCalledWith('user-1', ['token-1']);
-            expect(deviceRepository.clearTokens).toHaveBeenCalledWith(
-                ['device-1', 'device-2'],
-                'user-1'
+            expect(deviceOwnershipRepository.clearTokens).toHaveBeenCalledWith(
+                'user-1',
+                ['token-1']
             );
         });
     });
 
     describe('cleanupStaleNotificationTokens', () => {
-        it('clears tokens stale beyond the given threshold', async () => {
-            deviceRepository.clearStaleTokens.mockResolvedValue({ count: 5 });
+        it('clears ownership tokens stale beyond the given threshold', async () => {
+            deviceOwnershipRepository.clearStaleTokens.mockResolvedValue({
+                count: 5,
+            });
 
             const result = await domain.cleanupStaleNotificationTokens(1000);
 
             expect(result).toBe(5);
-            expect(deviceRepository.clearStaleTokens).toHaveBeenCalledWith(
-                1000
-            );
+            expect(
+                deviceOwnershipRepository.clearStaleTokens
+            ).toHaveBeenCalledWith(1000);
         });
     });
 
     describe('upsertForLoginInTx', () => {
-        it('creates or updates the device then its ownership and reports device newness', async () => {
-            const identity: IDeviceIdentity = {
-                fingerprint: 'abc123def456ghi789jkl012mno345pq',
-                name: null,
-                platform: null,
-                notificationToken: null,
-            };
+        const identity: IDeviceIdentity = {
+            fingerprint: 'abc123def456ghi789jkl012mno345pq',
+            name: null,
+            platform: null,
+            notificationToken: 'token-1',
+        };
+
+        it('creates or updates the device by fingerprint without token fields then the ownership with the token and reports newness', async () => {
             deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
-            deviceOwnershipRepository.upsertForLoginInTx.mockResolvedValue({
+            deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
                 deviceOwnership,
                 isNewOwnership: true,
             });
@@ -290,23 +295,151 @@ describe('DeviceDomain', () => {
             });
             expect(
                 deviceRepository.upsertByFingerprintInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', identity, now);
+            expect(
+                deviceOwnershipRepository.upsertActiveInTx
             ).toHaveBeenCalledWith(
+                tx,
+                device.id,
+                'user-1',
+                'token-1',
+                EnumDeviceNotificationProvider.apns,
+                now
+            );
+        });
+
+        it('clears the pushed token from every other user ownership row after writing it', async () => {
+            deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
+            deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
+                deviceOwnership,
+                isNewOwnership: false,
+            });
+
+            await domain.upsertForLoginInTx(
                 tx,
                 'user-1',
                 identity,
                 EnumDeviceNotificationProvider.apns,
                 now
             );
+
             expect(
-                deviceOwnershipRepository.upsertForLoginInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', device.id, now);
+                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            ).toHaveBeenCalledWith(tx, 'token-1', 'user-1');
+            expect(
+                deviceOwnershipRepository.upsertActiveInTx
+            ).toHaveBeenCalledBefore(
+                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            );
+        });
+
+        it('clears no other row when the login carries no token', async () => {
+            deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
+            deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
+                deviceOwnership,
+                isNewOwnership: false,
+            });
+
+            await domain.upsertForLoginInTx(
+                tx,
+                'user-1',
+                { ...identity, notificationToken: null },
+                null,
+                now
+            );
+
+            expect(
+                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('reports a known ownership as not a new device', async () => {
+            deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
+            deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
+                deviceOwnership,
+                isNewOwnership: false,
+            });
+
+            const result = await domain.upsertForLoginInTx(
+                tx,
+                'user-1',
+                identity,
+                EnumDeviceNotificationProvider.apns,
+                now
+            );
+
+            expect(result.isNewDevice).toBe(false);
+        });
+
+        it('writes one device and an ownership row per user with that user own token when two users share a fingerprint', async () => {
+            const otherOwnership: DeviceOwnership = {
+                ...deviceOwnership,
+                id: 'device-ownership-2',
+                userId: 'user-2',
+            };
+            const otherIdentity: IDeviceIdentity = {
+                ...identity,
+                notificationToken: 'token-2',
+            };
+            deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
+            deviceOwnershipRepository.upsertActiveInTx
+                .mockResolvedValueOnce({
+                    deviceOwnership,
+                    isNewOwnership: true,
+                })
+                .mockResolvedValueOnce({
+                    deviceOwnership: otherOwnership,
+                    isNewOwnership: true,
+                });
+
+            const first = await domain.upsertForLoginInTx(
+                tx,
+                'user-1',
+                identity,
+                EnumDeviceNotificationProvider.apns,
+                now
+            );
+            const second = await domain.upsertForLoginInTx(
+                tx,
+                'user-2',
+                otherIdentity,
+                EnumDeviceNotificationProvider.fcm,
+                now
+            );
+
+            expect(first.device.id).toBe(second.device.id);
+            expect(first.deviceOwnership.id).not.toBe(
+                second.deviceOwnership.id
+            );
+            expect(
+                deviceOwnershipRepository.upsertActiveInTx
+            ).toHaveBeenNthCalledWith(
+                1,
+                tx,
+                'device-1',
+                'user-1',
+                'token-1',
+                EnumDeviceNotificationProvider.apns,
+                now
+            );
+            expect(
+                deviceOwnershipRepository.upsertActiveInTx
+            ).toHaveBeenNthCalledWith(
+                2,
+                tx,
+                'device-1',
+                'user-2',
+                'token-2',
+                EnumDeviceNotificationProvider.fcm,
+                now
+            );
         });
     });
 
     describe('clearNotificationInTx', () => {
-        it('clears the notification of the live device', async () => {
-            deviceOwnershipRepository.findLiveDeviceIdInTx.mockResolvedValue(
-                'device-1'
+        it('clears the notification token on the live ownership', async () => {
+            deviceOwnershipRepository.clearNotificationInTx.mockResolvedValue(
+                true
             );
 
             await domain.clearNotificationInTx(
@@ -318,13 +451,19 @@ describe('DeviceDomain', () => {
             );
 
             expect(
-                deviceRepository.clearNotificationByIdsInTx
-            ).toHaveBeenCalledWith(tx, ['device-1'], 'admin-1', now);
+                deviceOwnershipRepository.clearNotificationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'device-ownership-1',
+                'admin-1',
+                now
+            );
         });
 
-        it('skips the clear when the ownership carries no live device', async () => {
-            deviceOwnershipRepository.findLiveDeviceIdInTx.mockResolvedValue(
-                null
+        it('resolves when the ownership is not live', async () => {
+            deviceOwnershipRepository.clearNotificationInTx.mockResolvedValue(
+                false
             );
 
             await expect(
@@ -336,43 +475,16 @@ describe('DeviceDomain', () => {
                     now
                 )
             ).resolves.toBeUndefined();
-
-            expect(
-                deviceRepository.clearNotificationByIdsInTx
-            ).not.toHaveBeenCalled();
         });
     });
 
     describe('revokeAllByUserInTx', () => {
-        it('clears notification for every revoked device', async () => {
-            deviceOwnershipRepository.revokeAllByUserInTx.mockResolvedValue([
-                'device-1',
-                'device-2',
-            ]);
-
+        it('revokes every live ownership of the user', async () => {
             await domain.revokeAllByUserInTx(tx, 'user-1', 'admin-1', now);
 
             expect(
                 deviceOwnershipRepository.revokeAllByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', 'admin-1', now);
-            expect(
-                deviceRepository.clearNotificationByIdsInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                ['device-1', 'device-2'],
-                'admin-1',
-                now
-            );
-        });
-
-        it('skips clearing notifications when no device was revoked', async () => {
-            deviceOwnershipRepository.revokeAllByUserInTx.mockResolvedValue([]);
-
-            await domain.revokeAllByUserInTx(tx, 'user-1', 'admin-1', now);
-
-            expect(
-                deviceRepository.clearNotificationByIdsInTx
-            ).not.toHaveBeenCalled();
         });
     });
 
@@ -401,13 +513,13 @@ describe('DeviceDomain', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('refreshes the device and stages the refresh activity on success', async () => {
+        it('refreshes the ownership token and the device and stages the refresh activity on success', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(
                 EnumDeviceNotificationProvider.fcm
             );
             helperDateService.create.mockReturnValue(now);
-            deviceOwnershipRepository.touchInTx.mockResolvedValue('device-1');
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
@@ -422,17 +534,18 @@ describe('DeviceDomain', () => {
 
             await domain.refresh('user-1', 'device-ownership-1', data);
 
-            expect(deviceOwnershipRepository.touchInTx).toHaveBeenCalledWith(
+            expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'device-ownership-1',
+                data,
+                EnumDeviceNotificationProvider.fcm,
                 now
             );
             expect(deviceRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
                 'device-1',
                 data,
-                EnumDeviceNotificationProvider.fcm,
                 now
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
@@ -443,11 +556,55 @@ describe('DeviceDomain', () => {
             ]);
         });
 
+        it('clears the refreshed token from every other user ownership row in the same transaction', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            deviceUtil.resolveNotificationProvider.mockReturnValue(
+                EnumDeviceNotificationProvider.fcm
+            );
+            helperDateService.create.mockReturnValue(now);
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
+            activityLogDomain.prepare.mockReturnValue({
+                action: EnumActivityLogAction.userDeviceRefresh,
+                metadata: {},
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
+            });
+            databaseService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+
+            await domain.refresh('user-1', 'device-ownership-1', {
+                ...data,
+                notificationToken: 'token-9',
+            });
+
+            expect(
+                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            ).toHaveBeenCalledWith(tx, 'token-9', 'user-1');
+        });
+
+        it('clears no other row when the refresh carries no token', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
+            helperDateService.create.mockReturnValue(now);
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
+            databaseService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+
+            await domain.refresh('user-1', 'device-ownership-1', data);
+
+            expect(
+                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('resolves the notification provider from a null platform when none is given', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
-            deviceOwnershipRepository.touchInTx.mockResolvedValue('device-1');
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             activityLogDomain.prepare.mockReturnValue({
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
@@ -479,7 +636,7 @@ describe('DeviceDomain', () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
-            deviceOwnershipRepository.touchInTx.mockResolvedValue('device-1');
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             activityLogDomain.prepare.mockReturnValue({
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
@@ -497,11 +654,18 @@ describe('DeviceDomain', () => {
                 omittedPlatform
             );
 
+            expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'device-ownership-1',
+                { name: null, platform: null, notificationToken: null },
+                null,
+                now
+            );
             expect(deviceRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
                 'device-1',
                 { name: null, platform: null, notificationToken: null },
-                null,
                 now
             );
         });
@@ -619,9 +783,6 @@ describe('DeviceDomain', () => {
                 'user-1',
                 now
             );
-            expect(
-                deviceRepository.clearNotificationByIdsInTx
-            ).toHaveBeenCalledWith(tx, ['device-1'], 'user-1', now);
             expect(deviceUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 deviceOwnershipDetail,
                 1
@@ -811,9 +972,6 @@ describe('DeviceDomain', () => {
                 'admin-1',
                 now
             );
-            expect(
-                deviceRepository.clearNotificationByIdsInTx
-            ).toHaveBeenCalledWith(tx, ['device-1'], 'admin-1', now);
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.adminDeviceRemove,
                 metadata: {

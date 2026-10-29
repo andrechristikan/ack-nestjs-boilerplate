@@ -8,6 +8,10 @@ import { PolicyRepository } from '@modules/policy/repositories/policy.repository
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type {
+    IRole,
+    IRoleActor,
+} from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -32,6 +36,21 @@ export class PolicyDomain {
         }
 
         return;
+    }
+
+    private async getRoleForAdminWrite(
+        roleId: string,
+        actor: IRoleActor
+    ): Promise<IRole> {
+        const role = await this.roleDomain.getById(roleId);
+        if (!role) {
+            throw new RoleNotFoundException();
+        }
+
+        this.roleDomain.assertNotSelf(actor.roleId, role.id);
+        this.roleDomain.assertActorOutranks(actor.roleType, role.type);
+
+        return role;
     }
 
     validatePolicyGuard(
@@ -66,10 +85,11 @@ export class PolicyDomain {
 
     async createByAdmin(
         roleId: string,
-        data: PolicyRequestDto
+        data: PolicyRequestDto,
+        actor: IRoleActor
     ): Promise<Policy> {
         // Sequential by design: gate before the work it guards
-        await this.validateRoleExists(roleId);
+        await this.getRoleForAdminWrite(roleId, actor);
 
         const exist = await this.policyRepository.existsByRoleIdAndSubject(
             roleId,
@@ -94,10 +114,11 @@ export class PolicyDomain {
     async updateByAdmin(
         roleId: string,
         id: string,
-        data: PolicyUpdateRequestDto
+        data: PolicyUpdateRequestDto,
+        actor: IRoleActor
     ): Promise<Policy> {
         // Sequential by design: gate before the work it guards
-        await this.validateRoleExists(roleId);
+        await this.getRoleForAdminWrite(roleId, actor);
 
         const policyExists = await this.policyRepository.existsByRoleIdAndId(
             roleId,
@@ -119,9 +140,13 @@ export class PolicyDomain {
         return updated;
     }
 
-    async deleteByAdmin(roleId: string, id: string): Promise<Policy> {
+    async deleteByAdmin(
+        roleId: string,
+        id: string,
+        actor: IRoleActor
+    ): Promise<Policy> {
         // Sequential by design: gate before the work it guards
-        await this.validateRoleExists(roleId);
+        await this.getRoleForAdminWrite(roleId, actor);
 
         const policyExists = await this.policyRepository.existsByRoleIdAndId(
             roleId,

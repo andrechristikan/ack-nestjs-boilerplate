@@ -104,12 +104,6 @@ describe('UserOnboardingDomain', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -138,12 +132,6 @@ describe('UserOnboardingDomain', () => {
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
         isVerified: true,
-        termPolicy: {
-            [EnumTermPolicyType.cookies]: false,
-            [EnumTermPolicyType.marketing]: false,
-            [EnumTermPolicyType.privacy]: true,
-            [EnumTermPolicyType.termsOfService]: true,
-        },
         acceptedTermPolicyTypes: [
             EnumTermPolicyType.termsOfService,
             EnumTermPolicyType.privacy,

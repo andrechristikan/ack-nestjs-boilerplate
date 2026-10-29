@@ -1,4 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -29,7 +33,8 @@ export class WorkspaceMemberDomain {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly activityLogDomain: ActivityLogDomain
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     private assertPeerActionAllowed(
@@ -45,6 +50,35 @@ export class WorkspaceMemberDomain {
             targetMember.role === EnumWorkspaceMemberRole.admin
         ) {
             throw new WorkspaceMemberPeerForbiddenException();
+        }
+    }
+
+    private async transferOwnershipGuarded(
+        workspaceId: string,
+        fromMemberId: string,
+        toMemberId: string
+    ): Promise<void> {
+        try {
+            const transferred =
+                await this.workspaceMemberRepository.transferOwnership(
+                    workspaceId,
+                    fromMemberId,
+                    toMemberId
+                );
+            if (!transferred) {
+                throw new WorkspaceMemberPeerForbiddenException();
+            }
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceMemberPeerForbiddenException();
+            }
+
+            throw new AppUnknownException(err);
         }
     }
 
@@ -143,7 +177,8 @@ export class WorkspaceMemberDomain {
             });
         activityLogs.push(workspaceOwnershipTransferredByOwnerActivityLog);
 
-        await this.workspaceMemberRepository.transferOwnership(
+        await this.transferOwnershipGuarded(
+            workspaceId,
             actorMember.id,
             targetMember.id
         );
@@ -173,7 +208,13 @@ export class WorkspaceMemberDomain {
             }),
         ];
 
-        await this.workspaceMemberRepository.removeMember(member.id);
+        const removed = await this.workspaceMemberRepository.removeMember(
+            member.id,
+            member.role
+        );
+        if (!removed) {
+            throw new WorkspaceMemberNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
     }
@@ -228,10 +269,14 @@ export class WorkspaceMemberDomain {
             }),
         ];
 
-        await this.workspaceMemberRepository.updateRole(
+        const updated = await this.workspaceMemberRepository.updateRole(
             targetMember.id,
+            targetMember.role,
             newRole
         );
+        if (!updated) {
+            throw new WorkspaceMemberPeerForbiddenException();
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
     }
@@ -273,7 +318,13 @@ export class WorkspaceMemberDomain {
             }),
         ];
 
-        await this.workspaceMemberRepository.removeMember(targetMember.id);
+        const removed = await this.workspaceMemberRepository.removeMember(
+            targetMember.id,
+            targetMember.role
+        );
+        if (!removed) {
+            throw new WorkspaceMemberPeerForbiddenException();
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
     }

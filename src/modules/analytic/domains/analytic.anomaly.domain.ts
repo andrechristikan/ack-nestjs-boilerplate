@@ -102,10 +102,12 @@ export class AnalyticAnomalyDomain {
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticImpossibleTravel[]> {
+        const now = this.helperDateService.create();
         const sessions =
             await this.sessionAnalyticDomain.getActiveWithGeoInRange(
                 startDate,
-                endDate
+                endDate,
+                now
             );
         const byUser = new Map<string, typeof sessions>();
         for (const s of sessions) {
@@ -220,6 +222,14 @@ export class AnalyticAnomalyDomain {
             }
         }
         return anomalous;
+    }
+
+    async getImpossibleTravelUserIds(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<string[]> {
+        const rows = await this.computeImpossibleTravel(startDate, endDate);
+        return [...new Set(rows.map(row => row.userId))];
     }
 
     async impossibleTravelSummary(

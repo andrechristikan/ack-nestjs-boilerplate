@@ -16,7 +16,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    EnumUserSignUpFrom,
 } from '@generated/prisma-client/client';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
@@ -31,7 +30,9 @@ import {
     AnalyticSharedFingerprintAvailableOrderBy,
     AnalyticUserCountAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
+import { EnumAnalyticFraudContributingSignal } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
@@ -57,6 +58,8 @@ describe('AnalyticFraudDomain', () => {
         mock<HelperArrayService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const analyticAnomalyDomain: MockProxy<AnalyticAnomalyDomain> =
+        mock<AnalyticAnomalyDomain>();
     const activityLogAnalyticDomain: MockProxy<ActivityLogAnalyticDomain> =
         mock<ActivityLogAnalyticDomain>();
     const userLoginAnalyticDomain: MockProxy<UserLoginAnalyticDomain> =
@@ -120,6 +123,18 @@ describe('AnalyticFraudDomain', () => {
         'analytic.fraud.weights.forgotPasswordAbuse': 10,
         'auth.password.maxAttempt': 5,
         'analytic.anomaly.failedLoginSpike.nearLockoutOffset': 1,
+        'analytic.fraud.riskScore.candidateLimit': 3,
+        'analytic.fraud.riskScore.lookbackInMs': 3600000,
+    };
+
+    const activityLogRow = {
+        id: 'log-1',
+        userId: 'user-1',
+        action: EnumActivityLogAction.userLoginFailed,
+        ipAddress: null,
+        createdAt: startDate,
+        workspaceId: null,
+        userAgent: null,
     };
 
     let domain: AnalyticFraudDomain;
@@ -139,6 +154,21 @@ describe('AnalyticFraudDomain', () => {
         helperDateService.forward.mockReturnValue(windowEnd);
         analyticSortUtil.sortRows.mockImplementation(rows => rows);
         paginationService.offsetPage.mockReturnValue(offsetPage);
+        activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue([]);
+        activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
+        analyticAnomalyDomain.getImpossibleTravelUserIds.mockResolvedValue([]);
+        userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+        userLoginAnalyticDomain.getFailedLoginActivityLogs.mockResolvedValue(
+            []
+        );
+        userPasswordAnalyticDomain.getProfileChanges.mockResolvedValue([]);
+        userForgotPasswordAnalyticDomain.getUnusedTokenCountsByUser.mockResolvedValue(
+            []
+        );
+        userAnalyticDomain.getNearLockout.mockResolvedValue([]);
+        userAnalyticDomain.getManyByIds.mockResolvedValue([]);
+        deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([]);
+        deviceAnalyticDomain.getCreatedInRange.mockResolvedValue([]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -150,6 +180,10 @@ describe('AnalyticFraudDomain', () => {
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperArrayService, useValue: helperArrayService },
                 { provide: HelperDateService, useValue: helperDateService },
+                {
+                    provide: AnalyticAnomalyDomain,
+                    useValue: analyticAnomalyDomain,
+                },
                 {
                     provide: ActivityLogAnalyticDomain,
                     useValue: activityLogAnalyticDomain,
@@ -335,7 +369,7 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            userAnalyticDomain.getSignUpsInRange.mockResolvedValue([]);
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
 
             const result = await domain.massRegistrationSummary(null);
 
@@ -345,7 +379,7 @@ describe('AnalyticFraudDomain', () => {
 
     describe('massRegistrationList', () => {
         it('pages computed rows', async () => {
-            userAnalyticDomain.getSignUpsInRange.mockResolvedValue([]);
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
 
             expect(await domain.massRegistrationList(null, pagination)).toEqual(
                 offsetPage
@@ -353,7 +387,7 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('sorts the computed rows before it slices the page', async () => {
-            userAnalyticDomain.getSignUpsInRange.mockResolvedValue([]);
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
             const sorted = [
                 { key: '10.0.0.1', count: 9 },
                 { key: '10.0.0.2', count: 5 },
@@ -390,9 +424,7 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            userForgotPasswordAnalyticDomain.getCreatedInRange.mockResolvedValue(
-                []
-            );
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
 
             const result = await domain.passwordResetEnumerationSummary(null);
 
@@ -402,9 +434,7 @@ describe('AnalyticFraudDomain', () => {
 
     describe('passwordResetEnumerationList', () => {
         it('pages computed rows', async () => {
-            userForgotPasswordAnalyticDomain.getCreatedInRange.mockResolvedValue(
-                []
-            );
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
 
             expect(
                 await domain.passwordResetEnumerationList(null, pagination)
@@ -412,9 +442,7 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('sorts the computed rows before it slices the page', async () => {
-            userForgotPasswordAnalyticDomain.getCreatedInRange.mockResolvedValue(
-                []
-            );
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
             const sorted = [
                 { key: '10.0.0.1', count: 9 },
                 { key: '10.0.0.2', count: 5 },
@@ -897,17 +925,126 @@ describe('AnalyticFraudDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('scores near-lockout and a shared fingerprint', async () => {
+        it('scores a user flagged by every signal with all eight weights', async () => {
             userAnalyticDomain.getOneById.mockResolvedValue({
                 id: 'user-1',
                 email: 'user@example.com',
                 passwordAttempt: 4,
             });
+            activityLogAnalyticDomain.getManyByActionsInRange.mockImplementation(
+                async actions =>
+                    actions.includes(EnumActivityLogAction.userCreated)
+                        ? [
+                              {
+                                  ...activityLogRow,
+                                  action: EnumActivityLogAction.userCreated,
+                                  ipAddress: '10.0.0.9',
+                              },
+                          ]
+                        : [
+                              {
+                                  ...activityLogRow,
+                                  action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                              },
+                          ]
+            );
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([
+                { ipAddress: '10.0.0.9', count: 2 },
+            ]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([
+                {
+                    ...activityLogRow,
+                    action: EnumActivityLogAction.userLoginCredential,
+                    createdAt: windowEnd,
+                },
+            ]);
+            userLoginAnalyticDomain.getFailedLoginActivityLogs.mockResolvedValue(
+                [
+                    {
+                        ...activityLogRow,
+                        action: EnumActivityLogAction.userLoginFailed,
+                        ipAddress: '10.0.0.1',
+                    },
+                    {
+                        ...activityLogRow,
+                        userId: 'user-2',
+                        action: EnumActivityLogAction.userLoginFailed,
+                        ipAddress: '10.0.0.1',
+                    },
+                ]
+            );
+            analyticAnomalyDomain.getImpossibleTravelUserIds.mockResolvedValue([
+                'user-1',
+            ]);
+            userPasswordAnalyticDomain.getProfileChanges.mockResolvedValue([
+                {
+                    id: 'change-1',
+                    userId: 'user-1',
+                    type: EnumPasswordHistoryType.profile,
+                    createdAt: startDate,
+                },
+            ]);
+            deviceAnalyticDomain.getCreatedInRange.mockResolvedValue([
+                {
+                    id: 'own-1',
+                    userId: 'user-1',
+                    deviceId: 'device-1',
+                    createdAt: windowEnd,
+                },
+            ]);
             deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([
                 {
                     fingerprint: 'fp-1',
                     userCount: 2,
-                    userIds: ['user-1', 'user-2'],
+                    userIds: ['user-1', 'user-9'],
+                },
+            ]);
+            userForgotPasswordAnalyticDomain.getUnusedTokenCountsByUser.mockResolvedValue(
+                [{ userId: 'user-1', count: 2 }]
+            );
+
+            const result = await domain.riskScore('user-1');
+
+            expect(result).toEqual({
+                userId: 'user-1',
+                score: 80,
+                band: 'critical',
+                contributingSignalCodes: [
+                    EnumAnalyticFraudContributingSignal.sessionAfterAdmin,
+                    EnumAnalyticFraudContributingSignal.impossibleTravel,
+                    EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                    EnumAnalyticFraudContributingSignal.credentialStuffingIp,
+                    EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                    EnumAnalyticFraudContributingSignal.nearLockout,
+                    EnumAnalyticFraudContributingSignal.massRegistrationIp,
+                    EnumAnalyticFraudContributingSignal.forgotPasswordAbuse,
+                ],
+            });
+            expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
+                'user-1',
+                result
+            );
+        });
+
+        it('scores a login right after an admin revoke with the session-after-admin weight', async () => {
+            userAnalyticDomain.getOneById.mockResolvedValue({
+                id: 'user-1',
+                email: 'user@example.com',
+                passwordAttempt: null,
+            });
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                [
+                    {
+                        ...activityLogRow,
+                        action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                    },
+                ]
+            );
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([
+                {
+                    ...activityLogRow,
+                    action: EnumActivityLogAction.userLoginCredential,
+                    createdAt: windowEnd,
                 },
             ]);
 
@@ -915,14 +1052,12 @@ describe('AnalyticFraudDomain', () => {
 
             expect(result).toEqual({
                 userId: 'user-1',
-                score: 20,
-                band: 'review',
-                contributingSignalCodes: ['nearLockout', 'sharedFingerprint'],
+                score: 10,
+                band: 'monitor',
+                contributingSignalCodes: [
+                    EnumAnalyticFraudContributingSignal.sessionAfterAdmin,
+                ],
             });
-            expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
-                'user-1',
-                result
-            );
         });
 
         it('treats a null passwordAttempt as zero and skips unmatched fingerprints', async () => {
@@ -948,10 +1083,34 @@ describe('AnalyticFraudDomain', () => {
                 contributingSignalCodes: [],
             });
         });
+
+        it('flags near-lockout at the password max attempt minus the failed-login-spike offset', async () => {
+            userAnalyticDomain.getOneById.mockResolvedValue({
+                id: 'user-1',
+                email: 'user@example.com',
+                passwordAttempt: 3,
+            });
+
+            const below = await domain.riskScore('user-1');
+
+            expect(below.contributingSignalCodes).toEqual([]);
+
+            userAnalyticDomain.getOneById.mockResolvedValue({
+                id: 'user-1',
+                email: 'user@example.com',
+                passwordAttempt: 4,
+            });
+
+            const atThreshold = await domain.riskScore('user-1');
+
+            expect(atThreshold.contributingSignalCodes).toEqual([
+                EnumAnalyticFraudContributingSignal.nearLockout,
+            ]);
+        });
     });
 
     describe('riskScores', () => {
-        it('reads shared fingerprints once and scores each listed user against them', async () => {
+        it('reads the signal users once and scores every candidate against them', async () => {
             userAnalyticDomain.getNearLockout.mockResolvedValue([
                 {
                     id: 'user-1',
@@ -960,19 +1119,7 @@ describe('AnalyticFraudDomain', () => {
                     lastLoginAt: null,
                     createdAt: now,
                 },
-                {
-                    id: 'user-2',
-                    email: 'b@example.com',
-                    passwordAttempt: 4,
-                    lastLoginAt: null,
-                    createdAt: now,
-                },
             ]);
-            userAnalyticDomain.getOneById.mockImplementation(async id => ({
-                id,
-                email: `${id}@example.com`,
-                passwordAttempt: 4,
-            }));
             deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([
                 {
                     fingerprint: 'fp-1',
@@ -980,12 +1127,17 @@ describe('AnalyticFraudDomain', () => {
                     userIds: ['user-1', 'user-9'],
                 },
             ]);
+            userAnalyticDomain.getManyByIds.mockResolvedValue([
+                { id: 'user-1', email: 'a@example.com', passwordAttempt: 4 },
+                { id: 'user-9', email: 'z@example.com', passwordAttempt: null },
+            ]);
 
             await domain.riskScores(null, pagination);
 
             expect(
                 deviceAnalyticDomain.getSharedFingerprints
             ).toHaveBeenCalledTimes(1);
+            expect(userAnalyticDomain.getNearLockout).toHaveBeenCalledWith(4);
             expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
                 [
                     {
@@ -993,15 +1145,17 @@ describe('AnalyticFraudDomain', () => {
                         score: 20,
                         band: 'review',
                         contributingSignalCodes: [
-                            'nearLockout',
-                            'sharedFingerprint',
+                            EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                            EnumAnalyticFraudContributingSignal.nearLockout,
                         ],
                     },
                     {
-                        userId: 'user-2',
+                        userId: 'user-9',
                         score: 10,
                         band: 'monitor',
-                        contributingSignalCodes: ['nearLockout'],
+                        contributingSignalCodes: [
+                            EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                        ],
                     },
                 ],
                 [],
@@ -1009,40 +1163,56 @@ describe('AnalyticFraudDomain', () => {
             );
         });
 
-        it('scores a listed user from the near-lockout row without re-reading the user', async () => {
+        it('lists a user flagged only by a shared fingerprint', async () => {
+            deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([
+                {
+                    fingerprint: 'fp-1',
+                    userCount: 2,
+                    userIds: ['user-8', 'user-9'],
+                },
+            ]);
+            userAnalyticDomain.getManyByIds.mockResolvedValue([
+                { id: 'user-8', email: 'h@example.com', passwordAttempt: null },
+                { id: 'user-9', email: 'z@example.com', passwordAttempt: 0 },
+            ]);
+
+            await domain.riskScores(null, pagination);
+
+            expect(userAnalyticDomain.getManyByIds).toHaveBeenCalledWith([
+                'user-8',
+                'user-9',
+            ]);
+        });
+
+        it('caps the candidate union at analytic.fraud.riskScore.candidateLimit', async () => {
             userAnalyticDomain.getNearLockout.mockResolvedValue([
                 {
-                    id: 'user-1',
-                    email: 'a@example.com',
+                    id: 'user-near',
+                    email: 'n@example.com',
                     passwordAttempt: 4,
                     lastLoginAt: null,
                     createdAt: now,
                 },
             ]);
-            deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([]);
-            analyticCache.getRiskScore.mockResolvedValue(null);
-            userAnalyticDomain.getOneById.mockResolvedValue(null);
+            deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([
+                {
+                    fingerprint: 'fp-1',
+                    userCount: 3,
+                    userIds: ['user-a', 'user-b', 'user-c'],
+                },
+            ]);
 
             await domain.riskScores(null, pagination);
 
-            expect(userAnalyticDomain.getOneById).not.toHaveBeenCalled();
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
-                [
-                    {
-                        userId: 'user-1',
-                        score: 10,
-                        band: 'monitor',
-                        contributingSignalCodes: ['nearLockout'],
-                    },
-                ],
-                [],
-                AnalyticFraudRiskScoreAvailableOrderBy
-            );
+            expect(userAnalyticDomain.getManyByIds).toHaveBeenCalledWith([
+                'user-a',
+                'user-b',
+                'user-c',
+            ]);
         });
 
-        it('scores the near-lockout users in chunks of analytic.fraud.concurrency', async () => {
-            userAnalyticDomain.getNearLockout.mockResolvedValue([]);
-            deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([]);
+        it('scores the candidates in chunks of analytic.fraud.concurrency', async () => {
+            userAnalyticDomain.getManyByIds.mockResolvedValue([]);
 
             await domain.riskScores(null, pagination);
 
@@ -1050,20 +1220,16 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('includes every score when minScore is null and sorts descending', async () => {
-            userAnalyticDomain.getNearLockout.mockResolvedValue([
+            userAnalyticDomain.getManyByIds.mockResolvedValue([
                 {
                     id: 'user-low',
                     email: 'low@example.com',
                     passwordAttempt: 1,
-                    lastLoginAt: startDate,
-                    createdAt: startDate,
                 },
                 {
                     id: 'user-high',
                     email: 'high@example.com',
                     passwordAttempt: 4,
-                    lastLoginAt: startDate,
-                    createdAt: startDate,
                 },
             ]);
             analyticCache.getRiskScore.mockImplementation(async userId => ({
@@ -1115,7 +1281,6 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('pages whatever the sorter returns rather than the scored order', async () => {
-            userAnalyticDomain.getNearLockout.mockResolvedValue([]);
             const sorted = [
                 {
                     userId: 'user-a',
@@ -1147,20 +1312,16 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('drops scores below minScore', async () => {
-            userAnalyticDomain.getNearLockout.mockResolvedValue([
+            userAnalyticDomain.getManyByIds.mockResolvedValue([
                 {
                     id: 'user-low',
                     email: 'low@example.com',
                     passwordAttempt: 1,
-                    lastLoginAt: startDate,
-                    createdAt: startDate,
                 },
                 {
                     id: 'user-high',
                     email: 'high@example.com',
                     passwordAttempt: 4,
-                    lastLoginAt: startDate,
-                    createdAt: startDate,
                 },
             ]);
             analyticCache.getRiskScore.mockImplementation(async userId => ({
@@ -1310,68 +1471,91 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('computeMassRegistration', () => {
-        it('keeps sign-up sources that meet the min account count', async () => {
-            userAnalyticDomain.getSignUpsInRange.mockResolvedValue([
-                {
-                    id: 'u1',
-                    email: 'a@example.com',
-                    signUpAt: startDate,
-                    signUpFrom: EnumUserSignUpFrom.website,
-                },
-                {
-                    id: 'u2',
-                    email: 'b@example.com',
-                    signUpAt: startDate,
-                    signUpFrom: EnumUserSignUpFrom.website,
-                },
-                {
-                    id: 'u3',
-                    email: 'c@example.com',
-                    signUpAt: startDate,
-                    signUpFrom: EnumUserSignUpFrom.mobile,
-                },
+        it('groups credential and social sign-up activity by ip at the min account count', async () => {
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([
+                { ipAddress: '10.0.0.1', count: 6 },
             ]);
 
             const result = await domain['computeMassRegistration'](86400000);
 
-            expect(result).toEqual([
-                { key: String(EnumUserSignUpFrom.website), count: 2 },
-            ]);
+            expect(result).toEqual([{ key: '10.0.0.1', count: 6 }]);
+            expect(
+                activityLogAnalyticDomain.getGroupIpByActions
+            ).toHaveBeenCalledWith(
+                [
+                    EnumActivityLogAction.userSignedUp,
+                    EnumActivityLogAction.userCreated,
+                ],
+                startDate,
+                now,
+                2
+            );
         });
     });
 
-    describe('computePasswordResetEnumeration', () => {
-        it('groups by email domain and falls back to the raw destination', async () => {
-            userForgotPasswordAnalyticDomain.getCreatedInRange.mockResolvedValue(
+    describe('collectMassRegistrationUsers', () => {
+        it('collects the users of both sign-up actions registered from a flagged ip', async () => {
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([
+                { ipAddress: '10.0.0.1', count: 6 },
+            ]);
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
                 [
                     {
-                        id: 'fp-1',
+                        ...activityLogRow,
                         userId: 'user-1',
-                        isUsed: false,
-                        createdAt: startDate,
-                        to: 'a@example.com',
+                        action: EnumActivityLogAction.userSignedUp,
+                        ipAddress: '10.0.0.1',
                     },
                     {
-                        id: 'fp-2',
+                        ...activityLogRow,
                         userId: 'user-2',
-                        isUsed: false,
-                        createdAt: startDate,
-                        to: 'b@example.com',
+                        action: EnumActivityLogAction.userCreated,
+                        ipAddress: '10.0.0.1',
                     },
                     {
-                        id: 'fp-3',
+                        ...activityLogRow,
                         userId: 'user-3',
-                        isUsed: false,
-                        createdAt: startDate,
-                        to: 'not-an-email',
+                        action: EnumActivityLogAction.userSignedUp,
+                        ipAddress: '10.0.0.7',
                     },
                 ]
             );
 
             const result =
+                await domain['collectMassRegistrationUsers'](86400000);
+
+            expect(result).toEqual(new Set(['user-1', 'user-2']));
+            expect(
+                activityLogAnalyticDomain.getManyByActionsInRange
+            ).toHaveBeenCalledWith(
+                [
+                    EnumActivityLogAction.userSignedUp,
+                    EnumActivityLogAction.userCreated,
+                ],
+                startDate,
+                now
+            );
+        });
+    });
+
+    describe('computePasswordResetEnumeration', () => {
+        it('groups forgot-password activity by ip at the min request count', async () => {
+            activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([
+                { ipAddress: '10.0.0.2', count: 11 },
+            ]);
+
+            const result =
                 await domain['computePasswordResetEnumeration'](86400000);
 
-            expect(result).toEqual([{ key: 'example.com', count: 2 }]);
+            expect(result).toEqual([{ key: '10.0.0.2', count: 11 }]);
+            expect(
+                activityLogAnalyticDomain.getGroupIpByActions
+            ).toHaveBeenCalledWith(
+                [EnumActivityLogAction.userForgotPassword],
+                startDate,
+                now,
+                2
+            );
         });
     });
 

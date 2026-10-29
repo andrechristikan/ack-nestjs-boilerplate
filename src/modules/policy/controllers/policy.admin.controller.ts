@@ -1,6 +1,7 @@
-import { Doc } from '@common/doc/decorators/doc.decorator';
+import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -22,12 +23,17 @@ import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy
 import { PolicyHttpService } from '@modules/policy/services/policy.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserCurrent,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import {
     Body,
     Controller,
     Delete,
     Get,
+    HttpStatus,
     Param,
     Post,
     Put,
@@ -64,6 +70,14 @@ export class PolicyAdminController {
 
     @Doc({ summary: 'grant a policy to a role' })
     @Response('policy.create', { schema: PolicySchema })
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.selfForbidden,
+        messagePath: 'role.error.selfForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,
@@ -79,13 +93,22 @@ export class PolicyAdminController {
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
         @Body({ schema: PolicyRequestSchema })
-        body: PolicyRequestDto
+        body: PolicyRequestDto,
+        @UserCurrent() user: IUser
     ): Promise<IResponseReturn<PolicyDto>> {
-        return this.policyHttpService.createByAdmin(roleId, body);
+        return this.policyHttpService.createByAdmin(roleId, body, user);
     }
 
     @Doc({ summary: 'update the action list of a role policy' })
     @Response('policy.update', { schema: PolicySchema })
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.selfForbidden,
+        messagePath: 'role.error.selfForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,
@@ -103,13 +126,27 @@ export class PolicyAdminController {
         @Param('policyId', { schema: RequestMongoIdSchema })
         policyId: string,
         @Body({ schema: PolicyUpdateRequestSchema })
-        body: PolicyUpdateRequestDto
+        body: PolicyUpdateRequestDto,
+        @UserCurrent() user: IUser
     ): Promise<IResponseReturn<PolicyDto>> {
-        return this.policyHttpService.updateByAdmin(roleId, policyId, body);
+        return this.policyHttpService.updateByAdmin(
+            roleId,
+            policyId,
+            body,
+            user
+        );
     }
 
     @Doc({ summary: 'revoke a policy from a role' })
     @Response('policy.delete')
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.selfForbidden,
+        messagePath: 'role.error.selfForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,
@@ -125,8 +162,9 @@ export class PolicyAdminController {
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
         @Param('policyId', { schema: RequestMongoIdSchema })
-        policyId: string
+        policyId: string,
+        @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.policyHttpService.deleteByAdmin(roleId, policyId);
+        return this.policyHttpService.deleteByAdmin(roleId, policyId, user);
     }
 }

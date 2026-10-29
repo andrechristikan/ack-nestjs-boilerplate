@@ -12,7 +12,6 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     UserAdminListSelect,
     UserNotDeletedWhere,
@@ -25,11 +24,11 @@ import type {
     IUserProfile,
     IUserRecipient,
     IUserUpdateProfile,
+    IUserUpdateStatus,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
-    EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserStatus,
@@ -66,7 +65,6 @@ export class UserRepository implements IUserRepository {
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
             lastWorkspaceChangedAt,
-            termPolicy: input.termPolicy,
             createdBy: input.createdBy,
             deletedAt: null,
             ...(input.password
@@ -314,12 +312,13 @@ export class UserRepository implements IUserRepository {
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { status }: UserUpdateStatusRequestDto
+        { status, passwordAttempt }: IUserUpdateStatus
     ): Promise<User> {
         return tx.user.update({
             where: { id, deletedAt: null },
             data: {
                 status,
+                passwordAttempt,
             },
         });
     }
@@ -417,15 +416,28 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async increasePasswordAttempt(userId: string): Promise<User> {
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                passwordAttempt: {
-                    increment: 1,
-                },
+    async incrementPasswordAttempt(
+        userId: string,
+        maxAttempt: number
+    ): Promise<number | null> {
+        const { count } = await this.databaseService.client.user.updateMany({
+            where: {
+                id: userId,
+                deletedAt: null,
+                passwordAttempt: { lt: maxAttempt },
             },
+            data: { passwordAttempt: { increment: 1 } },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        const user = await this.databaseService.client.user.findFirst({
+            where: { id: userId, deletedAt: null },
+            select: { passwordAttempt: true },
+        });
+
+        return user?.passwordAttempt ?? null;
     }
 
     async resetPasswordAttempt(userId: string): Promise<User> {
@@ -440,14 +452,20 @@ export class UserRepository implements IUserRepository {
     async deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<void> {
-        await tx.user.update({
-            where: { id: userId, deletedAt: null },
+    ): Promise<boolean> {
+        const { count } = await tx.user.updateMany({
+            where: {
+                id: userId,
+                deletedAt: null,
+                status: EnumUserStatus.active,
+            },
             data: {
                 status: EnumUserStatus.inactive,
                 updatedBy: userId,
             },
         });
+
+        return count > 0;
     }
 
     async markVerified(userId: string, verifiedAt: Date): Promise<User> {
@@ -492,45 +510,6 @@ export class UserRepository implements IUserRepository {
                 lastLoginFrom: loginFrom,
                 lastLoginWith: loginWith,
                 updatedBy: userId,
-            },
-        });
-    }
-
-    async acceptTermPolicyInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        type: EnumTermPolicyType
-    ): Promise<void> {
-        await tx.user.update({
-            where: {
-                id: userId,
-                deletedAt: null,
-                status: EnumUserStatus.active,
-            },
-            data: {
-                termPolicy: {
-                    update: {
-                        [type]: true,
-                    },
-                },
-            },
-        });
-    }
-
-    async resetTermPolicyInTx(
-        tx: IDatabaseTransactionClient,
-        type: EnumTermPolicyType
-    ): Promise<void> {
-        await tx.user.updateMany({
-            where: {
-                deletedAt: null,
-            },
-            data: {
-                termPolicy: {
-                    update: {
-                        [type]: false,
-                    },
-                },
             },
         });
     }

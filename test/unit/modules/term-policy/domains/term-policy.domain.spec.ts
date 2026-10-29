@@ -45,7 +45,6 @@ import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-po
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
-import { UserDomain } from '@modules/user/domains/user.domain';
 
 describe('TermPolicyDomain', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
@@ -61,7 +60,6 @@ describe('TermPolicyDomain', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
@@ -151,7 +149,6 @@ describe('TermPolicyDomain', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: UserDomain, useValue: userDomain },
                 { provide: TermPolicyQueue, useValue: termPolicyQueue },
             ],
         }).compile();
@@ -717,10 +714,54 @@ describe('TermPolicyDomain', () => {
                 termPolicyRepository.findOneByIdInTx.mockResolvedValue(
                     publishedTermPolicy
                 );
-                userDomain.resetTermPolicyInTx.mockResolvedValue(undefined);
+                termPolicyRepository.archivePublishedByTypeInTx.mockResolvedValue(
+                    1
+                );
+                termPolicyRepository.existsNewerPublishedInTx.mockResolvedValue(
+                    false
+                );
                 notificationQueue.sendPublishTermPolicy.mockResolvedValue(
                     undefined
                 );
+            });
+
+            it('archives only the versions below the one it publishes', async () => {
+                termPolicyRepository.findOneById.mockResolvedValue({
+                    ...draftTermPolicy,
+                    version: 3,
+                });
+                termPolicyRepository.findOneByIdInTx.mockResolvedValue({
+                    ...publishedTermPolicy,
+                    version: 3,
+                });
+
+                await domain.publishByAdmin('term-policy-1', 'user-1');
+
+                expect(
+                    termPolicyRepository.archivePublishedByTypeInTx
+                ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 3);
+                expect(
+                    termPolicyRepository.existsNewerPublishedInTx
+                ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 3);
+            });
+
+            it('throws TermPolicyStatusInvalidException and sends nothing when a newer version of the type is already published', async () => {
+                termPolicyRepository.existsNewerPublishedInTx.mockResolvedValue(
+                    true
+                );
+
+                await expect(
+                    domain.publishByAdmin('term-policy-1', 'user-1')
+                ).rejects.toMatchObject({
+                    constructor: TermPolicyStatusInvalidException,
+                    module: 'termPolicy',
+                    statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                    messagePath: 'termPolicy.error.statusInvalid',
+                });
+                expect(
+                    notificationQueue.sendPublishTermPolicy
+                ).not.toHaveBeenCalled();
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             });
 
             it('throws TermPolicyStatusInvalidException for a published policy before any S3 or write', async () => {
@@ -747,6 +788,22 @@ describe('TermPolicyDomain', () => {
                 ).not.toHaveBeenCalled();
             });
 
+            it('throws TermPolicyStatusInvalidException for an archived policy before any S3 or write', async () => {
+                termPolicyRepository.findOneById.mockResolvedValue({
+                    ...publishedTermPolicy,
+                    status: EnumTermPolicyStatus.archived,
+                });
+
+                await expect(
+                    domain.publishByAdmin('term-policy-1', 'user-1')
+                ).rejects.toMatchObject({
+                    constructor: TermPolicyStatusInvalidException,
+                    statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                });
+                expect(awsS3Service.copyItems).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            });
+
             it('throws TermPolicyStatusInvalidException when publishInTx loses the race', async () => {
                 termPolicyRepository.publishInTx.mockResolvedValue(false);
 
@@ -762,7 +819,9 @@ describe('TermPolicyDomain', () => {
                         ],
                     messagePath: 'termPolicy.error.statusInvalid',
                 });
-                expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
+                expect(
+                    termPolicyRepository.archivePublishedByTypeInTx
+                ).not.toHaveBeenCalled();
                 expect(
                     notificationQueue.sendPublishTermPolicy
                 ).not.toHaveBeenCalled();
@@ -771,11 +830,13 @@ describe('TermPolicyDomain', () => {
 
             it('stages the activity log after the commit and before enqueueing', async () => {
                 const calls: string[] = [];
-                userDomain.resetTermPolicyInTx.mockImplementation(() => {
-                    calls.push('reset');
+                termPolicyRepository.archivePublishedByTypeInTx.mockImplementation(
+                    () => {
+                        calls.push('archive');
 
-                    return Promise.resolve();
-                });
+                        return Promise.resolve(1);
+                    }
+                );
                 notificationQueue.sendPublishTermPolicy.mockImplementation(
                     () => {
                         calls.push('enqueue');
@@ -807,13 +868,18 @@ describe('TermPolicyDomain', () => {
                     },
                     'user-1'
                 );
-                expect(calls).toEqual(['reset', 'commit', 'stage', 'enqueue']);
+                expect(calls).toEqual([
+                    'archive',
+                    'commit',
+                    'stage',
+                    'enqueue',
+                ]);
                 expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(
                     1
                 );
             });
 
-            it('enqueues nothing when the transaction fails after the reset', async () => {
+            it('enqueues nothing when the transaction fails after the archive', async () => {
                 const cause = new Error('commit failed');
                 databaseService.withTransaction.mockImplementation(async fn => {
                     await fn(tx);
@@ -832,14 +898,16 @@ describe('TermPolicyDomain', () => {
                     messagePath: 'http.serverError.internalServerError',
                     rawError: cause,
                 });
-                expect(userDomain.resetTermPolicyInTx).toHaveBeenCalled();
+                expect(
+                    termPolicyRepository.archivePublishedByTypeInTx
+                ).toHaveBeenCalled();
                 expect(
                     notificationQueue.sendPublishTermPolicy
                 ).not.toHaveBeenCalled();
                 expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             });
 
-            it('publishes the term policy, resets user acceptance, and stages the activity log', async () => {
+            it('publishes the term policy, archives the earlier published versions, and stages the activity log', async () => {
                 await domain.publishByAdmin('term-policy-1', 'user-1');
 
                 expect(awsS3Service.copyItems).toHaveBeenCalledWith(
@@ -855,10 +923,9 @@ describe('TermPolicyDomain', () => {
                 expect(
                     termPolicyRepository.findOneByIdInTx
                 ).toHaveBeenCalledWith(tx, 'term-policy-1');
-                expect(userDomain.resetTermPolicyInTx).toHaveBeenCalledWith(
-                    tx,
-                    EnumTermPolicyType.privacy
-                );
+                expect(
+                    termPolicyRepository.archivePublishedByTypeInTx
+                ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 1);
                 expect(activityLogDomain.prepare).toHaveBeenCalledWith(
                     expect.objectContaining({
                         action: EnumActivityLogAction.adminTermPolicyPublish,
@@ -928,7 +995,9 @@ describe('TermPolicyDomain', () => {
             });
             expect(awsS3Service.copyItems).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
+            expect(
+                termPolicyRepository.archivePublishedByTypeInTx
+            ).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy
             ).not.toHaveBeenCalled();
@@ -951,7 +1020,9 @@ describe('TermPolicyDomain', () => {
             });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(termPolicyRepository.publishInTx).not.toHaveBeenCalled();
-            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
+            expect(
+                termPolicyRepository.archivePublishedByTypeInTx
+            ).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy
@@ -1096,7 +1167,9 @@ describe('TermPolicyDomain', () => {
                     ],
                 messagePath: 'termPolicy.error.notFound',
             });
-            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
+            expect(
+                termPolicyRepository.archivePublishedByTypeInTx
+            ).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy

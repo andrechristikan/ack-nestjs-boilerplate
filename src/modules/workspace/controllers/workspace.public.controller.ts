@@ -7,12 +7,22 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { WorkspaceInvitePreviewRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
+import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
-import { Controller, Get, Param } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.public.workspace')
@@ -36,12 +46,13 @@ export class WorkspacePublicController {
     @FeatureFlagProtected('workspace')
     @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
-    @Get('/invite/:inviteToken/preview')
+    @HttpCode(HttpStatus.OK)
+    @Post('/invite/preview')
     async invitePreview(
-        @Param('inviteToken', { schema: RequestRequiredStringSchema })
-        inviteToken: string
+        @Body({ schema: WorkspaceInvitePreviewRequestSchema })
+        body: WorkspaceInvitePreviewRequestDto
     ): Promise<IResponseReturn<WorkspaceInvitePreviewResponseDto>> {
-        return this.workspaceInviteHttpService.previewInvite(inviteToken);
+        return this.workspaceInviteHttpService.previewInvite(body);
     }
 
     @Doc({

@@ -1,9 +1,5 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type {
-    Device,
-    EnumDeviceNotificationProvider,
-    Prisma,
-} from '@generated/prisma-client/client';
+import type { Device } from '@generated/prisma-client/client';
 import type {
     IDeviceIdentity,
     IDeviceRefresh,
@@ -13,26 +9,13 @@ export interface IDeviceRepository {
     upsertByFingerprintInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        { fingerprint, name, notificationToken, platform }: IDeviceIdentity,
-        notificationProvider: EnumDeviceNotificationProvider | null,
+        { fingerprint, name, platform }: IDeviceIdentity,
         now: Date
     ): Promise<Device>;
-    clearNotificationByIdsInTx(
-        tx: IDatabaseTransactionClient,
-        deviceIds: string[],
-        updatedBy: string,
-        now: Date
-    ): Promise<void>;
     refreshInTx(
         tx: IDatabaseTransactionClient,
         deviceId: string,
-        { name, notificationToken, platform }: IDeviceRefresh,
-        notificationProvider: EnumDeviceNotificationProvider | null,
+        { name, platform }: IDeviceRefresh,
         now: Date
     ): Promise<void>;
-    clearTokens(
-        deviceIds: string[],
-        updatedBy: string
-    ): Promise<Prisma.BatchPayload>;
-    clearStaleTokens(thresholdInMs: number): Promise<Prisma.BatchPayload>;
 }

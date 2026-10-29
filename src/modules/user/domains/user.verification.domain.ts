@@ -1,6 +1,8 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -48,6 +50,7 @@ export class UserVerificationDomain {
         private readonly userRepository: UserRepository,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperHashService: HelperHashService,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationRecipientDomain: NotificationRecipientDomain,
@@ -184,11 +187,15 @@ export class UserVerificationDomain {
                     EnumNotificationKind.verifiedEmail
                 );
             await this.databaseService.withTransaction(async tx => {
-                await this.userVerificationRepository.markUsedInTx(
-                    tx,
-                    verification.id,
-                    verifiedAt
-                );
+                const isMarkedUsed =
+                    await this.userVerificationRepository.markUsedInTx(
+                        tx,
+                        verification.id,
+                        verifiedAt
+                    );
+                if (!isMarkedUsed) {
+                    throw new UserTokenInvalidException();
+                }
                 await this.userRepository.markVerifiedInTx(
                     tx,
                     verification.userId,
@@ -206,6 +213,11 @@ export class UserVerificationDomain {
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new UserTokenInvalidException();
             }
 
             throw new AppUnknownException(err);
@@ -230,7 +242,7 @@ export class UserVerificationDomain {
             const canResendAt = this.helperDateService.forward(
                 lastVerification.createdAt,
                 Duration.fromObject({
-                    minutes: this.verificationExpiredInMinutes,
+                    minutes: this.verificationResendInMinutes,
                 })
             );
 

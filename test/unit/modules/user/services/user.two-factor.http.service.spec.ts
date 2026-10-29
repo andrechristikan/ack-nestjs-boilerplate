@@ -72,12 +72,6 @@ describe('UserTwoFactorHttpService', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -323,11 +317,17 @@ describe('UserTwoFactorHttpService', () => {
 
     describe('resetTwoFactorByAdmin', () => {
         it('delegates to the domain', async () => {
-            await service.resetTwoFactorByAdmin('user-marten', 'admin-marten');
+            await service.resetTwoFactorByAdmin('user-marten', {
+                ...user,
+                id: 'admin-marten',
+            });
 
             expect(
                 userTwoFactorDomain.resetTwoFactorByAdmin
-            ).toHaveBeenCalledWith('user-marten', 'admin-marten');
+            ).toHaveBeenCalledWith('user-marten', 'admin-marten', {
+                roleId: user.roleId,
+                roleType: user.role.type,
+            });
         });
     });
 });

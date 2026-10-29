@@ -12,7 +12,6 @@ import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
-import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
     ISession,
     ISessionList,
@@ -94,19 +93,41 @@ export class SessionDomain {
         );
     }
 
+    async findOneActive(
+        userId: string,
+        sessionId: string
+    ): Promise<ISession | null> {
+        return this.sessionRepository.findOneActive(userId, sessionId);
+    }
+
     async updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,
-        jti: string
-    ): Promise<void> {
-        const isUpdated = await this.sessionRepository.updateJtiInTx(
+        oldJti: string,
+        newJti: string
+    ): Promise<boolean> {
+        return this.sessionRepository.updateJtiInTx(
             tx,
             sessionId,
-            jti
+            oldJti,
+            newJti
         );
-        if (!isUpdated) {
-            throw new SessionRevokedException();
-        }
+    }
+
+    /** Revokes a session whose refresh token was replayed, as its own user; returns the ref to purge, none when it was already revoked. */
+    async revokeOnReuse(
+        userId: string,
+        sessionId: string
+    ): Promise<ISessionRef[]> {
+        const revokedAt = this.helperDateService.create();
+        const isRevoked = await this.sessionRepository.revoke(
+            userId,
+            sessionId,
+            userId,
+            revokedAt
+        );
+
+        return isRevoked ? [{ id: sessionId }] : [];
     }
 
     async revokeInTx(

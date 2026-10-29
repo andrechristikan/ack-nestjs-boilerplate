@@ -10,6 +10,12 @@ import { NotificationEmailAccountDomain } from '@modules/notification/domains/no
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { MessageService } from '@common/message/services/message.service';
+import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import {
+    expectEmailSentNotStamped,
+    expectEmailStampOrder,
+    stubEmailStampOrder,
+} from '@test/unit/helpers/test.unit.notification-email.helper';
 
 describe('NotificationEmailAccountDomain', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -19,6 +25,8 @@ describe('NotificationEmailAccountDomain', () => {
         mock<HelperDateService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
+    const notificationRepository: MockProxy<NotificationRepository> =
+        mock<NotificationRepository>();
     let domain: NotificationEmailAccountDomain;
 
     const send = {
@@ -55,6 +63,10 @@ describe('NotificationEmailAccountDomain', () => {
                 { provide: MessageService, useValue: messageService },
                 NotificationEmailAccountDomain,
                 { provide: AwsSESService, useValue: awsSESService },
+                {
+                    provide: NotificationRepository,
+                    useValue: notificationRepository,
+                },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
@@ -139,6 +151,35 @@ describe('NotificationEmailAccountDomain', () => {
                 expect.not.objectContaining({ cc: expect.anything() })
             );
         });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processWelcome(send);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(domain.processWelcome(send)).rejects.toThrow(
+                'ses down'
+            );
+
+            expectEmailSentNotStamped(notificationRepository);
+        });
     });
 
     describe('processWelcomeSocial', () => {
@@ -173,6 +214,35 @@ describe('NotificationEmailAccountDomain', () => {
             awsSESService.send.mockRejectedValue(error);
 
             await expect(domain.processWelcomeSocial(send)).rejects.toBe(error);
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processWelcomeSocial(send);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(domain.processWelcomeSocial(send)).rejects.toThrow(
+                'ses down'
+            );
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 
@@ -246,6 +316,35 @@ describe('NotificationEmailAccountDomain', () => {
             await expect(
                 domain.processWelcomeByAdmin(send, encrypted)
             ).rejects.toBe(error);
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processWelcomeByAdmin(send, encrypted);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processWelcomeByAdmin(send, encrypted)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 
@@ -322,6 +421,35 @@ describe('NotificationEmailAccountDomain', () => {
                 domain.processVerificationEmail(send, encrypted)
             ).rejects.toBe(error);
         });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processVerificationEmail(send, encrypted);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processVerificationEmail(send, encrypted)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
+        });
     });
 
     describe('processVerifiedEmail', () => {
@@ -364,6 +492,35 @@ describe('NotificationEmailAccountDomain', () => {
             await expect(domain.processVerifiedEmail(send, data)).rejects.toBe(
                 error
             );
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processVerifiedEmail(send, data);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processVerifiedEmail(send, data)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 
@@ -412,6 +569,35 @@ describe('NotificationEmailAccountDomain', () => {
             await expect(
                 domain.processVerifiedMobileNumber(send, data)
             ).rejects.toBe(error);
+        });
+
+        it('stamps the email delivery processed before the SES call and sent after it', async () => {
+            const callOrder = stubEmailStampOrder(
+                notificationRepository,
+                awsSESService,
+                helperDateService
+            );
+
+            await domain.processVerifiedMobileNumber(send, data);
+
+            expectEmailStampOrder(
+                notificationRepository,
+                callOrder,
+                send.notificationId
+            );
+        });
+
+        it('stamps no sent time when SES rejects', async () => {
+            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
+                true
+            );
+            awsSESService.send.mockRejectedValue(new Error('ses down'));
+
+            await expect(
+                domain.processVerifiedMobileNumber(send, data)
+            ).rejects.toThrow('ses down');
+
+            expectEmailSentNotStamped(notificationRepository);
         });
     });
 });

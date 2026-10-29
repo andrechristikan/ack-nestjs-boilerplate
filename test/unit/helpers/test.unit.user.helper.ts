@@ -1,23 +1,25 @@
 import type { MockProxy } from 'vitest-mock-extended';
-import type { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
 import type {
     IAuthJwtRefreshTokenPayload,
-    IAuthRefreshTokenGenerate,
+    IAuthAccessTokenGenerate,
 } from '@modules/auth/interfaces/auth.interface';
+import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type { SessionCache } from '@modules/session/caches/session.cache';
-import type { ISessionCache } from '@modules/session/interfaces/session.interface';
+import type { SessionDomain } from '@modules/session/domains/session.domain';
+import type { ISession } from '@modules/session/interfaces/session.interface';
 
 export interface IUserRefreshSessionDoubles {
     authJwtDomain: MockProxy<AuthJwtDomain>;
     sessionCache: MockProxy<SessionCache>;
-    helperHashService: MockProxy<HelperHashService>;
+    sessionDomain: MockProxy<SessionDomain>;
 }
 
 export interface IUserRefreshSessionFixture {
     payload: IAuthJwtRefreshTokenPayload;
-    session: ISessionCache;
-    refreshed: IAuthRefreshTokenGenerate;
+    session: ISession | null;
+    refreshed: IAuthAccessTokenGenerate;
 }
 
 export function stubUserRefreshSession(
@@ -25,11 +27,22 @@ export function stubUserRefreshSession(
     fixture: IUserRefreshSessionFixture
 ): void {
     doubles.authJwtDomain.payloadToken.mockReturnValue(fixture.payload);
-    doubles.sessionCache.getLogin.mockResolvedValue(fixture.session);
-    doubles.helperHashService.sha256Hash.mockImplementation(
-        value => `hash(${value})`
-    );
-    doubles.helperHashService.sha256Compare.mockReturnValue(true);
+    doubles.sessionDomain.findOneActive.mockResolvedValue(fixture.session);
     doubles.authJwtDomain.refreshToken.mockReturnValue(fixture.refreshed);
-    doubles.sessionCache.updateLogin.mockResolvedValue(true);
+    doubles.sessionDomain.updateJtiInTx.mockResolvedValue(true);
+    doubles.sessionCache.updateLogin.mockResolvedValue(
+        EnumSessionCacheUpdate.updated
+    );
+}
+
+export async function expectSessionRevoked(
+    call: Promise<unknown>
+): Promise<void> {
+    await expect(call).rejects.toMatchObject({
+        module: 'session',
+        statusCode: EnumSessionStatusCodeError.revoked,
+        statusCodeKey:
+            EnumSessionStatusCodeError[EnumSessionStatusCodeError.revoked],
+        messagePath: 'session.error.revoked',
+    });
 }

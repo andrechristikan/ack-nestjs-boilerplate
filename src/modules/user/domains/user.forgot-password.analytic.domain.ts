@@ -1,8 +1,5 @@
 import type { IAnalyticForgotPasswordConversion } from '@modules/analytic/interfaces/analytic.interface';
-import type {
-    IUserForgotPasswordAnalytic,
-    IUserForgotPasswordAnalyticUserCount,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserForgotPasswordAnalyticUserCount } from '@modules/user/interfaces/user.interface';
 import { UserForgotPasswordAnalyticRepository } from '@modules/user/repositories/user.forgot-password.analytic.repository';
 import { Injectable } from '@nestjs/common';
 
@@ -31,16 +28,6 @@ export class UserForgotPasswordAnalyticDomain {
             used,
             rate: created === 0 ? 0 : (used / created) * 100,
         };
-    }
-
-    getCreatedInRange(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IUserForgotPasswordAnalytic[]> {
-        return this.userForgotPasswordAnalyticRepository.findCreatedInRange(
-            startDate,
-            endDate
-        );
     }
 
     getUnusedTokenCountsByUser(

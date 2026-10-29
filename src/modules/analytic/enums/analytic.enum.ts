@@ -43,8 +43,14 @@ export enum EnumAnalyticFraudBand {
  * @public
  */
 export enum EnumAnalyticFraudContributingSignal {
-    nearLockout = 'nearLockout',
+    sessionAfterAdmin = 'sessionAfterAdmin',
+    impossibleTravel = 'impossibleTravel',
+    newDeviceAfterPasswordChange = 'newDeviceAfterPasswordChange',
+    credentialStuffingIp = 'credentialStuffingIp',
     sharedFingerprint = 'sharedFingerprint',
+    nearLockout = 'nearLockout',
+    massRegistrationIp = 'massRegistrationIp',
+    forgotPasswordAbuse = 'forgotPasswordAbuse',
 }
 
 /**
@@ -67,6 +73,7 @@ export enum EnumAnalyticDashboardMetric {
     usersMobileChurn = 'users.mobileChurn',
     authLoginFrequency = 'auth.loginFrequency',
     authLoginMethod = 'auth.loginMethod',
+    authLoginSource = 'auth.loginSource',
     authLockout = 'auth.lockout',
     authSessionRevoke = 'auth.sessionRevoke',
     authConcurrent = 'auth.concurrent',

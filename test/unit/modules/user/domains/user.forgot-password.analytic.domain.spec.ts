@@ -67,30 +67,6 @@ describe('UserForgotPasswordAnalyticDomain', () => {
         });
     });
 
-    describe('getCreatedInRange', () => {
-        it('delegates to the repository', async () => {
-            const rows = [
-                {
-                    id: 'forgot-1',
-                    userId: 'user-1',
-                    isUsed: false,
-                    createdAt: startDate,
-                    to: 'user1@example.com',
-                },
-            ];
-            userForgotPasswordAnalyticRepository.findCreatedInRange.mockResolvedValue(
-                rows
-            );
-
-            await expect(
-                domain.getCreatedInRange(startDate, endDate)
-            ).resolves.toBe(rows);
-            expect(
-                userForgotPasswordAnalyticRepository.findCreatedInRange
-            ).toHaveBeenCalledWith(startDate, endDate);
-        });
-    });
-
     describe('getUnusedTokenCountsByUser', () => {
         it('delegates to the repository', async () => {
             const rows = [{ userId: 'user-1', count: 2 }];

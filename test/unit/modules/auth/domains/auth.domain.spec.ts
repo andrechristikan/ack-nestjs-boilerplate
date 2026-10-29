@@ -198,7 +198,6 @@ describe('AuthDomain', () => {
             const cached: ISessionCache = {
                 userId: 'user-1',
                 sessionId: 'session-1',
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
                 jti: 'different-jti',
             };
             sessionCache.getLogin.mockResolvedValue(cached);
@@ -221,7 +220,6 @@ describe('AuthDomain', () => {
             const cached: ISessionCache = {
                 userId: 'user-1',
                 sessionId: 'session-1',
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
                 jti: 'jti-value',
             };
             sessionCache.getLogin.mockResolvedValue(cached);
@@ -242,7 +240,6 @@ describe('AuthDomain', () => {
             const cached: ISessionCache = {
                 userId: 'user-1',
                 sessionId: 'session-1',
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
                 jti: 'jti-value',
             };
             sessionCache.getLogin.mockResolvedValue(cached);
@@ -483,91 +480,15 @@ describe('AuthDomain', () => {
             });
         });
 
-        it('propagates a session cache failure instead of revoking the session', async () => {
-            const failure = new Error(
-                RedisErrorMessages.RedisClientNotConnectedThrown
-            );
-            sessionCache.getLogin.mockRejectedValue(failure);
-
-            await expect(
-                domain.validateJwtRefreshStrategy(refreshPayload)
-            ).rejects.toBe(failure);
-        });
-
-        it('throws SessionRevokedException when no session is cached', async () => {
+        it('returns the payload without reading the login cache', async () => {
             sessionCache.getLogin.mockResolvedValue(null);
-
-            await expect(
-                domain.validateJwtRefreshStrategy(refreshPayload)
-            ).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
-        });
-
-        it('throws SessionRevokedException when the cached jti does not match', async () => {
-            const cached: ISessionCache = {
-                userId: 'user-1',
-                sessionId: 'session-1',
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
-                jti: 'different-jti',
-            };
-            sessionCache.getLogin.mockResolvedValue(cached);
-            helperHashService.sha256Compare.mockReturnValue(false);
-
-            await expect(
-                domain.validateJwtRefreshStrategy(refreshPayload)
-            ).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
-        });
-
-        it('compares the jti through sha256Compare', async () => {
-            const cached: ISessionCache = {
-                userId: 'user-1',
-                sessionId: 'session-1',
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
-                jti: 'jti-value',
-            };
-            sessionCache.getLogin.mockResolvedValue(cached);
-            helperHashService.sha256Hash.mockImplementation(
-                value => `hash(${value})`
-            );
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            await domain.validateJwtRefreshStrategy(refreshPayload);
-
-            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
-                `hash(${cached.jti})`,
-                `hash(${refreshPayload.jti})`
-            );
-        });
-
-        it('returns the payload when the session is valid and the jti matches', async () => {
-            const cached: ISessionCache = {
-                userId: 'user-1',
-                sessionId: 'session-1',
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
-                jti: 'jti-value',
-            };
-            sessionCache.getLogin.mockResolvedValue(cached);
-            helperHashService.sha256Compare.mockReturnValue(true);
 
             const result =
                 await domain.validateJwtRefreshStrategy(refreshPayload);
 
             expect(result).toBe(refreshPayload);
+            expect(sessionCache.getLogin).not.toHaveBeenCalled();
+            expect(helperHashService.sha256Compare).not.toHaveBeenCalled();
         });
     });
 

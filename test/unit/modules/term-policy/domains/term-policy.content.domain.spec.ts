@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -26,6 +27,7 @@ import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
+import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
@@ -84,11 +86,18 @@ describe('TermPolicyContentDomain', () => {
         publishedAt: timestamp,
     };
 
+    const configGet = vi.fn<(key: string) => number>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const contentMaxSizeInBytes = 4096;
+
     let domain: TermPolicyContentDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
 
+        configGet.mockReturnValue(contentMaxSizeInBytes);
         awsS3Service.isInitialized.mockReturnValue(true);
         helperDateService.create.mockReturnValue(timestamp);
         termPolicyUtil.mapActivityLogMetadata.mockReturnValue({
@@ -111,6 +120,7 @@ describe('TermPolicyContentDomain', () => {
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
@@ -118,6 +128,52 @@ describe('TermPolicyContentDomain', () => {
     });
 
     describe('generateContentPresignByAdmin', () => {
+        it('throws TermPolicyContentSizeExceededException above the configured maximum', async () => {
+            const promise = domain.generateContentPresignByAdmin({
+                language: EnumMessageLanguage.en,
+                size: contentMaxSizeInBytes + 1,
+                type: EnumTermPolicyType.privacy,
+                version: 1,
+            });
+
+            await expect(promise).rejects.toBeInstanceOf(
+                TermPolicyContentSizeExceededException
+            );
+            await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'termPolicy.error.contentSizeExceeded',
+            });
+            expect(awsS3Service.presignPutItem).not.toHaveBeenCalled();
+        });
+
+        it('presigns a size at the configured maximum', async () => {
+            termPolicyRepository.findStatusByVersionAndType.mockResolvedValue(
+                null
+            );
+            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+                'term-policies/privacy/1/en.hbs'
+            );
+            const presign: IAwsS3Presign = {
+                key: 'term-policies/privacy/1/en.hbs',
+                mime: 'text/plain',
+                extension: 'hbs',
+                presignUrl: 'https://s3.example.com/presign',
+                expiredInSeconds: 900,
+            };
+            awsS3Service.presignPutItem.mockResolvedValue(presign);
+
+            const result = await domain.generateContentPresignByAdmin({
+                language: EnumMessageLanguage.en,
+                size: contentMaxSizeInBytes,
+                type: EnumTermPolicyType.privacy,
+                version: 1,
+            });
+
+            expect(result).toBe(presign);
+        });
+
         it('throws TermPolicyStatusInvalidException when the version is already published', async () => {
             termPolicyRepository.findStatusByVersionAndType.mockResolvedValue(
                 EnumTermPolicyStatus.published
@@ -299,9 +355,7 @@ describe('TermPolicyContentDomain', () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             const mapped: IAwsS3 = { ...existingContent };
             awsS3Service.mapPresign.mockReturnValue(mapped);
-            termPolicyRepository.updateContent.mockResolvedValue(
-                draftTermPolicy
-            );
+            termPolicyRepository.updateContent.mockResolvedValue(true);
 
             await domain.updateContentByAdmin('term-policy-1', {
                 language: EnumMessageLanguage.en,
@@ -324,6 +378,24 @@ describe('TermPolicyContentDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 preparedActivityLog,
             ]);
+        });
+
+        it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
+            termPolicyRepository.updateContent.mockResolvedValue(false);
+
+            const promise = domain.updateContentByAdmin('term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 2048,
+                key: 'term-policies/privacy/v1/en-2.hbs',
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyStatusInvalidException,
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
@@ -481,7 +553,7 @@ describe('TermPolicyContentDomain', () => {
                 key: 'term-policies/privacy/v1/fr.hbs',
             };
             awsS3Service.mapPresign.mockReturnValue(mapped);
-            termPolicyRepository.addContent.mockResolvedValue(draftTermPolicy);
+            termPolicyRepository.addContent.mockResolvedValue(true);
 
             await domain.addContentByAdmin('term-policy-1', {
                 language: EnumMessageLanguage.en,
@@ -496,6 +568,25 @@ describe('TermPolicyContentDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 preparedActivityLog,
             ]);
+        });
+
+        it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
+            termPolicyRepository.addContent.mockResolvedValue(false);
+
+            const promise = domain.addContentByAdmin('term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 1024,
+                key: 'term-policies/privacy/v1/fr.hbs',
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyStatusInvalidException,
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
@@ -620,9 +711,7 @@ describe('TermPolicyContentDomain', () => {
             termPolicyUtil.getContentByLanguage.mockReturnValue(
                 existingContent
             );
-            termPolicyRepository.removeContent.mockResolvedValue(
-                draftTermPolicy
-            );
+            termPolicyRepository.removeContent.mockResolvedValue(true);
 
             await domain.removeContentByAdmin(
                 'term-policy-1',
@@ -637,6 +726,25 @@ describe('TermPolicyContentDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 preparedActivityLog,
             ]);
+        });
+
+        it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentByLanguage.mockReturnValue(
+                existingContent
+            );
+            termPolicyRepository.removeContent.mockResolvedValue(false);
+
+            const promise = domain.removeContentByAdmin(
+                'term-policy-1',
+                EnumMessageLanguage.en
+            );
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyStatusInvalidException,
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised while removing', async () => {

@@ -6,6 +6,8 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -18,15 +20,16 @@ import {
     EnumActivityLogAction,
     EnumRoleType,
     EnumTermPolicyType,
-    EnumTermPolicyStatus,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
-import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import type {
+    ITermPolicyRef,
+    ITermPolicyUserAcceptance,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import {
     EnumUserGender,
@@ -48,7 +51,7 @@ describe('TermPolicyAcceptanceDomain', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const tx = {} as IDatabaseTransactionClient;
@@ -77,12 +80,6 @@ describe('TermPolicyAcceptanceDomain', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: timestamp,
         createdBy: null,
@@ -102,19 +99,6 @@ describe('TermPolicyAcceptanceDomain', () => {
             policies: [],
         },
         twoFactor: null,
-    };
-
-    const termPolicy: TermPolicy = {
-        id: 'term-policy-1',
-        type: EnumTermPolicyType.privacy,
-        contents: [],
-        version: 1,
-        status: EnumTermPolicyStatus.published,
-        publishedAt: timestamp,
-        createdAt: timestamp,
-        createdBy: null,
-        updatedAt: timestamp,
-        updatedBy: null,
     };
 
     let domain: TermPolicyAcceptanceDomain;
@@ -139,46 +123,112 @@ describe('TermPolicyAcceptanceDomain', () => {
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: UserDomain, useValue: userDomain },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
         domain = module.get(TermPolicyAcceptanceDomain);
     });
 
-    describe('validateTermPolicyGuard', () => {
+    describe('getPendingForUser', () => {
+        const privacyV2: ITermPolicyRef = {
+            id: 'privacy-2',
+            type: EnumTermPolicyType.privacy,
+            version: 2,
+        };
+        const termsV1: ITermPolicyRef = {
+            id: 'terms-1',
+            type: EnumTermPolicyType.termsOfService,
+            version: 1,
+        };
+
         it('defaults to terms-of-service and privacy when no required types are given', async () => {
-            const user: IUser = {
-                ...baseUser,
-                termPolicy: {
-                    ...baseUser.termPolicy,
-                    termsOfService: true,
-                    privacy: false,
-                },
-            };
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
+                []
+            );
 
-            const promise = domain.validateTermPolicyGuard(user, []);
+            await domain.getPendingForUser('user-1', []);
 
-            await expect(promise).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
-                statusCodeKey:
-                    EnumTermPolicyStatusCodeError[
-                        EnumTermPolicyStatusCodeError.requiredInvalid
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'termPolicy.error.requiredInvalid',
-            });
+            expect(
+                termPolicyRepository.findLatestPublishedByTypes
+            ).toHaveBeenCalledWith([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+            ]);
         });
 
-        it('throws TermPolicyRequiredInvalidException when a named required type is not accepted', async () => {
-            const user: IUser = {
-                ...baseUser,
-                termPolicy: { ...baseUser.termPolicy, marketing: false },
-            };
+        it('returns an empty list and reads no acceptance when no required type is published', async () => {
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
+                []
+            );
 
-            const promise = domain.validateTermPolicyGuard(user, [
+            const result = await domain.getPendingForUser('user-1', [
                 EnumTermPolicyType.marketing,
+            ]);
+
+            expect(result).toEqual([]);
+            expect(
+                termPolicyRepository.findAcceptedTermPolicyIdsByUser
+            ).not.toHaveBeenCalled();
+        });
+
+        it('returns the latest published policy the user accepted only at an earlier version', async () => {
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
+                termsV1,
+                privacyV2,
+            ]);
+            termPolicyRepository.findAcceptedTermPolicyIdsByUser.mockResolvedValue(
+                ['terms-1', 'privacy-1']
+            );
+
+            const result = await domain.getPendingForUser('user-1', []);
+
+            expect(
+                termPolicyRepository.findAcceptedTermPolicyIdsByUser
+            ).toHaveBeenCalledWith('user-1', ['terms-1', 'privacy-2']);
+            expect(result).toEqual([privacyV2]);
+        });
+
+        it('returns an empty list when the user accepted every latest published policy', async () => {
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
+                termsV1,
+                privacyV2,
+            ]);
+            termPolicyRepository.findAcceptedTermPolicyIdsByUser.mockResolvedValue(
+                ['terms-1', 'privacy-2']
+            );
+
+            const result = await domain.getPendingForUser('user-1', []);
+
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('validateTermPolicyGuard', () => {
+        it('resolves when nothing is pending', async () => {
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
+                []
+            );
+
+            await expect(
+                domain.validateTermPolicyGuard('user-1', [])
+            ).resolves.toBeUndefined();
+        });
+
+        it('throws TermPolicyRequiredInvalidException when the user accepted only version 1 and version 2 is published', async () => {
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
+                {
+                    id: 'privacy-2',
+                    type: EnumTermPolicyType.privacy,
+                    version: 2,
+                },
+            ]);
+            termPolicyRepository.findAcceptedTermPolicyIdsByUser.mockResolvedValue(
+                []
+            );
+
+            const promise = domain.validateTermPolicyGuard('user-1', [
+                EnumTermPolicyType.privacy,
             ]);
 
             await expect(promise).rejects.toMatchObject({
@@ -192,18 +242,66 @@ describe('TermPolicyAcceptanceDomain', () => {
                 messagePath: 'termPolicy.error.requiredInvalid',
             });
         });
+    });
 
-        it('resolves when every required type is accepted', async () => {
-            const user: IUser = {
-                ...baseUser,
-                termPolicy: { ...baseUser.termPolicy, cookies: true },
-            };
+    describe('assertRequiredPublishedInTx', () => {
+        it('returns the latest published policy of every required type', async () => {
+            const refs: ITermPolicyRef[] = [
+                {
+                    id: 'terms-1',
+                    type: EnumTermPolicyType.termsOfService,
+                    version: 1,
+                },
+                {
+                    id: 'privacy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                },
+            ];
+            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
+                refs
+            );
 
-            await expect(
-                domain.validateTermPolicyGuard(user, [
-                    EnumTermPolicyType.cookies,
-                ])
-            ).resolves.toBeUndefined();
+            const result = await domain.assertRequiredPublishedInTx(tx, [
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+            ]);
+
+            expect(result).toBe(refs);
+            expect(
+                termPolicyRepository.findLatestPublishedByTypesInTx
+            ).toHaveBeenCalledWith(tx, [
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+            ]);
+        });
+
+        it('throws TermPolicyRequiredNotPublishedException when privacy has no published row', async () => {
+            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
+                [
+                    {
+                        id: 'terms-1',
+                        type: EnumTermPolicyType.termsOfService,
+                        version: 1,
+                    },
+                ]
+            );
+
+            const promise = domain.assertRequiredPublishedInTx(tx, [
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+            ]);
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.requiredNotPublished,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.requiredNotPublished
+                    ],
+                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                messagePath: 'termPolicy.error.requiredNotPublished',
+            });
         });
     });
 
@@ -229,10 +327,16 @@ describe('TermPolicyAcceptanceDomain', () => {
     });
 
     describe('acceptPublishedInTx', () => {
-        it('accepts every published type found and skips a type with no published policy', async () => {
-            termPolicyRepository.findPublishedByTypesInTx.mockResolvedValue([
-                termPolicy,
-            ]);
+        it('writes one acceptance row per latest published type and skips a type with no published policy', async () => {
+            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
+                [
+                    {
+                        id: 'term-policy-1',
+                        type: EnumTermPolicyType.privacy,
+                        version: 2,
+                    },
+                ]
+            );
 
             await domain.acceptPublishedInTx(
                 tx,
@@ -241,6 +345,12 @@ describe('TermPolicyAcceptanceDomain', () => {
                 'user-1'
             );
 
+            expect(
+                termPolicyRepository.findLatestPublishedByTypesInTx
+            ).toHaveBeenCalledWith(tx, [
+                EnumTermPolicyType.privacy,
+                EnumTermPolicyType.marketing,
+            ]);
             expect(termPolicyRepository.acceptInTx).toHaveBeenCalledTimes(1);
             expect(termPolicyRepository.acceptInTx).toHaveBeenCalledWith(
                 tx,
@@ -257,12 +367,23 @@ describe('TermPolicyAcceptanceDomain', () => {
             ...TestRecipient,
             userId: 'user-1',
         };
+        const latest: ITermPolicyRef = {
+            id: 'term-policy-1',
+            type: EnumTermPolicyType.privacy,
+            version: 1,
+        };
 
         const user: IUser = baseUser;
 
-        it('throws TermPolicyNotFoundException when no published policy of the type exists', async () => {
-            termPolicyRepository.findLatestPublishedByType.mockResolvedValue(
-                null
+        it('throws TermPolicyNotFoundException when the transaction finds no published policy of the type', async () => {
+            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
+                []
+            );
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
+            databaseService.withTransaction.mockImplementation(async fn =>
+                fn(tx)
             );
 
             const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
@@ -277,37 +398,68 @@ describe('TermPolicyAcceptanceDomain', () => {
                 httpStatus: HttpStatus.NOT_FOUND,
                 messagePath: 'termPolicy.error.notFound',
             });
+            expect(termPolicyRepository.acceptInTx).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendUserAcceptTermPolicy
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws TermPolicyAlreadyAcceptedException when the user already accepted the policy', async () => {
-            termPolicyRepository.findLatestPublishedByType.mockResolvedValue(
-                termPolicy
+        it('throws TermPolicyAlreadyAcceptedException when the acceptance insert collides on the unique index', async () => {
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
             );
-            termPolicyRepository.existsAcceptanceByPolicyAndUser.mockResolvedValue(
-                true
+            const collision = new Prisma.PrismaClientKnownRequestError(
+                'unique',
+                { code: 'P2002', clientVersion: 'test' }
             );
+            databaseService.withTransaction.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
 
             await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyAlreadyAcceptedException,
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
                 statusCodeKey:
                     EnumTermPolicyStatusCodeError[
                         EnumTermPolicyStatusCodeError.alreadyAccepted
                     ],
-                httpStatus: HttpStatus.CONFLICT,
+                httpStatus: HttpStatus.BAD_REQUEST,
                 messagePath: 'termPolicy.error.alreadyAccepted',
             });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'termPolicyId'
+            );
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendUserAcceptTermPolicy
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws TermPolicyAlreadyAcceptedException when the transaction hits a write conflict', async () => {
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
+            );
+            const conflict = new Error('write conflict');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyAlreadyAcceptedException,
+                statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
+                httpStatus: HttpStatus.BAD_REQUEST,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('commits nothing and stages nothing when the recipient read rejects', async () => {
-            termPolicyRepository.findLatestPublishedByType.mockResolvedValue(
-                termPolicy
-            );
-            termPolicyRepository.existsAcceptanceByPolicyAndUser.mockResolvedValue(
-                false
-            );
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
@@ -327,12 +479,9 @@ describe('TermPolicyAcceptanceDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('accepts the policy, stages the activity log, and queues the notification', async () => {
-            termPolicyRepository.findLatestPublishedByType.mockResolvedValue(
-                termPolicy
-            );
-            termPolicyRepository.existsAcceptanceByPolicyAndUser.mockResolvedValue(
-                false
+        it('accepts the latest published policy re-read inside the transaction, stages the activity log, and queues the notification', async () => {
+            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
+                [latest]
             );
             const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userAcceptTermPolicy,
@@ -345,24 +494,21 @@ describe('TermPolicyAcceptanceDomain', () => {
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
-
             notificationRecipientDomain.getRecipient.mockResolvedValue(
                 recipient
             );
 
             await domain.userAccept(user, EnumTermPolicyType.privacy);
 
+            expect(
+                termPolicyRepository.findLatestPublishedByTypesInTx
+            ).toHaveBeenCalledWith(tx, [EnumTermPolicyType.privacy]);
             expect(termPolicyRepository.acceptInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'term-policy-1',
                 'user-1',
                 timestamp
-            );
-            expect(userDomain.acceptTermPolicyInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                EnumTermPolicyType.privacy
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 preparedActivityLog,
@@ -382,40 +528,14 @@ describe('TermPolicyAcceptanceDomain', () => {
             });
         });
 
-        it('rethrows an AppBaseException raised during acceptance', async () => {
-            termPolicyRepository.findLatestPublishedByType.mockResolvedValue(
-                termPolicy
-            );
-            termPolicyRepository.existsAcceptanceByPolicyAndUser.mockResolvedValue(
-                false
-            );
-            const error = new TermPolicyAlreadyAcceptedException();
-            databaseService.withTransaction.mockRejectedValue(error);
-
-            const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
-
-            await expect(promise).rejects.toBe(error);
-            await expect(promise).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
-                statusCodeKey:
-                    EnumTermPolicyStatusCodeError[
-                        EnumTermPolicyStatusCodeError.alreadyAccepted
-                    ],
-                httpStatus: HttpStatus.CONFLICT,
-                messagePath: 'termPolicy.error.alreadyAccepted',
-            });
-        });
-
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
-            termPolicyRepository.findLatestPublishedByType.mockResolvedValue(
-                termPolicy
-            );
-            termPolicyRepository.existsAcceptanceByPolicyAndUser.mockResolvedValue(
-                false
+            notificationRecipientDomain.getRecipient.mockResolvedValue(
+                recipient
             );
             const rawError = new Error('write failed');
             databaseService.withTransaction.mockRejectedValue(rawError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+            databaseUtil.toException.mockReturnValue(null);
 
             const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
 

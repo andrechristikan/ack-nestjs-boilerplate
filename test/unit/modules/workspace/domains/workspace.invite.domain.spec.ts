@@ -114,7 +114,8 @@ describe('WorkspaceInviteDomain', () => {
         'workspace.invite.tokenLength': 40,
         'workspace.invite.referencePrefix': 'WIN',
         'workspace.invite.referenceRandomLength': 6,
-        'workspace.invite.linkPattern': '{homeUrl}/invite/{token}',
+        'workspace.invite.linkPattern':
+            '{homeUrl}/workspace/invites?inviteToken={token}',
         'workspace.invite.signUpLinkPattern': '{homeUrl}/sign-up/{token}',
     };
 
@@ -176,12 +177,6 @@ describe('WorkspaceInviteDomain', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: true,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -509,7 +504,7 @@ describe('WorkspaceInviteDomain', () => {
                 new Date('2026-01-08T00:00:00.000Z')
             );
             helperStringService.fillPattern.mockReturnValue(
-                'https://app.example.com/invite/random-value'
+                'https://app.example.com/workspace/invites?inviteToken=random-value'
             );
             databaseUtil.createId.mockReturnValue('invite-1');
             workspaceInviteRepository.existsPendingByWorkspaceAndEmail.mockResolvedValue(
@@ -831,7 +826,7 @@ describe('WorkspaceInviteDomain', () => {
                 new Date('2026-01-08T00:00:00.000Z')
             );
             helperStringService.fillPattern.mockReturnValue(
-                'https://app.example.com/invite/random-value'
+                'https://app.example.com/workspace/invites?inviteToken=random-value'
             );
             userDomain.getOneActiveByEmail.mockResolvedValue(null);
         });
@@ -1799,7 +1794,7 @@ describe('WorkspaceInviteDomain', () => {
             );
             helperStringService.fillPattern
                 .mockReturnValueOnce(
-                    'https://app.example.com/invite/token-value'
+                    'https://app.example.com/workspace/invites?inviteToken=token-value'
                 )
                 .mockReturnValueOnce(
                     'https://app.example.com/sign-up/token-value'
@@ -1814,7 +1809,8 @@ describe('WorkspaceInviteDomain', () => {
                 hashedToken: 'hashed-token',
                 reference: 'WIN-reference-suffix',
                 expiredAt: new Date('2026-01-08T00:00:00.000Z'),
-                claimLink: 'https://app.example.com/invite/token-value',
+                claimLink:
+                    'https://app.example.com/workspace/invites?inviteToken=token-value',
                 signUpLink: 'https://app.example.com/sign-up/token-value',
             });
             expect(helperDateService.forward).toHaveBeenCalledWith(
@@ -1941,7 +1937,8 @@ describe('WorkspaceInviteDomain', () => {
             hashedToken: 'hashed-token',
             reference: 'WIN-abc123',
             expiredAt: new Date('2026-02-01T00:00:00.000Z'),
-            claimLink: 'https://app.example.com/invite/token-value',
+            claimLink:
+                'https://app.example.com/workspace/invites?inviteToken=token-value',
             signUpLink: 'https://app.example.com/sign-up/token-value',
         };
 

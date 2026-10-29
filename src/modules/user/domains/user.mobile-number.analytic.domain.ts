@@ -14,10 +14,19 @@ export class UserMobileNumberAnalyticDomain {
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain
     ) {}
 
-    async getVerificationRate(): Promise<IAnalyticMetricRate> {
+    async getVerificationRate(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticMetricRate> {
         const [verified, total] = await Promise.all([
-            this.userMobileNumberAnalyticRepository.countVerified(),
-            this.userMobileNumberAnalyticRepository.countAll(),
+            this.userMobileNumberAnalyticRepository.countVerified(
+                startDate,
+                endDate
+            ),
+            this.userMobileNumberAnalyticRepository.countAll(
+                startDate,
+                endDate
+            ),
         ]);
         return {
             count: verified,

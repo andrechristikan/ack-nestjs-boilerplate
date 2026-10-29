@@ -273,7 +273,10 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const result = await this.userAnalyticDomain.getEmailVerificationRate();
+        const result = await this.userAnalyticDomain.getEmailVerificationRate(
+            startDate,
+            endDate
+        );
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -294,7 +297,10 @@ export class AnalyticDashboardDomain {
         }
 
         const result =
-            await this.userMobileNumberAnalyticDomain.getVerificationRate();
+            await this.userMobileNumberAnalyticDomain.getVerificationRate(
+                startDate,
+                endDate
+            );
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -494,11 +500,34 @@ export class AnalyticDashboardDomain {
         return result;
     }
 
-    authLoginSource(
+    async authLoginSource(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticBucketsResult> {
-        return this.authLoginMethod(startDate, endDate);
+        const metric = EnumAnalyticDashboardMetric.authLoginSource;
+        const cached = await this.readCache<IAnalyticBucketsResult>(
+            metric,
+            startDate,
+            endDate
+        );
+        if (cached) {
+            return cached;
+        }
+
+        const rows = await this.userAnalyticDomain.getGroupLoginSource(
+            startDate,
+            endDate
+        );
+
+        const result = {
+            buckets: rows.map(r => ({
+                key: r.key,
+                count: r.count,
+            })),
+        };
+        await this.writeCache(metric, startDate, endDate, result);
+
+        return result;
     }
 
     async authLockout(
@@ -567,7 +596,8 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const rows = await this.sessionAnalyticDomain.getCountActiveByUser();
+        const now = this.helperDateService.create();
+        const rows = await this.sessionAnalyticDomain.getCountActiveByUser(now);
 
         const result = {
             buckets: rows.map(r => ({
@@ -594,9 +624,11 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
+        const now = this.helperDateService.create();
         const rows = await this.sessionAnalyticDomain.getGroupByCountry(
             startDate,
-            endDate
+            endDate,
+            now
         );
 
         const result = { buckets: rows };
@@ -619,10 +651,12 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
+        const now = this.helperDateService.create();
         const sessions =
             await this.sessionAnalyticDomain.getActiveWithGeoInRange(
                 startDate,
-                endDate
+                endDate,
+                now
             );
         const map = new Map<string, number>();
         for (const s of sessions) {
@@ -1036,8 +1070,9 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
+        const now = this.helperDateService.create();
         const [sessions, devices] = await Promise.all([
-            this.sessionAnalyticDomain.getCountActive(),
+            this.sessionAnalyticDomain.getCountActive(now),
             this.deviceAnalyticDomain.getCountOwnerships(),
         ]);
 

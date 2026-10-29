@@ -103,16 +103,6 @@ export class AuthDomain {
             throw new AuthJwtRefreshTokenInvalidException();
         }
 
-        const isValidSession = await this.sessionCache.getLogin(sub, sessionId);
-        if (!isValidSession) {
-            throw new SessionRevokedException();
-        }
-
-        const isJtiMatch = this.isSessionJtiMatch(isValidSession.jti, jti);
-        if (!isJtiMatch) {
-            throw new SessionRevokedException();
-        }
-
         return payload;
     }
 

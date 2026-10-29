@@ -27,6 +27,18 @@ describe('AwsS3PresignRequestSchema', () => {
         ).toThrow();
     });
 
+    it('rejects a size below 1', () => {
+        expect(() =>
+            AwsS3PresignRequestSchema.parse({ ...payload, size: 0 })
+        ).toThrow();
+    });
+
+    it('rejects a non-integer size', () => {
+        expect(() =>
+            AwsS3PresignRequestSchema.parse({ ...payload, size: 1.5 })
+        ).toThrow();
+    });
+
     it('rejects an undeclared key', () => {
         expect(() =>
             AwsS3PresignRequestSchema.parse({ ...payload, extra: true })

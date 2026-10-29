@@ -23,6 +23,7 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
+import { UnrecoverableError } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 
 /** Renders and delivers the password, two-factor and new-device login push messages. */
@@ -44,6 +45,48 @@ export class NotificationPushSecurityDomain {
         this.encryptionSecretKey = this.configService.get<string>(
             'app.encryptionSecretKey'
         )!;
+    }
+
+    private throwDeliveryNotFound(process: EnumNotificationPushProcess): never {
+        const message = this.messageService.setMessage(
+            'notification.queue.push.error.deliveryNotFound',
+            { properties: { process } }
+        );
+
+        throw new UnrecoverableError(message);
+    }
+
+    private async stampProcessed(
+        notificationId: string,
+        process: EnumNotificationPushProcess
+    ): Promise<void> {
+        const processedAt = this.helperDateService.create();
+        const stamped =
+            await this.notificationRepository.updateDeliveryProcessedAt(
+                notificationId,
+                EnumNotificationChannel.push,
+                processedAt
+            );
+        if (!stamped) {
+            this.throwDeliveryNotFound(process);
+        }
+    }
+
+    private async stampSent(
+        notificationId: string,
+        failureTokens: string[],
+        process: EnumNotificationPushProcess
+    ): Promise<void> {
+        const sentAt = this.helperDateService.create();
+        const stamped = await this.notificationRepository.updateDeliverySentAt(
+            notificationId,
+            EnumNotificationChannel.push,
+            sentAt,
+            failureTokens
+        );
+        if (!stamped) {
+            this.throwDeliveryNotFound(process);
+        }
     }
 
     private decryptToken(encryptedToken: string, userId: string): string {
@@ -141,10 +184,9 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.notificationRepository.updateProcessAt(
-                userId,
+            await this.stampProcessed(
                 notificationId,
-                EnumNotificationChannel.push
+                EnumNotificationPushProcess.newDeviceLogin
             );
             done.push(EnumNotificationStep.updateProcessAt);
         }
@@ -218,11 +260,10 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.notificationRepository.updateSentAt(
-                userId,
+            const sentAtUpdated = this.stampSent(
                 notificationId,
-                EnumNotificationChannel.push,
-                plainFailureTokens
+                plainFailureTokens,
+                EnumNotificationPushProcess.newDeviceLogin
             );
             steps.push(EnumNotificationStep.updateSentAt);
             promises.push(sentAtUpdated);
@@ -293,10 +334,9 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.notificationRepository.updateProcessAt(
-                userId,
+            await this.stampProcessed(
                 notificationId,
-                EnumNotificationChannel.push
+                EnumNotificationPushProcess.resetTwoFactorByAdmin
             );
             done.push(EnumNotificationStep.updateProcessAt);
         }
@@ -361,11 +401,10 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.notificationRepository.updateSentAt(
-                userId,
+            const sentAtUpdated = this.stampSent(
                 notificationId,
-                EnumNotificationChannel.push,
-                plainFailureTokens
+                plainFailureTokens,
+                EnumNotificationPushProcess.resetTwoFactorByAdmin
             );
             steps.push(EnumNotificationStep.updateSentAt);
             promises.push(sentAtUpdated);
@@ -437,10 +476,9 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.notificationRepository.updateProcessAt(
-                userId,
+            await this.stampProcessed(
                 notificationId,
-                EnumNotificationChannel.push
+                EnumNotificationPushProcess.temporaryPasswordByAdmin
             );
             done.push(EnumNotificationStep.updateProcessAt);
         }
@@ -511,11 +549,10 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.notificationRepository.updateSentAt(
-                userId,
+            const sentAtUpdated = this.stampSent(
                 notificationId,
-                EnumNotificationChannel.push,
-                plainFailureTokens
+                plainFailureTokens,
+                EnumNotificationPushProcess.temporaryPasswordByAdmin
             );
             steps.push(EnumNotificationStep.updateSentAt);
             promises.push(sentAtUpdated);
@@ -585,10 +622,9 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.notificationRepository.updateProcessAt(
-                userId,
+            await this.stampProcessed(
                 notificationId,
-                EnumNotificationChannel.push
+                EnumNotificationPushProcess.resetPassword
             );
             done.push(EnumNotificationStep.updateProcessAt);
         }
@@ -652,11 +688,10 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.notificationRepository.updateSentAt(
-                userId,
+            const sentAtUpdated = this.stampSent(
                 notificationId,
-                EnumNotificationChannel.push,
-                plainFailureTokens
+                plainFailureTokens,
+                EnumNotificationPushProcess.resetPassword
             );
             steps.push(EnumNotificationStep.updateSentAt);
             promises.push(sentAtUpdated);
@@ -726,10 +761,9 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.notificationRepository.updateProcessAt(
-                userId,
+            await this.stampProcessed(
                 notificationId,
-                EnumNotificationChannel.push
+                EnumNotificationPushProcess.forgotPassword
             );
             done.push(EnumNotificationStep.updateProcessAt);
         }
@@ -793,11 +827,10 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.notificationRepository.updateSentAt(
-                userId,
+            const sentAtUpdated = this.stampSent(
                 notificationId,
-                EnumNotificationChannel.push,
-                plainFailureTokens
+                plainFailureTokens,
+                EnumNotificationPushProcess.forgotPassword
             );
             steps.push(EnumNotificationStep.updateSentAt);
             promises.push(sentAtUpdated);

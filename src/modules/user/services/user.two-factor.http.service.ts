@@ -119,9 +119,12 @@ export class UserTwoFactorHttpService {
 
     async resetTwoFactorByAdmin(
         userId: string,
-        updatedBy: string
+        user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.userTwoFactorDomain.resetTwoFactorByAdmin(userId, updatedBy);
+        await this.userTwoFactorDomain.resetTwoFactorByAdmin(userId, user.id, {
+            roleId: user.roleId,
+            roleType: user.role.type,
+        });
 
         return {};
     }

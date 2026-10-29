@@ -15,7 +15,6 @@ describe('DeviceOwnershipResponseSchema', () => {
         name: 'iPhone 12',
         platform: EnumDevicePlatform.ios,
         lastActiveAt: createdAt,
-        notificationProvider: EnumDeviceNotificationProvider.apns,
     };
     const row = {
         id: 'device-ownership-1',
@@ -26,6 +25,7 @@ describe('DeviceOwnershipResponseSchema', () => {
         deviceId: 'device-1',
         device,
         userId: 'user-1',
+        notificationProvider: EnumDeviceNotificationProvider.apns,
         revokedAt: null,
         isRevoked: false,
         revokedById: null,

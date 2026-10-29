@@ -8,4 +8,6 @@ export enum EnumRequestStatusCodeError {
     envNotAllowed = 50302,
     schemaMissing = 50303,
     contextMissing = 50304,
+    payloadTooLarge = 50305,
+    unsupportedMediaType = 50306,
 }

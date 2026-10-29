@@ -1,6 +1,8 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -26,6 +28,7 @@ import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exc
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordMustNewException } from '@modules/user/exceptions/user.password-must-new.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
     IUser,
     IUserChangePassword,
@@ -38,6 +41,8 @@ import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
@@ -65,6 +70,7 @@ export class UserPasswordDomain {
         private readonly sessionDomain: SessionDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationRecipientDomain: NotificationRecipientDomain,
@@ -72,7 +78,8 @@ export class UserPasswordDomain {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
-        private readonly deviceDomain: DeviceDomain
+        private readonly deviceDomain: DeviceDomain,
+        private readonly roleDomain: RoleDomain
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
 
@@ -168,10 +175,15 @@ export class UserPasswordDomain {
             // Sequential by design: write must not run if an earlier step throws
             const revoked = await this.databaseService.withTransaction(
                 async tx => {
-                    await this.userDomain.deactivateForMaxPasswordAttemptInTx(
-                        tx,
-                        userId
-                    );
+                    const isDeactivated =
+                        await this.userDomain.deactivateForMaxPasswordAttemptInTx(
+                            tx,
+                            userId
+                        );
+                    if (!isDeactivated) {
+                        throw new UserPasswordAttemptMaxException();
+                    }
+
                     const sessions =
                         await this.sessionDomain.revokeActiveByUserInTx(
                             tx,
@@ -202,29 +214,39 @@ export class UserPasswordDomain {
                 throw err;
             }
 
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new UserPasswordAttemptMaxException();
+            }
+
             throw new AppUnknownException(err);
         }
     }
 
     async updatePasswordByAdmin(
         userId: string,
-        updatedBy: string
+        updatedBy: string,
+        actor: IRoleActor
     ): Promise<void> {
         if (userId === updatedBy) {
             throw new UserNotSelfException();
         }
 
         // Sequential by design: gate before the work it guards
-        const user = await this.userRepository.findOneById(userId);
+        const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new UserNotFoundException();
-        } else if (user.status === EnumUserStatus.blocked) {
+        }
+
+        this.roleDomain.assertActorOutranks(actor.roleType, user.role.type);
+
+        if (user.status === EnumUserStatus.blocked) {
             throw new UserBlockedInvalidException();
         }
 
         try {
             const passwordString = this.authPasswordUtil.createPasswordRandom();
-            const password = this.authPasswordUtil.createPassword(
+            const password = await this.authPasswordUtil.createPassword(
                 passwordString,
                 {
                     temporary: true,
@@ -331,19 +353,18 @@ export class UserPasswordDomain {
         }: IUserChangePassword
     ): Promise<void> {
         if (user.password) {
-            const isPasswordAttemptMaxed =
-                this.authPasswordUtil.checkPasswordAttempt(user);
-            if (isPasswordAttemptMaxed) {
+            const isAttemptCounted =
+                await this.userLoginDomain.incrementPasswordAttempt(user.id);
+            if (!isAttemptCounted) {
                 throw new UserPasswordAttemptMaxException();
             }
 
-            const isPasswordValid = this.authPasswordUtil.validatePassword(
-                oldPassword,
-                user.password
-            );
+            const isPasswordValid =
+                await this.authPasswordUtil.validatePassword(
+                    oldPassword,
+                    user.password
+                );
             if (!isPasswordValid) {
-                await this.userDomain.increasePasswordAttempt(user.id);
-
                 throw new UserPasswordNotMatchException();
             }
 
@@ -351,10 +372,11 @@ export class UserPasswordDomain {
                 this.userDomain.resetPasswordAttempt(user.id),
                 this.passwordHistoryDomain.getActiveByUser(user.id),
             ]);
-            const passwordCheck = this.authPasswordUtil.checkPasswordPeriod(
-                passwordHistories,
-                newPassword
-            );
+            const passwordCheck =
+                await this.authPasswordUtil.checkPasswordPeriod(
+                    passwordHistories,
+                    newPassword
+                );
             if (passwordCheck) {
                 const passwordPeriodInDays =
                     this.authPasswordUtil.getPasswordPeriodInDays();
@@ -375,7 +397,8 @@ export class UserPasswordDomain {
         }
 
         try {
-            const password = this.authPasswordUtil.createPassword(newPassword);
+            const password =
+                await this.authPasswordUtil.createPassword(newPassword);
             const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userChangePassword,
@@ -558,7 +581,7 @@ export class UserPasswordDomain {
             await this.passwordHistoryDomain.getActiveByUser(
                 resetPassword.userId
             );
-        const passwordCheck = this.authPasswordUtil.checkPasswordPeriod(
+        const passwordCheck = await this.authPasswordUtil.checkPasswordPeriod(
             passwordHistories,
             newPassword
         );
@@ -583,7 +606,8 @@ export class UserPasswordDomain {
         }
 
         try {
-            const password = this.authPasswordUtil.createPassword(newPassword);
+            const password =
+                await this.authPasswordUtil.createPassword(newPassword);
             const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userResetPassword,
@@ -624,11 +648,15 @@ export class UserPasswordDomain {
                         password.passwordCreated,
                         resetPassword.userId
                     );
-                    await this.userPasswordRepository.markUsedInTx(
-                        tx,
-                        resetPassword.id,
-                        password.passwordCreated
-                    );
+                    const isMarkedUsed =
+                        await this.userPasswordRepository.markUsedInTx(
+                            tx,
+                            resetPassword.id,
+                            password.passwordCreated
+                        );
+                    if (!isMarkedUsed) {
+                        throw new UserTokenInvalidException();
+                    }
                     const sessions =
                         await this.sessionDomain.revokeActiveByUserInTx(
                             tx,
@@ -664,6 +692,11 @@ export class UserPasswordDomain {
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new UserTokenInvalidException();
             }
 
             throw new AppUnknownException(err);

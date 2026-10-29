@@ -14,13 +14,13 @@ import {
     EnumDeviceNotificationProvider,
     Prisma,
 } from '@generated/prisma-client/client';
+import type { DeviceOwnership } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
     IDeviceLoginUpsert,
     IDeviceOwnership,
-    IDeviceOwnershipWithDevice,
     IDeviceOwnershipWithSession,
     IDeviceRefresh,
 } from '@modules/device/interfaces/device.interface';
@@ -70,7 +70,7 @@ export class DeviceDomain {
 
     async getOwnershipsWithNotificationToken(
         userId: string
-    ): Promise<IDeviceOwnershipWithDevice[]> {
+    ): Promise<DeviceOwnership[]> {
         return this.deviceOwnershipRepository.findTokensByUserId(userId);
     }
 
@@ -78,14 +78,9 @@ export class DeviceDomain {
         userId: string,
         tokens: string[]
     ): Promise<number> {
-        const deviceIds =
-            await this.deviceOwnershipRepository.findDeviceIdsByUserAndTokens(
-                userId,
-                tokens
-            );
-        const { count } = await this.deviceRepository.clearTokens(
-            deviceIds,
-            userId
+        const { count } = await this.deviceOwnershipRepository.clearTokens(
+            userId,
+            tokens
         );
 
         return count;
@@ -95,7 +90,9 @@ export class DeviceDomain {
         thresholdInMs: number
     ): Promise<number> {
         const { count } =
-            await this.deviceRepository.clearStaleTokens(thresholdInMs);
+            await this.deviceOwnershipRepository.clearStaleTokens(
+                thresholdInMs
+            );
 
         return count;
     }
@@ -111,16 +108,24 @@ export class DeviceDomain {
             tx,
             userId,
             device,
-            notificationProvider,
             now
         );
         const { deviceOwnership, isNewOwnership } =
-            await this.deviceOwnershipRepository.upsertForLoginInTx(
+            await this.deviceOwnershipRepository.upsertActiveInTx(
                 tx,
-                userId,
                 upserted.id,
+                userId,
+                device.notificationToken,
+                notificationProvider,
                 now
             );
+        if (device.notificationToken !== null) {
+            await this.deviceOwnershipRepository.clearTokenFromOtherUsersInTx(
+                tx,
+                device.notificationToken,
+                userId
+            );
+        }
 
         return {
             device: upserted,
@@ -136,27 +141,20 @@ export class DeviceDomain {
         updatedBy: string,
         now: Date
     ): Promise<void> {
-        const deviceId =
-            await this.deviceOwnershipRepository.findLiveDeviceIdInTx(
+        const cleared =
+            await this.deviceOwnershipRepository.clearNotificationInTx(
                 tx,
                 userId,
-                deviceOwnershipId
+                deviceOwnershipId,
+                updatedBy,
+                now
             );
-        if (deviceId === null) {
+        if (!cleared) {
             this.logger.warn(
                 { userId, deviceOwnershipId },
                 'No live device to clear the notification token for'
             );
-
-            return;
         }
-
-        await this.deviceRepository.clearNotificationByIdsInTx(
-            tx,
-            [deviceId],
-            updatedBy,
-            now
-        );
     }
 
     async revokeAllByUserInTx(
@@ -165,20 +163,9 @@ export class DeviceDomain {
         revokedBy: string,
         now: Date
     ): Promise<void> {
-        const deviceIds =
-            await this.deviceOwnershipRepository.revokeAllByUserInTx(
-                tx,
-                userId,
-                revokedBy,
-                now
-            );
-        if (deviceIds.length === 0) {
-            return;
-        }
-
-        await this.deviceRepository.clearNotificationByIdsInTx(
+        await this.deviceOwnershipRepository.revokeAllByUserInTx(
             tx,
-            deviceIds,
+            userId,
             revokedBy,
             now
         );
@@ -209,19 +196,28 @@ export class DeviceDomain {
 
         try {
             await this.databaseService.withTransaction(async tx => {
-                const deviceId = await this.deviceOwnershipRepository.touchInTx(
-                    tx,
-                    userId,
-                    deviceOwnershipId,
-                    now
-                );
+                const deviceId =
+                    await this.deviceOwnershipRepository.refreshInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        data,
+                        notificationProvider,
+                        now
+                    );
                 await this.deviceRepository.refreshInTx(
                     tx,
                     deviceId,
                     data,
-                    notificationProvider,
                     now
                 );
+                if (data.notificationToken !== null) {
+                    await this.deviceOwnershipRepository.clearTokenFromOtherUsersInTx(
+                        tx,
+                        data.notificationToken,
+                        userId
+                    );
+                }
             });
 
             this.activityLogDomain.stagePrepared(activityLogs);
@@ -267,12 +263,6 @@ export class DeviceDomain {
                             userId,
                             now
                         );
-                    await this.deviceRepository.clearNotificationByIdsInTx(
-                        tx,
-                        [row.deviceId],
-                        userId,
-                        now
-                    );
                     const metadata = this.deviceUtil.mapActivityLogMetadata(
                         row,
                         sessions.length
@@ -343,12 +333,6 @@ export class DeviceDomain {
                             removedBy,
                             now
                         );
-                    await this.deviceRepository.clearNotificationByIdsInTx(
-                        tx,
-                        [row.deviceId],
-                        removedBy,
-                        now
-                    );
                     const actorMetadata =
                         this.deviceUtil.mapActivityLogActorMetadata(
                             row,

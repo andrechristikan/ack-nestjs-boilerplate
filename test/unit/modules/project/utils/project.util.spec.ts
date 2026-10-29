@@ -29,9 +29,9 @@ describe('ProjectUtil', () => {
         util = module.get(ProjectUtil);
     });
 
-    describe('isWorkspaceOwner', () => {
+    describe('hasWorkspaceBypass', () => {
         it('returns true when the workspace member role is owner', () => {
-            const result = util.isWorkspaceOwner({
+            const result = util.hasWorkspaceBypass({
                 ...member,
                 role: EnumWorkspaceMemberRole.owner,
             });
@@ -39,17 +39,17 @@ describe('ProjectUtil', () => {
             expect(result).toBe(true);
         });
 
-        it('returns false when the workspace member role is admin', () => {
-            const result = util.isWorkspaceOwner({
+        it('returns true when the workspace member role is admin', () => {
+            const result = util.hasWorkspaceBypass({
                 ...member,
                 role: EnumWorkspaceMemberRole.admin,
             });
 
-            expect(result).toBe(false);
+            expect(result).toBe(true);
         });
 
         it('returns false when the workspace member role is member', () => {
-            const result = util.isWorkspaceOwner({
+            const result = util.hasWorkspaceBypass({
                 ...member,
                 role: EnumWorkspaceMemberRole.member,
             });

@@ -14,11 +14,13 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
 
     async findActiveWithGeoInRange(
         startDate: Date | null,
-        endDate: Date | null
+        endDate: Date | null,
+        now: Date
     ): Promise<ISessionAnalyticSession[]> {
         return this.databaseService.client.session.findMany({
             where: {
                 isRevoked: false,
+                expiredAt: { gt: now },
                 geoLocation: { isSet: true },
                 ...(startDate && endDate
                     ? { createdAt: { gte: startDate, lt: endDate } }
@@ -39,10 +41,10 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         });
     }
 
-    async countActiveByUser(): Promise<ISessionAnalyticUserCount[]> {
+    async countActiveByUser(now: Date): Promise<ISessionAnalyticUserCount[]> {
         const rows = await this.databaseService.client.session.groupBy({
             by: ['userId'],
-            where: { isRevoked: false },
+            where: { isRevoked: false, expiredAt: { gt: now } },
             _count: { _all: true },
         });
         return rows.map(r => ({ userId: r.userId, count: r._count._all }));
@@ -50,11 +52,13 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
 
     async groupByCountry(
         startDate: Date | null,
-        endDate: Date | null
+        endDate: Date | null,
+        now: Date
     ): Promise<IAnalyticCountBucket[]> {
         const sessions = await this.findActiveWithGeoInRange(
             startDate,
-            endDate
+            endDate,
+            now
         );
         const map = new Map<string, number>();
         for (const s of sessions) {
@@ -68,9 +72,9 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         return this.databaseService.client.session.count();
     }
 
-    async countActive(): Promise<number> {
+    async countActive(now: Date): Promise<number> {
         return this.databaseService.client.session.count({
-            where: { isRevoked: false },
+            where: { isRevoked: false, expiredAt: { gt: now } },
         });
     }
 }

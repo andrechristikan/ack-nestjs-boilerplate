@@ -26,7 +26,6 @@ export interface ISessionPurgeLoginsPayload {
 export interface ISessionCache {
     userId: string;
     sessionId: string;
-    expiredAt: Date;
     jti: string;
 }
 

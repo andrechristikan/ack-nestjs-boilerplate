@@ -42,6 +42,8 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -58,7 +60,8 @@ export class UserTwoFactorDomain {
         private readonly authCache: AuthCache,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationRecipientDomain: NotificationRecipientDomain,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly roleDomain: RoleDomain
     ) {}
 
     async loginVerifyTwoFactor(
@@ -399,7 +402,8 @@ export class UserTwoFactorDomain {
 
     async resetTwoFactorByAdmin(
         userId: string,
-        updatedBy: string
+        updatedBy: string,
+        actor: IRoleActor
     ): Promise<void> {
         if (userId === updatedBy) {
             throw new UserNotSelfException();
@@ -408,7 +412,11 @@ export class UserTwoFactorDomain {
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new UserNotFoundException();
-        } else if (user.status === EnumUserStatus.blocked) {
+        }
+
+        this.roleDomain.assertActorOutranks(actor.roleType, user.role.type);
+
+        if (user.status === EnumUserStatus.blocked) {
             throw new UserBlockedInvalidException();
         } else if (!user.twoFactor?.enabled) {
             throw new AuthTwoFactorNotEnabledException();

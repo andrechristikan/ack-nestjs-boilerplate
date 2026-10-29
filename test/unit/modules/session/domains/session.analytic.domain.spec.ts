@@ -11,6 +11,7 @@ import type {
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 
 describe('SessionAnalyticDomain', () => {
+    const now = new Date('2026-03-01T00:00:00.000Z');
     const sessionAnalyticRepository: MockProxy<SessionAnalyticRepository> =
         mock<SessionAnalyticRepository>();
     let domain: SessionAnalyticDomain;
@@ -56,13 +57,14 @@ describe('SessionAnalyticDomain', () => {
 
             const result = await domain.getActiveWithGeoInRange(
                 startDate,
-                endDate
+                endDate,
+                now
             );
 
             expect(result).toBe(rows);
             expect(
                 sessionAnalyticRepository.findActiveWithGeoInRange
-            ).toHaveBeenCalledWith(startDate, endDate);
+            ).toHaveBeenCalledWith(startDate, endDate, now);
         });
 
         it('delegates with no date range', async () => {
@@ -70,11 +72,11 @@ describe('SessionAnalyticDomain', () => {
                 []
             );
 
-            await domain.getActiveWithGeoInRange(null, null);
+            await domain.getActiveWithGeoInRange(null, null, now);
 
             expect(
                 sessionAnalyticRepository.findActiveWithGeoInRange
-            ).toHaveBeenCalledWith(null, null);
+            ).toHaveBeenCalledWith(null, null, now);
         });
     });
 
@@ -85,9 +87,12 @@ describe('SessionAnalyticDomain', () => {
             ];
             sessionAnalyticRepository.countActiveByUser.mockResolvedValue(rows);
 
-            const result = await domain.getCountActiveByUser();
+            const result = await domain.getCountActiveByUser(now);
 
             expect(result).toBe(rows);
+            expect(
+                sessionAnalyticRepository.countActiveByUser
+            ).toHaveBeenCalledWith(now);
         });
     });
 
@@ -98,12 +103,16 @@ describe('SessionAnalyticDomain', () => {
             const buckets: IAnalyticCountBucket[] = [{ key: 'US', count: 2 }];
             sessionAnalyticRepository.groupByCountry.mockResolvedValue(buckets);
 
-            const result = await domain.getGroupByCountry(startDate, endDate);
+            const result = await domain.getGroupByCountry(
+                startDate,
+                endDate,
+                now
+            );
 
             expect(result).toBe(buckets);
             expect(
                 sessionAnalyticRepository.groupByCountry
-            ).toHaveBeenCalledWith(startDate, endDate);
+            ).toHaveBeenCalledWith(startDate, endDate, now);
         });
     });
 
@@ -121,9 +130,12 @@ describe('SessionAnalyticDomain', () => {
         it('delegates to the repository', async () => {
             sessionAnalyticRepository.countActive.mockResolvedValue(4);
 
-            const result = await domain.getCountActive();
+            const result = await domain.getCountActive(now);
 
             expect(result).toBe(4);
+            expect(sessionAnalyticRepository.countActive).toHaveBeenCalledWith(
+                now
+            );
         });
     });
 });

@@ -11,6 +11,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
+import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
@@ -23,6 +24,7 @@ import type {
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
@@ -31,13 +33,20 @@ import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyContentDomain {
+    private readonly contentMaxSizeInBytes: number;
+
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly helperDateService: HelperDateService
-    ) {}
+        private readonly helperDateService: HelperDateService,
+        private readonly configService: ConfigService
+    ) {
+        this.contentMaxSizeInBytes = this.configService.get<number>(
+            'termPolicy.content.maxSizeInBytes'
+        )!;
+    }
 
     private prepareActivityLog(
         action: EnumActivityLogAction,
@@ -60,7 +69,7 @@ export class TermPolicyContentDomain {
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
             throw new TermPolicyNotFoundException();
-        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
+        } else if (termPolicy.status !== EnumTermPolicyStatus.draft) {
             throw new TermPolicyStatusInvalidException();
         }
 
@@ -73,13 +82,17 @@ export class TermPolicyContentDomain {
         type,
         version,
     }: ITermPolicyContentPresign): Promise<IAwsS3Presign> {
+        if (size > this.contentMaxSizeInBytes) {
+            throw new TermPolicyContentSizeExceededException();
+        }
+
         // Sequential by design: gate before the work it guards
         const status =
             await this.termPolicyRepository.findStatusByVersionAndType(
                 version,
                 type
             );
-        if (status === EnumTermPolicyStatus.published) {
+        if (status !== null && status !== EnumTermPolicyStatus.draft) {
             throw new TermPolicyStatusInvalidException();
         }
 
@@ -146,11 +159,14 @@ export class TermPolicyContentDomain {
                     timestamp
                 ),
             ];
-            await this.termPolicyRepository.updateContent(
+            const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
                 contents,
                 mappedContent
             );
+            if (!updated) {
+                throw new TermPolicyStatusInvalidException();
+            }
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
@@ -206,10 +222,13 @@ export class TermPolicyContentDomain {
                     timestamp
                 ),
             ];
-            await this.termPolicyRepository.addContent(
+            const added = await this.termPolicyRepository.addContent(
                 termPolicyId,
                 mappedContent
             );
+            if (!added) {
+                throw new TermPolicyStatusInvalidException();
+            }
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
@@ -250,11 +269,14 @@ export class TermPolicyContentDomain {
                     timestamp
                 ),
             ];
-            await this.termPolicyRepository.removeContent(
+            const removed = await this.termPolicyRepository.removeContent(
                 termPolicyId,
                 contents,
                 { language }
             );
+            if (!removed) {
+                throw new TermPolicyStatusInvalidException();
+            }
 
             this.activityLogDomain.stagePrepared(activityLogs);
 

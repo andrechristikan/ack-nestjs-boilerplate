@@ -139,7 +139,6 @@ model User {
   lastLoginWith          EnumUserLoginWith?
   lastWorkspaceId        String?            @db.ObjectId
   lastWorkspaceChangedAt DateTime?
-  termPolicy             UserTermPolicy
   photo                  UserPhoto?
 
   createdAt DateTime  @default(now())
@@ -179,6 +178,7 @@ model User {
   @@index(fields: [signUpAt(sort: Desc)])
   @@index(fields: [deletedAt, signUpAt(sort: Desc)])
   @@index(fields: [deletedAt, passwordAttempt])
+  @@index(fields: [deletedAt, lastLoginAt(sort: Desc)])
   @@map("Users")
 }
 
@@ -282,13 +282,11 @@ model Session {
 }
 
 model Device {
-  id                   String                          @id @default(auto()) @map("_id") @db.ObjectId
-  fingerprint          String
-  name                 String?
-  platform             EnumDevicePlatform
-  lastActiveAt         DateTime                        @default(now())
-  notificationToken    String?
-  notificationProvider EnumDeviceNotificationProvider?
+  id           String             @id @default(auto()) @map("_id") @db.ObjectId
+  fingerprint  String
+  name         String?
+  platform     EnumDevicePlatform
+  lastActiveAt DateTime           @default(now())
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -299,18 +297,19 @@ model Device {
 
   @@unique(fields: [fingerprint])
   @@index(fields: [createdAt(sort: Desc)])
-  @@index(fields: [notificationToken, lastActiveAt])
   @@map("Devices")
 }
 
 model DeviceOwnership {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  deviceId     String    @db.ObjectId
-  userId       String    @db.ObjectId
-  revokedAt    DateTime?
-  isRevoked    Boolean   @default(false)
-  revokedById  String?   @db.ObjectId
-  lastActiveAt DateTime  @default(now())
+  id                   String                          @id @default(auto()) @map("_id") @db.ObjectId
+  deviceId             String                          @db.ObjectId
+  userId               String                          @db.ObjectId
+  revokedAt            DateTime?
+  isRevoked            Boolean                         @default(false)
+  revokedById          String?                         @db.ObjectId
+  lastActiveAt         DateTime                        @default(now())
+  notificationToken    String?
+  notificationProvider EnumDeviceNotificationProvider?
 
   biometricEnabled   Boolean            @default(false)
   biometricToken     String?
@@ -327,10 +326,12 @@ model DeviceOwnership {
   user      User      @relation("DeviceOwnershipUser", fields: [userId], references: [id])
   sessions  Session[] @relation("DeviceOwnershipSessions")
 
+  @@unique(fields: [deviceId, userId])
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, lastActiveAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [deviceId, userId, isRevoked])
   @@index(fields: [isRevoked, lastActiveAt])
+  @@index(fields: [notificationToken, lastActiveAt])
   @@index(fields: [createdAt])
   @@index(fields: [revokedById])
   @@map("DeviceOwnerships")
@@ -360,12 +361,12 @@ model TwoFactor {
 }
 
 model TermPolicy {
-  id                 String               @id @default(auto()) @map("_id") @db.ObjectId
-  type               EnumTermPolicyType
-  contents           TermPolicyContent[]
-  version            Int                  @default(1)
-  status             EnumTermPolicyStatus @default(draft)
-  publishedAt        DateTime?
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  type        EnumTermPolicyType
+  contents    TermPolicyContent[]
+  version     Int                  @default(1)
+  status      EnumTermPolicyStatus @default(draft)
+  publishedAt DateTime?
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -675,13 +676,6 @@ model ProjectMember {
   @@map("ProjectMembers")
 }
 
-type UserTermPolicy {
-  termsOfService Boolean
-  privacy        Boolean
-  marketing      Boolean
-  cookies        Boolean
-}
-
 type UserPhoto {
   bucket       String
   key          String
@@ -828,6 +822,7 @@ enum EnumTermPolicyType {
 enum EnumTermPolicyStatus {
   draft
   published
+  archived
 }
 
 enum EnumVerificationType {

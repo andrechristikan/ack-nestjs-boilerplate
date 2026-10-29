@@ -29,10 +29,6 @@ export interface IDeviceOwnership extends DeviceOwnership {
     };
 }
 
-export interface IDeviceOwnershipWithDevice extends DeviceOwnership {
-    device: Device;
-}
-
 export interface IDeviceOwnershipSessionRef {
     id: string;
 }

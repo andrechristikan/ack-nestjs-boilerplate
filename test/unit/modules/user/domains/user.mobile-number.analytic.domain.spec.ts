@@ -44,11 +44,19 @@ describe('UserMobileNumberAnalyticDomain', () => {
             );
             userMobileNumberAnalyticRepository.countAll.mockResolvedValue(6);
 
-            await expect(domain.getVerificationRate()).resolves.toEqual({
+            await expect(
+                domain.getVerificationRate(startDate, endDate)
+            ).resolves.toEqual({
                 count: 3,
                 total: 6,
                 rate: 50,
             });
+            expect(
+                userMobileNumberAnalyticRepository.countVerified
+            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(
+                userMobileNumberAnalyticRepository.countAll
+            ).toHaveBeenCalledWith(startDate, endDate);
         });
 
         it('returns a zero rate when total is zero', async () => {
@@ -57,7 +65,9 @@ describe('UserMobileNumberAnalyticDomain', () => {
             );
             userMobileNumberAnalyticRepository.countAll.mockResolvedValue(0);
 
-            await expect(domain.getVerificationRate()).resolves.toEqual({
+            await expect(
+                domain.getVerificationRate(null, null)
+            ).resolves.toEqual({
                 count: 0,
                 total: 0,
                 rate: 0,

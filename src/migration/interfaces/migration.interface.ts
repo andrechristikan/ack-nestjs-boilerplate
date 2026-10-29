@@ -1,4 +1,7 @@
-import { EnumRoleType } from '@generated/prisma-client/client';
+import {
+    EnumRoleType,
+    EnumTermPolicyType,
+} from '@generated/prisma-client/client';
 import { EnumMigrationType } from '@migration/enums/migration.enum';
 
 export interface IMigrationOptions {
@@ -19,4 +22,9 @@ export interface IMigrationRoleData {
     name: string;
     description: string | null;
     type: EnumRoleType;
+}
+
+export interface IMigrationTermPolicyData {
+    type: EnumTermPolicyType;
+    version: number;
 }

@@ -427,26 +427,18 @@ describe('LoggerUtil', () => {
             expect(util['extractClientIP'](request)).toBe('8.8.8.8');
         });
 
-        it('falls back to the first forwarded-for address', () => {
+        it('ignores x-forwarded-for and x-real-ip, which a client can spoof', () => {
             const request = {
                 ...baseRequest,
                 ip: undefined,
                 socket: {},
-                headers: { 'x-forwarded-for': '5.5.5.5, 6.6.6.6' },
+                headers: {
+                    'x-forwarded-for': '5.5.5.5, 6.6.6.6',
+                    'x-real-ip': '7.7.7.7',
+                },
             } as unknown as IRequestApp;
 
-            expect(util['extractClientIP'](request)).toBe('5.5.5.5');
-        });
-
-        it('falls back to x-real-ip when forwarded-for is empty', () => {
-            const request = {
-                ...baseRequest,
-                ip: undefined,
-                socket: {},
-                headers: { 'x-forwarded-for': ' , ', 'x-real-ip': '7.7.7.7' },
-            } as unknown as IRequestApp;
-
-            expect(util['extractClientIP'](request)).toBe('7.7.7.7');
+            expect(util['extractClientIP'](request)).toBe('unknown');
         });
 
         it('returns unknown when headers carry no address', () => {

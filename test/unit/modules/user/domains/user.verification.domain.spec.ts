@@ -14,7 +14,9 @@ import {
 import type { Verification } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
@@ -45,6 +47,7 @@ describe('UserVerificationDomain', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
     const notificationQueue: MockProxy<NotificationQueue> =
@@ -109,12 +112,6 @@ describe('UserVerificationDomain', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -161,6 +158,7 @@ describe('UserVerificationDomain', () => {
         notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
         userRepository.findOneById.mockResolvedValue(baseUser);
         userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
+        userVerificationRepository.markUsedInTx.mockResolvedValue(true);
 
         configGet.mockImplementation(key => configValues[key]);
         activityLogDomain.prepare.mockReturnValue(activityLog);
@@ -183,6 +181,7 @@ describe('UserVerificationDomain', () => {
                 { provide: UserRepository, useValue: userRepository },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 {
@@ -320,6 +319,46 @@ describe('UserVerificationDomain', () => {
                 recipient,
                 { reference: verification.reference }
             );
+        });
+
+        it('throws UserTokenInvalidException and notifies nothing when the token was already used', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
+                verification
+            );
+            userVerificationRepository.markUsedInTx.mockResolvedValue(false);
+
+            const call = domain.verifyEmail('raw-token');
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                messagePath: 'user.error.verificationTokenInvalid',
+            });
+            expect(userRepository.markVerifiedInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(notificationQueue.sendVerifiedEmail).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to UserTokenInvalidException', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
+                verification
+            );
+            const conflict = new Error('write-conflict');
+            userVerificationRepository.markUsedInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            const call = domain.verifyEmail('raw-token');
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(notificationQueue.sendVerifiedEmail).not.toHaveBeenCalled();
         });
 
         it('notifies from the user read before the transaction, whatever its status', async () => {
@@ -599,8 +638,35 @@ describe('UserVerificationDomain', () => {
                             .verificationEmailResendLimitExceeded
                     ],
                 messagePath: 'user.error.verificationEmailResendLimitExceeded',
-                messageProperties: { minutes: 15 },
+                messageProperties: { minutes: 5 },
             });
+        });
+
+        it('creates the verification when the resend window has passed before the previous one expires', async () => {
+            userRepository.findOneActiveByEmail.mockResolvedValue({
+                ...baseUser,
+                isVerified: false,
+            });
+            const createdAt = new Date(now.getTime() - 6 * 60 * 1000);
+            userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
+                { ...verification, createdAt }
+            );
+            helperStringService.random.mockReturnValue('random-token');
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            helperStringService.fillPattern.mockReturnValue(
+                'https://example.com/verify?token=random-token'
+            );
+
+            await domain.sendVerificationEmail('flint@example.com');
+
+            expect(
+                userVerificationRepository.createReplacingActive
+            ).toHaveBeenCalledWith(
+                'user-flint',
+                'flint@example.com',
+                expect.objectContaining({ reference: 'VRF-random-token' }),
+                now
+            );
         });
 
         it('rethrows an AppBaseException raised while creating the verification', async () => {

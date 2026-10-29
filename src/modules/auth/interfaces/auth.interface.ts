@@ -47,7 +47,7 @@ export interface IAuthJwtAccessTokenPayload {
 
 export type IAuthJwtRefreshTokenPayload = Omit<
     IAuthJwtAccessTokenPayload,
-    'type' | 'roleId' | 'username' | 'email' | 'termPolicy' | 'verification'
+    'type' | 'roleId' | 'username' | 'email' | 'verification'
 >;
 
 export interface IAuthSocialPayload extends Pick<
@@ -71,10 +71,6 @@ export interface IAuthLoginIdentifiers {
 export interface IAuthTokenSignInput extends IAuthLoginIdentifiers {
     deviceOwnershipId: string;
     loginAt: Date;
-}
-
-export interface IAuthRefreshTokenGenerate extends IAuthAccessTokenGenerate {
-    expiredInMs: number;
 }
 
 export interface IAuthTwoFactorBackupCodes {

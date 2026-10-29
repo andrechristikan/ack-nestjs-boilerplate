@@ -61,12 +61,6 @@ describe('AuthUtil', () => {
                 lastLoginWith: null,
                 lastWorkspaceId: null,
                 lastWorkspaceChangedAt: null,
-                termPolicy: {
-                    termsOfService: true,
-                    privacy: true,
-                    marketing: false,
-                    cookies: true,
-                },
                 photo: null,
                 createdAt: loginAt,
                 createdBy: null,

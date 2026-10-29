@@ -40,12 +40,14 @@ export interface ITermPolicyAcceptanceAnalytic {
     userId: string;
     termPolicyId: string;
     acceptedAt: Date;
-    createdAt: Date;
+    publishedAt: Date | null;
 }
 
 export interface ITermPolicyDeleteContentPayload {
     path: string;
 }
+
+export type ITermPolicyRef = Pick<TermPolicy, 'id' | 'type' | 'version'>;
 
 export type ITermPolicyActivityLogSubject = Pick<
     TermPolicy,

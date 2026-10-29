@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import type { IProjectAnalyticRepository } from '@modules/project/interfaces/project.analytic-repository.interface';
@@ -23,11 +24,27 @@ export class ProjectAnalyticRepository implements IProjectAnalyticRepository {
         });
     }
 
-    async groupByWorkspace(): Promise<IAnalyticWorkspaceCount[]> {
+    async groupCreatedPerWorkspace(
+        startDate: Date,
+        endDate: Date,
+        limit: number
+    ): Promise<IAnalyticWorkspaceCount[]> {
         const rows = await this.databaseService.client.project.groupBy({
             by: ['workspaceId'],
-            where: { OR: ProjectActiveFilter },
+            where: {
+                OR: ProjectActiveFilter,
+                createdAt: { gte: startDate, lt: endDate },
+            },
             _count: { _all: true },
+            orderBy: [
+                {
+                    _count: {
+                        workspaceId: EnumPaginationOrderDirectionType.desc,
+                    },
+                },
+                { workspaceId: EnumPaginationOrderDirectionType.asc },
+            ],
+            take: limit,
         });
         return rows.map(r => ({
             workspaceId: r.workspaceId,

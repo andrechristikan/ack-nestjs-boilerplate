@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -33,6 +34,7 @@ import { EnumCountryStatusCodeError } from '@modules/country/enums/country.statu
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
+import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
@@ -50,6 +52,11 @@ describe('UserProfileDomain', () => {
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
+    const configGet = vi.fn<(key: string) => number>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const photoMaxSizeInBytes = 2048;
 
     let domain: UserProfileDomain;
 
@@ -125,12 +132,6 @@ describe('UserProfileDomain', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -166,6 +167,7 @@ describe('UserProfileDomain', () => {
         activityLogDomain.prepare.mockReturnValue(activityLog);
         userRepository.findOneById.mockResolvedValue(profile);
         userQueue.deletePhoto.mockResolvedValue();
+        configGet.mockReturnValue(photoMaxSizeInBytes);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -177,6 +179,7 @@ describe('UserProfileDomain', () => {
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
                 { provide: UserQueue, useValue: userQueue },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         domain = module.get(UserProfileDomain);
@@ -319,6 +322,37 @@ describe('UserProfileDomain', () => {
                     access: EnumAwsS3Accessibility.public,
                 }
             );
+        });
+
+        it('presigns a size at the configured maximum', async () => {
+            fileService.createRandomFilename.mockReturnValue(
+                'photo-profile/user-persimmon/random.png'
+            );
+            awsS3Service.presignPutItem.mockResolvedValue(presign);
+
+            await expect(
+                domain.generatePhotoProfilePresign(profile.id, {
+                    extension: EnumFileExtensionImage.png,
+                    size: photoMaxSizeInBytes,
+                })
+            ).resolves.toBe(presign);
+        });
+
+        it('throws UserPhotoSizeExceededException above the configured maximum', async () => {
+            const call = domain.generatePhotoProfilePresign(profile.id, {
+                extension: EnumFileExtensionImage.png,
+                size: photoMaxSizeInBytes + 1,
+            });
+
+            await expect(call).rejects.toBeInstanceOf(
+                UserPhotoSizeExceededException
+            );
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+                messagePath: 'user.error.photoSizeExceeded',
+            });
+            expect(awsS3Service.presignPutItem).not.toHaveBeenCalled();
         });
 
         it('throws AwsS3NotConfiguredException when S3 answers null', async () => {

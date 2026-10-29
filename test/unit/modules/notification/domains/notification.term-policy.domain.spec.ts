@@ -6,6 +6,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { Notification } from '@generated/prisma-client/client';
 import {
+    EnumNotificationChannel,
     EnumNotificationPriority,
     EnumNotificationType,
     EnumTermPolicyType,
@@ -1040,6 +1041,18 @@ describe('NotificationTermPolicyDomain', () => {
                 completedSteps: [EnumNotificationStep.createNotification],
                 failedSteps: [],
             });
+        });
+
+        it('declares the in-app channel as delivered at creation, with no pending delivery, for the accept kind', () => {
+            expect(
+                NotificationKindContract.userAcceptTermPolicy.pendingChannels
+            ).toEqual([]);
+            expect(
+                NotificationKindContract.userAcceptTermPolicy.deliveredChannels
+            ).toEqual([
+                EnumNotificationChannel.silent,
+                EnumNotificationChannel.inApp,
+            ]);
         });
 
         it('creates no row and reports no failure when no channel is enabled', async () => {

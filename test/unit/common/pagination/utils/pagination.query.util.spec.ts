@@ -596,7 +596,7 @@ describe('PaginationQueryUtil', () => {
             const result = util.dateBetween('createdAt', iso);
 
             expect(result).toEqual({
-                where: { createdAt: { equal: parsed } },
+                where: { createdAt: { equals: parsed } },
                 storeFilter: { createdAt: parsed },
             });
             expect(helperDateService.createFromIso).toHaveBeenCalledWith(
@@ -648,7 +648,7 @@ describe('PaginationQueryUtil', () => {
                 customField: 'joinedAt',
             });
 
-            expect(result?.where).toEqual({ joinedAt: { equal: parsed } });
+            expect(result?.where).toEqual({ joinedAt: { equals: parsed } });
         });
     });
 

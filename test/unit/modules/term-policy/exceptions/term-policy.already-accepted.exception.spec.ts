@@ -16,7 +16,7 @@ describe('TermPolicyAlreadyAcceptedException', () => {
                     EnumTermPolicyStatusCodeError[
                         EnumTermPolicyStatusCodeError.alreadyAccepted
                     ],
-                httpStatus: HttpStatus.CONFLICT,
+                httpStatus: HttpStatus.BAD_REQUEST,
                 messagePath: 'termPolicy.error.alreadyAccepted',
             });
         });

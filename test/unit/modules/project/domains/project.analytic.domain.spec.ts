@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -8,13 +9,19 @@ import { ProjectAnalyticRepository } from '@modules/project/repositories/project
 describe('ProjectAnalyticDomain', () => {
     const projectAnalyticRepository: MockProxy<ProjectAnalyticRepository> =
         mock<ProjectAnalyticRepository>();
+    const configGet = vi.fn<(key: string) => number>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
     let domain: ProjectAnalyticDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockReturnValue(50);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectAnalyticDomain,
+                { provide: ConfigService, useValue: configService },
                 {
                     provide: ProjectAnalyticRepository,
                     useValue: projectAnalyticRepository,
@@ -25,13 +32,13 @@ describe('ProjectAnalyticDomain', () => {
     });
 
     describe('getCreation', () => {
-        it('combines the created count and the per-workspace breakdown', async () => {
+        it('combines the created count and the bounded per-workspace breakdown', async () => {
             const startDate = new Date('2026-01-01T00:00:00.000Z');
             const endDate = new Date('2026-02-01T00:00:00.000Z');
             projectAnalyticRepository.countCreated.mockResolvedValue(5);
-            projectAnalyticRepository.groupByWorkspace.mockResolvedValue([
-                { workspaceId: '507f1f77bcf86cd799439011', count: 5 },
-            ]);
+            projectAnalyticRepository.groupCreatedPerWorkspace.mockResolvedValue(
+                [{ workspaceId: '507f1f77bcf86cd799439011', count: 5 }]
+            );
 
             const result = await domain.getCreation(startDate, endDate);
 
@@ -46,8 +53,11 @@ describe('ProjectAnalyticDomain', () => {
                 endDate
             );
             expect(
-                projectAnalyticRepository.groupByWorkspace
-            ).toHaveBeenCalledWith();
+                projectAnalyticRepository.groupCreatedPerWorkspace
+            ).toHaveBeenCalledWith(startDate, endDate, 50);
+            expect(configGet).toHaveBeenCalledWith(
+                'analytic.project.perWorkspaceLimit'
+            );
         });
     });
 

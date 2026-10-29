@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -150,26 +151,41 @@ describe('UserAnalyticDomain', () => {
     });
 
     describe('getEmailVerificationRate', () => {
-        it('computes the rate when total is not zero', async () => {
+        it('computes the rate over users who signed up inside the range', async () => {
             userAnalyticRepository.countVerifiedEmail.mockResolvedValue(6);
-            userAnalyticRepository.countActive.mockResolvedValue(12);
+            userAnalyticRepository.countSignedUp.mockResolvedValue(12);
 
-            await expect(domain.getEmailVerificationRate()).resolves.toEqual({
+            await expect(
+                domain.getEmailVerificationRate(startDate, endDate)
+            ).resolves.toEqual({
                 count: 6,
                 total: 12,
                 rate: 50,
             });
+            expect(
+                userAnalyticRepository.countVerifiedEmail
+            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(userAnalyticRepository.countSignedUp).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
         });
 
         it('returns a zero rate when total is zero', async () => {
             userAnalyticRepository.countVerifiedEmail.mockResolvedValue(0);
-            userAnalyticRepository.countActive.mockResolvedValue(0);
+            userAnalyticRepository.countSignedUp.mockResolvedValue(0);
 
-            await expect(domain.getEmailVerificationRate()).resolves.toEqual({
+            await expect(
+                domain.getEmailVerificationRate(null, null)
+            ).resolves.toEqual({
                 count: 0,
                 total: 0,
                 rate: 0,
             });
+            expect(userAnalyticRepository.countSignedUp).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -272,24 +288,35 @@ describe('UserAnalyticDomain', () => {
         });
     });
 
-    describe('getSignUpsInRange', () => {
+    describe('getGroupLoginSource', () => {
+        it('delegates to the repository with the given range', async () => {
+            const rows = [{ key: EnumUserLoginFrom.website, count: 3 }];
+            userAnalyticRepository.groupLoginSource.mockResolvedValue(rows);
+
+            await expect(
+                domain.getGroupLoginSource(startDate, endDate)
+            ).resolves.toBe(rows);
+            expect(
+                userAnalyticRepository.groupLoginSource
+            ).toHaveBeenCalledWith(startDate, endDate);
+        });
+    });
+
+    describe('getManyByIds', () => {
         it('delegates to the repository', async () => {
             const rows = [
                 {
                     id: 'user-1',
                     email: 'user1@example.com',
-                    signUpAt: now,
-                    signUpFrom: EnumUserSignUpFrom.website,
+                    passwordAttempt: 2,
                 },
             ];
-            userAnalyticRepository.findSignUpsInRange.mockResolvedValue(rows);
+            userAnalyticRepository.findManyByIds.mockResolvedValue(rows);
 
-            await expect(
-                domain.getSignUpsInRange(startDate, endDate)
-            ).resolves.toBe(rows);
-            expect(
-                userAnalyticRepository.findSignUpsInRange
-            ).toHaveBeenCalledWith(startDate, endDate);
+            await expect(domain.getManyByIds(['user-1'])).resolves.toBe(rows);
+            expect(userAnalyticRepository.findManyByIds).toHaveBeenCalledWith([
+                'user-1',
+            ]);
         });
     });
 });

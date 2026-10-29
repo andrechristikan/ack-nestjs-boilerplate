@@ -82,7 +82,7 @@ export const ProjectCurrent = createParamDecorator<
 /**
  * Requires the caller to be a member of the project resolved by `@ProjectProtected()`. Stack above
  * it. Pass `roles` to instead require the caller's
- * project membership role to be one of them, which a workspace owner satisfies without holding a
+ * project membership role to be one of them, which a workspace owner or admin satisfies without holding a
  * `ProjectMember` row at all; omit `roles` to demand a `ProjectMember` row of the caller with no
  * bypass.
  * @public

@@ -19,8 +19,9 @@ export const AnalyticPasswordExpiryResponseSchema = z.object({
         example: faker.number.int({ min: 0, max: 5000 }),
     }),
     rate: z.number().meta({
-        description: 'Compliant divided by total, between 0 and 1',
-        example: faker.number.float({ min: 0, max: 1, fractionDigits: 2 }),
+        description:
+            'Compliant divided by total, as a percentage between 0-100',
+        example: faker.number.float({ min: 0, max: 100, fractionDigits: 2 }),
     }),
 });
 

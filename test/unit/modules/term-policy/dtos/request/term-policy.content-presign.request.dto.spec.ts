@@ -34,6 +34,24 @@ describe('TermPolicyContentPresignRequestSchema', () => {
         ).toThrow();
     });
 
+    it('rejects a version below 1', () => {
+        expect(() =>
+            TermPolicyContentPresignRequestSchema.parse({
+                ...payload,
+                version: 0,
+            })
+        ).toThrow();
+    });
+
+    it('rejects a size of 0', () => {
+        expect(() =>
+            TermPolicyContentPresignRequestSchema.parse({
+                ...payload,
+                size: 0,
+            })
+        ).toThrow();
+    });
+
     it('rejects a language outside EnumMessageLanguage', () => {
         expect(() =>
             TermPolicyContentPresignRequestSchema.parse({

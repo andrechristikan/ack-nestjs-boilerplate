@@ -8,7 +8,6 @@ import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-fla
 import { MigrationPolicySeed } from '@migration/seeds/migration.policy.seed';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
-import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';
@@ -29,7 +28,6 @@ import { UserDomainModule } from '@modules/user/user.domain.module';
         MigrationUserSeed,
         MigrationWorkspaceSeed,
         MigrationTemplateEmailNotificationSeed,
-        MigrationTemplateTermPolicySeed,
         MigrationAwsS3ConfigSeed,
     ],
     exports: [],

@@ -43,4 +43,62 @@ describe('DeviceRequestSchema', () => {
             DeviceRequestSchema.parse({ ...payload, extra: true })
         ).toThrow();
     });
+
+    it.each([
+        '',
+        ' ',
+        '   ',
+        'short',
+        'has space inside value',
+        'bad/char/fingerprint',
+    ])('rejects the fingerprint %j', fingerprint => {
+        expect(() =>
+            DeviceRequestSchema.parse({ ...payload, fingerprint })
+        ).toThrow();
+    });
+
+    it('rejects a fingerprint above 128 characters', () => {
+        expect(() =>
+            DeviceRequestSchema.parse({
+                ...payload,
+                fingerprint: 'a'.repeat(129),
+            })
+        ).toThrow();
+    });
+
+    it('trims the fingerprint before matching', () => {
+        const result = DeviceRequestSchema.parse({
+            ...payload,
+            fingerprint: `  ${payload.fingerprint}  `,
+        });
+
+        expect(result.fingerprint).toBe(payload.fingerprint);
+    });
+
+    it('rejects an empty or blank name', () => {
+        expect(() =>
+            DeviceRequestSchema.parse({ ...payload, name: ' ' })
+        ).toThrow();
+    });
+
+    it('rejects a name above 100 characters', () => {
+        expect(() =>
+            DeviceRequestSchema.parse({ ...payload, name: 'n'.repeat(101) })
+        ).toThrow();
+    });
+
+    it('rejects an empty or blank notification token', () => {
+        expect(() =>
+            DeviceRequestSchema.parse({ ...payload, notificationToken: ' ' })
+        ).toThrow();
+    });
+
+    it('rejects a notification token above 512 characters', () => {
+        expect(() =>
+            DeviceRequestSchema.parse({
+                ...payload,
+                notificationToken: 't'.repeat(513),
+            })
+        ).toThrow();
+    });
 });

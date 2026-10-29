@@ -1,3 +1,4 @@
+import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -7,23 +8,13 @@ import type { Cache } from 'cache-manager';
 import type Keyv from 'keyv';
 import type KeyvRedis from '@keyv/redis';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import type { ISessionCache } from '@modules/session/interfaces/session.interface';
-
-type RedisClientConnection = Awaited<
-    ReturnType<KeyvRedis<string>['getClient']>
->;
-
-interface IStubRedisClient {
-    set: (
-        key: string,
-        value: string,
-        options: unknown
-    ) => Promise<string | null>;
-}
+import { stubSessionCacheClient } from '@test/unit/helpers/test.unit.session.helper';
 
 describe('SessionCache', () => {
     const cacheManager: MockProxy<Cache> = mock<Cache>();
@@ -33,7 +24,7 @@ describe('SessionCache', () => {
         get: keyvGet as unknown as Keyv['get'],
     });
     const store: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
+    const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
@@ -41,6 +32,8 @@ describe('SessionCache', () => {
         mock<HelperDateService>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
 
     let cache: SessionCache;
 
@@ -49,8 +42,9 @@ describe('SessionCache', () => {
 
         (keyv as unknown as { store: KeyvRedis<string> }).store = store;
         configGet.mockImplementation((key: string) => {
-            const values: Record<string, string> = {
+            const values: Record<string, string | number> = {
                 'session.keyPattern': 'Session:{userId}:{sessionId}',
+                'session.loginCacheTtlInMs': 900000,
             };
             return values[key];
         });
@@ -72,6 +66,7 @@ describe('SessionCache', () => {
                     provide: HelperStringService,
                     useValue: helperStringService,
                 },
+                { provide: HelperHashService, useValue: helperHashService },
             ],
         }).compile();
 
@@ -83,7 +78,6 @@ describe('SessionCache', () => {
             const session: ISessionCache = {
                 userId: 'user-1',
                 sessionId: 'session-1',
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
                 jti: 'jti-value',
             };
             keyvGet.mockResolvedValue(session);
@@ -114,22 +108,17 @@ describe('SessionCache', () => {
     });
 
     describe('setLogin', () => {
-        it('stores a new login session with a ttl derived from its expiry', async () => {
-            const now = new Date('2026-01-01T00:00:00.000Z');
-            const expiredAt = new Date('2026-01-01T01:00:00.000Z');
-            helperDateService.create.mockReturnValue(now);
-
-            await cache.setLogin('user-1', 'session-1', 'jti-value', expiredAt);
+        it('stores a new login session for the access-token lifetime', async () => {
+            await cache.setLogin('user-1', 'session-1', 'jti-value');
 
             expect(cacheManager.set).toHaveBeenCalledWith(
                 'user-1:session-1',
                 {
                     userId: 'user-1',
                     sessionId: 'session-1',
-                    expiredAt,
                     jti: 'jti-value',
                 },
-                3600000
+                900000
             );
         });
     });
@@ -138,72 +127,102 @@ describe('SessionCache', () => {
         const session: ISessionCache = {
             userId: 'user-1',
             sessionId: 'session-1',
-            expiredAt: new Date('2026-01-01T01:00:00.000Z'),
             jti: 'old-jti',
         };
 
-        it('rotates the jti and resets the ttl, answering true on a conditional write', async () => {
+        it('rotates the jti and resets the ttl when the stored jti matches, answering updated on a conditional write', async () => {
             const now = new Date('2026-01-01T00:00:00.000Z');
             helperDateService.create.mockReturnValue(now);
-            store.createKeyPrefix.mockReturnValue('prefixed-key');
-            store.namespace = 'session';
-            keyv.serializeData.mockResolvedValue('serialized-value');
-            const client: MockProxy<IStubRedisClient> =
-                mock<IStubRedisClient>();
-            client.set.mockResolvedValue('OK');
-            store.getClient.mockResolvedValue(
-                client as unknown as RedisClientConnection
+            keyvGet.mockResolvedValue(session);
+            helperHashService.sha256Hash.mockImplementation(
+                value => `hash(${value})`
             );
+            helperHashService.sha256Compare.mockReturnValue(true);
+            const client = stubSessionCacheClient({ keyv, store }, 'OK');
 
             const result = await cache.updateLogin(
                 'user-1',
                 'session-1',
-                session,
-                'new-jti',
-                60000
+                'old-jti',
+                'new-jti'
             );
 
-            expect(result).toBe(true);
+            expect(result).toBe(EnumSessionCacheUpdate.updated);
+            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
+                'hash(old-jti)',
+                'hash(old-jti)'
+            );
             expect(store.createKeyPrefix).toHaveBeenCalledWith(
                 'user-1:session-1',
                 'session'
             );
             expect(keyv.serializeData).toHaveBeenCalledWith({
                 value: { ...session, jti: 'new-jti' },
-                expires: now.getTime() + 60000,
+                expires: now.getTime() + 900000,
             });
             expect(client.set).toHaveBeenCalledWith(
                 'prefixed-key',
                 'serialized-value',
                 {
-                    expiration: { type: 'PX', value: 60000 },
+                    expiration: { type: 'PX', value: 900000 },
                     condition: 'XX',
                 }
             );
         });
 
-        it('answers false when the conditional write finds nothing to update', async () => {
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
+        it('answers mismatch without writing when the stored jti differs from the old jti', async () => {
+            keyvGet.mockResolvedValue(session);
+            helperHashService.sha256Hash.mockImplementation(
+                value => `hash(${value})`
             );
-            store.createKeyPrefix.mockReturnValue('prefixed-key');
-            keyv.serializeData.mockResolvedValue('serialized-value');
-            const client: MockProxy<IStubRedisClient> =
-                mock<IStubRedisClient>();
-            client.set.mockResolvedValue(null);
-            store.getClient.mockResolvedValue(
-                client as unknown as RedisClientConnection
-            );
+            helperHashService.sha256Compare.mockReturnValue(false);
+            const client = stubSessionCacheClient({ keyv, store }, 'OK');
 
             const result = await cache.updateLogin(
                 'user-1',
                 'session-1',
-                session,
-                'new-jti',
-                60000
+                'other-jti',
+                'new-jti'
             );
 
-            expect(result).toBe(false);
+            expect(result).toBe(EnumSessionCacheUpdate.mismatch);
+            expect(client.set).not.toHaveBeenCalled();
+        });
+
+        it('answers absent without writing when no login is cached', async () => {
+            keyvGet.mockResolvedValue(undefined);
+            const client = stubSessionCacheClient({ keyv, store }, 'OK');
+
+            const result = await cache.updateLogin(
+                'user-1',
+                'session-1',
+                'old-jti',
+                'new-jti'
+            );
+
+            expect(result).toBe(EnumSessionCacheUpdate.absent);
+            expect(client.set).not.toHaveBeenCalled();
+        });
+
+        it('answers absent when the conditional write finds nothing to update', async () => {
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
+            keyvGet.mockResolvedValue(session);
+            helperHashService.sha256Hash.mockImplementation(
+                value => `hash(${value})`
+            );
+            helperHashService.sha256Compare.mockReturnValue(true);
+            stubSessionCacheClient({ keyv, store }, null);
+
+            const result = await cache.updateLogin(
+                'user-1',
+                'session-1',
+                'old-jti',
+                'new-jti'
+            );
+
+            expect(result).toBe(EnumSessionCacheUpdate.absent);
         });
     });
 

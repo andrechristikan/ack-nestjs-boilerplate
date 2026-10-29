@@ -105,12 +105,6 @@ describe('UserAuthDomain', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -202,8 +196,8 @@ describe('UserAuthDomain', () => {
         it('logs the user in when the credentials are valid', async () => {
             const user = baseUser;
             userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
             userLoginDomain.handleLogin.mockResolvedValue(outcome);
 
@@ -215,6 +209,9 @@ describe('UserAuthDomain', () => {
                     device,
                 })
             ).resolves.toBe(outcome);
+            expect(
+                userLoginDomain.incrementPasswordAttempt
+            ).toHaveBeenCalledWith(user.id);
             expect(
                 userPasswordDomain.resetPasswordAttempt
             ).toHaveBeenCalledWith(user.id);
@@ -294,10 +291,10 @@ describe('UserAuthDomain', () => {
             });
         });
 
-        it('reaches the max attempt limit and throws UserPasswordAttemptMaxException', async () => {
+        it('reaches the max attempt limit and throws UserPasswordAttemptMaxException before comparing the password', async () => {
             const user = baseUser;
             userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(false);
 
             const call = domain.loginCredential({
                 email: user.email,
@@ -318,13 +315,14 @@ describe('UserAuthDomain', () => {
             expect(
                 userPasswordDomain.reachMaxPasswordAttempt
             ).toHaveBeenCalledWith(user.id);
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
         });
 
         it('records a failed login and throws UserPasswordNotMatchException', async () => {
             const user = baseUser;
             userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(false);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(false);
 
             const call = domain.loginCredential({
                 email: user.email,
@@ -350,8 +348,8 @@ describe('UserAuthDomain', () => {
         it('throws UserPasswordExpiredException when the password has expired', async () => {
             const user = baseUser;
             userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
-            authPasswordUtil.validatePassword.mockReturnValue(true);
+            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
             const call = domain.loginCredential({
@@ -384,6 +382,10 @@ describe('UserAuthDomain', () => {
             marketing: false,
             device,
         };
+
+        beforeEach(() => {
+            countryDomain.existsById.mockResolvedValue(true);
+        });
 
         it('returns null when the user already exists', async () => {
             featureFlagDomain.getMetadataByKey.mockResolvedValue({
@@ -439,6 +441,37 @@ describe('UserAuthDomain', () => {
             );
         });
 
+        it('throws CountryNotFoundException when the country does not exist', async () => {
+            featureFlagDomain.getMetadataByKey.mockResolvedValue({
+                signUpAllowed: true,
+            });
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
+            roleDomain.getByName.mockResolvedValue({
+                id: 'role-halcyon',
+                type: EnumRoleType.user,
+                name: 'user',
+            });
+            userUtil.checkUsernamePattern.mockReturnValue(false);
+            userUtil.checkBadWord.mockResolvedValue(false);
+            userRepository.existsByUsername.mockResolvedValue(false);
+            countryDomain.existsById.mockResolvedValue(false);
+
+            const call = domain.prepareSocialCreate(
+                'halcyon@example.com',
+                EnumUserLoginWith.socialGoogle,
+                socialInput,
+                workspaceContext
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'country',
+                messagePath: 'country.error.notFound',
+            });
+            expect(countryDomain.existsById).toHaveBeenCalledWith(
+                'country-halcyon'
+            );
+        });
+
         it('prepares a Google social create input', async () => {
             featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
@@ -471,14 +504,11 @@ describe('UserAuthDomain', () => {
                 password: null,
                 verification: null,
                 createdBy: 'user-id-halcyon',
-                termPolicy: expect.objectContaining({
-                    [EnumTermPolicyType.cookies]: true,
-                    [EnumTermPolicyType.marketing]: false,
-                }),
                 acceptedTermPolicyTypes: expect.arrayContaining([
                     EnumTermPolicyType.cookies,
                 ]),
             });
+            expect(result).not.toHaveProperty('termPolicy');
         });
 
         it('prepares an Apple social create input with no optional term policy accepted', async () => {
@@ -805,7 +835,7 @@ describe('UserAuthDomain', () => {
             userUtil.checkBadWord.mockResolvedValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
             databaseUtil.createId.mockReturnValue('user-id-halcyon');
-            authPasswordUtil.createPassword.mockReturnValue({
+            authPasswordUtil.createPassword.mockResolvedValue({
                 passwordHash: 'hashed',
                 passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
                 passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
@@ -860,6 +890,7 @@ describe('UserAuthDomain', () => {
                 EnumTermPolicyType.termsOfService,
                 EnumTermPolicyType.privacy,
             ]);
+            expect(result.input).not.toHaveProperty('termPolicy');
         });
 
         it('throws RoleNotFoundException when the default role is missing', async () => {

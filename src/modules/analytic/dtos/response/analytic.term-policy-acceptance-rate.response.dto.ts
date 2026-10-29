@@ -19,8 +19,9 @@ export const AnalyticTermPolicyAcceptanceRateResponseSchema = z.object({
         example: faker.number.int({ min: 0, max: 20 }),
     }),
     rate: z.number().meta({
-        description: 'Acceptances divided by the expected total',
-        example: faker.number.float({ min: 0, max: 1, fractionDigits: 2 }),
+        description:
+            'Acceptances divided by the expected total, as a percentage between 0-100',
+        example: faker.number.float({ min: 0, max: 100, fractionDigits: 2 }),
     }),
 });
 

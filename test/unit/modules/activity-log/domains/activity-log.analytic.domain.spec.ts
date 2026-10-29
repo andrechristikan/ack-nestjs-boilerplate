@@ -184,6 +184,38 @@ describe('ActivityLogAnalyticDomain', () => {
         });
     });
 
+    describe('getGroupIpByActions', () => {
+        it('passes the actions, range, and minimum count to the repository', async () => {
+            const rows = [{ ipAddress: '10.0.0.1', count: 6 }];
+            activityLogAnalyticRepository.groupIpByActions.mockResolvedValue(
+                rows
+            );
+
+            const result = await domain.getGroupIpByActions(
+                [
+                    EnumActivityLogAction.userSignedUp,
+                    EnumActivityLogAction.userCreated,
+                ],
+                startDate,
+                endDate,
+                5
+            );
+
+            expect(result).toBe(rows);
+            expect(
+                activityLogAnalyticRepository.groupIpByActions
+            ).toHaveBeenCalledWith(
+                [
+                    EnumActivityLogAction.userSignedUp,
+                    EnumActivityLogAction.userCreated,
+                ],
+                startDate,
+                endDate,
+                5
+            );
+        });
+    });
+
     describe('getGroupActivityByWorkspaceOffset', () => {
         it('passes the workspace-volume action list and pagination to the repository', async () => {
             const params = { skip: 0, limit: 20, orderBy: [] };

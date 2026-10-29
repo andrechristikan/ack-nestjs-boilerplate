@@ -1,4 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { EnumTermPolicyStatus } from '@generated/prisma-client/client';
+import { TermPolicyAcceptanceAnalyticSelect } from '@modules/term-policy/constants/term-policy.constant';
 import type { ITermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/interfaces/term-policy.acceptance-analytic-repository.interface';
 import type { ITermPolicyAcceptanceAnalytic } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
@@ -12,10 +14,11 @@ export class TermPolicyAcceptanceAnalyticRepository implements ITermPolicyAccept
         endDate: Date | null
     ): Promise<number> {
         return this.databaseService.client.termPolicyUserAcceptance.count({
-            where:
-                startDate && endDate
-                    ? { acceptedAt: { gte: startDate, lt: endDate } }
-                    : {},
+            where: {
+                termPolicy: { status: EnumTermPolicyStatus.published },
+                ...(startDate &&
+                    endDate && { acceptedAt: { gte: startDate, lt: endDate } }),
+            },
         });
     }
 
@@ -23,18 +26,22 @@ export class TermPolicyAcceptanceAnalyticRepository implements ITermPolicyAccept
         startDate: Date | null,
         endDate: Date | null
     ): Promise<ITermPolicyAcceptanceAnalytic[]> {
-        return this.databaseService.client.termPolicyUserAcceptance.findMany({
-            where:
-                startDate && endDate
-                    ? { acceptedAt: { gte: startDate, lt: endDate } }
-                    : {},
-            select: {
-                id: true,
-                userId: true,
-                termPolicyId: true,
-                acceptedAt: true,
-                createdAt: true,
-            },
-        });
+        const rows =
+            await this.databaseService.client.termPolicyUserAcceptance.findMany(
+                {
+                    where:
+                        startDate && endDate
+                            ? { acceptedAt: { gte: startDate, lt: endDate } }
+                            : {},
+                    select: TermPolicyAcceptanceAnalyticSelect,
+                }
+            );
+        return rows.map(row => ({
+            id: row.id,
+            userId: row.userId,
+            termPolicyId: row.termPolicyId,
+            acceptedAt: row.acceptedAt,
+            publishedAt: row.termPolicy.publishedAt,
+        }));
     }
 }

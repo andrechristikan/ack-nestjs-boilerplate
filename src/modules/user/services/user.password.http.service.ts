@@ -12,9 +12,12 @@ export class UserPasswordHttpService {
 
     async updatePasswordByAdmin(
         userId: string,
-        updatedBy: string
+        user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.userPasswordDomain.updatePasswordByAdmin(userId, updatedBy);
+        await this.userPasswordDomain.updatePasswordByAdmin(userId, user.id, {
+            roleId: user.roleId,
+            roleType: user.role.type,
+        });
 
         return {};
     }

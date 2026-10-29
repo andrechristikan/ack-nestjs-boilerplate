@@ -1,6 +1,8 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
+import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationEmailResult,
@@ -32,6 +34,7 @@ export class NotificationEmailSecurityDomain {
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
+        private readonly notificationRepository: NotificationRepository,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly messageService: MessageService
     ) {
@@ -62,6 +65,25 @@ export class NotificationEmailSecurityDomain {
         );
     }
 
+    private async stampProcessed(notificationId: string): Promise<void> {
+        const processedAt = this.helperDateService.create();
+        await this.notificationRepository.updateDeliveryProcessedAt(
+            notificationId,
+            EnumNotificationChannel.email,
+            processedAt
+        );
+    }
+
+    private async stampSent(notificationId: string): Promise<void> {
+        const sentAt = this.helperDateService.create();
+        await this.notificationRepository.updateDeliverySentAt(
+            notificationId,
+            EnumNotificationChannel.email,
+            sentAt,
+            []
+        );
+    }
+
     async processTemporaryPasswordByAdmin(
         {
             encryptedEmail,
@@ -69,6 +91,7 @@ export class NotificationEmailSecurityDomain {
             cc,
             bcc,
             userId,
+            notificationId,
         }: INotificationEmailSendEncryptedPayload,
         {
             encryptedPassword,
@@ -92,6 +115,8 @@ export class NotificationEmailSecurityDomain {
             this.helperDateService.createFromIso(passwordCreatedAt);
         const passwordCreatedAtFormatted =
             this.helperDateService.formatToRFC2822(passwordCreatedAtDate);
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
             recipients: [email],
@@ -106,6 +131,7 @@ export class NotificationEmailSecurityDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.temporaryPasswordByAdmin'
@@ -120,8 +146,11 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
         userId,
+        notificationId,
     }: INotificationEmailSendEncryptedPayload): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.changePassword,
             recipients: [email],
@@ -133,6 +162,7 @@ export class NotificationEmailSecurityDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.changePassword'
@@ -147,8 +177,11 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
         userId,
+        notificationId,
     }: INotificationEmailSendEncryptedPayload): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.resetPassword,
             recipients: [email],
@@ -160,6 +193,7 @@ export class NotificationEmailSecurityDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.resetPassword'
@@ -175,6 +209,7 @@ export class NotificationEmailSecurityDomain {
             cc,
             bcc,
             userId,
+            notificationId,
         }: INotificationEmailSendEncryptedPayload,
         {
             expiredAt,
@@ -194,6 +229,8 @@ export class NotificationEmailSecurityDomain {
         const expiredAtDate = this.helperDateService.createFromIso(expiredAt);
         const expiredAtFormatted =
             this.helperDateService.formatToRFC2822(expiredAtDate);
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.forgotPassword,
             recipients: [email],
@@ -209,6 +246,7 @@ export class NotificationEmailSecurityDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.forgotPassword'
@@ -223,8 +261,11 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
         userId,
+        notificationId,
     }: INotificationEmailSendEncryptedPayload): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
             recipients: [email],
@@ -236,6 +277,7 @@ export class NotificationEmailSecurityDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.resetTwoFactorByAdmin'
@@ -254,6 +296,7 @@ export class NotificationEmailSecurityDomain {
             cc,
             bcc,
             userId,
+            notificationId,
         }: INotificationEmailSendEncryptedPayload,
         {
             loginFrom,
@@ -266,6 +309,8 @@ export class NotificationEmailSecurityDomain {
         const loginAtDate = this.helperDateService.createFromIso(loginAt);
         const loginAtFormatted =
             this.helperDateService.formatToRFC2822(loginAtDate);
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.newDeviceLogin,
             recipients: [email],
@@ -282,6 +327,7 @@ export class NotificationEmailSecurityDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.newDeviceLogin'

@@ -16,7 +16,7 @@ export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 export const UserStoreKey = 'UserStoreKey';
 
 /**
- * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`); `guardMissing` documents a guard or param decorator that reads the user store.
+ * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`); `guardMissing` documents a guard or param decorator that reads the user store; `photoSizeExceeded` documents the profile photo presign route.
  * @public
  */
 export const DocUserErrorResponses = {
@@ -46,6 +46,10 @@ export const DocUserErrorResponses = {
     guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
         statusCode: EnumUserStatusCodeError.guardMissing,
         messagePath: 'user.error.guardMissing',
+    }),
+    photoSizeExceeded: DocResponseError(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+        messagePath: 'user.error.photoSizeExceeded',
     }),
 } as const;
 
@@ -111,7 +115,6 @@ export const UserAdminListSelect = {
     lastLoginWith: true,
     lastWorkspaceId: true,
     lastWorkspaceChangedAt: true,
-    termPolicy: true,
     photo: true,
     createdAt: true,
     createdBy: true,

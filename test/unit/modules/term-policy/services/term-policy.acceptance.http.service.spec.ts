@@ -61,12 +61,6 @@ describe('TermPolicyAcceptanceHttpService', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: timestamp,
         createdBy: null,

@@ -2,7 +2,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationQueryCursorParams,
@@ -40,7 +43,7 @@ describe('WorkspaceMemberDomain', () => {
         mock<WorkspaceRepository>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
-
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let domain: WorkspaceMemberDomain;
 
     const baseMember: WorkspaceMember = {
@@ -66,6 +69,9 @@ describe('WorkspaceMemberDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
+        workspaceMemberRepository.updateRole.mockResolvedValue(true);
+        workspaceMemberRepository.removeMember.mockResolvedValue(true);
+        workspaceMemberRepository.transferOwnership.mockResolvedValue(true);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -76,6 +82,7 @@ describe('WorkspaceMemberDomain', () => {
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
@@ -299,11 +306,76 @@ describe('WorkspaceMemberDomain', () => {
             });
             expect(
                 workspaceMemberRepository.transferOwnership
-            ).toHaveBeenCalledWith('member-1', 'member-2');
+            ).toHaveBeenCalledWith('workspace-1', 'member-1', 'member-2');
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 transferredActivityLog,
                 transferredByOwnerActivityLog,
             ]);
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException and stages nothing when a guarded row no longer matches', async () => {
+            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
+            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+            workspaceMemberRepository.transferOwnership.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                domain.transferOwnership('workspace-1', actor, 'user-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.memberPeerForbidden
+                    ],
+                messagePath: 'workspace.error.memberPeerForbidden',
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict in the ownership swap to WorkspaceMemberPeerForbiddenException', async () => {
+            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
+            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+            const conflict = new Error('write-conflict');
+            workspaceMemberRepository.transferOwnership.mockRejectedValue(
+                conflict
+            );
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.transferOwnership('workspace-1', actor, 'user-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other transaction error in AppUnknownException', async () => {
+            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
+            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+            workspaceMemberRepository.transferOwnership.mockRejectedValue(
+                new Error('boom')
+            );
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                domain.transferOwnership('workspace-1', actor, 'user-2')
+            ).rejects.toBeInstanceOf(AppUnknownException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -350,7 +422,8 @@ describe('WorkspaceMemberDomain', () => {
             await domain.leaveWorkspace('workspace-1', owner);
 
             expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
-                owner.id
+                owner.id,
+                EnumWorkspaceMemberRole.owner
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
@@ -369,11 +442,23 @@ describe('WorkspaceMemberDomain', () => {
                 workspaceMemberRepository.countOwners
             ).not.toHaveBeenCalled();
             expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
-                member.id
+                member.id,
+                EnumWorkspaceMemberRole.member
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
+        });
+
+        it('throws WorkspaceMemberNotFoundException and stages nothing when the guarded delete matches no row', async () => {
+            workspaceMemberRepository.removeMember.mockResolvedValue(false);
+
+            await expect(
+                domain.leaveWorkspace('workspace-1', baseMember)
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberNotFoundException,
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -551,6 +636,11 @@ describe('WorkspaceMemberDomain', () => {
                 EnumWorkspaceMemberRole.admin
             );
 
+            expect(workspaceMemberRepository.updateRole).toHaveBeenCalledWith(
+                'member-2',
+                EnumWorkspaceMemberRole.member,
+                EnumWorkspaceMemberRole.admin
+            );
             expect(activityLogDomain.prepare).toHaveBeenCalledTimes(2);
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
@@ -563,6 +653,27 @@ describe('WorkspaceMemberDomain', () => {
                 actorActivityLog,
                 byAdminActivityLog,
             ]);
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException and stages nothing when the target role changed since it was read', async () => {
+            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
+            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+                target
+            );
+            workspaceMemberRepository.updateRole.mockResolvedValue(false);
+
+            await expect(
+                domain.updateMemberRole(
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    EnumWorkspaceMemberRole.admin
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -678,6 +789,8 @@ describe('WorkspaceMemberDomain', () => {
             workspaceMemberRepository.removeMember.mockImplementation(
                 async () => {
                     callOrder.push('removeMember');
+
+                    return true;
                 }
             );
             activityLogDomain.stagePrepared.mockImplementation(() => {
@@ -702,13 +815,35 @@ describe('WorkspaceMemberDomain', () => {
                 metadata: { actorUserId: 'user-1' },
             });
             expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
-                'member-2'
+                'member-2',
+                EnumWorkspaceMemberRole.member
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 removedActivityLog,
                 removedByAdminActivityLog,
             ]);
             expect(callOrder).toEqual(['removeMember', 'stagePrepared']);
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException and stages nothing when the target role changed since it was read', async () => {
+            const actor = {
+                ...baseMember,
+                id: 'member-1',
+                userId: 'user-1',
+                role: EnumWorkspaceMemberRole.admin,
+            };
+            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+                target
+            );
+            workspaceMemberRepository.removeMember.mockResolvedValue(false);
+
+            await expect(
+                domain.removeMember('workspace-1', actor, 'member-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 

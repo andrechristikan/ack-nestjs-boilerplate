@@ -3,14 +3,15 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumDeviceNotificationProvider,
-    EnumDevicePlatform,
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
-import type { NotificationUserSetting } from '@generated/prisma-client/client';
+import type {
+    DeviceOwnership,
+    NotificationUserSetting,
+} from '@generated/prisma-client/client';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
-import type { IDeviceOwnershipWithDevice } from '@modules/device/interfaces/device.interface';
 import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
@@ -30,7 +31,7 @@ describe('NotificationRecipientDomain', () => {
         username: 'nadia',
     };
 
-    const ownership: IDeviceOwnershipWithDevice = {
+    const ownership: DeviceOwnership = {
         id: 'ownership-id',
         deviceId: 'device-id',
         userId: user.id,
@@ -38,6 +39,8 @@ describe('NotificationRecipientDomain', () => {
         isRevoked: false,
         revokedById: null,
         lastActiveAt: new Date('2024-01-01T00:00:00.000Z'),
+        notificationToken: 't1',
+        notificationProvider: EnumDeviceNotificationProvider.fcm,
         biometricEnabled: false,
         biometricToken: null,
         biometricType: null,
@@ -46,19 +49,6 @@ describe('NotificationRecipientDomain', () => {
         createdBy: null,
         updatedAt: new Date('2024-01-01T00:00:00.000Z'),
         updatedBy: null,
-        device: {
-            id: 'device-id',
-            fingerprint: 'fingerprint-1',
-            name: 'iPhone',
-            platform: EnumDevicePlatform.ios,
-            lastActiveAt: new Date('2024-01-01T00:00:00.000Z'),
-            notificationToken: 't1',
-            notificationProvider: EnumDeviceNotificationProvider.fcm,
-            createdAt: new Date('2024-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-            updatedBy: null,
-        },
     };
 
     const emailDisabled: NotificationUserSetting = {
@@ -100,15 +90,9 @@ describe('NotificationRecipientDomain', () => {
             );
             deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
                 ownership,
-                {
-                    ...ownership,
-                    device: { ...ownership.device, notificationToken: null },
-                },
+                { ...ownership, notificationToken: null },
                 ownership,
-                {
-                    ...ownership,
-                    device: { ...ownership.device, notificationToken: 't2' },
-                },
+                { ...ownership, notificationToken: 't2' },
             ]);
 
             const result = await domain.getRecipient(
@@ -151,8 +135,7 @@ describe('NotificationRecipientDomain', () => {
 
         it('starts both reads before either resolves', async () => {
             const settings = Promise.withResolvers<NotificationUserSetting[]>();
-            const ownerships =
-                Promise.withResolvers<IDeviceOwnershipWithDevice[]>();
+            const ownerships = Promise.withResolvers<DeviceOwnership[]>();
             notificationUserSettingRepository.findUserSetting.mockReturnValue(
                 settings.promise
             );

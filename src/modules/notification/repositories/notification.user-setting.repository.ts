@@ -41,14 +41,14 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
         tx: IDatabaseTransactionClient,
         userId: string,
         { channel, type, isActive }: INotificationUserSettingUpdate
-    ): Promise<NotificationUserSetting> {
-        return tx.notificationUserSetting.update({
-            where: {
-                userId_channel_type: { userId, channel, type },
-            },
+    ): Promise<boolean> {
+        const { count } = await tx.notificationUserSetting.updateMany({
+            where: { userId, channel, type },
             data: {
                 isActive,
             },
         });
+
+        return count > 0;
     }
 }

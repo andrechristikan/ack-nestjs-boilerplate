@@ -16,7 +16,7 @@ describe('FeatureFlagUtil', () => {
         util = module.get(FeatureFlagUtil);
     });
 
-    describe('checkMetadataKey', () => {
+    describe('isMetadataValid', () => {
         it('returns true when keys match and every value keeps its type', () => {
             const oldMetadata: IFeatureFlagMetadata = {
                 newFeature: true,
@@ -27,21 +27,27 @@ describe('FeatureFlagUtil', () => {
                 maxRetries: 5,
             };
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(true);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(true);
+        });
+
+        it('returns false when the stored metadata is null', () => {
+            const newMetadata: IFeatureFlagMetadata = { newFeature: true };
+
+            expect(util.isMetadataValid(null, newMetadata)).toBe(false);
         });
 
         it('returns false when the key sets differ', () => {
             const oldMetadata: IFeatureFlagMetadata = { newFeature: true };
             const newMetadata: IFeatureFlagMetadata = { maxRetries: 3 };
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(false);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(false);
         });
 
         it('returns false when a value changes primitive type', () => {
             const oldMetadata: IFeatureFlagMetadata = { newFeature: true };
             const newMetadata: IFeatureFlagMetadata = { newFeature: 'true' };
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(false);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(false);
         });
 
         it('returns false when an array value changes element type', () => {
@@ -52,7 +58,7 @@ describe('FeatureFlagUtil', () => {
                 allowedRegions: [1, 2],
             };
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(false);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(false);
         });
 
         it('returns true when an array value keeps its element type', () => {
@@ -63,7 +69,7 @@ describe('FeatureFlagUtil', () => {
                 allowedRegions: ['sg', 'id'],
             };
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(true);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(true);
         });
 
         it('returns false when a new value is undefined', () => {
@@ -72,7 +78,7 @@ describe('FeatureFlagUtil', () => {
                 label: undefined,
             } as unknown as IFeatureFlagMetadata;
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(false);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(false);
         });
 
         it('returns false when a new value is null', () => {
@@ -81,14 +87,14 @@ describe('FeatureFlagUtil', () => {
                 label: null,
             } as unknown as IFeatureFlagMetadata;
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(false);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(false);
         });
 
         it('returns false when a new value is an empty string', () => {
             const oldMetadata: IFeatureFlagMetadata = { label: 'a' };
             const newMetadata: IFeatureFlagMetadata = { label: '' };
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(false);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(false);
         });
 
         it('returns false when a new array value is empty', () => {
@@ -97,7 +103,7 @@ describe('FeatureFlagUtil', () => {
             };
             const newMetadata: IFeatureFlagMetadata = { allowedRegions: [] };
 
-            expect(util.checkMetadataKey(oldMetadata, newMetadata)).toBe(false);
+            expect(util.isMetadataValid(oldMetadata, newMetadata)).toBe(false);
         });
     });
 

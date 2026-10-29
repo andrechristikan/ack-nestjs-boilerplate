@@ -12,6 +12,7 @@ import {
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
 import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { DocTermPolicyErrorResponses } from '@modules/term-policy/constants/term-policy.constant';
 import { UserCreateSocialRequestSchema } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserForgotPasswordResetRequestSchema } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
@@ -78,6 +79,7 @@ export class UserPublicController {
     }
 
     @Doc({ summary: 'login with social google' })
+    @DocTermPolicyErrorResponses.requiredNotPublished
     @Response('user.loginWithSocialGoogle', {
         schema: UserLoginResponseSchema,
     })
@@ -101,6 +103,7 @@ export class UserPublicController {
     }
 
     @Doc({ summary: 'login with social apple' })
+    @DocTermPolicyErrorResponses.requiredNotPublished
     @Response('user.loginWithSocialApple', {
         schema: UserLoginResponseSchema,
     })
@@ -124,6 +127,7 @@ export class UserPublicController {
     }
 
     @Doc({ summary: 'user sign up' })
+    @DocTermPolicyErrorResponses.requiredNotPublished
     @Response('user.signUp')
     @FeatureFlagProtected('signUp')
     @ApiKeyProtected()

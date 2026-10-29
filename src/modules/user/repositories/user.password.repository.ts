@@ -91,13 +91,15 @@ export class UserPasswordRepository implements IUserPasswordRepository {
         tx: IDatabaseTransactionClient,
         forgotPasswordId: string,
         resetAt: Date
-    ): Promise<ForgotPassword> {
-        return tx.forgotPassword.update({
-            where: { id: forgotPasswordId },
+    ): Promise<boolean> {
+        const { count } = await tx.forgotPassword.updateMany({
+            where: { id: forgotPasswordId, isUsed: false },
             data: {
                 isUsed: true,
                 resetAt,
             },
         });
+
+        return count > 0;
     }
 }

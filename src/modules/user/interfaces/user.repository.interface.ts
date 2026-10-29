@@ -7,7 +7,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -15,9 +14,9 @@ import type {
     IUserProfile,
     IUserRecipient,
     IUserUpdateProfile,
+    IUserUpdateStatus,
 } from '@modules/user/interfaces/user.interface';
 import {
-    EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     Prisma,
@@ -75,7 +74,7 @@ export interface IUserRepository {
     updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { status }: UserUpdateStatusRequestDto
+        { status, passwordAttempt }: IUserUpdateStatus
     ): Promise<User>;
     updateProfile(
         userId: string,
@@ -103,12 +102,15 @@ export interface IUserRepository {
         { passwordCreated, passwordExpired, passwordHash }: IAuthPassword,
         updatedBy: string
     ): Promise<User>;
-    increasePasswordAttempt(userId: string): Promise<User>;
+    incrementPasswordAttempt(
+        userId: string,
+        maxAttempt: number
+    ): Promise<number | null>;
     resetPasswordAttempt(userId: string): Promise<User>;
     deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<void>;
+    ): Promise<boolean>;
     markVerified(userId: string, verifiedAt: Date): Promise<User>;
     markVerifiedInTx(
         tx: IDatabaseTransactionClient,
@@ -123,15 +125,6 @@ export interface IUserRepository {
         ipAddress: string | null,
         loginAt: Date
     ): Promise<User>;
-    acceptTermPolicyInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        type: EnumTermPolicyType
-    ): Promise<void>;
-    resetTermPolicyInTx(
-        tx: IDatabaseTransactionClient,
-        type: EnumTermPolicyType
-    ): Promise<void>;
     touchUpdatedByInTx(
         tx: IDatabaseTransactionClient,
         userId: string

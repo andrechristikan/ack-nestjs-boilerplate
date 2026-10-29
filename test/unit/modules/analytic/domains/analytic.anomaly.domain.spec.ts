@@ -596,15 +596,57 @@ describe('AnalyticAnomalyDomain', () => {
         });
     });
 
+    describe('getImpossibleTravelUserIds', () => {
+        it('returns the distinct users with an impossible-travel pair', async () => {
+            sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue([
+                {
+                    id: 'session-1',
+                    userId: 'user-1',
+                    ipAddress: null,
+                    createdAt: startDate,
+                    geoLocation: nyc,
+                    userAgent: emptyAgent,
+                },
+                {
+                    id: 'session-2',
+                    userId: 'user-1',
+                    ipAddress: null,
+                    createdAt: new Date('2026-01-01T00:10:00.000Z'),
+                    geoLocation: london,
+                    userAgent: emptyAgent,
+                },
+                {
+                    id: 'session-3',
+                    userId: 'user-1',
+                    ipAddress: null,
+                    createdAt: new Date('2026-01-01T00:20:00.000Z'),
+                    geoLocation: nyc,
+                    userAgent: emptyAgent,
+                },
+            ]);
+            analyticGeoUtil.distanceKm.mockReturnValue(800);
+
+            const result = await domain.getImpossibleTravelUserIds(
+                startDate,
+                endDate
+            );
+
+            expect(result).toEqual(['user-1']);
+            expect(
+                sessionAnalyticDomain.getActiveWithGeoInRange
+            ).toHaveBeenCalledWith(startDate, endDate, now);
+        });
+    });
+
     describe('computeImpossibleTravel', () => {
-        it('passes null into the session lookup when dates are null', async () => {
+        it('passes null dates and the current time into the session lookup', async () => {
             sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue([]);
 
             await domain['computeImpossibleTravel'](null, null);
 
             expect(
                 sessionAnalyticDomain.getActiveWithGeoInRange
-            ).toHaveBeenCalledWith(null, null);
+            ).toHaveBeenCalledWith(null, null, now);
         });
 
         it('flags consecutive sessions that travel too far too fast', async () => {

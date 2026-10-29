@@ -30,13 +30,6 @@ describe('UserListResponseSchema', () => {
         policies: [policy],
     };
 
-    const termPolicy = {
-        termsOfService: true,
-        privacy: true,
-        cookies: true,
-        marketing: false,
-    };
-
     const row = {
         id: 'user-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -54,7 +47,6 @@ describe('UserListResponseSchema', () => {
         role,
         status: EnumUserStatus.active,
         countryId: 'country-1',
-        termPolicy,
         photo: null,
     };
 

@@ -23,9 +23,24 @@ export interface IAnalyticFraudRiskScore {
     contributingSignalCodes: EnumAnalyticFraudContributingSignal[];
 }
 
+export interface IAnalyticFraudSignalUsers {
+    sessionAfterAdmin: Set<string>;
+    impossibleTravel: Set<string>;
+    newDeviceAfterPasswordChange: Set<string>;
+    credentialStuffingIp: Set<string>;
+    sharedFingerprint: Set<string>;
+    massRegistrationIp: Set<string>;
+    forgotPasswordAbuse: Set<string>;
+}
+
 export interface IAnalyticCredentialStuffing {
     ipAddress: string;
     uniqueUsers: number;
+    failCount: number;
+}
+
+export interface IAnalyticCredentialStuffingGroup {
+    users: Set<string>;
     failCount: number;
 }
 

@@ -62,12 +62,6 @@ describe('UserHttpService', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -278,12 +272,16 @@ describe('UserHttpService', () => {
             };
 
             await expect(
-                service.updateStatusByAdmin('user-cinder', dto, 'admin-cinder')
+                service.updateStatusByAdmin('user-cinder', dto, {
+                    ...baseUser,
+                    id: 'admin-cinder',
+                })
             ).resolves.toEqual({});
             expect(userDomain.updateStatusByAdmin).toHaveBeenCalledWith(
                 'user-cinder',
                 dto.status,
-                'admin-cinder'
+                'admin-cinder',
+                { roleId: baseUser.roleId, roleType: baseUser.role.type }
             );
         });
     });

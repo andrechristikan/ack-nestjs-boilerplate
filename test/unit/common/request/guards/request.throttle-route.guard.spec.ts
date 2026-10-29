@@ -122,7 +122,7 @@ describe('RequestThrottleRouteGuard', () => {
             executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
             httpArgumentsHost.getRequest.mockReturnValue(request);
             httpArgumentsHost.getResponse.mockReturnValue(response);
-            requestUtil.resolveThrottleTrackerIp.mockReturnValue('127.0.0.1');
+            requestUtil.getClientIp.mockReturnValue('127.0.0.1');
 
             await expect(guard.canActivate(executionContext)).resolves.toBe(
                 true

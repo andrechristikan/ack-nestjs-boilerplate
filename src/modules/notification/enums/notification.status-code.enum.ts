@@ -7,4 +7,5 @@ export enum EnumNotificationStatusCodeError {
     alreadyRead = 51201,
     invalidType = 51202,
     invalidChannel = 51203,
+    settingInvalid = 51204,
 }

@@ -33,7 +33,6 @@ import type {
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
-import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -54,7 +53,6 @@ export class TermPolicyDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly userDomain: UserDomain,
         private readonly termPolicyQueue: TermPolicyQueue
     ) {}
 
@@ -252,7 +250,7 @@ export class TermPolicyDomain {
         if (!termPolicy) {
             throw new TermPolicyNotFoundException();
         }
-        if (termPolicy.status === EnumTermPolicyStatus.published) {
+        if (termPolicy.status !== EnumTermPolicyStatus.draft) {
             throw new TermPolicyStatusInvalidException();
         }
 
@@ -306,10 +304,20 @@ export class TermPolicyDomain {
                         throw new TermPolicyNotFoundException();
                     }
 
-                    await this.userDomain.resetTermPolicyInTx(
+                    await this.termPolicyRepository.archivePublishedByTypeInTx(
                         tx,
-                        termPolicy.type
+                        row.type,
+                        row.version
                     );
+                    const hasNewerPublished =
+                        await this.termPolicyRepository.existsNewerPublishedInTx(
+                            tx,
+                            row.type,
+                            row.version
+                        );
+                    if (hasNewerPublished) {
+                        throw new TermPolicyStatusInvalidException();
+                    }
 
                     return {
                         published: row,

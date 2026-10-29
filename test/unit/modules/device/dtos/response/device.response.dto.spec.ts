@@ -1,7 +1,4 @@
-import {
-    EnumDeviceNotificationProvider,
-    EnumDevicePlatform,
-} from '@generated/prisma-client/client';
+import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import { DeviceResponseSchema } from '@modules/device/dtos/response/device.response.dto';
 
 describe('DeviceResponseSchema', () => {
@@ -15,7 +12,6 @@ describe('DeviceResponseSchema', () => {
         name: 'iPhone 12',
         platform: EnumDevicePlatform.ios,
         lastActiveAt: createdAt,
-        notificationProvider: EnumDeviceNotificationProvider.apns,
     };
 
     it('parses a row into exactly the declared fields', () => {
@@ -24,27 +20,25 @@ describe('DeviceResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
-    it('strips the fingerprint, notificationToken, and an undeclared key', () => {
+    it('strips the fingerprint, notificationProvider, and an undeclared key', () => {
         const result = DeviceResponseSchema.parse({
             ...row,
             fingerprint: 'abc123def456ghi789jkl012mno345pq',
-            notificationToken: 'fcm_token_1234567890abcdef',
+            notificationProvider: 'fcm',
         });
 
         expect(result).toEqual(row);
     });
 
-    it('parses a null name and notificationProvider', () => {
+    it('parses a null name', () => {
         const result = DeviceResponseSchema.parse({
             ...row,
             name: null,
-            notificationProvider: null,
         });
 
         expect(result).toEqual({
             ...row,
             name: null,
-            notificationProvider: null,
         });
     });
 });

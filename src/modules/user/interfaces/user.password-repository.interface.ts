@@ -21,5 +21,5 @@ export interface IUserPasswordRepository {
         tx: IDatabaseTransactionClient,
         forgotPasswordId: string,
         resetAt: Date
-    ): Promise<ForgotPassword>;
+    ): Promise<boolean>;
 }

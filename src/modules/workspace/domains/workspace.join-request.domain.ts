@@ -1,4 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
@@ -54,6 +58,7 @@ export class WorkspaceJoinRequestDomain {
         private readonly userDomain: UserDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
@@ -168,6 +173,54 @@ export class WorkspaceJoinRequestDomain {
         }
 
         return joinRequest;
+    }
+
+    private async acceptWithMember(
+        joinRequest: WorkspaceJoinRequest,
+        reviewerId: string,
+        reviewedAt: Date
+    ): Promise<void> {
+        try {
+            await this.databaseService.withTransaction(async tx => {
+                const accepted =
+                    await this.workspaceJoinRequestRepository.acceptInTx(
+                        tx,
+                        joinRequest.id,
+                        reviewerId,
+                        reviewedAt
+                    );
+                if (!accepted) {
+                    throw new WorkspaceJoinRequestAlreadyProcessedException();
+                }
+
+                await this.workspaceMemberDomain.createInTx(
+                    tx,
+                    joinRequest.workspaceId,
+                    joinRequest.userId,
+                    EnumWorkspaceMemberRole.member,
+                    reviewerId
+                );
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const isAlreadyMember = this.databaseUtil.isUniqueCollision(
+                err,
+                'userId'
+            );
+            if (isAlreadyMember) {
+                throw new WorkspaceJoinRequestAlreadyMemberException();
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceJoinRequestAlreadyProcessedException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 
     async createJoinRequest(
@@ -286,21 +339,7 @@ export class WorkspaceJoinRequestDomain {
             joinRequest.userId,
             EnumNotificationKind.workspaceJoinAccepted
         );
-        await this.databaseService.withTransaction(async tx => {
-            await this.workspaceMemberDomain.createInTx(
-                tx,
-                joinRequest.workspaceId,
-                joinRequest.userId,
-                EnumWorkspaceMemberRole.member,
-                reviewerId
-            );
-            await this.workspaceJoinRequestRepository.acceptInTx(
-                tx,
-                joinRequest.id,
-                reviewerId,
-                reviewedAt
-            );
-        });
+        await this.acceptWithMember(joinRequest, reviewerId, reviewedAt);
 
         this.activityLogDomain.stagePrepared(activityLogs);
 
@@ -358,12 +397,15 @@ export class WorkspaceJoinRequestDomain {
             joinRequest.userId,
             EnumNotificationKind.workspaceJoinRejected
         );
-        await this.workspaceJoinRequestRepository.reject(
+        const rejected = await this.workspaceJoinRequestRepository.reject(
             workspaceJoinRequestId,
             reviewerId,
             rejectReasonCode,
             reviewedAt
         );
+        if (!rejected) {
+            throw new WorkspaceJoinRequestAlreadyProcessedException();
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
 

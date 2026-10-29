@@ -95,22 +95,6 @@ export class LoggerUtil {
             return request.socket.remoteAddress;
         }
 
-        const headers = request.headers;
-        if (headers) {
-            const forwarded = headers['x-forwarded-for'] as string;
-            if (forwarded) {
-                const firstIP = forwarded.split(',')[0]!.trim();
-                if (firstIP) {
-                    return firstIP;
-                }
-            }
-
-            const realIP = headers['x-real-ip'] as string;
-            if (realIP) {
-                return realIP;
-            }
-        }
-
         return 'unknown';
     }
 

@@ -22,7 +22,7 @@ export class DeviceAnalyticRepository implements IDeviceAnalyticRepository {
     }
 
     async countWithPushToken(): Promise<number> {
-        return this.databaseService.client.device.count({
+        return this.databaseService.client.deviceOwnership.count({
             where: { notificationToken: { not: null } },
         });
     }

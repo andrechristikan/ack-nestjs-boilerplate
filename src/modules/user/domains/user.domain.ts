@@ -13,7 +13,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -196,25 +195,6 @@ export class UserDomain {
         await this.userRepository.setLastWorkspaceInTx(tx, userId, workspaceId);
     }
 
-    async acceptTermPolicyInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        type: EnumTermPolicyType
-    ): Promise<void> {
-        await this.userRepository.acceptTermPolicyInTx(tx, userId, type);
-    }
-
-    async resetTermPolicyInTx(
-        tx: IDatabaseTransactionClient,
-        type: EnumTermPolicyType
-    ): Promise<void> {
-        await this.userRepository.resetTermPolicyInTx(tx, type);
-    }
-
-    async increasePasswordAttempt(userId: string): Promise<User> {
-        return this.userRepository.increasePasswordAttempt(userId);
-    }
-
     async resetPasswordAttempt(userId: string): Promise<User> {
         return this.userRepository.resetPasswordAttempt(userId);
     }
@@ -222,8 +202,8 @@ export class UserDomain {
     async deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<void> {
-        await this.userRepository.deactivateForMaxPasswordAttemptInTx(
+    ): Promise<boolean> {
+        return this.userRepository.deactivateForMaxPasswordAttemptInTx(
             tx,
             userId
         );
@@ -342,12 +322,10 @@ export class UserDomain {
 
         const userId = this.databaseUtil.createId();
         const passwordString = this.authPasswordUtil.createPasswordRandom();
-        const password: IAuthPassword = this.authPasswordUtil.createPassword(
-            passwordString,
-            {
+        const password: IAuthPassword =
+            await this.authPasswordUtil.createPassword(passwordString, {
                 temporary: true,
-            }
-        );
+            });
         const workspaceContexts =
             this.userOnboardingDomain.buildPersonalWorkspaceContexts([
                 username,
@@ -372,7 +350,6 @@ export class UserDomain {
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,
-                termPolicy: { ...UserTermPolicyContract.defaults },
                 acceptedTermPolicyTypes: [
                     ...UserTermPolicyContract.requiredTypes,
                 ],
@@ -418,17 +395,22 @@ export class UserDomain {
     async updateStatusByAdmin(
         userId: string,
         status: EnumUserStatus,
-        updatedBy: string
+        updatedBy: string,
+        actor: IRoleActor
     ): Promise<void> {
         if (userId === updatedBy) {
             throw new UserNotSelfException();
         }
 
         // Sequential by design: gate before the work it guards
-        const user = await this.userRepository.findOneById(userId);
+        const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new UserNotFoundException();
-        } else if (user.status === EnumUserStatus.blocked) {
+        }
+
+        this.roleDomain.assertActorOutranks(actor.roleType, user.role.type);
+
+        if (user.status === EnumUserStatus.blocked) {
             throw new UserBlockedInvalidException();
         }
 
@@ -447,7 +429,13 @@ export class UserDomain {
                         await this.userRepository.updateStatusByAdminInTx(
                             tx,
                             userId,
-                            { status }
+                            {
+                                status,
+                                passwordAttempt:
+                                    status === EnumUserStatus.active
+                                        ? 0
+                                        : user.passwordAttempt,
+                            }
                         );
                     const actorMetadata =
                         this.userUtil.mapActivityLogActorMetadata(row);

@@ -34,13 +34,6 @@ describe('UserProfileResponseSchema', () => {
         policies: [policy],
     };
 
-    const termPolicy = {
-        termsOfService: true,
-        privacy: true,
-        cookies: true,
-        marketing: false,
-    };
-
     const country = {
         id: 'country-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -94,7 +87,6 @@ describe('UserProfileResponseSchema', () => {
         lastIPAddress: '127.0.0.1',
         lastLoginFrom: EnumUserLoginFrom.website,
         lastLoginWith: EnumUserLoginWith.credential,
-        termPolicy,
         photo: null,
         twoFactor: null,
         country,

@@ -46,6 +46,6 @@ export interface IUserTwoFactorRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<TwoFactor>;
-    increaseTwoFactorAttempt(userId: string): Promise<TwoFactor>;
+    incrementAttempt(userId: string): Promise<number>;
     resetTwoFactorAttempt(userId: string): Promise<TwoFactor>;
 }

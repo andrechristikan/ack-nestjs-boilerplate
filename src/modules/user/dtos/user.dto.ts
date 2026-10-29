@@ -11,7 +11,6 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
-import { UserTermPolicySchema } from '@modules/user/dtos/user.term-policy.dto';
 import { UserTwoFactorSchema } from '@modules/user/dtos/user.two-factor.dto';
 
 /**
@@ -97,9 +96,6 @@ export const UserSchema = DatabaseResponseSchema.extend({
     lastLoginWith: z.enum(EnumUserLoginWith).nullable().meta({
         description: 'Credential method of the last login',
         example: EnumUserLoginWith.credential,
-    }),
-    termPolicy: UserTermPolicySchema.meta({
-        description: 'Term-policy acceptance flags for the user',
     }),
     photo: AwsS3ResponseSchema.omit({ size: true }).nullable().meta({
         description: 'Profile photo stored in S3',

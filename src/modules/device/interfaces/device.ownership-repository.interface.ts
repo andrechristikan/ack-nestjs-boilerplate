@@ -5,26 +5,34 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { Prisma } from '@generated/prisma-client/client';
+import type {
+    DeviceOwnership,
+    EnumDeviceNotificationProvider,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
-    IDeviceOwnershipWithDevice,
     IDeviceOwnershipWithSession,
+    IDeviceRefresh,
 } from '@modules/device/interfaces/device.interface';
 
 export interface IDeviceOwnershipRepository {
-    upsertForLoginInTx(
+    upsertActiveInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
         deviceId: string,
+        userId: string,
+        notificationToken: string | null,
+        notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
     ): Promise<IDeviceOwnershipLoginUpsert>;
-    findLiveDeviceIdInTx(
+    clearNotificationInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        deviceOwnershipId: string
-    ): Promise<string | null>;
+        deviceOwnershipId: string,
+        updatedBy: string,
+        now: Date
+    ): Promise<boolean>;
     removeOwnershipInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -37,7 +45,7 @@ export interface IDeviceOwnershipRepository {
         userId: string,
         revokedBy: string,
         now: Date
-    ): Promise<string[]>;
+    ): Promise<void>;
     findWithPaginationOffsetByAdmin(
         userId: string,
         {
@@ -54,16 +62,21 @@ export interface IDeviceOwnershipRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>>;
-    findTokensByUserId(userId: string): Promise<IDeviceOwnershipWithDevice[]>;
+    findTokensByUserId(userId: string): Promise<DeviceOwnership[]>;
     existsActive(userId: string, deviceOwnershipId: string): Promise<boolean>;
-    touchInTx(
+    refreshInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         deviceOwnershipId: string,
+        { notificationToken, platform }: IDeviceRefresh,
+        notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
     ): Promise<string>;
-    findDeviceIdsByUserAndTokens(
-        userId: string,
-        tokens: string[]
-    ): Promise<string[]>;
+    clearTokenFromOtherUsersInTx(
+        tx: IDatabaseTransactionClient,
+        notificationToken: string,
+        userId: string
+    ): Promise<void>;
+    clearTokens(userId: string, tokens: string[]): Promise<Prisma.BatchPayload>;
+    clearStaleTokens(thresholdInMs: number): Promise<Prisma.BatchPayload>;
 }

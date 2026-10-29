@@ -303,7 +303,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
             );
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(claimNonce, ['user-2'], now, proceedBy);
+            ).toHaveBeenCalledWith(
+                claimNonce,
+                ['user-2'],
+                ['notification-2'],
+                now,
+                proceedBy
+            );
         });
 
         it('matches statuses to the claim order when it differs from the payload order', async () => {
@@ -343,7 +349,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
             );
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(claimNonce, ['user-2'], now, proceedBy);
+            ).toHaveBeenCalledWith(
+                claimNonce,
+                ['user-2'],
+                ['notification-2'],
+                now,
+                proceedBy
+            );
             expect(
                 notificationRepository.releaseTermPolicyRecipients
             ).toHaveBeenCalledWith(claimNonce, ['user-1'], proceedBy);
@@ -375,6 +387,7 @@ describe('NotificationEmailTermPolicyDomain', () => {
             ).toHaveBeenCalledWith(
                 claimNonce,
                 ['user-1', 'user-2'],
+                ['notification-1', 'notification-2'],
                 now,
                 proceedBy
             );
@@ -420,7 +433,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
             );
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(claimNonce, ['user-1'], now, proceedBy);
+            ).toHaveBeenCalledWith(
+                claimNonce,
+                ['user-1'],
+                ['notification-1'],
+                now,
+                proceedBy
+            );
             expect(
                 notificationRepository.releaseTermPolicyRecipients
             ).toHaveBeenCalledWith(claimNonce, ['user-2'], proceedBy);
@@ -524,7 +543,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
             });
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(claimNonce, ['user-1'], now, proceedBy);
+            ).toHaveBeenCalledWith(
+                claimNonce,
+                ['user-1'],
+                ['notification-1'],
+                now,
+                proceedBy
+            );
             expect(
                 notificationRepository.releaseTermPolicyRecipients
             ).not.toHaveBeenCalled();
@@ -619,7 +644,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
             });
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
-            ).toHaveBeenCalledWith(claimNonce, ['user-1'], now, proceedBy);
+            ).toHaveBeenCalledWith(
+                claimNonce,
+                ['user-1'],
+                ['notification-1'],
+                now,
+                proceedBy
+            );
         });
     });
 });

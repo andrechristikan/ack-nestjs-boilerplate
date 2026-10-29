@@ -20,6 +20,7 @@ import { CountryNotFoundException } from '@modules/country/exceptions/country.no
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
+import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
@@ -33,10 +34,12 @@ import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserProfileDomain {
     private readonly logger = new Logger(UserProfileDomain.name);
+    private readonly photoMaxSizeInBytes: number;
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -45,8 +48,13 @@ export class UserProfileDomain {
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
-        private readonly userQueue: UserQueue
-    ) {}
+        private readonly userQueue: UserQueue,
+        private readonly configService: ConfigService
+    ) {
+        this.photoMaxSizeInBytes = this.configService.get<number>(
+            'user.photo.maxSizeInBytes'
+        )!;
+    }
 
     private async deletePreviousPhoto(
         userId: string,
@@ -134,6 +142,10 @@ export class UserProfileDomain {
         userId: string,
         { extension, size }: IUserGeneratePhotoProfile
     ): Promise<IAwsS3Presign> {
+        if (size > this.photoMaxSizeInBytes) {
+            throw new UserPhotoSizeExceededException();
+        }
+
         const key: string = this.createRandomFilenamePhotoProfileWithPath(
             userId,
             {

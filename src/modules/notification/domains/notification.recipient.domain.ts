@@ -26,7 +26,7 @@ export class NotificationRecipientDomain {
             this.deviceDomain.getOwnershipsWithNotificationToken(id),
         ]);
         const tokens = ownerships
-            .map(ownership => ownership.device.notificationToken)
+            .map(ownership => ownership.notificationToken)
             .filter((token): token is string => token !== null);
 
         const channels = this.notificationUtil.resolveChannels(kind, settings);

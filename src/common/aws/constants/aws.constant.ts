@@ -1,8 +1,8 @@
 /**
- * Highest part number one S3 multipart upload may request, capped below the S3 hard limit of 10k parts.
+ * Highest part number one S3 multipart upload may request, the S3 hard limit of 10k parts.
  * @public
  */
-export const AwsS3MaxPartNumber = 9500;
+export const AwsS3MaxPartNumber = 10000;
 
 /**
  * Page size of each S3 object listing request.

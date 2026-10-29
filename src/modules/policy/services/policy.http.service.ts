@@ -4,6 +4,7 @@ import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.reque
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -22,9 +23,13 @@ export class PolicyHttpService {
 
     async createByAdmin(
         roleId: string,
-        body: PolicyRequestDto
+        body: PolicyRequestDto,
+        user: IUser
     ): Promise<IResponseReturn<PolicyDto>> {
-        const created = await this.policyDomain.createByAdmin(roleId, body);
+        const created = await this.policyDomain.createByAdmin(roleId, body, {
+            roleId: user.roleId,
+            roleType: user.role.type,
+        });
 
         return { data: created };
     }
@@ -32,18 +37,28 @@ export class PolicyHttpService {
     async updateByAdmin(
         roleId: string,
         id: string,
-        body: PolicyUpdateRequestDto
+        body: PolicyUpdateRequestDto,
+        user: IUser
     ): Promise<IResponseReturn<PolicyDto>> {
-        const updated = await this.policyDomain.updateByAdmin(roleId, id, body);
+        const updated = await this.policyDomain.updateByAdmin(
+            roleId,
+            id,
+            body,
+            { roleId: user.roleId, roleType: user.role.type }
+        );
 
         return { data: updated };
     }
 
     async deleteByAdmin(
         roleId: string,
-        id: string
+        id: string,
+        user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.policyDomain.deleteByAdmin(roleId, id);
+        await this.policyDomain.deleteByAdmin(roleId, id, {
+            roleId: user.roleId,
+            roleType: user.role.type,
+        });
 
         return {};
     }

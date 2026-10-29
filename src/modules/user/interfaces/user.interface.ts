@@ -8,6 +8,7 @@ import {
     EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
+    EnumUserStatus,
     EnumVerificationType,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
@@ -155,7 +156,6 @@ export interface IUserCreateContract {
 }
 
 export interface IUserTermPolicyContract {
-    defaults: Record<EnumTermPolicyType, boolean>;
     requiredTypes: EnumTermPolicyType[];
 }
 
@@ -173,7 +173,6 @@ export interface IUserCreateWithWorkspaceInput {
     signUpFrom: EnumUserSignUpFrom;
     signUpWith: EnumUserSignUpWith;
     isVerified: boolean;
-    termPolicy: Record<EnumTermPolicyType, boolean>;
     acceptedTermPolicyTypes: EnumTermPolicyType[];
     password: IAuthPassword | null;
     passwordHistoryType: EnumPasswordHistoryType | null;
@@ -220,6 +219,11 @@ export interface IUserUpdateProfile {
     name: string | null;
     countryId: string;
     gender: EnumUserGender;
+}
+
+export interface IUserUpdateStatus {
+    status: EnumUserStatus;
+    passwordAttempt: number | null;
 }
 
 export interface IUserGeneratePhotoProfile {
@@ -335,25 +339,10 @@ export interface IUserAnalyticGroupCount<T extends string = string> {
     count: number;
 }
 
-export interface IUserAnalyticSignUp {
-    id: string;
-    email: string;
-    signUpAt: Date;
-    signUpFrom: EnumUserSignUpFrom;
-}
-
 export interface IUserAnalyticRef {
     id: string;
     email: string;
     passwordAttempt: number | null;
-}
-
-export interface IUserForgotPasswordAnalytic {
-    id: string;
-    userId: string;
-    isUsed: boolean;
-    createdAt: Date;
-    to: string;
 }
 
 export interface IUserForgotPasswordAnalyticUserCount {

@@ -29,6 +29,30 @@ describe('AwsS3PresignPartRequestSchema', () => {
         ).toThrow();
     });
 
+    it('rejects a partNumber above 10000', () => {
+        expect(() =>
+            AwsS3PresignPartRequestSchema.parse({
+                ...payload,
+                partNumber: 10001,
+            })
+        ).toThrow();
+    });
+
+    it('rejects a partNumber below 1', () => {
+        expect(() =>
+            AwsS3PresignPartRequestSchema.parse({ ...payload, partNumber: 0 })
+        ).toThrow();
+    });
+
+    it('accepts the highest partNumber 10000', () => {
+        const result = AwsS3PresignPartRequestSchema.parse({
+            ...payload,
+            partNumber: 10000,
+        });
+
+        expect(result.partNumber).toBe(10000);
+    });
+
     it('rejects an undeclared key', () => {
         expect(() =>
             AwsS3PresignPartRequestSchema.parse({ ...payload, extra: true })

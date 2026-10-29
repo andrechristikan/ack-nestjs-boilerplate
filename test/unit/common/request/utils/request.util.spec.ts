@@ -1,17 +1,13 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { IncomingMessage } from 'http';
+import type { Request } from 'express';
 import type { UserAgent } from '@generated/prisma-client/client';
-import type { IRequestApp } from '@common/request/interfaces/request.interface';
 
 vi.mock('ua-parser-js', () => ({
     UAParser: vi.fn(),
 }));
 vi.mock('geoip-lite', () => ({
     default: { lookup: vi.fn() },
-}));
-vi.mock('@supercharge/request-ip', () => ({
-    getClientIp: vi.fn(),
 }));
 
 interface IUAParserResult {
@@ -39,7 +35,6 @@ const emptyResult: IUAParserResult = {
 describe('RequestUtil', () => {
     let UAParser: typeof import('ua-parser-js').UAParser;
     let geoIp: typeof import('geoip-lite');
-    let getClientIp: typeof import('@supercharge/request-ip').getClientIp;
     let RequestUtil: typeof import('@common/request/utils/request.util').RequestUtil;
     let util: InstanceType<typeof RequestUtil>;
 
@@ -50,7 +45,6 @@ describe('RequestUtil', () => {
         ({ default: geoIp } = (await import('geoip-lite')) as unknown as {
             default: typeof import('geoip-lite');
         });
-        ({ getClientIp } = await import('@supercharge/request-ip'));
         ({ RequestUtil } = await import('@common/request/utils/request.util'));
 
         const module: TestingModule = await Test.createTestingModule({
@@ -58,35 +52,6 @@ describe('RequestUtil', () => {
         }).compile();
 
         util = module.get(RequestUtil);
-    });
-
-    describe('resolveThrottleTrackerIp', () => {
-        it('returns req.ip when it is a valid IP', () => {
-            const req = {
-                ip: '203.0.113.5',
-                socket: { remoteAddress: '10.0.0.1' },
-            } as unknown as IRequestApp;
-
-            expect(util.resolveThrottleTrackerIp(req)).toBe('203.0.113.5');
-        });
-
-        it('falls back to the socket remote address when req.ip is not a valid IP', () => {
-            const req = {
-                ip: undefined,
-                socket: { remoteAddress: '10.0.0.1' },
-            } as unknown as IRequestApp;
-
-            expect(util.resolveThrottleTrackerIp(req)).toBe('10.0.0.1');
-        });
-
-        it('falls back to an empty string when neither req.ip nor the socket address is usable', () => {
-            const req = {
-                ip: undefined,
-                socket: { remoteAddress: undefined },
-            } as unknown as IRequestApp;
-
-            expect(util.resolveThrottleTrackerIp(req)).toBe('');
-        });
     });
 
     describe('parseUserAgent', () => {
@@ -169,9 +134,6 @@ describe('RequestUtil', () => {
             (UAParser as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
                 emptyResult
             );
-            (getClientIp as ReturnType<typeof vi.fn>).mockReturnValue(
-                '203.0.113.5'
-            );
             (geoIp.lookup as ReturnType<typeof vi.fn>).mockReturnValue({
                 ll: [37.77, -122.41],
                 country: 'US',
@@ -180,7 +142,9 @@ describe('RequestUtil', () => {
             });
             const req = {
                 headers: { 'user-agent': 'ua' },
-            } as unknown as IncomingMessage;
+                ip: '203.0.113.5',
+                socket: {},
+            } as unknown as Request;
 
             const log = util.buildRequestLog(req);
 
@@ -207,11 +171,12 @@ describe('RequestUtil', () => {
             (UAParser as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
                 emptyResult
             );
-            (getClientIp as ReturnType<typeof vi.fn>).mockReturnValue(
-                '203.0.113.5'
-            );
             (geoIp.lookup as ReturnType<typeof vi.fn>).mockReturnValue(null);
-            const req = { headers: {} } as unknown as IncomingMessage;
+            const req = {
+                headers: {},
+                ip: '203.0.113.5',
+                socket: {},
+            } as unknown as Request;
 
             const log = util.buildRequestLog(req);
 
@@ -222,14 +187,43 @@ describe('RequestUtil', () => {
             (UAParser as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
                 emptyResult
             );
-            (getClientIp as ReturnType<typeof vi.fn>).mockReturnValue(null);
-            const req = { headers: {} } as unknown as IncomingMessage;
+            const req = {
+                headers: {},
+                socket: {},
+            } as unknown as Request;
 
             const log = util.buildRequestLog(req);
 
             expect(geoIp.lookup).not.toHaveBeenCalled();
             expect(log.ipAddress).toBeNull();
             expect(log.geoLocation).toBeNull();
+        });
+    });
+
+    describe('getClientIp', () => {
+        it('returns req.ip and ignores a spoofed X-Forwarded-For header', () => {
+            const req = {
+                ip: '203.0.113.5',
+                headers: { 'x-forwarded-for': '198.51.100.9' },
+                socket: { remoteAddress: '10.0.0.1' },
+            } as unknown as Request;
+
+            expect(util.getClientIp(req)).toBe('203.0.113.5');
+        });
+
+        it('falls back to the socket address when req.ip is unset', () => {
+            const req = {
+                headers: {},
+                socket: { remoteAddress: '10.0.0.1' },
+            } as unknown as Request;
+
+            expect(util.getClientIp(req)).toBe('10.0.0.1');
+        });
+
+        it('returns an empty string when neither source resolves', () => {
+            const req = { headers: {}, socket: {} } as unknown as Request;
+
+            expect(util.getClientIp(req)).toBe('');
         });
     });
 

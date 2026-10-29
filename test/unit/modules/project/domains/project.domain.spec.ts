@@ -204,7 +204,7 @@ describe('ProjectDomain', () => {
                 hasNext: false,
                 data: [baseProject],
             };
-            projectUtil.isWorkspaceOwner.mockReturnValue(true);
+            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );
@@ -236,7 +236,7 @@ describe('ProjectDomain', () => {
                 hasNext: false,
                 data: [],
             };
-            projectUtil.isWorkspaceOwner.mockReturnValue(false);
+            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );

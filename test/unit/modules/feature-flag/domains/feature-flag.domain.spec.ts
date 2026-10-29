@@ -556,7 +556,7 @@ describe('FeatureFlagDomain', () => {
             expect(featureFlagRepository.updateStatus).not.toHaveBeenCalled();
         });
 
-        it('updates the status and evicts the cache entry by the stored key', async () => {
+        it('updates the status and writes the committed flag through the cache', async () => {
             const stored = baseFlag;
             const updated = { ...baseFlag, isEnable: false };
             featureFlagRepository.findOneById.mockResolvedValue(stored);
@@ -572,9 +572,11 @@ describe('FeatureFlagDomain', () => {
                 '507f1f77bcf86cd799439011',
                 statusUpdate
             );
-            expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
-                stored.key
+            expect(featureFlagCache.setFeatureFlag).toHaveBeenCalledWith(
+                updated.key,
+                updated
             );
+            expect(featureFlagCache.deleteFeatureFlag).not.toHaveBeenCalled();
         });
     });
 
@@ -600,13 +602,13 @@ describe('FeatureFlagDomain', () => {
                     ],
                 messagePath: 'featureFlag.error.notFound',
             });
-            expect(featureFlagUtil.checkMetadataKey).not.toHaveBeenCalled();
+            expect(featureFlagUtil.isMetadataValid).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagInvalidMetadataException when the metadata shape changed', async () => {
             const stored = { ...baseFlag, metadata: { enabled: true } };
             featureFlagRepository.findOneById.mockResolvedValue(stored);
-            featureFlagUtil.checkMetadataKey.mockReturnValue(false);
+            featureFlagUtil.isMetadataValid.mockReturnValue(false);
 
             await expect(
                 domain.updateMetadataByAdmin(
@@ -622,18 +624,39 @@ describe('FeatureFlagDomain', () => {
                     ],
                 messagePath: 'featureFlag.error.invalidMetadata',
             });
-            expect(featureFlagUtil.checkMetadataKey).toHaveBeenCalledWith(
+            expect(featureFlagUtil.isMetadataValid).toHaveBeenCalledWith(
                 stored.metadata,
                 metadataUpdate.metadata
             );
             expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
         });
 
-        it('updates the metadata and evicts the cache entry by the stored key', async () => {
+        it('throws FeatureFlagInvalidMetadataException when the stored metadata is null', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(baseFlag);
+            featureFlagUtil.isMetadataValid.mockReturnValue(false);
+
+            await expect(
+                domain.updateMetadataByAdmin(
+                    '507f1f77bcf86cd799439011',
+                    metadataUpdate
+                )
+            ).rejects.toMatchObject({
+                module: 'featureFlag',
+                statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
+                messagePath: 'featureFlag.error.invalidMetadata',
+            });
+            expect(featureFlagUtil.isMetadataValid).toHaveBeenCalledWith(
+                null,
+                metadataUpdate.metadata
+            );
+            expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
+        });
+
+        it('updates the metadata and writes the committed flag through the cache', async () => {
             const stored = { ...baseFlag, metadata: { enabled: false } };
             const updated = { ...baseFlag, metadata: { enabled: true } };
             featureFlagRepository.findOneById.mockResolvedValue(stored);
-            featureFlagUtil.checkMetadataKey.mockReturnValue(true);
+            featureFlagUtil.isMetadataValid.mockReturnValue(true);
             featureFlagRepository.updateMetadata.mockResolvedValue(updated);
 
             const result = await domain.updateMetadataByAdmin(
@@ -646,9 +669,11 @@ describe('FeatureFlagDomain', () => {
                 '507f1f77bcf86cd799439011',
                 metadataUpdate
             );
-            expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
-                stored.key
+            expect(featureFlagCache.setFeatureFlag).toHaveBeenCalledWith(
+                updated.key,
+                updated
             );
+            expect(featureFlagCache.deleteFeatureFlag).not.toHaveBeenCalled();
         });
     });
 

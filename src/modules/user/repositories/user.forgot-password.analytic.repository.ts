@@ -1,9 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IUserForgotPasswordAnalyticRepository } from '@modules/user/interfaces/user.forgot-password-analytic-repository.interface';
-import type {
-    IUserForgotPasswordAnalytic,
-    IUserForgotPasswordAnalyticUserCount,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserForgotPasswordAnalyticUserCount } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -21,22 +18,6 @@ export class UserForgotPasswordAnalyticRepository implements IUserForgotPassword
             where: {
                 isUsed: true,
                 createdAt: { gte: startDate, lt: endDate },
-            },
-        });
-    }
-
-    async findCreatedInRange(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IUserForgotPasswordAnalytic[]> {
-        return this.databaseService.client.forgotPassword.findMany({
-            where: { createdAt: { gte: startDate, lt: endDate } },
-            select: {
-                id: true,
-                userId: true,
-                isUsed: true,
-                createdAt: true,
-                to: true,
             },
         });
     }

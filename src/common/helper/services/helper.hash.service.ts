@@ -1,19 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { compareSync, genSaltSync, hashSync } from 'bcryptjs';
+import { compare, genSalt, hash } from 'bcryptjs';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 @Injectable()
 export class HelperHashService {
-    bcryptGenerateSalt(length: number): string {
-        return genSaltSync(length);
+    async bcryptGenerateSalt(length: number): Promise<string> {
+        return genSalt(length);
     }
 
-    bcryptHash(passwordString: string, salt: string): string {
-        return hashSync(passwordString, salt);
+    async bcryptHash(passwordString: string, salt: string): Promise<string> {
+        return hash(passwordString, salt);
     }
 
-    bcryptCompare(passwordString: string, passwordHashed: string): boolean {
-        return compareSync(passwordString, passwordHashed);
+    async bcryptCompare(
+        passwordString: string,
+        passwordHashed: string
+    ): Promise<boolean> {
+        return compare(passwordString, passwordHashed);
     }
 
     sha256Hash(value: string): string {

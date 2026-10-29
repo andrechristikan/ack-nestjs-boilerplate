@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -17,7 +18,6 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
@@ -27,10 +27,9 @@ import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activi
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type {
     IAuthJwtRefreshTokenPayload,
-    IAuthRefreshTokenGenerate,
+    IAuthAccessTokenGenerate,
     IAuthToken,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
@@ -50,7 +49,11 @@ import { NotificationRecipientDomain } from '@modules/notification/domains/notif
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionCache } from '@modules/session/caches/session.cache';
-import type { ISessionCache } from '@modules/session/interfaces/session.interface';
+import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
+import type {
+    ISession,
+    ISessionRef,
+} from '@modules/session/interfaces/session.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -58,7 +61,10 @@ import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-fac
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { stubUserRefreshSession } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    expectSessionRevoked,
+    stubUserRefreshSession,
+} from '@test/unit/helpers/test.unit.user.helper';
 import type { IUserRefreshSessionDoubles } from '@test/unit/helpers/test.unit.user.helper';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
@@ -88,15 +94,17 @@ describe('UserLoginDomain', () => {
         mock<FeatureFlagDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     const refreshSessionDoubles: IUserRefreshSessionDoubles = {
         authJwtDomain,
         sessionCache,
-        helperHashService,
+        sessionDomain,
     };
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const configGet = vi.fn<(key: string) => boolean | number | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
 
     let domain: UserLoginDomain;
 
@@ -176,12 +184,6 @@ describe('UserLoginDomain', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -219,6 +221,15 @@ describe('UserLoginDomain', () => {
         helperDateService.create.mockReturnValue(now);
         helperDateService.forward.mockImplementation(date => date);
         requestStoreService.get.mockReturnValue(requestLog);
+        configGet.mockImplementation(key => {
+            const values: Record<string, boolean | number> = {
+                'auth.password.attempt': true,
+                'auth.password.maxAttempt': 5,
+                'auth.twoFactor.maxAttempt': 5,
+            };
+
+            return values[key];
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -252,11 +263,11 @@ describe('UserLoginDomain', () => {
                 },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperHashService, useValue: helperHashService },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         domain = module.get(UserLoginDomain);
@@ -272,8 +283,82 @@ describe('UserLoginDomain', () => {
         });
     });
 
+    describe('incrementPasswordAttempt', () => {
+        it('returns true when the repository counts the attempt within the max', async () => {
+            userRepository.incrementPasswordAttempt.mockResolvedValue(2);
+
+            await expect(
+                domain.incrementPasswordAttempt('user-wisteria')
+            ).resolves.toBe(true);
+            expect(
+                userRepository.incrementPasswordAttempt
+            ).toHaveBeenCalledWith('user-wisteria', 5);
+        });
+
+        it('returns false when the repository refuses the attempt at the max', async () => {
+            userRepository.incrementPasswordAttempt.mockResolvedValue(null);
+
+            await expect(
+                domain.incrementPasswordAttempt('user-wisteria')
+            ).resolves.toBe(false);
+        });
+
+        it('returns true without counting when attempt tracking is off', async () => {
+            configGet.mockImplementation(key =>
+                key === 'auth.password.attempt' ? false : 5
+            );
+            const module: TestingModule = await Test.createTestingModule({
+                providers: [
+                    UserLoginDomain,
+                    { provide: UserRepository, useValue: userRepository },
+                    {
+                        provide: UserTwoFactorRepository,
+                        useValue: userTwoFactorRepository,
+                    },
+                    { provide: UserUtil, useValue: userUtil },
+                    {
+                        provide: UserVerificationDomain,
+                        useValue: userVerificationDomain,
+                    },
+                    { provide: DeviceDomain, useValue: deviceDomain },
+                    { provide: DeviceUtil, useValue: deviceUtil },
+                    { provide: ActivityLogDomain, useValue: activityLogDomain },
+                    { provide: DatabaseService, useValue: databaseService },
+                    { provide: AuthJwtDomain, useValue: authJwtDomain },
+                    {
+                        provide: AuthTwoFactorDomain,
+                        useValue: authTwoFactorDomain,
+                    },
+                    { provide: AuthCache, useValue: authCache },
+                    { provide: SessionCache, useValue: sessionCache },
+                    { provide: SessionDomain, useValue: sessionDomain },
+                    { provide: NotificationQueue, useValue: notificationQueue },
+                    {
+                        provide: NotificationRecipientDomain,
+                        useValue: notificationRecipientDomain,
+                    },
+                    { provide: FeatureFlagDomain, useValue: featureFlagDomain },
+                    { provide: HelperDateService, useValue: helperDateService },
+                    {
+                        provide: RequestStoreService,
+                        useValue: requestStoreService,
+                    },
+                    { provide: ConfigService, useValue: configService },
+                ],
+            }).compile();
+            const trackingOffDomain = module.get(UserLoginDomain);
+
+            await expect(
+                trackingOffDomain.incrementPasswordAttempt('user-wisteria')
+            ).resolves.toBe(true);
+            expect(
+                userRepository.incrementPasswordAttempt
+            ).not.toHaveBeenCalled();
+        });
+    });
+
     describe('recordLoginFailed', () => {
-        it('increases the password attempt and stages an on-error activity log', async () => {
+        it('stages an on-error activity log', async () => {
             await domain.recordLoginFailed('user-wisteria');
 
             expect(activityLogDomain.prepare).toHaveBeenCalledWith(
@@ -282,9 +367,6 @@ describe('UserLoginDomain', () => {
                     userId: 'user-wisteria',
                     createdBy: 'user-wisteria',
                 })
-            );
-            expect(userRepository.increasePasswordAttempt).toHaveBeenCalledWith(
-                'user-wisteria'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
@@ -301,8 +383,6 @@ describe('UserLoginDomain', () => {
                 name: null,
                 platform: EnumDevicePlatform.android,
                 lastActiveAt: now,
-                notificationToken: null,
-                notificationProvider: null,
                 createdAt: now,
                 createdBy: null,
                 updatedAt: now,
@@ -316,6 +396,8 @@ describe('UserLoginDomain', () => {
                 isRevoked: false,
                 revokedById: null,
                 lastActiveAt: now,
+                notificationToken: null,
+                notificationProvider: null,
                 biometricEnabled: false,
                 biometricToken: null,
                 biometricType: null,
@@ -383,8 +465,6 @@ describe('UserLoginDomain', () => {
                     name: null,
                     platform: EnumDevicePlatform.android,
                     lastActiveAt: now,
-                    notificationToken: null,
-                    notificationProvider: null,
                     createdAt: now,
                     createdBy: null,
                     updatedAt: now,
@@ -398,6 +478,8 @@ describe('UserLoginDomain', () => {
                     isRevoked: false,
                     revokedById: null,
                     lastActiveAt: now,
+                    notificationToken: null,
+                    notificationProvider: null,
                     biometricEnabled: false,
                     biometricToken: null,
                     biometricType: null,
@@ -461,8 +543,7 @@ describe('UserLoginDomain', () => {
             expect(sessionCache.setLogin).toHaveBeenCalledWith(
                 user.id,
                 'session-wisteria',
-                'jti-wisteria',
-                loginAt
+                'jti-wisteria'
             );
             expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
             expect(
@@ -549,8 +630,6 @@ describe('UserLoginDomain', () => {
                     name: null,
                     platform: EnumDevicePlatform.android,
                     lastActiveAt: now,
-                    notificationToken: null,
-                    notificationProvider: null,
                     createdAt: now,
                     createdBy: null,
                     updatedAt: now,
@@ -564,6 +643,8 @@ describe('UserLoginDomain', () => {
                     isRevoked: false,
                     revokedById: null,
                     lastActiveAt: now,
+                    notificationToken: null,
+                    notificationProvider: null,
                     biometricEnabled: false,
                     biometricToken: null,
                     biometricType: null,
@@ -616,8 +697,6 @@ describe('UserLoginDomain', () => {
                     name: null,
                     platform: EnumDevicePlatform.android,
                     lastActiveAt: now,
-                    notificationToken: null,
-                    notificationProvider: null,
                     createdAt: now,
                     createdBy: null,
                     updatedAt: now,
@@ -631,6 +710,8 @@ describe('UserLoginDomain', () => {
                     isRevoked: false,
                     revokedById: null,
                     lastActiveAt: now,
+                    notificationToken: null,
+                    notificationProvider: null,
                     biometricEnabled: false,
                     biometricToken: null,
                     biometricType: null,
@@ -668,8 +749,6 @@ describe('UserLoginDomain', () => {
                     name: null,
                     platform: EnumDevicePlatform.android,
                     lastActiveAt: now,
-                    notificationToken: null,
-                    notificationProvider: null,
                     createdAt: now,
                     createdBy: null,
                     updatedAt: now,
@@ -683,6 +762,8 @@ describe('UserLoginDomain', () => {
                     isRevoked: false,
                     revokedById: null,
                     lastActiveAt: now,
+                    notificationToken: null,
+                    notificationProvider: null,
                     biometricEnabled: false,
                     biometricToken: null,
                     biometricType: null,
@@ -727,8 +808,6 @@ describe('UserLoginDomain', () => {
                     name: null,
                     platform: EnumDevicePlatform.android,
                     lastActiveAt: now,
-                    notificationToken: null,
-                    notificationProvider: null,
                     createdAt: now,
                     createdBy: null,
                     updatedAt: now,
@@ -742,6 +821,8 @@ describe('UserLoginDomain', () => {
                     isRevoked: false,
                     revokedById: null,
                     lastActiveAt: now,
+                    notificationToken: null,
+                    notificationProvider: null,
                     biometricEnabled: false,
                     biometricToken: null,
                     biometricType: null,
@@ -945,8 +1026,6 @@ describe('UserLoginDomain', () => {
                     name: null,
                     platform: EnumDevicePlatform.android,
                     lastActiveAt: now,
-                    notificationToken: null,
-                    notificationProvider: null,
                     createdAt: now,
                     createdBy: null,
                     updatedAt: now,
@@ -960,6 +1039,8 @@ describe('UserLoginDomain', () => {
                     isRevoked: false,
                     revokedById: null,
                     lastActiveAt: now,
+                    notificationToken: null,
+                    notificationProvider: null,
                     biometricEnabled: false,
                     biometricToken: null,
                     biometricType: null,
@@ -1136,37 +1217,121 @@ describe('UserLoginDomain', () => {
     });
 
     describe('handleTwoFactorValidation', () => {
-        it('returns the verification result on a valid code', async () => {
-            const user = baseUser;
+        const input = {
+            method: EnumAuthTwoFactorMethod.code,
+            code: '123456',
+            backupCode: null,
+        };
+        const verified: IAuthTwoFactorVerifyResult = {
+            isValid: true,
+            method: EnumAuthTwoFactorMethod.code,
+            newBackupCodes: null,
+        };
+
+        it('counts the attempt, verifies and resets the counter when the count is below the max', async () => {
+            const user = { ...baseUser };
             authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
-            const verified: IAuthTwoFactorVerifyResult = {
-                isValid: true,
-                method: EnumAuthTwoFactorMethod.code,
-                newBackupCodes: null,
-            };
             authTwoFactorDomain.verifyTwoFactor.mockResolvedValue(verified);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(4);
 
             await expect(
-                domain.handleTwoFactorValidation(user, {
-                    method: EnumAuthTwoFactorMethod.code,
-                    code: '123456',
-                    backupCode: null,
-                })
+                domain.handleTwoFactorValidation(user, input)
             ).resolves.toBe(verified);
+            expect(
+                userTwoFactorRepository.incrementAttempt
+            ).toHaveBeenCalledWith(user.id);
+            expect(
+                userTwoFactorRepository.incrementAttempt
+            ).toHaveBeenCalledBefore(authTwoFactorDomain.verifyTwoFactor);
+            expect(authCache.setTwoFactorLock).not.toHaveBeenCalled();
             expect(
                 userTwoFactorRepository.resetTwoFactorAttempt
             ).toHaveBeenCalledWith(user.id);
+        });
+
+        it('locks with the count and throws AuthTwoFactorAttemptTemporaryLockException before verifying when the count reaches the max', async () => {
+            const user = { ...baseUser };
+            authCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(29001);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(5);
+
+            const call = domain.handleTwoFactorValidation(user, input);
+
+            await expect(call).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+                messageProperties: { retryAfterSeconds: 30 },
+            });
+            expect(authCache.setTwoFactorLock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    twoFactor: expect.objectContaining({ attempt: 5 }),
+                })
+            );
+            expect(authTwoFactorDomain.verifyTwoFactor).not.toHaveBeenCalled();
+            expect(
+                userTwoFactorRepository.resetTwoFactorAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('locks again at the next multiple of the max so the lock escalates', async () => {
+            const user = { ...baseUser };
+            authCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(59001);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(10);
+
+            const call = domain.handleTwoFactorValidation(user, input);
+
+            await expect(call).rejects.toMatchObject({
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+            });
+            expect(authCache.setTwoFactorLock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    twoFactor: expect.objectContaining({ attempt: 10 }),
+                })
+            );
+            expect(authTwoFactorDomain.verifyTwoFactor).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorAttemptTemporaryLockException without verifying when a parallel request set the lock after the count', async () => {
+            const user = { ...baseUser };
+            authCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(29001);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(6);
+
+            const call = domain.handleTwoFactorValidation(user, input);
+
+            await expect(call).rejects.toMatchObject({
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                messageProperties: { retryAfterSeconds: 30 },
+            });
+            expect(authCache.setTwoFactorLock).not.toHaveBeenCalled();
+            expect(authTwoFactorDomain.verifyTwoFactor).not.toHaveBeenCalled();
+        });
+
+        it('verifies once the lock has expired and the count is past a multiple of the max', async () => {
+            const user = { ...baseUser };
+            authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
+            authTwoFactorDomain.verifyTwoFactor.mockResolvedValue(verified);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(6);
+
+            await expect(
+                domain.handleTwoFactorValidation(user, input)
+            ).resolves.toBe(verified);
+            expect(authCache.setTwoFactorLock).not.toHaveBeenCalled();
         });
 
         it('throws AuthTwoFactorAttemptTemporaryLockException while locked', async () => {
             const user = baseUser;
             authCache.getTwoFactorLockTtlInMs.mockResolvedValue(29001);
 
-            const call = domain.handleTwoFactorValidation(user, {
-                method: EnumAuthTwoFactorMethod.code,
-                code: '123456',
-                backupCode: null,
-            });
+            const call = domain.handleTwoFactorValidation(user, input);
 
             await expect(call).rejects.toMatchObject({
                 module: 'auth',
@@ -1179,6 +1344,9 @@ describe('UserLoginDomain', () => {
                 messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
                 messageProperties: { retryAfterSeconds: 30 },
             });
+            expect(
+                userTwoFactorRepository.incrementAttempt
+            ).not.toHaveBeenCalled();
         });
 
         it('throws AuthTwoFactorMethodRequiredException when no method is given', async () => {
@@ -1200,9 +1368,12 @@ describe('UserLoginDomain', () => {
                     ],
                 messagePath: 'auth.error.twoFactorMethodRequired',
             });
+            expect(
+                userTwoFactorRepository.incrementAttempt
+            ).not.toHaveBeenCalled();
         });
 
-        it('records a failure and locks after too many wrong attempts', async () => {
+        it('throws AuthTwoFactorInvalidException without locking or resetting on a wrong code under the max', async () => {
             const user = { ...baseUser };
             authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
             authTwoFactorDomain.verifyTwoFactor.mockResolvedValue({
@@ -1210,48 +1381,11 @@ describe('UserLoginDomain', () => {
                 method: EnumAuthTwoFactorMethod.code,
                 newBackupCodes: null,
             });
-            userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
-                ...baseTwoFactor,
-                attempt: 5,
-            });
-            authTwoFactorDomain.checkAttempt.mockReturnValue(true);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(1);
 
             const call = domain.handleTwoFactorValidation(user, {
-                method: EnumAuthTwoFactorMethod.code,
+                ...input,
                 code: '000000',
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorInvalid
-                    ],
-                messagePath: 'auth.error.twoFactorInvalid',
-            });
-            expect(authCache.setTwoFactorLock).toHaveBeenCalledWith(user);
-        });
-
-        it('records a failure without locking when under the attempt limit', async () => {
-            const user = { ...baseUser };
-            authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
-            authTwoFactorDomain.verifyTwoFactor.mockResolvedValue({
-                isValid: false,
-                method: EnumAuthTwoFactorMethod.code,
-                newBackupCodes: null,
-            });
-            userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
-                ...baseTwoFactor,
-                attempt: 1,
-            });
-            authTwoFactorDomain.checkAttempt.mockReturnValue(false);
-
-            const call = domain.handleTwoFactorValidation(user, {
-                method: EnumAuthTwoFactorMethod.code,
-                code: '000000',
-                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -1264,14 +1398,31 @@ describe('UserLoginDomain', () => {
                 messagePath: 'auth.error.twoFactorInvalid',
             });
             expect(authCache.setTwoFactorLock).not.toHaveBeenCalled();
+            expect(
+                userTwoFactorRepository.resetTwoFactorAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('fails the request when the lock write fails', async () => {
+            const user = { ...baseUser };
+            authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(5);
+            authCache.setTwoFactorLock.mockRejectedValue(
+                new Error('redis down')
+            );
+
+            await expect(
+                domain.handleTwoFactorValidation(user, input)
+            ).rejects.toThrow('redis down');
         });
     });
 
     describe('handleTwoFactorSetupValidation', () => {
-        it('resets the attempt counter on a valid code', async () => {
-            const user = baseUser;
+        it('counts the attempt and resets the counter on a valid code', async () => {
+            const user = { ...baseUser };
             authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
             authTwoFactorDomain.verifySetupCode.mockReturnValue(true);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(1);
 
             await domain.handleTwoFactorSetupValidation(
                 user,
@@ -1280,19 +1431,18 @@ describe('UserLoginDomain', () => {
             );
 
             expect(
+                userTwoFactorRepository.incrementAttempt
+            ).toHaveBeenCalledWith(user.id);
+            expect(
                 userTwoFactorRepository.resetTwoFactorAttempt
             ).toHaveBeenCalledWith(user.id);
         });
 
-        it('throws AuthTwoFactorInvalidException and records the failure on an invalid code', async () => {
+        it('throws AuthTwoFactorInvalidException on an invalid code under the max', async () => {
             const user = { ...baseUser };
             authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
             authTwoFactorDomain.verifySetupCode.mockReturnValue(false);
-            userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
-                ...baseTwoFactor,
-                attempt: 1,
-            });
-            authTwoFactorDomain.checkAttempt.mockReturnValue(false);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(1);
 
             const call = domain.handleTwoFactorSetupValidation(
                 user,
@@ -1309,6 +1459,34 @@ describe('UserLoginDomain', () => {
                     ],
                 messagePath: 'auth.error.twoFactorInvalid',
             });
+            expect(authCache.setTwoFactorLock).not.toHaveBeenCalled();
+        });
+
+        it('locks with the count and throws AuthTwoFactorAttemptTemporaryLockException before verifying the code when the count reaches the max', async () => {
+            const user = { ...baseUser };
+            authCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(14001);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(5);
+
+            const call = domain.handleTwoFactorSetupValidation(
+                user,
+                'encrypted-pending',
+                '123456'
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                messageProperties: { retryAfterSeconds: 15 },
+            });
+            expect(authCache.setTwoFactorLock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    twoFactor: expect.objectContaining({ attempt: 5 }),
+                })
+            );
+            expect(authTwoFactorDomain.verifySetupCode).not.toHaveBeenCalled();
         });
     });
 
@@ -1449,18 +1627,42 @@ describe('UserLoginDomain', () => {
             loginWith: EnumUserLoginWith.credential,
             jti: 'old-jti',
         };
-        const session: ISessionCache = {
+        const session: ISession = {
+            id: 'session-wisteria',
             userId: 'user-wisteria',
-            sessionId: 'session-wisteria',
-            expiredAt: now,
-            jti: 'session-jti',
+            deviceOwnershipId: 'device-ownership-wisteria',
+            jti: 'old-jti',
+            ipAddress: '127.0.0.1',
+            userAgent: requestLog.userAgent,
+            geoLocation: null,
+            expiredAt: new Date('2026-04-01T00:00:00.000Z'),
+            revokedAt: null,
+            isRevoked: false,
+            revokedById: null,
+            createdAt: now,
+            createdBy: null,
+            updatedAt: now,
+            updatedBy: null,
+            user: {
+                id: 'user-wisteria',
+                name: 'Wisteria Lark',
+                username: 'wisteriaLark',
+                photo: null,
+                createdAt: now,
+                createdBy: null,
+                updatedAt: now,
+                updatedBy: null,
+                deletedAt: null,
+                deletedBy: null,
+            },
+            revokedBy: null,
         };
-        const refreshed: IAuthRefreshTokenGenerate = {
+        const refreshed: IAuthAccessTokenGenerate = {
             tokens,
             jti: 'new-jti',
             sessionId: 'session-wisteria',
-            expiredInMs: 2592000000,
         };
+        const revokedRef: ISessionRef[] = [{ id: 'session-wisteria' }];
 
         it('rotates the session, returns fresh tokens, and stages the activity log in order', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
@@ -1470,13 +1672,17 @@ describe('UserLoginDomain', () => {
             });
             const user = baseUser;
             const callOrder: string[] = [];
+            sessionDomain.updateJtiInTx.mockImplementation(async () => {
+                callOrder.push('updateJtiInTx');
+                return true;
+            });
             userRepository.updateLoginInTx.mockImplementation(async () => {
                 callOrder.push('updateLoginInTx');
                 return undefined as never;
             });
             sessionCache.updateLogin.mockImplementation(async () => {
                 callOrder.push('updateLogin');
-                return true;
+                return EnumSessionCacheUpdate.updated;
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1485,9 +1691,14 @@ describe('UserLoginDomain', () => {
             await expect(
                 domain.refreshSession(user, 'refresh-token')
             ).resolves.toBe(tokens);
+            expect(sessionDomain.findOneActive).toHaveBeenCalledWith(
+                'user-wisteria',
+                'session-wisteria'
+            );
             expect(sessionDomain.updateJtiInTx).toHaveBeenCalledWith(
                 tx,
                 'session-wisteria',
+                'old-jti',
                 'new-jti'
             );
             expect(userRepository.updateLoginInTx).toHaveBeenCalledWith(
@@ -1498,6 +1709,13 @@ describe('UserLoginDomain', () => {
                 requestLog.ipAddress,
                 now
             );
+            expect(sessionCache.updateLogin).toHaveBeenCalledWith(
+                'user-wisteria',
+                'session-wisteria',
+                'old-jti',
+                'new-jti'
+            );
+            expect(sessionCache.setLogin).not.toHaveBeenCalled();
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRefreshToken,
             });
@@ -1505,10 +1723,38 @@ describe('UserLoginDomain', () => {
                 activityLog,
             ]);
             expect(callOrder).toEqual([
+                'updateJtiInTx',
                 'updateLoginInTx',
                 'updateLogin',
                 'stagePrepared',
             ]);
+        });
+
+        it('writes a fresh login entry when the cached one expired with the access token', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                session,
+                refreshed,
+            });
+            sessionCache.updateLogin.mockResolvedValue(
+                EnumSessionCacheUpdate.absent
+            );
+
+            await expect(
+                domain.refreshSession(baseUser, 'refresh-token')
+            ).resolves.toBe(tokens);
+            expect(sessionCache.updateLogin).toHaveBeenCalledWith(
+                'user-wisteria',
+                'session-wisteria',
+                'old-jti',
+                'new-jti'
+            );
+            expect(sessionCache.setLogin).toHaveBeenCalledWith(
+                'user-wisteria',
+                'session-wisteria',
+                'new-jti'
+            );
+            expect(sessionDomain.revokeOnReuse).not.toHaveBeenCalled();
         });
 
         it('throws RequestContextMissingException before reading the token when the store has no request log', async () => {
@@ -1532,29 +1778,11 @@ describe('UserLoginDomain', () => {
             expect(sessionCache.getLogin).not.toHaveBeenCalled();
         });
 
-        it('throws SessionRevokedException when there is no cached session', async () => {
-            authJwtDomain.payloadToken.mockReturnValue(payload);
-            sessionCache.getLogin.mockResolvedValue(null);
-
-            const call = domain.refreshSession(baseUser, 'refresh-token');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
-        });
-
         it('throws AuthJwtRefreshTokenInvalidException when the token carries no jti', async () => {
             authJwtDomain.payloadToken.mockReturnValue({
                 ...payload,
                 jti: undefined,
             });
-            sessionCache.getLogin.mockResolvedValue(session);
 
             const call = domain.refreshSession(baseUser, 'refresh-token');
 
@@ -1568,48 +1796,93 @@ describe('UserLoginDomain', () => {
                 messagePath: 'auth.error.refreshTokenUnauthorized',
             });
             expect(sessionCache.getLogin).not.toHaveBeenCalled();
+            expect(sessionDomain.findOneActive).not.toHaveBeenCalled();
         });
 
-        it('throws SessionRevokedException when the jti does not match', async () => {
-            authJwtDomain.payloadToken.mockReturnValue(payload);
-            sessionCache.getLogin.mockResolvedValue(session);
-            helperHashService.sha256Hash.mockImplementation(
-                value => `hash(${value})`
-            );
-            helperHashService.sha256Compare.mockReturnValue(false);
+        it('throws SessionRevokedException when the session row is gone, revoking nothing', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                session: null,
+                refreshed,
+            });
 
             const call = domain.refreshSession(baseUser, 'refresh-token');
 
-            await expect(call).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
+            await expectSessionRevoked(call);
+            expect(sessionDomain.updateJtiInTx).not.toHaveBeenCalled();
+            expect(sessionDomain.revokeOnReuse).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
         });
 
-        it('throws SessionRevokedException when the cache rotation is lost', async () => {
+        it('revokes the session, enqueues the purge after the commit, then stages the activity when the jti compare-and-set matches no row', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 session,
                 refreshed,
             });
-            sessionCache.updateLogin.mockResolvedValue(false);
+            const callOrder: string[] = [];
+            sessionDomain.updateJtiInTx.mockResolvedValue(false);
+            sessionDomain.revokeOnReuse.mockImplementation(async () => {
+                callOrder.push('revokeOnReuse');
+                return revokedRef;
+            });
+            databaseService.withTransaction.mockImplementation(async fn => {
+                const result = await fn(tx);
+                callOrder.push('committed');
+
+                return result as never;
+            });
+            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
+                callOrder.push('purgeRevokedLogins');
+            });
+            activityLogDomain.prepare.mockReturnValue(activityLog);
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stagePrepared');
+            });
 
             const call = domain.refreshSession(baseUser, 'refresh-token');
 
-            await expect(call).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
+            await expectSessionRevoked(call);
+            expect(sessionDomain.revokeOnReuse).toHaveBeenCalledWith(
+                'user-wisteria',
+                'session-wisteria'
+            );
+            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
+                'user-wisteria',
+                revokedRef
+            );
+            expect(userRepository.updateLoginInTx).not.toHaveBeenCalled();
+            expect(sessionCache.updateLogin).not.toHaveBeenCalled();
+            expect(callOrder).toEqual([
+                'committed',
+                'revokeOnReuse',
+                'purgeRevokedLogins',
+                'stagePrepared',
+            ]);
+        });
+
+        it('revokes the session when the cached jti is not the one presented', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                session,
+                refreshed,
             });
+            sessionCache.updateLogin.mockResolvedValue(
+                EnumSessionCacheUpdate.mismatch
+            );
+            sessionDomain.revokeOnReuse.mockResolvedValue(revokedRef);
+
+            const call = domain.refreshSession(baseUser, 'refresh-token');
+
+            await expectSessionRevoked(call);
+            expect(sessionDomain.revokeOnReuse).toHaveBeenCalledWith(
+                'user-wisteria',
+                'session-wisteria'
+            );
+            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
+                'user-wisteria',
+                revokedRef
+            );
         });
 
         it('wraps an unknown error raised while rotating the session', async () => {
@@ -1695,50 +1968,6 @@ describe('UserLoginDomain', () => {
                 messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
                 messageProperties: { retryAfterSeconds: 15 },
             });
-        });
-    });
-
-    describe('recordTwoFactorFailure', () => {
-        it('locks two-factor attempts once the max is reached', async () => {
-            const user = { ...baseUser };
-            userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
-                ...baseTwoFactor,
-                attempt: 5,
-            });
-            authTwoFactorDomain.checkAttempt.mockReturnValue(true);
-
-            await domain['recordTwoFactorFailure'](user);
-
-            expect(authCache.setTwoFactorLock).toHaveBeenCalledWith(user);
-        });
-
-        it('does not lock while under the attempt limit', async () => {
-            const user = { ...baseUser };
-            userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
-                ...baseTwoFactor,
-                attempt: 1,
-            });
-            authTwoFactorDomain.checkAttempt.mockReturnValue(false);
-
-            await domain['recordTwoFactorFailure'](user);
-
-            expect(authCache.setTwoFactorLock).not.toHaveBeenCalled();
-        });
-
-        it('fails the request when the lock write fails', async () => {
-            const user = { ...baseUser };
-            userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
-                ...baseTwoFactor,
-                attempt: 5,
-            });
-            authTwoFactorDomain.checkAttempt.mockReturnValue(true);
-            authCache.setTwoFactorLock.mockRejectedValue(
-                new Error('redis down')
-            );
-
-            await expect(
-                domain['recordTwoFactorFailure'](user)
-            ).rejects.toThrow('redis down');
         });
     });
 });

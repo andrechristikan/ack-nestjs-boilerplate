@@ -30,6 +30,7 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserOnboardingAdminAction,
 } from '@modules/user/interfaces/user.interface';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
@@ -296,6 +297,17 @@ export class WorkspaceDomain {
             try {
                 const onboarded = await this.databaseService.withTransaction(
                     async tx => {
+                        if (
+                            mode === EnumUserCreateMode.signUp ||
+                            mode === EnumUserCreateMode.social
+                        ) {
+                            // Sequential by design: gate before the work it guards
+                            await this.termPolicyAcceptanceDomain.assertRequiredPublishedInTx(
+                                tx,
+                                UserTermPolicyContract.requiredTypes
+                            );
+                        }
+
                         const users =
                             await this.userOnboardingDomain.createManyInTx(
                                 tx,

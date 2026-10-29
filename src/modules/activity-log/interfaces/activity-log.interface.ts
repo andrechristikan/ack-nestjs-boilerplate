@@ -71,6 +71,11 @@ export interface IActivityLogAnalyticActionCount {
     count: number;
 }
 
+export interface IActivityLogIpGroup {
+    ipAddress: string;
+    count: number;
+}
+
 export interface IActivityLogAnalyticList {
     id: string;
     userId: string;

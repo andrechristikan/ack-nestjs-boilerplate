@@ -24,7 +24,7 @@ import type {
     IActivityLogStaged,
     IActivityLogStageInput,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
+import { ProjectWorkspaceBypassStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
@@ -173,7 +173,7 @@ describe('ProjectMemberDomain', () => {
 
     describe('validateProjectRoleGuard', () => {
         it('returns true with no repository lookup when the caller is the workspace owner', async () => {
-            projectUtil.isWorkspaceOwner.mockReturnValue(true);
+            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
             const workspaceMember = baseWorkspaceMember;
 
             const result = await domain.validateProjectRoleGuard(
@@ -189,7 +189,7 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('throws ProjectMemberForbiddenException when the caller holds no project member row', async () => {
-            projectUtil.isWorkspaceOwner.mockReturnValue(false);
+            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
                 null
             );
@@ -214,7 +214,7 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('throws ProjectRoleForbiddenException when the member role is not allowed', async () => {
-            projectUtil.isWorkspaceOwner.mockReturnValue(false);
+            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue({
                 ...baseProjectMember,
                 role: EnumProjectMemberRole.viewer,
@@ -239,7 +239,7 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('returns false when the member role is allowed', async () => {
-            projectUtil.isWorkspaceOwner.mockReturnValue(false);
+            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue({
                 ...baseProjectMember,
                 role: EnumProjectMemberRole.admin,
@@ -760,28 +760,28 @@ describe('ProjectMemberDomain', () => {
         });
     });
 
-    describe('currentActorIsWorkspaceOwner', () => {
+    describe('currentActorHasWorkspaceBypass', () => {
         it('returns true when the store holds true', () => {
             requestStoreService.get.mockReturnValue(true);
 
-            const result = domain['currentActorIsWorkspaceOwner']();
+            const result = domain['currentActorHasWorkspaceBypass']();
 
             expect(result).toBe(true);
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                ProjectWorkspaceOwnerStoreKey
+                ProjectWorkspaceBypassStoreKey
             );
         });
 
         it('returns false when the store holds false', () => {
             requestStoreService.get.mockReturnValue(false);
 
-            expect(domain['currentActorIsWorkspaceOwner']()).toBe(false);
+            expect(domain['currentActorHasWorkspaceBypass']()).toBe(false);
         });
 
         it('returns false when the store holds nothing', () => {
             requestStoreService.get.mockReturnValue(null);
 
-            expect(domain['currentActorIsWorkspaceOwner']()).toBe(false);
+            expect(domain['currentActorHasWorkspaceBypass']()).toBe(false);
         });
     });
 

@@ -538,7 +538,7 @@ export class PaginationQueryUtil {
             ? options.type === EnumPaginationFilterDateBetweenType.start
                 ? 'gte'
                 : 'lte'
-            : 'equal';
+            : 'equals';
 
         return {
             where: {

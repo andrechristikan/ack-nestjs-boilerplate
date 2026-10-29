@@ -55,12 +55,6 @@ describe('TermPolicyGuard', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: timestamp,
         createdBy: null,
@@ -106,7 +100,7 @@ describe('TermPolicyGuard', () => {
     });
 
     describe('canActivate', () => {
-        it('reads the required term policies and the user, then delegates to the domain', async () => {
+        it('reads the required term policies and the user, then delegates the user id to the domain', async () => {
             const requiredTermPolicies = [EnumTermPolicyType.privacy];
             reflector.get.mockReturnValue(requiredTermPolicies);
             requestStoreService.get.mockReturnValue(user);
@@ -124,7 +118,7 @@ describe('TermPolicyGuard', () => {
             expect(requestStoreService.get).toHaveBeenCalledWith(UserStoreKey);
             expect(
                 termPolicyAcceptanceDomain.validateTermPolicyGuard
-            ).toHaveBeenCalledWith(user, requiredTermPolicies);
+            ).toHaveBeenCalledWith(user.id, requiredTermPolicies);
         });
 
         it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {

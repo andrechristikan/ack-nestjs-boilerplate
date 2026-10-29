@@ -1,7 +1,9 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -10,13 +12,17 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
+import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
 import { TermPolicyRequiredInvalidException } from '@modules/term-policy/exceptions/term-policy.required-invalid.exception';
-import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyRef,
+    ITermPolicyUserAcceptance,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
 
@@ -29,27 +35,57 @@ export class TermPolicyAcceptanceDomain {
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
-        private readonly userDomain: UserDomain
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
+    async getPendingForUser(
+        userId: string,
+        required: EnumTermPolicyType[]
+    ): Promise<ITermPolicyRef[]> {
+        const types =
+            required.length === 0 ? TermPolicyDefaultRequiredTypes : required;
+        const latest =
+            await this.termPolicyRepository.findLatestPublishedByTypes(types);
+        if (latest.length === 0) {
+            return [];
+        }
+
+        const accepted =
+            await this.termPolicyRepository.findAcceptedTermPolicyIdsByUser(
+                userId,
+                latest.map(ref => ref.id)
+            );
+
+        return latest.filter(ref => !accepted.includes(ref.id));
+    }
+
     async validateTermPolicyGuard(
-        user: IUser,
-        requiredTermPolicies: EnumTermPolicyType[]
+        userId: string,
+        required: EnumTermPolicyType[]
     ): Promise<void> {
-        const { termPolicy } = user;
-
-        const defaultTermPolicies = [
-            EnumTermPolicyType.termsOfService,
-            EnumTermPolicyType.privacy,
-        ];
-        requiredTermPolicies =
-            requiredTermPolicies.length === 0
-                ? defaultTermPolicies
-                : requiredTermPolicies;
-
-        if (!requiredTermPolicies.every(type => termPolicy[type])) {
+        const pending = await this.getPendingForUser(userId, required);
+        if (pending.length > 0) {
             throw new TermPolicyRequiredInvalidException();
         }
+    }
+
+    async assertRequiredPublishedInTx(
+        tx: IDatabaseTransactionClient,
+        required: EnumTermPolicyType[]
+    ): Promise<ITermPolicyRef[]> {
+        const refs =
+            await this.termPolicyRepository.findLatestPublishedByTypesInTx(
+                tx,
+                required
+            );
+        const allPublished = required.every(type =>
+            refs.some(ref => ref.type === type)
+        );
+        if (!allPublished) {
+            throw new TermPolicyRequiredNotPublishedException();
+        }
+
+        return refs;
     }
 
     async getListUserAccepted(
@@ -66,21 +102,17 @@ export class TermPolicyAcceptanceDomain {
         createdBy: string
     ): Promise<void> {
         const acceptedAt = this.helperDateService.create();
-        const termPolicies =
-            await this.termPolicyRepository.findPublishedByTypesInTx(tx, types);
-
-        for (const inputType of types) {
-            const termPolicy = termPolicies.find(
-                policy => policy.type === inputType
+        const refs =
+            await this.termPolicyRepository.findLatestPublishedByTypesInTx(
+                tx,
+                types
             );
-            if (!termPolicy) {
-                continue;
-            }
 
+        for (const ref of refs) {
             await this.termPolicyRepository.acceptInTx(
                 tx,
                 userId,
-                termPolicy.id,
+                ref.id,
                 createdBy,
                 acceptedAt
             );
@@ -88,22 +120,6 @@ export class TermPolicyAcceptanceDomain {
     }
 
     async userAccept(user: IUser, type: EnumTermPolicyType): Promise<void> {
-        const policy =
-            await this.termPolicyRepository.findLatestPublishedByType(type);
-        if (!policy) {
-            throw new TermPolicyNotFoundException();
-        }
-
-        // Sequential by design: write must not run if an earlier step throws
-        const exist =
-            await this.termPolicyRepository.existsAcceptanceByPolicyAndUser(
-                user.id,
-                policy.id
-            );
-        if (exist) {
-            throw new TermPolicyAlreadyAcceptedException();
-        }
-
         try {
             const activityLogs = [
                 this.activityLogDomain.prepare({
@@ -116,30 +132,54 @@ export class TermPolicyAcceptanceDomain {
                     user,
                     EnumNotificationKind.userAcceptTermPolicy
                 );
-            await this.databaseService.withTransaction(async tx => {
-                const acceptedAt = this.helperDateService.create();
-                await this.termPolicyRepository.acceptInTx(
-                    tx,
-                    user.id,
-                    policy.id,
-                    user.id,
-                    acceptedAt
-                );
-                await this.userDomain.acceptTermPolicyInTx(tx, user.id, type);
-            });
+            const accepted = await this.databaseService.withTransaction(
+                async tx => {
+                    const [latest] =
+                        await this.termPolicyRepository.findLatestPublishedByTypesInTx(
+                            tx,
+                            [type]
+                        );
+                    if (!latest) {
+                        throw new TermPolicyNotFoundException();
+                    }
+
+                    const acceptedAt = this.helperDateService.create();
+                    await this.termPolicyRepository.acceptInTx(
+                        tx,
+                        user.id,
+                        latest.id,
+                        user.id,
+                        acceptedAt
+                    );
+
+                    return latest;
+                }
+            );
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendUserAcceptTermPolicy(recipient, {
-                termPolicyId: policy.id,
-                type: policy.type,
-                version: policy.version,
+                termPolicyId: accepted.id,
+                type: accepted.type,
+                version: accepted.version,
             });
 
             return;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const isDuplicate = this.databaseUtil.isUniqueCollision(
+                err,
+                'termPolicyId'
+            );
+            const mapped = this.databaseUtil.toException(err);
+            if (
+                isDuplicate ||
+                mapped instanceof DatabaseWriteConflictException
+            ) {
+                throw new TermPolicyAlreadyAcceptedException();
             }
 
             throw new AppUnknownException(err);

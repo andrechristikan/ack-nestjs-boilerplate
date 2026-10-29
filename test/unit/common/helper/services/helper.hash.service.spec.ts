@@ -14,40 +14,49 @@ describe('HelperHashService', () => {
     });
 
     describe('bcryptGenerateSalt', () => {
-        it('generates a salt of the requested cost', () => {
-            const salt = service.bcryptGenerateSalt(10);
+        it('generates a salt of the requested cost', async () => {
+            const pending = service.bcryptGenerateSalt(10);
+            const salt = await pending;
 
+            expect(pending).toBeInstanceOf(Promise);
             expect(salt).toEqual(expect.any(String));
             expect(salt.startsWith('$2')).toBe(true);
         });
     });
 
     describe('bcryptHash', () => {
-        it('hashes a password with the given salt', () => {
-            const salt = service.bcryptGenerateSalt(10);
+        it('hashes a password with the given salt', async () => {
+            const salt = await service.bcryptGenerateSalt(10);
 
-            const hashed = service.bcryptHash('Password123!', salt);
+            const pending = service.bcryptHash('Password123!', salt);
+            const hashed = await pending;
 
+            expect(pending).toBeInstanceOf(Promise);
             expect(hashed).toEqual(expect.any(String));
             expect(hashed).not.toEqual('Password123!');
         });
     });
 
     describe('bcryptCompare', () => {
-        it('returns true when the password matches the hash', () => {
-            const salt = service.bcryptGenerateSalt(10);
-            const hashed = service.bcryptHash('Password123!', salt);
+        it('returns true when the password matches the hash', async () => {
+            const salt = await service.bcryptGenerateSalt(10);
+            const hashed = await service.bcryptHash('Password123!', salt);
 
-            const result = service.bcryptCompare('Password123!', hashed);
+            const pending = service.bcryptCompare('Password123!', hashed);
+            const result = await pending;
 
+            expect(pending).toBeInstanceOf(Promise);
             expect(result).toBe(true);
         });
 
-        it('returns false when the password does not match the hash', () => {
-            const salt = service.bcryptGenerateSalt(10);
-            const hashed = service.bcryptHash('Password123!', salt);
+        it('returns false when the password does not match the hash', async () => {
+            const salt = await service.bcryptGenerateSalt(10);
+            const hashed = await service.bcryptHash('Password123!', salt);
 
-            const result = service.bcryptCompare('WrongPassword1!', hashed);
+            const result = await service.bcryptCompare(
+                'WrongPassword1!',
+                hashed
+            );
 
             expect(result).toBe(false);
         });

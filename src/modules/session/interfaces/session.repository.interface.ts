@@ -43,7 +43,8 @@ export interface ISessionRepository {
     updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,
-        jti: string
+        oldJti: string,
+        newJti: string
     ): Promise<boolean>;
     revokeInTx(
         tx: IDatabaseTransactionClient,

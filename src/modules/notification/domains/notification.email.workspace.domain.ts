@@ -2,6 +2,8 @@ import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
+import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationEmailResult,
@@ -34,6 +36,7 @@ export class NotificationEmailWorkspaceDomain {
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
+        private readonly notificationRepository: NotificationRepository,
         private readonly messageService: MessageService,
         private readonly helperEncryptionService: HelperEncryptionService
     ) {
@@ -64,12 +67,32 @@ export class NotificationEmailWorkspaceDomain {
         );
     }
 
+    private async stampProcessed(notificationId: string): Promise<void> {
+        const processedAt = this.helperDateService.create();
+        await this.notificationRepository.updateDeliveryProcessedAt(
+            notificationId,
+            EnumNotificationChannel.email,
+            processedAt
+        );
+    }
+
+    private async stampSent(notificationId: string): Promise<void> {
+        const sentAt = this.helperDateService.create();
+        await this.notificationRepository.updateDeliverySentAt(
+            notificationId,
+            EnumNotificationChannel.email,
+            sentAt,
+            []
+        );
+    }
+
     async processWorkspaceInvite(
         {
             encryptedEmail,
             cc,
             bcc,
             userId,
+            notificationId,
         }: INotificationEmailSendEncryptedPayload,
         {
             workspaceName,
@@ -91,6 +114,8 @@ export class NotificationEmailWorkspaceDomain {
         const expiredAtDate = this.helperDateService.createFromIso(expiredAt);
         const expiredAtFormatted =
             this.helperDateService.formatToRFC2822(expiredAtDate);
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceInvite,
             recipients: [email],
@@ -107,6 +132,7 @@ export class NotificationEmailWorkspaceDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.workspaceInvite'
@@ -169,6 +195,7 @@ export class NotificationEmailWorkspaceDomain {
             cc,
             bcc,
             userId,
+            notificationId,
         }: INotificationEmailSendEncryptedPayload,
         {
             workspaceName,
@@ -185,6 +212,8 @@ export class NotificationEmailWorkspaceDomain {
                 userId
             );
 
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceJoinRequest,
             recipients: [email],
@@ -199,6 +228,7 @@ export class NotificationEmailWorkspaceDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.workspaceJoinRequest'
@@ -217,10 +247,13 @@ export class NotificationEmailWorkspaceDomain {
             cc,
             bcc,
             userId,
+            notificationId,
         }: INotificationEmailSendEncryptedPayload,
         { workspaceName }: INotificationWorkspaceJoinAcceptedPayload
     ): Promise<INotificationEmailResult> {
         const email = this.decryptEmail(encryptedEmail, userId);
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceJoinAccepted,
             recipients: [email],
@@ -233,6 +266,7 @@ export class NotificationEmailWorkspaceDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.workspaceJoinAccepted'
@@ -251,6 +285,7 @@ export class NotificationEmailWorkspaceDomain {
             cc,
             bcc,
             userId,
+            notificationId,
         }: INotificationEmailSendEncryptedPayload,
         {
             workspaceName,
@@ -262,6 +297,8 @@ export class NotificationEmailWorkspaceDomain {
             `notification.rejectReason.${rejectReasonCode}`
         );
 
+        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceJoinRejected,
             recipients: [email],
@@ -275,6 +312,7 @@ export class NotificationEmailWorkspaceDomain {
             ...(cc.length > 0 && { cc }),
             ...(bcc.length > 0 && { bcc }),
         });
+        await this.stampSent(notificationId);
 
         const message = this.messageService.setMessage(
             'notification.queue.email.workspaceJoinRejected'

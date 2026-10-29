@@ -19,6 +19,7 @@ import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/requ
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
+import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
@@ -142,9 +143,11 @@ export class WorkspaceInviteHttpService {
         return {};
     }
 
-    async previewInvite(
-        inviteToken: string
-    ): Promise<IResponseReturn<WorkspaceInvitePreviewResponseDto>> {
+    async previewInvite({
+        inviteToken,
+    }: WorkspaceInvitePreviewRequestDto): Promise<
+        IResponseReturn<WorkspaceInvitePreviewResponseDto>
+    > {
         const { workspace, invite, inviter } =
             await this.workspaceInviteDomain.previewInvite(inviteToken);
 

@@ -3,8 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -26,6 +29,7 @@ import type {
     User,
     Workspace,
     WorkspaceJoinRequest,
+    WorkspaceMember,
 } from '@generated/prisma-client/client';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -63,6 +67,7 @@ describe('WorkspaceJoinRequestDomain', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const helperStringService: MockProxy<HelperStringService> =
@@ -113,6 +118,18 @@ describe('WorkspaceJoinRequestDomain', () => {
         reviewedAt: null,
     };
 
+    const workspaceMember: WorkspaceMember = {
+        id: 'member-1',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: 'reviewer-1',
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: 'reviewer-1',
+        workspaceId: 'workspace-1',
+        userId: 'user-2',
+        role: EnumWorkspaceMemberRole.member,
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+    };
+
     const requester: User = {
         id: 'user-2',
         name: 'Jane Doe',
@@ -137,12 +154,6 @@ describe('WorkspaceJoinRequestDomain', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -184,6 +195,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 { provide: UserDomain, useValue: userDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: HelperStringService,
@@ -533,6 +545,7 @@ describe('WorkspaceJoinRequestDomain', () => {
 
         beforeEach(() => {
             databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(true);
             helperDateService.create.mockReturnValue(
                 new Date('2026-03-01T00:00:00.000Z')
             );
@@ -605,8 +618,15 @@ describe('WorkspaceJoinRequestDomain', () => {
             workspaceJoinRequestRepository.acceptInTx.mockImplementation(
                 async () => {
                     callOrder.push('acceptInTx');
+
+                    return true;
                 }
             );
+            workspaceMemberDomain.createInTx.mockImplementation(async () => {
+                callOrder.push('createInTx');
+
+                return workspaceMember;
+            });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
@@ -658,6 +678,7 @@ describe('WorkspaceJoinRequestDomain', () => {
             );
             expect(callOrder).toEqual([
                 'acceptInTx',
+                'createInTx',
                 'stagePrepared',
                 'sendWorkspaceJoinAccepted',
             ]);
@@ -755,10 +776,116 @@ describe('WorkspaceJoinRequestDomain', () => {
                 acceptedByAdminActivityLog,
             ]);
         });
+        it('throws WorkspaceJoinRequestAlreadyProcessedException before the member insert when the guarded accept matches no pending request', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(false);
+
+            await expect(
+                domain.acceptJoinRequest(
+                    workspace,
+                    'reviewer-1',
+                    'join-request-1'
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceJoinRequestAlreadyProcessedException,
+                module: 'workspace',
+                statusCode:
+                    EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed
+                    ],
+                messagePath: 'workspace.error.joinRequestAlreadyProcessed',
+            });
+            expect(workspaceMemberDomain.createInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict in the transaction to WorkspaceJoinRequestAlreadyProcessedException', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            const conflict = new Error('write-conflict');
+            workspaceJoinRequestRepository.acceptInTx.mockRejectedValue(
+                conflict
+            );
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.acceptJoinRequest(
+                    workspace,
+                    'reviewer-1',
+                    'join-request-1'
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceJoinRequestAlreadyProcessedException,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a unique collision on the member insert to WorkspaceJoinRequestAlreadyMemberException and stages nothing', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(true);
+            const collision = new Error('unique');
+            workspaceMemberDomain.createInTx.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await expect(
+                domain.acceptJoinRequest(
+                    workspace,
+                    'reviewer-1',
+                    'join-request-1'
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceJoinRequestAlreadyMemberException,
+                module: 'workspace',
+                statusCode:
+                    EnumWorkspaceStatusCodeError.joinRequestAlreadyMember,
+                messagePath: 'workspace.error.joinRequestAlreadyMember',
+            });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'userId'
+            );
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinAccepted
+            ).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other transaction error in AppUnknownException', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            workspaceJoinRequestRepository.acceptInTx.mockRejectedValue(
+                new Error('boom')
+            );
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                domain.acceptJoinRequest(
+                    workspace,
+                    'reviewer-1',
+                    'join-request-1'
+                )
+            ).rejects.toBeInstanceOf(AppUnknownException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
     });
 
     describe('rejectJoinRequest', () => {
         beforeEach(() => {
+            workspaceJoinRequestRepository.reject.mockResolvedValue(true);
             helperDateService.create.mockReturnValue(
                 new Date('2026-03-01T00:00:00.000Z')
             );
@@ -833,6 +960,8 @@ describe('WorkspaceJoinRequestDomain', () => {
             workspaceJoinRequestRepository.reject.mockImplementation(
                 async () => {
                     callOrder.push('reject');
+
+                    return true;
                 }
             );
             activityLogDomain.stagePrepared.mockImplementation(() => {
@@ -886,6 +1015,28 @@ describe('WorkspaceJoinRequestDomain', () => {
                 'stagePrepared',
                 'sendWorkspaceJoinRejected',
             ]);
+        });
+
+        it('throws WorkspaceJoinRequestAlreadyProcessedException and stages nothing when the guarded reject matches no pending request', async () => {
+            workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseJoinRequest
+            );
+            workspaceJoinRequestRepository.reject.mockResolvedValue(false);
+
+            await expect(
+                domain.rejectJoinRequest(
+                    workspace,
+                    'reviewer-1',
+                    'join-request-1',
+                    EnumWorkspaceJoinRejectReason.wrongWorkspace
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceJoinRequestAlreadyProcessedException,
+            });
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWorkspaceJoinRejected
+            ).not.toHaveBeenCalled();
         });
 
         it('commits nothing and stages nothing when the recipient read rejects', async () => {

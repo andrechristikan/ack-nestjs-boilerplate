@@ -8,6 +8,7 @@ import type { IActivityLogAnalyticRepository } from '@modules/activity-log/inter
 import type {
     IActivityLogAnalyticActionCount,
     IActivityLogAnalyticList,
+    IActivityLogIpGroup,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
@@ -66,6 +67,29 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
             select: ActivityLogAnalyticListSelect,
             orderBy: { createdAt: EnumPaginationOrderDirectionType.asc },
         });
+    }
+
+    async groupIpByActions(
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date,
+        min: number
+    ): Promise<IActivityLogIpGroup[]> {
+        const rows = await this.databaseService.client.activityLog.groupBy({
+            by: ['ipAddress'],
+            where: {
+                action: { in: actions },
+                ipAddress: { not: null },
+                createdAt: { gte: startDate, lt: endDate },
+            },
+            having: { ipAddress: { _count: { gte: min } } },
+            _count: { _all: true },
+        });
+        return rows.flatMap(row =>
+            row.ipAddress === null
+                ? []
+                : [{ ipAddress: row.ipAddress, count: row._count._all }]
+        );
     }
 
     async countByWorkspaceInRange(

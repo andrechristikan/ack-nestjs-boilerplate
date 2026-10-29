@@ -6,7 +6,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -147,12 +146,6 @@ describe('UserDomain', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: false,
-        },
         photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -396,12 +389,6 @@ describe('UserDomain', () => {
                 lastLoginWith: null,
                 lastWorkspaceId: null,
                 lastWorkspaceChangedAt: null,
-                termPolicy: {
-                    termsOfService: true,
-                    privacy: true,
-                    marketing: false,
-                    cookies: false,
-                },
                 photo: null,
                 createdAt: new Date('2026-01-01T00:00:00.000Z'),
                 createdBy: null,
@@ -551,44 +538,6 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('acceptTermPolicyInTx', () => {
-        it('delegates to the repository', async () => {
-            await domain.acceptTermPolicyInTx(
-                tx,
-                'user-cobalt',
-                EnumTermPolicyType.marketing
-            );
-
-            expect(userRepository.acceptTermPolicyInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt',
-                EnumTermPolicyType.marketing
-            );
-        });
-    });
-
-    describe('resetTermPolicyInTx', () => {
-        it('delegates to the repository', async () => {
-            await domain.resetTermPolicyInTx(tx, EnumTermPolicyType.marketing);
-
-            expect(userRepository.resetTermPolicyInTx).toHaveBeenCalledWith(
-                tx,
-                EnumTermPolicyType.marketing
-            );
-        });
-    });
-
-    describe('increasePasswordAttempt', () => {
-        it('delegates to the repository', async () => {
-            const user = baseUser;
-            userRepository.increasePasswordAttempt.mockResolvedValue(user);
-
-            await expect(domain.increasePasswordAttempt(user.id)).resolves.toBe(
-                user
-            );
-        });
-    });
-
     describe('resetPasswordAttempt', () => {
         it('delegates to the repository', async () => {
             const user = baseUser;
@@ -601,12 +550,27 @@ describe('UserDomain', () => {
     });
 
     describe('deactivateForMaxPasswordAttemptInTx', () => {
-        it('delegates to the repository', async () => {
-            await domain.deactivateForMaxPasswordAttemptInTx(tx, 'user-cobalt');
+        it('answers whether the repository deactivated the still-active account', async () => {
+            userRepository.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
+                true
+            );
 
+            await expect(
+                domain.deactivateForMaxPasswordAttemptInTx(tx, 'user-cobalt')
+            ).resolves.toBe(true);
             expect(
                 userRepository.deactivateForMaxPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-cobalt');
+        });
+
+        it('answers false when the account was no longer active', async () => {
+            userRepository.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                domain.deactivateForMaxPasswordAttemptInTx(tx, 'user-cobalt')
+            ).resolves.toBe(false);
         });
     });
 
@@ -759,7 +723,7 @@ describe('UserDomain', () => {
             authPasswordUtil.createPasswordRandom.mockReturnValue(
                 'random-password'
             );
-            authPasswordUtil.createPassword.mockReturnValue({
+            authPasswordUtil.createPassword.mockResolvedValue({
                 passwordHash: 'hashed',
                 passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
                 passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
@@ -1058,11 +1022,44 @@ describe('UserDomain', () => {
     });
 
     describe('updateStatusByAdmin', () => {
+        const adminActor: IRoleActor = {
+            roleId: 'role-admin-cobalt',
+            roleType: EnumRoleType.admin,
+        };
+
+        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
+                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
+            });
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw new RoleRankForbiddenException();
+            });
+
+            const call = domain.updateStatusByAdmin(
+                'user-cobalt',
+                EnumUserStatus.blocked,
+                'admin-cobalt',
+                adminActor
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.superAdmin
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
         it('throws UserNotSelfException when the admin targets themselves', async () => {
             const call = domain.updateStatusByAdmin(
                 'admin-cobalt',
                 EnumUserStatus.blocked,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1075,12 +1072,13 @@ describe('UserDomain', () => {
         });
 
         it('throws UserNotFoundException when the target user does not exist', async () => {
-            userRepository.findOneById.mockResolvedValue(null);
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             const call = domain.updateStatusByAdmin(
                 'user-cobalt',
                 EnumUserStatus.blocked,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1093,7 +1091,7 @@ describe('UserDomain', () => {
         });
 
         it('throws UserBlockedInvalidException when the target user is already blocked', async () => {
-            userRepository.findOneById.mockResolvedValue({
+            userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 status: EnumUserStatus.blocked,
             });
@@ -1101,7 +1099,8 @@ describe('UserDomain', () => {
             const call = domain.updateStatusByAdmin(
                 'user-cobalt',
                 EnumUserStatus.inactive,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1117,7 +1116,7 @@ describe('UserDomain', () => {
 
         it('blocks the user, revoking sessions and logging the block action', async () => {
             const user = { ...baseUser, status: EnumUserStatus.active };
-            userRepository.findOneById.mockResolvedValue(user);
+            userRepository.findOneWithRoleById.mockResolvedValue(user);
             userRepository.updateStatusByAdminInTx.mockResolvedValue(user);
             sessionDomain.revokeActiveByUserInTx.mockResolvedValue([
                 { id: 'session-one' },
@@ -1129,9 +1128,14 @@ describe('UserDomain', () => {
             await domain.updateStatusByAdmin(
                 'user-cobalt',
                 EnumUserStatus.blocked,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                user.role.type
+            );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith(
                 expect.objectContaining({
                     action: EnumActivityLogAction.userBlocked,
@@ -1160,8 +1164,12 @@ describe('UserDomain', () => {
         });
 
         it('deactivates the user, revoking sessions with the update-status action', async () => {
-            const user = { ...baseUser, status: EnumUserStatus.active };
-            userRepository.findOneById.mockResolvedValue(user);
+            const user = {
+                ...baseUser,
+                status: EnumUserStatus.active,
+                passwordAttempt: 3,
+            };
+            userRepository.findOneWithRoleById.mockResolvedValue(user);
             userRepository.updateStatusByAdminInTx.mockResolvedValue(user);
             sessionDomain.revokeActiveByUserInTx.mockResolvedValue([]);
             sessionDomain.prepareRevokeAllByAdmin.mockReturnValue([]);
@@ -1169,7 +1177,8 @@ describe('UserDomain', () => {
             await domain.updateStatusByAdmin(
                 'user-cobalt',
                 EnumUserStatus.inactive,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             expect(activityLogDomain.prepare).toHaveBeenCalledWith(
@@ -1177,20 +1186,35 @@ describe('UserDomain', () => {
                     action: EnumActivityLogAction.userUpdateStatus,
                 })
             );
+            expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt',
+                { status: EnumUserStatus.inactive, passwordAttempt: 3 }
+            );
             expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalled();
         });
 
         it('reactivates the user without touching sessions', async () => {
-            const user = { ...baseUser, status: EnumUserStatus.inactive };
-            userRepository.findOneById.mockResolvedValue(user);
+            const user = {
+                ...baseUser,
+                status: EnumUserStatus.inactive,
+                passwordAttempt: 5,
+            };
+            userRepository.findOneWithRoleById.mockResolvedValue(user);
             userRepository.updateStatusByAdminInTx.mockResolvedValue(user);
 
             await domain.updateStatusByAdmin(
                 'user-cobalt',
                 EnumUserStatus.active,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
+            expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt',
+                { status: EnumUserStatus.active, passwordAttempt: 0 }
+            );
             expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
             expect(sessionDomain.finalizeRevokeAll).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
@@ -1200,7 +1224,7 @@ describe('UserDomain', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userRepository.findOneById.mockResolvedValue({
+            userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 status: EnumUserStatus.active,
             });
@@ -1210,7 +1234,8 @@ describe('UserDomain', () => {
             const call = domain.updateStatusByAdmin(
                 'user-cobalt',
                 EnumUserStatus.blocked,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({
@@ -1224,7 +1249,7 @@ describe('UserDomain', () => {
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {
-            userRepository.findOneById.mockResolvedValue({
+            userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 status: EnumUserStatus.active,
             });
@@ -1234,7 +1259,8 @@ describe('UserDomain', () => {
             const call = domain.updateStatusByAdmin(
                 'user-cobalt',
                 EnumUserStatus.blocked,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             await expect(call).rejects.toMatchObject({

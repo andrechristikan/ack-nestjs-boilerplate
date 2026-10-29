@@ -1,3 +1,7 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -18,6 +22,7 @@ import { NotificationAlreadyReadException } from '@modules/notification/exceptio
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
+import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
 import type { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
@@ -31,16 +36,30 @@ export class NotificationDomain {
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly userDomain: UserDomain,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
     ): Promise<IResponsePaginationReturn<Notification>> {
+        const settings =
+            await this.notificationUserSettingRepository.findUserSetting(
+                userId
+            );
+        const excludedTypes = settings
+            .filter(
+                setting =>
+                    setting.channel === EnumNotificationChannel.inApp &&
+                    !setting.isActive
+            )
+            .map(setting => setting.type);
+
         return this.notificationRepository.findWithPaginationCursor(
             userId,
-            pagination
+            pagination,
+            excludedTypes
         );
     }
 
@@ -51,18 +70,23 @@ export class NotificationDomain {
     }
 
     async markAsRead(userId: string, notificationId: string): Promise<void> {
-        // Sequential by design: write must not run if an earlier step throws
+        const marked = await this.notificationRepository.markAsRead(
+            notificationId,
+            userId
+        );
+        if (marked) {
+            return;
+        }
+
         const notification = await this.notificationRepository.findIsReadById(
             userId,
             notificationId
         );
         if (!notification) {
             throw new NotificationNotFoundException();
-        } else if (notification.isRead) {
-            throw new NotificationAlreadyReadException();
         }
 
-        await this.notificationRepository.markAsRead(userId, notificationId);
+        throw new NotificationAlreadyReadException();
     }
 
     async markAllAsRead(userId: string): Promise<number> {
@@ -88,14 +112,32 @@ export class NotificationDomain {
                 },
             }),
         ];
-        await this.databaseService.withTransaction(async tx => {
-            await this.notificationUserSettingRepository.updateUserSettingInTx(
-                tx,
-                userId,
-                data
-            );
-            await this.userDomain.touchUpdatedByInTx(tx, userId);
-        });
+        try {
+            await this.databaseService.withTransaction(async tx => {
+                const updated =
+                    await this.notificationUserSettingRepository.updateUserSettingInTx(
+                        tx,
+                        userId,
+                        data
+                    );
+                if (!updated) {
+                    throw new NotificationSettingInvalidException();
+                }
+
+                await this.userDomain.touchUpdatedByInTx(tx, userId);
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new NotificationSettingInvalidException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
     }

@@ -33,6 +33,7 @@ import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/reque
 import { TermPolicyRemoveContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { DocTermPolicyErrorResponses } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyContentHttpService } from '@modules/term-policy/services/term-policy.content.http.service';
 import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -133,6 +134,7 @@ export class TermPolicyAdminController {
     }
 
     @Doc({ summary: 'generate presign url for term or policy content upload' })
+    @DocTermPolicyErrorResponses.contentSizeExceeded
     @Response('termPolicy.generateContentPresign', {
         schema: AwsS3PresignResponseSchema,
     })

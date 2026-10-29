@@ -32,9 +32,15 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
             name: faker.commerce.productName(),
             platform: EnumDevicePlatform.android,
             lastActiveAt: faker.date.recent(),
-            notificationProvider: EnumDeviceNotificationProvider.fcm,
         },
     }),
+    notificationProvider: z
+        .enum(EnumDeviceNotificationProvider)
+        .nullable()
+        .meta({
+            description: 'Notification provider of the ownership token',
+            example: EnumDeviceNotificationProvider.fcm,
+        }),
     userId: z.string().meta({
         description: 'User ID who owns the device',
         example: faker.database.mongodbObjectId(),

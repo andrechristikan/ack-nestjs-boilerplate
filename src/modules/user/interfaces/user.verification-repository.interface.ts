@@ -16,7 +16,7 @@ export interface IUserVerificationRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         verifiedAt: Date
-    ): Promise<Verification>;
+    ): Promise<boolean>;
     createFromOnboardingInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

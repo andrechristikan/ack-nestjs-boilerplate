@@ -290,28 +290,73 @@ describe('SessionDomain', () => {
     });
 
     describe('updateJtiInTx', () => {
-        it('resolves when the jti update matches a row', async () => {
+        it('answers true when the compare-and-set matches a row', async () => {
             sessionRepository.updateJtiInTx.mockResolvedValue(true);
 
             await expect(
-                domain.updateJtiInTx(tx, 'session-1', 'new-jti')
-            ).resolves.toBeUndefined();
+                domain.updateJtiInTx(tx, 'session-1', 'old-jti', 'new-jti')
+            ).resolves.toBe(true);
+            expect(sessionRepository.updateJtiInTx).toHaveBeenCalledWith(
+                tx,
+                'session-1',
+                'old-jti',
+                'new-jti'
+            );
         });
 
-        it('throws SessionRevokedException when no row matched', async () => {
+        it('answers false when no row matched the old jti', async () => {
             sessionRepository.updateJtiInTx.mockResolvedValue(false);
 
-            const rejection = domain.updateJtiInTx(tx, 'session-1', 'new-jti');
+            await expect(
+                domain.updateJtiInTx(tx, 'session-1', 'old-jti', 'new-jti')
+            ).resolves.toBe(false);
+        });
+    });
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
+    describe('revokeOnReuse', () => {
+        it('revokes the session as its own user and returns the revoked ref', async () => {
+            const revokedAt = new Date('2026-01-05T00:00:00.000Z');
+            helperDateService.create.mockReturnValue(revokedAt);
+            sessionRepository.revoke.mockResolvedValue(true);
+
+            const result = await domain.revokeOnReuse('user-1', 'session-1');
+
+            expect(result).toEqual([{ id: 'session-1' }]);
+            expect(sessionRepository.revoke).toHaveBeenCalledWith(
+                'user-1',
+                'session-1',
+                'user-1',
+                revokedAt
+            );
+        });
+
+        it('returns no ref when the session was already revoked', async () => {
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-05T00:00:00.000Z')
+            );
+            sessionRepository.revoke.mockResolvedValue(false);
+
+            const result = await domain.revokeOnReuse('user-1', 'session-1');
+
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('findOneActive', () => {
+        it('returns the active session row', async () => {
+            sessionRepository.findOneActive.mockResolvedValue(session);
+
+            await expect(
+                domain.findOneActive('user-1', 'session-1')
+            ).resolves.toBe(session);
+        });
+
+        it('returns null when the session is revoked or expired', async () => {
+            sessionRepository.findOneActive.mockResolvedValue(null);
+
+            await expect(
+                domain.findOneActive('user-1', 'session-1')
+            ).resolves.toBeNull();
         });
     });
 

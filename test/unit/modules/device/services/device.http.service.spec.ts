@@ -43,6 +43,8 @@ describe('DeviceHttpService', () => {
         isRevoked: false,
         revokedById: null,
         lastActiveAt: updatedAt,
+        notificationToken: null,
+        notificationProvider: null,
         biometricEnabled: false,
         biometricToken: null,
         biometricType: null,
@@ -57,8 +59,6 @@ describe('DeviceHttpService', () => {
             name: 'iPhone 12',
             platform: EnumDevicePlatform.ios,
             lastActiveAt: updatedAt,
-            notificationToken: null,
-            notificationProvider: null,
         },
         user: {
             id: 'user-1',

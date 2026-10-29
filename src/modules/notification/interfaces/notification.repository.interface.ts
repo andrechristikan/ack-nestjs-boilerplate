@@ -7,6 +7,7 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import {
     EnumNotificationChannel,
+    EnumNotificationType,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Notification } from '@generated/prisma-client/client';
@@ -17,7 +18,8 @@ export interface INotificationRepository {
         {
             where,
             ...params
-        }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
+        excludedTypes: EnumNotificationType[]
     ): Promise<IResponsePaginationReturn<Notification>>;
     findIsReadById(
         userId: string,
@@ -50,6 +52,7 @@ export interface INotificationRepository {
     markTermPolicyRecipientsSent(
         claimNonce: string,
         userIds: string[],
+        notificationIds: string[],
         sentAt: Date,
         updatedBy: string
     ): Promise<void>;
@@ -58,17 +61,17 @@ export interface INotificationRepository {
         userIds: string[],
         updatedBy: string
     ): Promise<void>;
-    markAsRead(userId: string, notificationId: string): Promise<Notification>;
+    markAsRead(notificationId: string, userId: string): Promise<boolean>;
     markAllAsRead(userId: string): Promise<Prisma.BatchPayload>;
-    updateProcessAt(
-        userId: string,
-        notificationId: string,
-        channel: EnumNotificationChannel
-    ): Promise<void>;
-    updateSentAt(
-        userId: string,
+    updateDeliveryProcessedAt(
         notificationId: string,
         channel: EnumNotificationChannel,
+        at: Date
+    ): Promise<boolean>;
+    updateDeliverySentAt(
+        notificationId: string,
+        channel: EnumNotificationChannel,
+        at: Date,
         failureTokens: string[]
-    ): Promise<void>;
+    ): Promise<boolean>;
 }

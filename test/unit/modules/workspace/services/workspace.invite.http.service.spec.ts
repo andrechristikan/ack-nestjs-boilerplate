@@ -259,7 +259,9 @@ describe('WorkspaceInviteHttpService', () => {
             };
             workspaceUtil.mapInvitePreview.mockReturnValue(preview);
 
-            const result = await service.previewInvite('raw-token');
+            const result = await service.previewInvite({
+                inviteToken: 'raw-token',
+            });
 
             expect(result).toEqual({ data: preview });
             expect(workspaceInviteDomain.previewInvite).toHaveBeenCalledWith(

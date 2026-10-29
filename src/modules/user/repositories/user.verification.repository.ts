@@ -64,14 +64,16 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         verifiedAt: Date
-    ): Promise<Verification> {
-        return tx.verification.update({
-            where: { id },
+    ): Promise<boolean> {
+        const { count } = await tx.verification.updateMany({
+            where: { id, isUsed: false },
             data: {
                 isUsed: true,
                 verifiedAt,
             },
         });
+
+        return count > 0;
     }
 
     async createFromOnboardingInTx(

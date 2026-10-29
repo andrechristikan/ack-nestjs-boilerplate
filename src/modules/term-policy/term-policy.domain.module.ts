@@ -8,7 +8,6 @@ import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-po
 import { UserDomainModule } from '@modules/user/user.domain.module';
 import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
-import { TermPolicyTemplateDomain } from '@modules/term-policy/domains/term-policy.template.domain';
 import { TermPolicyRepositoryModule } from '@modules/term-policy/term-policy.repository.module';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Global, Module } from '@nestjs/common';
@@ -23,7 +22,6 @@ import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains
         TermPolicyDomain,
         TermPolicyContentDomain,
         TermPolicyAcceptanceDomain,
-        TermPolicyTemplateDomain,
         TermPolicyUtil,
         TermPolicyAnalyticDomain,
         TermPolicyAcceptanceAnalyticDomain,
@@ -34,7 +32,6 @@ import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains
         TermPolicyDomain,
         TermPolicyContentDomain,
         TermPolicyAcceptanceDomain,
-        TermPolicyTemplateDomain,
         TermPolicyUtil,
         TermPolicyAnalyticDomain,
         TermPolicyAcceptanceAnalyticDomain,

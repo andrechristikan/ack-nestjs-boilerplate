@@ -4,13 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { Duration } from 'luxon';
-import {
-    EnumPasswordHistoryType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
-import type { PasswordHistory, User } from '@generated/prisma-client/client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -30,45 +25,6 @@ describe('AuthPasswordUtil', () => {
 
     let util: AuthPasswordUtil;
 
-    const baseUser: User = {
-        id: 'user-1',
-        name: 'Jane Doe',
-        username: 'jane',
-        isVerified: true,
-        verifiedAt: null,
-        email: 'jane@example.com',
-        roleId: 'role-1',
-        password: 'hashed',
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        termPolicy: {
-            termsOfService: true,
-            privacy: true,
-            marketing: false,
-            cookies: true,
-        },
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-    };
-
     beforeEach(async () => {
         vi.resetAllMocks();
 
@@ -78,8 +34,6 @@ describe('AuthPasswordUtil', () => {
                 'auth.password.expiredTemporaryInMs': 3600000,
                 'auth.password.saltLength': 12,
                 'auth.password.periodInDays': 90,
-                'auth.password.attempt': true,
-                'auth.password.maxAttempt': 5,
             };
             return values[key];
         });
@@ -101,10 +55,10 @@ describe('AuthPasswordUtil', () => {
     });
 
     describe('validatePassword', () => {
-        it('delegates to the bcrypt compare', () => {
-            helperHashService.bcryptCompare.mockReturnValue(true);
+        it('delegates to the bcrypt compare', async () => {
+            helperHashService.bcryptCompare.mockResolvedValue(true);
 
-            const result = util.validatePassword('plain', 'hash');
+            const result = await util.validatePassword('plain', 'hash');
 
             expect(result).toBe(true);
             expect(helperHashService.bcryptCompare).toHaveBeenCalledWith(
@@ -114,78 +68,14 @@ describe('AuthPasswordUtil', () => {
         });
     });
 
-    describe('checkPasswordAttempt', () => {
-        it('returns true when attempt tracking is on and the count reached the max', () => {
-            const user = { ...baseUser, passwordAttempt: 5 };
-
-            const result = util.checkPasswordAttempt(user);
-
-            expect(result).toBe(true);
-        });
-
-        it('returns false when attempt tracking is on and the count is below the max', () => {
-            const user = { ...baseUser, passwordAttempt: 1 };
-
-            const result = util.checkPasswordAttempt(user);
-
-            expect(result).toBe(false);
-        });
-
-        it('treats a null attempt count as zero', () => {
-            const user = { ...baseUser, passwordAttempt: null };
-
-            const result = util.checkPasswordAttempt(user);
-
-            expect(result).toBe(false);
-        });
-
-        it('returns false when attempt tracking is off, however high the count is', async () => {
-            configGet.mockImplementation((key: string) => {
-                const values: Record<string, boolean | number> = {
-                    'auth.password.expiredInMs': 86400000,
-                    'auth.password.expiredTemporaryInMs': 3600000,
-                    'auth.password.saltLength': 12,
-                    'auth.password.periodInDays': 90,
-                    'auth.password.attempt': false,
-                    'auth.password.maxAttempt': 5,
-                };
-                return values[key];
-            });
-            const module: TestingModule = await Test.createTestingModule({
-                providers: [
-                    AuthPasswordUtil,
-                    {
-                        provide: HelperHashService,
-                        useValue: helperHashService,
-                    },
-                    {
-                        provide: HelperDateService,
-                        useValue: helperDateService,
-                    },
-                    {
-                        provide: HelperStringService,
-                        useValue: helperStringService,
-                    },
-                    { provide: ConfigService, useValue: configService },
-                ],
-            }).compile();
-            const trackingOffUtil = module.get(AuthPasswordUtil);
-            const user = { ...baseUser, passwordAttempt: 99 };
-
-            const result = trackingOffUtil.checkPasswordAttempt(user);
-
-            expect(result).toBe(false);
-        });
-    });
-
     describe('createPassword', () => {
-        it('builds the hash, expiry and period dates using the default duration', () => {
+        it('builds the hash, expiry and period dates using the default duration', async () => {
             const today = new Date('2026-01-01T00:00:00.000Z');
             const expired = new Date('2026-01-02T00:00:00.000Z');
             const periodExpired = new Date('2026-04-01T00:00:00.000Z');
             helperDateService.create.mockReturnValue(today);
-            helperHashService.bcryptGenerateSalt.mockReturnValue('salt');
-            helperHashService.bcryptHash.mockReturnValue('hashed-password');
+            helperHashService.bcryptGenerateSalt.mockResolvedValue('salt');
+            helperHashService.bcryptHash.mockResolvedValue('hashed-password');
             const expiredDuration = Duration.fromObject({
                 milliseconds: 86400000,
             });
@@ -197,7 +87,7 @@ describe('AuthPasswordUtil', () => {
                 duration === expiredDuration ? expired : periodExpired
             );
 
-            const result = util.createPassword('plain-password');
+            const result = await util.createPassword('plain-password');
 
             expect(result).toEqual({
                 passwordHash: 'hashed-password',
@@ -217,17 +107,17 @@ describe('AuthPasswordUtil', () => {
             });
         });
 
-        it('uses the temporary expiry duration when temporary is set', () => {
+        it('uses the temporary expiry duration when temporary is set', async () => {
             const today = new Date('2026-01-01T00:00:00.000Z');
             helperDateService.create.mockReturnValue(today);
-            helperHashService.bcryptGenerateSalt.mockReturnValue('salt');
-            helperHashService.bcryptHash.mockReturnValue('hashed-password');
+            helperHashService.bcryptGenerateSalt.mockResolvedValue('salt');
+            helperHashService.bcryptHash.mockResolvedValue('hashed-password');
             helperDateService.createDuration.mockReturnValue(
                 Duration.fromObject({ milliseconds: 3600000 })
             );
             helperDateService.forward.mockReturnValue(today);
 
-            util.createPassword('plain-password', { temporary: true });
+            await util.createPassword('plain-password', { temporary: true });
 
             expect(helperDateService.createDuration).toHaveBeenCalledWith({
                 milliseconds: 3600000,
@@ -287,13 +177,13 @@ describe('AuthPasswordUtil', () => {
             createdBy: null,
         };
 
-        it('returns the matching history record when the password was used before', () => {
+        it('returns the matching history record when the password was used before', async () => {
             const match = { ...history, id: 'history-2' };
             helperHashService.bcryptCompare
-                .mockReturnValueOnce(false)
-                .mockReturnValueOnce(true);
+                .mockResolvedValueOnce(false)
+                .mockResolvedValueOnce(true);
 
-            const result = util.checkPasswordPeriod(
+            const result = await util.checkPasswordPeriod(
                 [{ ...history, id: 'history-1' }, match],
                 'plain-password'
             );
@@ -301,10 +191,10 @@ describe('AuthPasswordUtil', () => {
             expect(result).toBe(match);
         });
 
-        it('returns null when the password was never used before', () => {
-            helperHashService.bcryptCompare.mockReturnValue(false);
+        it('returns null when the password was never used before', async () => {
+            helperHashService.bcryptCompare.mockResolvedValue(false);
 
-            const result = util.checkPasswordPeriod(
+            const result = await util.checkPasswordPeriod(
                 [history],
                 'plain-password'
             );
@@ -312,8 +202,8 @@ describe('AuthPasswordUtil', () => {
             expect(result).toBeNull();
         });
 
-        it('returns null for an empty history list', () => {
-            const result = util.checkPasswordPeriod([], 'plain-password');
+        it('returns null for an empty history list', async () => {
+            const result = await util.checkPasswordPeriod([], 'plain-password');
 
             expect(result).toBeNull();
         });

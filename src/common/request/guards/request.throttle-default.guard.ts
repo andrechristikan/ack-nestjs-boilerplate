@@ -25,7 +25,7 @@ export class RequestThrottleDefaultGuard extends ThrottlerGuard {
     }
 
     protected async getTracker(req: IRequestApp): Promise<string> {
-        return this.requestUtil.resolveThrottleTrackerIp(req);
+        return this.requestUtil.getClientIp(req);
     }
 
     protected generateKey(
