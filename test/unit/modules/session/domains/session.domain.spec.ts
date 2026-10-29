@@ -10,10 +10,19 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumRoleType,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import type {
+    IRole,
+    IRoleActor,
+} from '@modules/role/interfaces/role.interface';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type {
     ISession,
@@ -25,6 +34,7 @@ import { SessionRepository } from '@modules/session/repositories/session.reposit
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 describe('SessionDomain', () => {
@@ -37,6 +47,7 @@ describe('SessionDomain', () => {
         mock<ActivityLogDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
 
@@ -80,6 +91,30 @@ describe('SessionDomain', () => {
         revokedBy: null,
     };
 
+    const adminActor: IRoleActor = {
+        roleId: 'role-admin',
+        roleType: EnumRoleType.admin,
+    };
+    const superAdminActor: IRoleActor = {
+        roleId: 'role-root',
+        roleType: EnumRoleType.superAdmin,
+    };
+    const userRole: IRole = {
+        id: 'role-user',
+        name: 'user',
+        type: EnumRoleType.user,
+    };
+    const adminRole: IRole = {
+        id: 'role-admin',
+        name: 'admin',
+        type: EnumRoleType.admin,
+    };
+    const superAdminRole: IRole = {
+        id: 'role-root',
+        name: 'superadmin',
+        type: EnumRoleType.superAdmin,
+    };
+
     const baseActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userRevokeSession,
         metadata: {},
@@ -99,6 +134,7 @@ describe('SessionDomain', () => {
                 { provide: SessionQueue, useValue: sessionQueue },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: RoleDomain, useValue: roleDomain },
             ],
         }).compile();
         domain = module.get(SessionDomain);
@@ -486,8 +522,9 @@ describe('SessionDomain', () => {
     });
 
     describe('revokeByAdmin', () => {
-        it('stages one activity log when the admin revokes their own session', async () => {
+        it('stages one activity log when a superAdmin revokes their own session', async () => {
             sessionRepository.findOneActive.mockResolvedValue(session);
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
             const actorMetadata = {
@@ -505,7 +542,12 @@ describe('SessionDomain', () => {
             activityLogDomain.prepare.mockReturnValue(actorActivityLog);
             sessionRepository.revokeByAdmin.mockResolvedValue(true);
 
-            await domain.revokeByAdmin('user-1', 'session-1', 'user-1');
+            await domain.revokeByAdmin(
+                'user-1',
+                'session-1',
+                'user-1',
+                superAdminActor
+            );
 
             expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
@@ -519,6 +561,7 @@ describe('SessionDomain', () => {
 
         it('stages an additional target activity log when the admin revokes another user session', async () => {
             sessionRepository.findOneActive.mockResolvedValue(session);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
             const actorMetadata = {
@@ -552,7 +595,12 @@ describe('SessionDomain', () => {
                 .mockReturnValueOnce(targetActivityLog);
             sessionRepository.revokeByAdmin.mockResolvedValue(true);
 
-            await domain.revokeByAdmin('user-1', 'session-1', 'admin-1');
+            await domain.revokeByAdmin(
+                'user-1',
+                'session-1',
+                'admin-1',
+                adminActor
+            );
 
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
                 action: EnumActivityLogAction.userRevokeSessionByAdmin,
@@ -568,6 +616,7 @@ describe('SessionDomain', () => {
 
         it('throws SessionNotFoundException without purging or staging when the repository finds nothing to revoke', async () => {
             sessionRepository.findOneActive.mockResolvedValue(session);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(
                 new Date('2026-01-05T00:00:00.000Z')
             );
@@ -578,7 +627,8 @@ describe('SessionDomain', () => {
             const rejection = domain.revokeByAdmin(
                 'user-1',
                 'session-1',
-                'user-1'
+                'user-1',
+                adminActor
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -592,6 +642,138 @@ describe('SessionDomain', () => {
             });
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('checks the actor outranks the role of the target user before any write', async () => {
+            sessionRepository.findOneActive.mockResolvedValue(session);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-05T00:00:00.000Z')
+            );
+            sessionUtil.mapActivityLogActorMetadata.mockReturnValue({});
+            activityLogDomain.prepare.mockReturnValue(baseActivityLog);
+            sessionRepository.revokeByAdmin.mockResolvedValue(true);
+
+            await domain.revokeByAdmin(
+                'user-1',
+                'session-1',
+                'admin-1',
+                adminActor
+            );
+
+            expect(roleDomain.getOneByUserId).toHaveBeenCalledWith('user-1');
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.user
+            );
+        });
+
+        it('lets a superAdmin actor revoke the session of a superAdmin target', async () => {
+            sessionRepository.findOneActive.mockResolvedValue(session);
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-05T00:00:00.000Z')
+            );
+            sessionUtil.mapActivityLogActorMetadata.mockReturnValue({});
+            activityLogDomain.prepare.mockReturnValue(baseActivityLog);
+            sessionRepository.revokeByAdmin.mockResolvedValue(true);
+
+            await domain.revokeByAdmin(
+                'user-1',
+                'session-1',
+                'root-1',
+                superAdminActor
+            );
+
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.superAdmin,
+                EnumRoleType.superAdmin
+            );
+            expect(sessionRepository.revokeByAdmin).toHaveBeenCalledTimes(1);
+        });
+
+        it('throws the rank exception and writes nothing when the actor does not outrank the target', async () => {
+            sessionRepository.findOneActive.mockResolvedValue(session);
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
+            const rankForbidden = new RoleRankForbiddenException();
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw rankForbidden;
+            });
+
+            const rejection = domain.revokeByAdmin(
+                'user-1',
+                'session-1',
+                'admin-1',
+                adminActor
+            );
+
+            await expect(rejection).rejects.toBe(rankForbidden);
+            expect(sessionRepository.revokeByAdmin).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('throws the rank exception when an admin revokes a session of their own account', async () => {
+            sessionRepository.findOneActive.mockResolvedValue(session);
+            roleDomain.getOneByUserId.mockResolvedValue(adminRole);
+            const rankForbidden = new RoleRankForbiddenException();
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw rankForbidden;
+            });
+
+            const rejection = domain.revokeByAdmin(
+                'admin-1',
+                'session-1',
+                'admin-1',
+                adminActor
+            );
+
+            await expect(rejection).rejects.toBe(rankForbidden);
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.admin
+            );
+            expect(sessionRepository.revokeByAdmin).not.toHaveBeenCalled();
+        });
+
+        it('checks the rank before the session existence so a denied actor reads no session', async () => {
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
+            const rankForbidden = new RoleRankForbiddenException();
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw rankForbidden;
+            });
+
+            const rejection = domain.revokeByAdmin(
+                'user-1',
+                'session-1',
+                'admin-1',
+                adminActor
+            );
+
+            await expect(rejection).rejects.toBe(rankForbidden);
+            expect(sessionRepository.findOneActive).not.toHaveBeenCalled();
+        });
+
+        it('throws SessionNotFoundException after the rank check passes when the session is not active', async () => {
+            sessionRepository.findOneActive.mockResolvedValue(null);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
+
+            const rejection = domain.revokeByAdmin(
+                'user-1',
+                'session-1',
+                'admin-1',
+                adminActor
+            );
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.notFound,
+            });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.user
+            );
+            expect(sessionRepository.revokeByAdmin).not.toHaveBeenCalled();
         });
     });
 
@@ -706,7 +888,11 @@ describe('SessionDomain', () => {
 
     describe('revokeAllByAdmin', () => {
         it('throws UserNotSelfException when the admin targets their own account', async () => {
-            const rejection = domain.revokeAllByAdmin('user-1', 'user-1');
+            const rejection = domain.revokeAllByAdmin(
+                'user-1',
+                'user-1',
+                adminActor
+            );
 
             await expect(rejection).rejects.toMatchObject({
                 module: 'user',
@@ -716,15 +902,67 @@ describe('SessionDomain', () => {
                 messagePath: 'user.error.notSelf',
             });
             expect(sessionRepository.revokeActiveByUser).not.toHaveBeenCalled();
+            expect(roleDomain.getOneByUserId).not.toHaveBeenCalled();
+        });
+
+        it('throws the rank exception and revokes nothing when the actor does not outrank the target', async () => {
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
+            const rankForbidden = new RoleRankForbiddenException();
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw rankForbidden;
+            });
+
+            const rejection = domain.revokeAllByAdmin(
+                'user-1',
+                'admin-1',
+                adminActor
+            );
+
+            await expect(rejection).rejects.toBe(rankForbidden);
+            expect(roleDomain.getOneByUserId).toHaveBeenCalledWith('user-1');
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.superAdmin
+            );
+            expect(sessionRepository.revokeActiveByUser).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('lets a superAdmin actor revoke all sessions of a superAdmin target', async () => {
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-05T00:00:00.000Z')
+            );
+            sessionRepository.revokeActiveByUser.mockResolvedValue([
+                { id: 'session-1' },
+            ]);
+            activityLogDomain.prepare.mockReturnValue(baseActivityLog);
+
+            await domain.revokeAllByAdmin('user-1', 'root-1', superAdminActor);
+
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.superAdmin,
+                EnumRoleType.superAdmin
+            );
+            expect(sessionRepository.revokeActiveByUser).toHaveBeenCalledTimes(
+                1
+            );
         });
 
         it('throws SessionNotFoundException when no session was revoked', async () => {
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(
                 new Date('2026-01-05T00:00:00.000Z')
             );
             sessionRepository.revokeActiveByUser.mockResolvedValue([]);
 
-            const rejection = domain.revokeAllByAdmin('user-1', 'admin-1');
+            const rejection = domain.revokeAllByAdmin(
+                'user-1',
+                'admin-1',
+                adminActor
+            );
 
             await expect(rejection).rejects.toMatchObject({
                 module: 'session',
@@ -738,6 +976,7 @@ describe('SessionDomain', () => {
         });
 
         it('enqueues the purge and stages the revoke-all activity logs', async () => {
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
             const refs: ISessionRef[] = [{ id: 'session-1' }];
@@ -754,7 +993,7 @@ describe('SessionDomain', () => {
                 .mockReturnValueOnce(adminActivityLog)
                 .mockReturnValueOnce(userActivityLog);
 
-            await domain.revokeAllByAdmin('user-1', 'admin-1');
+            await domain.revokeAllByAdmin('user-1', 'admin-1', adminActor);
 
             expect(sessionRepository.revokeActiveByUser).toHaveBeenCalledWith(
                 'user-1',

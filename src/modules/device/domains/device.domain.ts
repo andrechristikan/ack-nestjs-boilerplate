@@ -27,6 +27,8 @@ import type {
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { Injectable, Logger } from '@nestjs/common';
 
@@ -41,7 +43,8 @@ export class DeviceDomain {
         private readonly deviceUtil: DeviceUtil,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly roleDomain: RoleDomain
     ) {}
 
     async getListOffsetByAdmin(
@@ -301,9 +304,12 @@ export class DeviceDomain {
     async removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
-        removedBy: string
+        removedBy: string,
+        actor: IRoleActor
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
+        const targetRole = await this.roleDomain.getOneByUserId(userId);
+        this.roleDomain.assertActorOutranks(actor.roleType, targetRole.type);
         const deviceOwnershipExists =
             await this.deviceOwnershipRepository.existsActive(
                 userId,

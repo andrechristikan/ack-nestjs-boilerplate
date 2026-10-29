@@ -8,6 +8,7 @@ import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/s
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
     SessionCursorAvailableOrderBy,
@@ -86,18 +87,24 @@ export class SessionHttpService {
     async revokeByAdmin(
         userId: string,
         sessionId: string,
-        revokedBy: string
+        user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.sessionDomain.revokeByAdmin(userId, sessionId, revokedBy);
+        await this.sessionDomain.revokeByAdmin(userId, sessionId, user.id, {
+            roleId: user.roleId,
+            roleType: user.role.type,
+        });
 
         return {};
     }
 
     async revokeAllByAdmin(
         userId: string,
-        revokedBy: string
+        user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.sessionDomain.revokeAllByAdmin(userId, revokedBy);
+        await this.sessionDomain.revokeAllByAdmin(userId, user.id, {
+            roleId: user.roleId,
+            roleType: user.role.type,
+        });
 
         return {};
     }

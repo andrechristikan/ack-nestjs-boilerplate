@@ -32,6 +32,7 @@ export interface IRoleRepository {
     findOneWithPoliciesById(id: string): Promise<IRoleWithPolicies | null>;
     findOneById(id: string): Promise<IRole | null>;
     findOneByName(name: string): Promise<IRole | null>;
+    findOneByUserId(userId: string): Promise<IRole | null>;
     existsById(id: string): Promise<boolean>;
     existsByName(name: string): Promise<boolean>;
     isUsedById(id: string): Promise<boolean>;

@@ -11,6 +11,8 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
+import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type {
     ISession,
@@ -32,7 +34,8 @@ export class SessionDomain {
         private readonly sessionUtil: SessionUtil,
         private readonly sessionQueue: SessionQueue,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly roleDomain: RoleDomain
     ) {}
 
     async getListOffsetByAdmin(
@@ -207,9 +210,12 @@ export class SessionDomain {
     async revokeByAdmin(
         userId: string,
         sessionId: string,
-        revokedBy: string
+        revokedBy: string,
+        actor: IRoleActor
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
+        const targetRole = await this.roleDomain.getOneByUserId(userId);
+        this.roleDomain.assertActorOutranks(actor.roleType, targetRole.type);
         const session = await this.validateActive(userId, sessionId);
 
         const revokedAt = this.helperDateService.create();
@@ -324,10 +330,18 @@ export class SessionDomain {
         this.activityLogDomain.stagePrepared(activityLogs);
     }
 
-    async revokeAllByAdmin(userId: string, revokedBy: string): Promise<void> {
+    async revokeAllByAdmin(
+        userId: string,
+        revokedBy: string,
+        actor: IRoleActor
+    ): Promise<void> {
         if (userId === revokedBy) {
             throw new UserNotSelfException();
         }
+
+        // Sequential by design: gate before the work it guards
+        const targetRole = await this.roleDomain.getOneByUserId(userId);
+        this.roleDomain.assertActorOutranks(actor.roleType, targetRole.type);
 
         const revokedAt = this.helperDateService.create();
         const sessions = await this.sessionRepository.revokeActiveByUser(

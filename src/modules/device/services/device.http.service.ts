@@ -9,6 +9,7 @@ import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/de
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
     DeviceCursorAvailableOrderBy,
@@ -121,12 +122,13 @@ export class DeviceHttpService {
     async removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
-        removedBy: string
+        user: IUser
     ): Promise<IResponseReturn<void>> {
         await this.deviceDomain.removeByAdmin(
             userId,
             deviceOwnershipId,
-            removedBy
+            user.id,
+            { roleId: user.roleId, roleType: user.role.type }
         );
 
         return {};

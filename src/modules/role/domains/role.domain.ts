@@ -31,6 +31,7 @@ import type {
 } from '@modules/role/interfaces/role.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -87,6 +88,15 @@ export class RoleDomain {
 
     async getByName(name: string): Promise<IRole | null> {
         return this.roleRepository.findOneByName(name);
+    }
+
+    async getOneByUserId(userId: string): Promise<IRole> {
+        const role = await this.roleRepository.findOneByUserId(userId);
+        if (!role) {
+            throw new UserNotFoundException();
+        }
+
+        return role;
     }
 
     async getOne(id: string): Promise<IRoleWithPolicies> {

@@ -25,6 +25,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IRoleActor,
     IRoleCreate,
@@ -246,6 +247,34 @@ describe('RoleDomain', () => {
             expect(result).toBe(role);
             expect(roleRepository.findOneByName).toHaveBeenCalledWith(
                 role.name
+            );
+        });
+    });
+
+    describe('getOneByUserId', () => {
+        it('throws UserNotFoundException when no role holds the user', async () => {
+            roleRepository.findOneByUserId.mockResolvedValue(null);
+
+            await expect(
+                domain.getOneByUserId('missing')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'user.error.notFound',
+            });
+        });
+
+        it('returns the role the user holds', async () => {
+            roleRepository.findOneByUserId.mockResolvedValue(role);
+
+            const result = await domain.getOneByUserId('user-1');
+
+            expect(result).toBe(role);
+            expect(roleRepository.findOneByUserId).toHaveBeenCalledWith(
+                'user-1'
             );
         });
     });

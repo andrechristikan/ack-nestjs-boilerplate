@@ -14,6 +14,7 @@ import {
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
+    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type {
     Device,
@@ -33,6 +34,12 @@ import type {
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import type {
+    IRole,
+    IRoleActor,
+} from '@modules/role/interfaces/role.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 
 describe('DeviceDomain', () => {
@@ -41,6 +48,7 @@ describe('DeviceDomain', () => {
     const deviceRepository: MockProxy<DeviceRepository> =
         mock<DeviceRepository>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
@@ -99,6 +107,30 @@ describe('DeviceDomain', () => {
         _count: { sessions: 2 },
     };
 
+    const adminActor: IRoleActor = {
+        roleId: 'role-admin',
+        roleType: EnumRoleType.admin,
+    };
+    const superAdminActor: IRoleActor = {
+        roleId: 'role-root',
+        roleType: EnumRoleType.superAdmin,
+    };
+    const userRole: IRole = {
+        id: 'role-user',
+        name: 'user',
+        type: EnumRoleType.user,
+    };
+    const adminRole: IRole = {
+        id: 'role-admin',
+        name: 'admin',
+        type: EnumRoleType.admin,
+    };
+    const superAdminRole: IRole = {
+        id: 'role-root',
+        name: 'superadmin',
+        type: EnumRoleType.superAdmin,
+    };
+
     let domain: DeviceDomain;
 
     beforeEach(async () => {
@@ -113,6 +145,7 @@ describe('DeviceDomain', () => {
                 },
                 { provide: DeviceRepository, useValue: deviceRepository },
                 { provide: SessionDomain, useValue: sessionDomain },
+                { provide: RoleDomain, useValue: roleDomain },
                 { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
@@ -838,11 +871,17 @@ describe('DeviceDomain', () => {
     });
 
     describe('removeByAdmin', () => {
-        it('throws when the ownership does not exist or is inactive', async () => {
+        it('throws after the rank check passes when the ownership does not exist or is inactive', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(false);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
 
             await expect(
-                domain.removeByAdmin('user-1', 'device-ownership-1', 'admin-1')
+                domain.removeByAdmin(
+                    'user-1',
+                    'device-ownership-1',
+                    'admin-1',
+                    adminActor
+                )
             ).rejects.toMatchObject({
                 constructor: DeviceNotFoundException,
                 module: 'device',
@@ -853,10 +892,15 @@ describe('DeviceDomain', () => {
                     ],
                 messagePath: 'device.error.notFound',
             });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.user
+            );
         });
 
-        it('stages only the admin actor activity log when the admin removes their own device', async () => {
+        it('stages only the admin actor activity log when a superAdmin removes their own device', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
             helperDateService.create.mockReturnValue(now);
             const revokedSessions = [{ id: 'session-1' }];
             const actorActivityLog: IActivityLogStaged = {
@@ -888,7 +932,8 @@ describe('DeviceDomain', () => {
             await domain.removeByAdmin(
                 'user-1',
                 'device-ownership-1',
-                'user-1'
+                'user-1',
+                superAdminActor
             );
 
             expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
@@ -913,6 +958,7 @@ describe('DeviceDomain', () => {
 
         it('stages both the actor and the target-user activity logs when an admin removes another user device', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(now);
             const revokedSessions = [{ id: 'session-1' }];
             const actorActivityLog: IActivityLogStaged = {
@@ -960,7 +1006,8 @@ describe('DeviceDomain', () => {
             await domain.removeByAdmin(
                 'user-1',
                 'device-ownership-1',
-                'admin-1'
+                'admin-1',
+                adminActor
             );
 
             expect(
@@ -1007,23 +1054,35 @@ describe('DeviceDomain', () => {
 
         it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(now);
             const notFound = new DeviceNotFoundException();
             databaseService.withTransaction.mockRejectedValue(notFound);
 
             await expect(
-                domain.removeByAdmin('user-1', 'device-ownership-1', 'admin-1')
+                domain.removeByAdmin(
+                    'user-1',
+                    'device-ownership-1',
+                    'admin-1',
+                    adminActor
+                )
             ).rejects.toBe(notFound);
         });
 
         it('wraps a non-application error raised inside the transaction', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(now);
             const cause = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
-                domain.removeByAdmin('user-1', 'device-ownership-1', 'admin-1')
+                domain.removeByAdmin(
+                    'user-1',
+                    'device-ownership-1',
+                    'admin-1',
+                    adminActor
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 module: 'app',
@@ -1033,6 +1092,139 @@ describe('DeviceDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: cause,
             });
+        });
+
+        it('checks the actor outranks the role of the target user', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
+            helperDateService.create.mockReturnValue(now);
+            sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
+            deviceOwnershipRepository.removeOwnershipInTx.mockResolvedValue(
+                deviceOwnershipDetail
+            );
+            activityLogDomain.prepare.mockReturnValue({
+                action: EnumActivityLogAction.adminDeviceRemove,
+                metadata: {},
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
+            });
+            databaseService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+
+            await domain.removeByAdmin(
+                'user-1',
+                'device-ownership-1',
+                'admin-1',
+                adminActor
+            );
+
+            expect(roleDomain.getOneByUserId).toHaveBeenCalledWith('user-1');
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.user
+            );
+        });
+
+        it('lets a superAdmin actor remove the device of a superAdmin target', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
+            helperDateService.create.mockReturnValue(now);
+            sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
+            deviceOwnershipRepository.removeOwnershipInTx.mockResolvedValue(
+                deviceOwnershipDetail
+            );
+            activityLogDomain.prepare.mockReturnValue({
+                action: EnumActivityLogAction.adminDeviceRemove,
+                metadata: {},
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
+            });
+            databaseService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+
+            await domain.removeByAdmin(
+                'user-1',
+                'device-ownership-1',
+                'root-1',
+                superAdminActor
+            );
+
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.superAdmin,
+                EnumRoleType.superAdmin
+            );
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('throws the rank exception when an admin removes a device of their own account', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            roleDomain.getOneByUserId.mockResolvedValue(adminRole);
+            const rankForbidden = new RoleRankForbiddenException();
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw rankForbidden;
+            });
+
+            await expect(
+                domain.removeByAdmin(
+                    'admin-1',
+                    'device-ownership-1',
+                    'admin-1',
+                    adminActor
+                )
+            ).rejects.toBe(rankForbidden);
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.admin
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('checks the rank before the device existence so a denied actor reads no ownership', async () => {
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
+            const rankForbidden = new RoleRankForbiddenException();
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw rankForbidden;
+            });
+
+            await expect(
+                domain.removeByAdmin(
+                    'user-1',
+                    'device-ownership-1',
+                    'admin-1',
+                    adminActor
+                )
+            ).rejects.toBe(rankForbidden);
+            expect(
+                deviceOwnershipRepository.existsActive
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws the rank exception and removes nothing when the actor does not outrank the target', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            roleDomain.getOneByUserId.mockResolvedValue(superAdminRole);
+            const rankForbidden = new RoleRankForbiddenException();
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw rankForbidden;
+            });
+
+            await expect(
+                domain.removeByAdmin(
+                    'user-1',
+                    'device-ownership-1',
+                    'admin-1',
+                    adminActor
+                )
+            ).rejects.toBe(rankForbidden);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                sessionDomain.revokeByDeviceOwnershipInTx
+            ).not.toHaveBeenCalled();
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

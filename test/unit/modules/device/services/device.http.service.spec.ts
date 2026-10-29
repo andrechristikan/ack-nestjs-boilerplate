@@ -6,7 +6,14 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumDevicePlatform, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumDevicePlatform,
+    EnumRoleType,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
+    Prisma,
+} from '@generated/prisma-client/client';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
@@ -15,6 +22,7 @@ import type {
     IDeviceOwnership,
     IDeviceOwnershipWithSession,
 } from '@modules/device/interfaces/device.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import {
     DeviceCursorAvailableOrderBy,
@@ -74,6 +82,51 @@ describe('DeviceHttpService', () => {
         },
         revokedBy: null,
         _count: { sessions: 2 },
+    };
+
+    const admin: IUser = {
+        id: 'admin-1',
+        name: 'Admin One',
+        username: 'admin.main',
+        isVerified: true,
+        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+        email: 'admin@example.com',
+        roleId: 'role-admin',
+        password: 'hashed-password',
+        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
+        passwordAttempt: 0,
+        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
+        signUpFrom: EnumUserSignUpFrom.website,
+        signUpWith: EnumUserSignUpWith.credential,
+        status: EnumUserStatus.active,
+        gender: null,
+        countryId: 'country-1',
+        lastLoginAt: null,
+        lastIPAddress: null,
+        lastLoginFrom: null,
+        lastLoginWith: null,
+        lastWorkspaceId: null,
+        lastWorkspaceChangedAt: null,
+        photo: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+        role: {
+            id: 'role-admin',
+            name: 'admin',
+            description: null,
+            type: EnumRoleType.admin,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+            policies: [],
+        },
+        twoFactor: null,
     };
 
     let service: DeviceHttpService;
@@ -307,14 +360,15 @@ describe('DeviceHttpService', () => {
             const result = await service.removeByAdmin(
                 'user-1',
                 'device-ownership-1',
-                'admin-1'
+                admin
             );
 
             expect(result).toEqual({});
             expect(deviceDomain.removeByAdmin).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1',
-                'admin-1'
+                'admin-1',
+                { roleId: 'role-admin', roleType: EnumRoleType.admin }
             );
         });
     });

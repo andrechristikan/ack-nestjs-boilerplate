@@ -1,6 +1,6 @@
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
-import { Doc } from '@common/doc/decorators/doc.decorator';
+import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
@@ -12,18 +12,27 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
+import {
+    UserCurrent,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import type { IUser } from '@modules/user/interfaces/user.interface';
+import {
+    Controller,
+    Delete,
+    Get,
+    HttpStatus,
+    Param,
+    Query,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
@@ -69,6 +78,10 @@ export class SessionAdminController {
 
     @Doc({ summary: 'admin revoke user Session' })
     @Response('session.revoke')
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
@@ -91,17 +104,17 @@ export class SessionAdminController {
         userId: string,
         @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string,
-        @AuthJwtPayload('userId') revokedBy: string
+        @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.sessionHttpService.revokeByAdmin(
-            userId,
-            sessionId,
-            revokedBy
-        );
+        return this.sessionHttpService.revokeByAdmin(userId, sessionId, user);
     }
 
     @Doc({ summary: 'admin revoke all user Sessions' })
     @Response('session.revokeAll')
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
@@ -122,8 +135,8 @@ export class SessionAdminController {
     async revokeAll(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @AuthJwtPayload('userId') revokedBy: string
+        @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.sessionHttpService.revokeAllByAdmin(userId, revokedBy);
+        return this.sessionHttpService.revokeAllByAdmin(userId, user);
     }
 }
