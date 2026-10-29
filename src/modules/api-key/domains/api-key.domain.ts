@@ -157,14 +157,8 @@ export class ApiKeyDomain {
             throw new ApiKeyNotFoundException();
         }
 
-        const isExpired = this.apiKeyUtil.isExpired(
-            {
-                startAt: apiKey.startAt,
-                endAt: apiKey.endAt,
-            },
-            today
-        );
-        if (apiKey.startAt && apiKey.endAt && isExpired) {
+        const isExpired = this.apiKeyUtil.isExpired(apiKey.endAt, today);
+        if (isExpired) {
             throw new ApiKeyExpiredException();
         }
 
@@ -291,20 +285,6 @@ export class ApiKeyDomain {
         return deleted;
     }
 
-    async getOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
-        const cached = await this.apiKeyCache.getApiKey(key);
-        if (cached) {
-            return cached;
-        }
-
-        const apiKey = await this.apiKeyRepository.findOneByKey(key);
-        if (apiKey) {
-            await this.apiKeyCache.setApiKey(key, apiKey);
-        }
-
-        return apiKey;
-    }
-
     async validateXApiKey(xApiKeyHeader: string | null): Promise<ApiKey> {
         const xApiKeyTrimmed = xApiKeyHeader?.trim();
         if (!xApiKeyTrimmed) {
@@ -322,7 +302,12 @@ export class ApiKeyDomain {
 
         const [key, secret] = xApiKey;
         const today = this.helperDateService.create();
-        const apiKey = await this.getOneActiveByKeyAndCache(key);
+        const cached = await this.apiKeyCache.getApiKey(key);
+        let apiKey = cached;
+        if (!apiKey) {
+            const found = await this.apiKeyRepository.findOneByKey(key);
+            apiKey = found;
+        }
 
         if (!apiKey) {
             throw new ApiKeyXApiKeyInvalidException();
@@ -333,16 +318,22 @@ export class ApiKeyDomain {
             secret,
             apiKey
         );
-        const isKeyValid = this.apiKeyUtil.isValid(
-            {
-                isActive: apiKey.isActive,
-                startAt: apiKey.startAt,
-                endAt: apiKey.endAt,
-            },
+        const isActive = this.apiKeyUtil.isActive(apiKey);
+        const isNotYetActive = this.apiKeyUtil.isNotYetActive(
+            apiKey.startAt,
             today
         );
-        if (!isCredentialValid || !isKeyValid) {
+        if (!isCredentialValid || !isActive || isNotYetActive) {
             throw new ApiKeyXApiKeyInvalidException();
+        }
+
+        const isExpired = this.apiKeyUtil.isExpired(apiKey.endAt, today);
+        if (isExpired) {
+            throw new ApiKeyExpiredException();
+        }
+
+        if (!cached) {
+            await this.apiKeyCache.setApiKey(apiKey);
         }
 
         return apiKey;

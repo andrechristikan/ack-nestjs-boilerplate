@@ -19,10 +19,10 @@ The decorator nearest the method runs first. Keep this order; omit what a route 
 @WorkspaceProtected()                  // 10. Workspace exists
 @UserProtected()                       // 11. User status
 @FeatureFlagProtected(...)             // 12. Feature flag; reads request.user, so above JWT
-@AuthJwtAccessProtected()              // 13. JWT; a social login guard sits above 12, so the flag runs first
-@ApiKeyProtected()                     // 14. API key; @ApiKeySystemProtected() on every system route
-@FileUploadSingle() @RequestTimeout('1m') // 15. Upload routes: multipart interceptor, then timeout
-@RequestThrottle({ user: true })       // 16. Throttle interceptor
+@RequestThrottle({ user: true })       // 13. Per-user throttle guard; runs after JWT
+@AuthJwtAccessProtected()              // 14. JWT; a social login guard sits above 12, so the flag runs first
+@ApiKeyProtected()                     // 15. API key; @ApiKeySystemProtected() on every system route
+@FileUploadSingle() @RequestTimeout('1m') // 16. Upload routes: multipart interceptor, then timeout
 @HttpCode(HttpStatus.OK)               // 17. @Post only
 @Get('/endpoint')                      // 18. HTTP method, always last
 ```
@@ -51,4 +51,4 @@ A request failure extends `AppBaseException`, any other runtime failure `AppUnkn
 
 ## Prisma schema
 
-Edit `prisma/schema.prisma`; do not apply it. Applying it is the owner's (`AGENTS.md`).
+Edit `prisma/schema.prisma`; applying it is the owner's (`AGENTS.md`).

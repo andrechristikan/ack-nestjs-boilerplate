@@ -26,15 +26,15 @@ Nest runs guards bottom-up: the decorator nearest the method executes first, so 
 @WorkspaceProtected()                  // 10. Workspace exists
 @UserProtected()                       // 11. User status
 @FeatureFlagProtected(...)             // 12. Feature flag; reads request.user, so above JWT
-@AuthJwtAccessProtected()              // 13. JWT; a social login guard sits above 12, so the flag runs first
-@ApiKeyProtected()                     // 14. API key; @ApiKeySystemProtected() on every system route
-@FileUploadSingle() @RequestTimeout('1m') // 15. Upload routes: multipart interceptor, then timeout
-@RequestThrottle({ user: true })       // 16. Throttle interceptor
+@RequestThrottle({ user: true })       // 13. Per-user throttle guard; runs after JWT
+@AuthJwtAccessProtected()              // 14. JWT; a social login guard sits above 12, so the flag runs first
+@ApiKeyProtected()                     // 15. API key; @ApiKeySystemProtected() on every system route
+@FileUploadSingle() @RequestTimeout('1m') // 16. Upload routes: multipart interceptor, then timeout
 @HttpCode(HttpStatus.OK)               // 17. @Post only
 @Get('/endpoint')                      // 18. HTTP method, always last
 ```
 
-- `@RequestThrottle` (`request.decorator.ts:60`) sits directly above `@HttpCode` or the method decorator. It takes `{ user: true, route? }` when JWT-protected and `{ route }` only on `public` and `system` (`EnumRequestThrottleRoute`).
+- `@RequestThrottle` (`request.decorator.ts:60`) mounts the per-user throttle guard directly above `@AuthJwtAccessProtected()`, so it runs after the JWT guard and before every guard that reads the database; a route with no JWT guard keeps the slot, directly above `@ApiKeyProtected()`. It takes `{ user: true, route? }` when JWT-protected and `{ route }` only on `public` and `system` (`EnumRequestThrottleRoute`).
 - A `@Post` whose action creates the row its path names (`/create`, `/sign-up`, `/mobile-number/add`) keeps the default 201; every other `@Post` carries `@HttpCode(HttpStatus.OK)`.
 - `@WorkspaceMemberProtected(...roles)` adds `WorkspaceRoleGuard` with roles (`workspace.decorator.ts:94`). `@ProjectMemberProtected(...roles)` uses `ProjectMemberGuard` with no roles and `ProjectRoleGuard` alone with roles (`project.decorator.ts:90`); `@ProjectMemberCurrent()` is valid only on the role-less form.
 - Admin scope carries no `Workspace*` or `Project*` guard (they resolve `x-workspace-id` from CLS; an admin reads across workspaces): it scopes through `@RoleProtected` plus `@PolicyProtected` and a validated `:workspaceId` / `:projectId` param. `@RoleProtected` never lists `superAdmin`; `role.domain.ts:178` and `policy.domain.ts:44` pass it.

@@ -18,6 +18,7 @@ import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/use
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type {
+    IUser,
     IUserCheckEmail,
     IUserCheckUsername,
     IUserList,
@@ -83,11 +84,12 @@ export class UserHttpService {
 
     async createByAdmin(
         { countryId, email, name, roleId, username }: UserCreateRequestDto,
-        createdBy: string
+        user: IUser
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
         const id = await this.onboardingDomain.createByAdmin(
             { countryId, email, name: name ?? null, roleId, username },
-            createdBy
+            user.id,
+            { roleId: user.roleId, roleType: user.role.type }
         );
 
         return { data: { id } };

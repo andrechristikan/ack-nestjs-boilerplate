@@ -26,6 +26,7 @@ import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activi
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
+    IRoleActor,
     IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
@@ -72,6 +73,21 @@ describe('RoleDomain', () => {
         userId: null,
         createdBy: null,
         workspaceId: null,
+    };
+
+    const superAdminActor: IRoleActor = {
+        roleId: 'role-root',
+        roleType: EnumRoleType.superAdmin,
+    };
+    const adminActor: IRoleActor = {
+        roleId: 'role-actor',
+        roleType: EnumRoleType.admin,
+    };
+    const superAdminRole: Role = {
+        ...role,
+        id: 'role-root',
+        name: 'superadmin',
+        type: EnumRoleType.superAdmin,
     };
 
     let domain: RoleDomain;
@@ -269,7 +285,9 @@ describe('RoleDomain', () => {
         it('throws RoleExistException when the role name is taken', async () => {
             roleRepository.existsByName.mockResolvedValue(true);
 
-            await expect(domain.createByAdmin(create)).rejects.toMatchObject({
+            await expect(
+                domain.createByAdmin(create, superAdminActor)
+            ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.exist,
                 statusCodeKey:
@@ -279,12 +297,46 @@ describe('RoleDomain', () => {
             });
         });
 
+        it('throws RoleRankForbiddenException when an admin creates an admin-type role', async () => {
+            await expect(
+                domain.createByAdmin(create, adminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.rankForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleRepository.create).not.toHaveBeenCalled();
+        });
+
+        it('creates a user-type role for an admin actor', async () => {
+            const userCreate: IRoleCreate = {
+                ...create,
+                type: EnumRoleType.user,
+            };
+            roleRepository.existsByName.mockResolvedValue(false);
+            databaseUtil.createId.mockReturnValue(role.id);
+            roleRepository.create.mockResolvedValue(roleWithPolicies);
+
+            const result = await domain.createByAdmin(userCreate, adminActor);
+
+            expect(result).toBe(roleWithPolicies);
+            expect(roleRepository.create).toHaveBeenCalledWith(
+                role.id,
+                userCreate
+            );
+        });
+
         it('creates the role and stages the create activity log', async () => {
             roleRepository.existsByName.mockResolvedValue(false);
             databaseUtil.createId.mockReturnValue(role.id);
             roleRepository.create.mockResolvedValue(roleWithPolicies);
 
-            const result = await domain.createByAdmin(create);
+            const result = await domain.createByAdmin(create, superAdminActor);
 
             expect(result).toBe(roleWithPolicies);
             expect(roleRepository.create).toHaveBeenCalledWith(role.id, create);
@@ -304,7 +356,7 @@ describe('RoleDomain', () => {
             roleRepository.findOneById.mockResolvedValue(null);
 
             await expect(
-                domain.updateByAdmin('missing', update)
+                domain.updateByAdmin('missing', update, adminActor)
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
@@ -315,11 +367,114 @@ describe('RoleDomain', () => {
             });
         });
 
+        it('throws RoleSelfForbiddenException when the actor updates the role they hold', async () => {
+            roleRepository.findOneById.mockResolvedValue(role);
+
+            await expect(
+                domain.updateByAdmin(role.id, update, {
+                    roleId: role.id,
+                    roleType: EnumRoleType.admin,
+                })
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.selfForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.selfForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.selfForbidden',
+            });
+            expect(roleRepository.update).not.toHaveBeenCalled();
+        });
+
+        it('throws RoleRankForbiddenException when an admin updates a superAdmin role', async () => {
+            roleRepository.findOneById.mockResolvedValue(superAdminRole);
+
+            await expect(
+                domain.updateByAdmin(superAdminRole.id, update, adminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.rankForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleRepository.update).not.toHaveBeenCalled();
+        });
+
+        it('throws RoleRankForbiddenException when an admin updates an admin role', async () => {
+            roleRepository.findOneById.mockResolvedValue(role);
+
+            await expect(
+                domain.updateByAdmin(role.id, update, adminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.rankForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleRepository.update).not.toHaveBeenCalled();
+        });
+
+        it('throws RoleRankForbiddenException when an admin raises a user role to admin', async () => {
+            roleRepository.findOneById.mockResolvedValue({
+                ...role,
+                type: EnumRoleType.user,
+            });
+
+            await expect(
+                domain.updateByAdmin(
+                    role.id,
+                    { description: null, type: EnumRoleType.admin },
+                    adminActor
+                )
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.rankForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleRepository.update).not.toHaveBeenCalled();
+        });
+
+        it('updates a user role for an admin actor', async () => {
+            roleRepository.findOneById.mockResolvedValue({
+                ...role,
+                type: EnumRoleType.user,
+            });
+            roleRepository.update.mockResolvedValue(roleWithPolicies);
+
+            const result = await domain.updateByAdmin(
+                role.id,
+                update,
+                adminActor
+            );
+
+            expect(result).toBe(roleWithPolicies);
+            expect(roleRepository.update).toHaveBeenCalledWith(role.id, update);
+        });
+
         it('updates the role and stages the update activity log', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
             roleRepository.update.mockResolvedValue(roleWithPolicies);
 
-            const result = await domain.updateByAdmin(role.id, update);
+            const result = await domain.updateByAdmin(
+                role.id,
+                update,
+                superAdminActor
+            );
 
             expect(result).toBe(roleWithPolicies);
             expect(roleRepository.update).toHaveBeenCalledWith(role.id, update);
@@ -334,25 +489,25 @@ describe('RoleDomain', () => {
             roleRepository.findOneById.mockResolvedValue(null);
             roleRepository.isUsedById.mockResolvedValue(false);
 
-            await expect(domain.deleteByAdmin('missing')).rejects.toMatchObject(
-                {
-                    module: 'role',
-                    statusCode: EnumRoleStatusCodeError.notFound,
-                    statusCodeKey:
-                        EnumRoleStatusCodeError[
-                            EnumRoleStatusCodeError.notFound
-                        ],
-                    httpStatus: HttpStatus.NOT_FOUND,
-                    messagePath: 'role.error.notFound',
-                }
-            );
+            await expect(
+                domain.deleteByAdmin('missing', adminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'role.error.notFound',
+            });
         });
 
         it('throws RoleUsedException when the role is still assigned to users', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
             roleRepository.isUsedById.mockResolvedValue(true);
 
-            await expect(domain.deleteByAdmin(role.id)).rejects.toMatchObject({
+            await expect(
+                domain.deleteByAdmin(role.id, superAdminActor)
+            ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.used,
                 statusCodeKey:
@@ -362,18 +517,120 @@ describe('RoleDomain', () => {
             });
         });
 
+        it('throws RoleSelfForbiddenException when the actor deletes the role they hold', async () => {
+            roleRepository.findOneById.mockResolvedValue(role);
+            roleRepository.isUsedById.mockResolvedValue(false);
+
+            await expect(
+                domain.deleteByAdmin(role.id, {
+                    roleId: role.id,
+                    roleType: EnumRoleType.superAdmin,
+                })
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.selfForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.selfForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.selfForbidden',
+            });
+            expect(roleRepository.delete).not.toHaveBeenCalled();
+        });
+
+        it('throws RoleRankForbiddenException when an admin deletes a superAdmin role', async () => {
+            roleRepository.findOneById.mockResolvedValue(superAdminRole);
+            roleRepository.isUsedById.mockResolvedValue(false);
+
+            await expect(
+                domain.deleteByAdmin(superAdminRole.id, adminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.rankForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleRepository.delete).not.toHaveBeenCalled();
+        });
+
         it('deletes the role and stages the delete activity log', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
             roleRepository.isUsedById.mockResolvedValue(false);
             roleRepository.delete.mockResolvedValue(role);
 
-            const result = await domain.deleteByAdmin(role.id);
+            const result = await domain.deleteByAdmin(role.id, superAdminActor);
 
             expect(result).toBe(role);
             expect(roleRepository.delete).toHaveBeenCalledWith(role.id);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
+        });
+    });
+
+    describe('assertActorOutranks', () => {
+        it.each([
+            [EnumRoleType.superAdmin, EnumRoleType.superAdmin],
+            [EnumRoleType.superAdmin, EnumRoleType.admin],
+            [EnumRoleType.superAdmin, EnumRoleType.user],
+            [EnumRoleType.admin, EnumRoleType.user],
+        ])('lets a %s actor act on a %s target', (actorType, targetType) => {
+            expect(() =>
+                domain.assertActorOutranks(actorType, targetType)
+            ).not.toThrow();
+        });
+
+        it.each([
+            [EnumRoleType.admin, EnumRoleType.superAdmin],
+            [EnumRoleType.admin, EnumRoleType.admin],
+            [EnumRoleType.user, EnumRoleType.user],
+            [EnumRoleType.user, EnumRoleType.admin],
+        ])(
+            'refuses a %s actor on a %s target with RoleRankForbiddenException',
+            (actorType, targetType) => {
+                expect(() =>
+                    domain.assertActorOutranks(actorType, targetType)
+                ).toThrow(
+                    expect.objectContaining({
+                        module: 'role',
+                        statusCode: EnumRoleStatusCodeError.rankForbidden,
+                        statusCodeKey:
+                            EnumRoleStatusCodeError[
+                                EnumRoleStatusCodeError.rankForbidden
+                            ],
+                        httpStatus: HttpStatus.FORBIDDEN,
+                        messagePath: 'role.error.rankForbidden',
+                    })
+                );
+            }
+        );
+    });
+
+    describe('assertNotSelf', () => {
+        it('passes for a different role id', () => {
+            expect(() =>
+                domain.assertNotSelf('role-a', 'role-b')
+            ).not.toThrow();
+        });
+
+        it('throws RoleSelfForbiddenException for the same role id', () => {
+            expect(() => domain.assertNotSelf('role-a', 'role-a')).toThrow(
+                expect.objectContaining({
+                    module: 'role',
+                    statusCode: EnumRoleStatusCodeError.selfForbidden,
+                    statusCodeKey:
+                        EnumRoleStatusCodeError[
+                            EnumRoleStatusCodeError.selfForbidden
+                        ],
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    messagePath: 'role.error.selfForbidden',
+                })
+            );
         });
     });
 

@@ -11,7 +11,7 @@ export const RoleUpdateRequestSchema = z.strictObject({
         description: 'Description of role; null clears it',
         example: faker.lorem.sentence(),
     }),
-    type: z.enum(EnumRoleType).meta({
+    type: z.enum([EnumRoleType.admin, EnumRoleType.user]).meta({
         description: 'Representative for role type',
         example: EnumRoleType.admin,
     }),

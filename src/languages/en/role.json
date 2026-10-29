@@ -8,6 +8,8 @@
         "notFound": "Sorry, we couldn't find the requested role.",
         "exist": "A role with this name already exists.",
         "used": "This role is currently in use and cannot be deleted.",
-        "forbidden": "Sorry, your role doesn't grant access to this resource."
+        "forbidden": "Sorry, your role doesn't grant access to this resource.",
+        "rankForbidden": "Sorry, your role doesn't outrank the role you are acting on.",
+        "selfForbidden": "Sorry, you cannot modify the role you hold."
     }
 }

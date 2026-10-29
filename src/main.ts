@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/nestjs';
 import { AppModule } from '@app/app.module';
 import { AppBootstrapSentryFlushTimeoutInMs } from '@app/constants/app.constant';
 import { ConfigService } from '@nestjs/config';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ConfigureOptions, configure } from '@configure';
 import swaggerInit from '@swagger';
 
@@ -15,6 +16,7 @@ async function bootstrap(): Promise<void> {
     );
 
     const configService = app.get(ConfigService);
+    const databaseUtil = app.get(DatabaseUtil);
     const env: string = configService.get<string>('app.env')!;
     const timezone: string = configService.get<string>('app.timezone')!;
     const host: string = configService.get<string>('app.http.host')!;
@@ -63,8 +65,10 @@ async function bootstrap(): Promise<void> {
         'NestApplication'
     );
     logger.log(`App Trusted Proxy: ${trustedProxy}`, 'NestApplication');
-    const databaseHost = new URL(databaseUrl).host;
-    logger.log(`Database Host: ${databaseHost}`, 'NestApplication');
+    logger.log(
+        `Database Url: ${databaseUtil.censorUrl(databaseUrl)}`,
+        'NestApplication'
+    );
     logger.log(`Database Debug: ${databaseDebug}`, 'NestApplication');
     logger.log(`Logger Auto: ${loggerAuto}`, 'NestApplication');
     logger.log(`Logger Debug Enable: ${loggerDebugEnable}`, 'NestApplication');

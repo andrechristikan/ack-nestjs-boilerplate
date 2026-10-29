@@ -40,3 +40,13 @@ export type IApiKeyField = Extract<keyof ApiKey, string>;
 export type IApiKeyFieldValue = NonNullable<ApiKey[IApiKeyField]>;
 
 export type IApiKeyActivityLogSubject = Pick<ApiKey, 'id' | 'name' | 'type'>;
+
+export interface IApiKeyCache extends Omit<
+    ApiKey,
+    'startAt' | 'endAt' | 'createdAt' | 'updatedAt'
+> {
+    startAt: string | null;
+    endAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}

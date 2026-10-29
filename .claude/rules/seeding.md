@@ -19,8 +19,9 @@ src/migration/
 ```
 
 - A seed is `Migration<Concern>Seed`, decorated `@Command({ name, description, allowUnknownOptions: false })`, extending `MigrationSeedBase` (`src/migration/bases/migration.seed.base.ts:9`), which owns the `--type seed|remove` dispatch, and implementing `IMigrationSeed` (`src/migration/interfaces/migration.seed.interface.ts`): `seed()` and `remove()`, both.
-- `@Command` `name` is camelCase for the concern: `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `templateTermPolicy`, `awsS3Config`.
+- `@Command` `name` is camelCase for the concern: `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `awsS3Config`.
 - Static rows live in `data/` as PascalCase consts; a seed whose data has no external key needs no data file.
+- A data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (`src/migration/seeds/migration.user.seed.ts:69`).
 - A seed writes its audit fields explicitly: no request actor exists in a command, so `createdBy` and `updatedBy` on every seeded row, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
 - A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns. A seed that finds its fixed id taken by a different row does the same, naming the email and both ids; realigning is the owner's `migration:remove` then `migration:seed`.
 - A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`migration.template-notification.seed.ts:41`), and `awsS3Config` also needs `AWS_S3_IAM_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
@@ -32,19 +33,28 @@ src/migration/
 
 - A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature domain method that writes the database.
 - A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSESService`).
-- A seed injects a feature domain for two uses only: a non-database integration, an S3 upload or SES templates (`TermPolicyTemplateDomain`, `NotificationTemplate*Domain`); and a method that computes in memory and touches no database (`UserVerificationDomain.verificationCreateVerification`). A seed injects no feature repository.
+- A seed injects a feature domain for two uses only: a non-database integration, the SES templates (`NotificationTemplate*Domain`); and a method that computes in memory and touches no database (`UserVerificationDomain.verificationCreateVerification`). A seed injects no feature repository.
 - A seed may inject any feature util or cache and read any contract (`ApiKeyCredentialUtil`, `ApiKeyCache`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`).
 - A seed injects no queue class and stages no request side effect.
 - `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature domain module only for an injection allowed above; it imports no feature repository module.
 - What binds a seed: `naming.md`, `code-style.md`, `null-safety.md`, `concurrency.md`, and this file.
 
+## Term policies
+
+The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en.hbs` (`termPolicy.uploadContentPath`, `TermPolicyUtil.createRandomFilenameContentWithPath`).
+
+- The content is the bundled template in `src/modules/term-policy/templates/`: `term-policy.term.en.hbs` (`termsOfService`), `term-policy.privacy.en.hbs`, `term-policy.cookies.en.hbs`, `term-policy.marketing.en.hbs`.
+- `nest-cli.json` `assets` (`**/**/templates/*`) copies them to `dist/modules/term-policy/templates/`; the seed runs from `dist/migration/seeds/` and reads `join(import.meta.dirname, '../../modules/term-policy/templates', <file>)`.
+- When `AwsS3Service.isInitialized()`, it uploads the content to the private bucket and copies it to the public one; otherwise it logs a `warn` and still writes the complete row.
+- It fails when a required type (`termsOfService`, `privacy`) is not published after the run.
+
 ## Order is in the script
 
-`package.json` `migration:seed` and `migration:remove` define the run order; the `providers` array does not. Quote the live scripts when editing them. `migration:remove` is not a strict reverse of `migration:seed`. Seeds registered but outside both scripts (`templateEmailNotification`, `templateTermPolicy`, `awsS3Config`) run as separate `migration` commands on purpose. A new seed with a dependency lands in both scripts.
+`package.json` `migration:seed` and `migration:remove` define the run order; the `providers` array does not. Quote the live scripts when editing them. `migration:remove` is not a strict reverse of `migration:seed`. Seeds registered but outside both scripts (`templateEmailNotification`, `awsS3Config`) run as separate `migration` commands on purpose. A new seed with a dependency lands in both scripts.
 
 ## Idempotency and reset
 
-`seed()` is safe against a database that already holds its rows: an `upsert` on a unique key, or an existence check (`findMany` on the keys, then `createMany` of the missing rows), never a blind `create`. Prisma on MongoDB has no `skipDuplicates` on `createMany`. `remove()` resets the collections its `seed()` owns outright; it is destructive by design.
+`seed()` is safe against a database that already holds its rows: an `upsert` on a unique key, or an existence check (`findMany` on the keys, then `createMany` of the missing rows), never a blind `create`. A seed is seed-once: an upsert `update` writes `updatedBy` only, so changed seed data reaches the database through `migration:fresh`. Prisma on MongoDB has no `skipDuplicates` on `createMany`. `remove()` resets the collections its `seed()` owns outright; it is destructive by design.
 
 ## Off-limits
 

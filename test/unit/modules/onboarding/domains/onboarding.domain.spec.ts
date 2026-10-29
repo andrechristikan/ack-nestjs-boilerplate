@@ -34,6 +34,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 
 describe('OnboardingDomain', () => {
     const userAuthDomain: MockProxy<UserAuthDomain> = mock<UserAuthDomain>();
@@ -326,6 +327,10 @@ describe('OnboardingDomain', () => {
             roleId: 'role-bramble',
             countryId: 'country-bramble',
         };
+        const actor: IRoleActor = {
+            roleId: 'role-actor-bramble',
+            roleType: EnumRoleType.admin,
+        };
         const password: IAuthPassword = {
             passwordHash: 'hashed',
             passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
@@ -341,12 +346,17 @@ describe('OnboardingDomain', () => {
             userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(5000);
             workspaceDomain.commitOnboarding.mockResolvedValue([createdUser]);
 
-            const result = await domain.createByAdmin(create, 'admin-bramble');
+            const result = await domain.createByAdmin(
+                create,
+                'admin-bramble',
+                actor
+            );
 
             expect(result).toBe(createdUser.id);
             expect(userDomain.prepareCreateByAdmin).toHaveBeenCalledWith(
                 create,
-                'admin-bramble'
+                'admin-bramble',
+                actor
             );
             expect(workspaceDomain.commitOnboarding).toHaveBeenCalledWith(
                 [{ ...input, password }],
@@ -371,7 +381,7 @@ describe('OnboardingDomain', () => {
             userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(5000);
             workspaceDomain.commitOnboarding.mockResolvedValue([createdUser]);
 
-            await domain.createByAdmin(create, 'admin-bramble');
+            await domain.createByAdmin(create, 'admin-bramble', actor);
 
             expect(userDomain.notifyWelcomeByAdmin).not.toHaveBeenCalled();
         });

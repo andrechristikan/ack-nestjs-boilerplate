@@ -39,6 +39,10 @@ export const DocApiKeyErrorResponses = {
             messagePath: 'apiKey.error.xApiKey.invalid',
         }
     ),
+    expired: DocResponseError(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumApiKeyStatusCodeError.expired,
+        messagePath: 'apiKey.error.expired',
+    }),
     forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
         statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
         messagePath: 'apiKey.error.xApiKey.forbidden',

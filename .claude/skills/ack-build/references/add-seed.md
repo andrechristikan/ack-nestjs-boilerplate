@@ -30,7 +30,7 @@ Add the class to `providers` in `src/migration/migration.module.ts:22-34`, and a
 
 ## 5. Place it in the scripts
 
-Run order is the `package.json` scripts. A seed that belongs to the bootstrap set lands in both `migration:seed` (after what it depends on) and `migration:remove` (before what depends on it); quote the live script when editing, the remove order is not a strict reverse. A seed that runs on demand (`templateEmailNotification`, `templateTermPolicy`, `awsS3Config`) stays out of both and runs as `pnpm migration <name> --type seed`.
+Run order is the `package.json` scripts. A seed that belongs to the bootstrap set lands in both `migration:seed` (after what it depends on) and `migration:remove` (before what depends on it); quote the live script when editing, the remove order is not a strict reverse. A seed that runs on demand (`templateEmailNotification`, `awsS3Config`) stays out of both and runs as `pnpm migration <name> --type seed`.
 
 ## 6. Verify
 

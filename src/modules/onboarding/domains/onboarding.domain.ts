@@ -15,6 +15,7 @@ import type {
     IUserLoginSocial,
     IUserSignUp,
 } from '@modules/user/interfaces/user.interface';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { Injectable } from '@nestjs/common';
@@ -96,10 +97,15 @@ export class OnboardingDomain {
 
     async createByAdmin(
         create: IUserCreateByAdmin,
-        createdBy: string
+        createdBy: string,
+        actor: IRoleActor
     ): Promise<string> {
         const { input, passwordString } =
-            await this.userDomain.prepareCreateByAdmin(create, createdBy);
+            await this.userDomain.prepareCreateByAdmin(
+                create,
+                createdBy,
+                actor
+            );
         const createTimeoutInMs =
             this.userOnboardingDomain.getCreateTimeoutInMs();
         const createdUsers = await this.workspaceDomain.commitOnboarding(

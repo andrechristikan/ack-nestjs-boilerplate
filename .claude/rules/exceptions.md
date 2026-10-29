@@ -53,7 +53,7 @@ export class UserNotFoundException extends AppBaseException {
 - `AppHttpFilter`: `HttpException`, the error log and Sentry at 5xx.
 - `AppGeneralFilter` (`@Catch()`), the single translator for everything else: an `AppBaseException` renders as itself; an `AppUnknownException` whose `rawError` maps through `DatabaseUtil.toException` or `RedisUtil.toException` renders as the mapped exception; any other error is mapped the same way or answers 500 as `AppUnknownException`.
 
-The mappings: `DatabaseWriteConflictCode` to `DatabaseWriteConflictException` (409); a `DatabaseUnavailableCodes` member or a `PrismaClientInitializationError` to `DatabaseUnavailableException` (503); keyv's `RedisErrorMessages.RedisClientNotConnectedThrown` to `RedisUnavailableException` (503). The body is `ResponseErrorSchema` (`src/common/response/dtos/response.error.dto.ts`).
+The mappings: the Prisma ones in `database.md`, Access; keyv's `RedisErrorMessages.RedisClientNotConnectedThrown` to `RedisUnavailableException` (503). The body is `ResponseErrorSchema` (`src/common/response/dtos/response.error.dto.ts`).
 
 ## Side effects
 

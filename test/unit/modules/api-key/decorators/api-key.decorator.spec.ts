@@ -58,6 +58,27 @@ describe('api-key.decorator', () => {
                 ])
             );
         });
+
+        it('documents the expired api key at 400', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            ApiKeySystemProtected()(target, 'method', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.BAD_REQUEST,
+                        statusCode: EnumApiKeyStatusCodeError.expired,
+                        messagePath: 'apiKey.error.expired',
+                    }),
+                ])
+            );
+        });
     });
 
     describe('ApiKeyProtected', () => {
@@ -90,6 +111,27 @@ describe('api-key.decorator', () => {
                     expect.objectContaining({
                         httpStatus: HttpStatus.UNAUTHORIZED,
                         messagePath: 'apiKey.error.guardMissing',
+                    }),
+                ])
+            );
+        });
+
+        it('documents the expired api key at 400', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            ApiKeyProtected()(target, 'method', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.BAD_REQUEST,
+                        statusCode: EnumApiKeyStatusCodeError.expired,
+                        messagePath: 'apiKey.error.expired',
                     }),
                 ])
             );

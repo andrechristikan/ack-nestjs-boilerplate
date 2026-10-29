@@ -106,3 +106,9 @@ export const DatabaseUniqueConstraintCode = 'P2002';
  * @public
  */
 export const DatabaseWriteConflictCode = 'P2034';
+
+/**
+ * Mask written in place of a credential, and in place of a whole value that is not a url, in a logged connection url.
+ * @public
+ */
+export const DatabaseUrlCensoredValue = '***';

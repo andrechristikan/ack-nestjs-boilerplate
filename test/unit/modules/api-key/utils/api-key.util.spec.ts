@@ -45,10 +45,7 @@ describe('ApiKeyUtil', () => {
 
         it('returns true when the current date is after endAt', () => {
             const result = util.isExpired(
-                {
-                    startAt: new Date('2026-01-01T00:00:00.000Z'),
-                    endAt: new Date('2026-01-10T00:00:00.000Z'),
-                },
+                new Date('2020-01-01T00:00:00.000Z'),
                 currentDate
             );
 
@@ -57,29 +54,15 @@ describe('ApiKeyUtil', () => {
 
         it('returns false when the current date is before endAt', () => {
             const result = util.isExpired(
-                {
-                    startAt: new Date('2026-01-01T00:00:00.000Z'),
-                    endAt: new Date('2026-02-01T00:00:00.000Z'),
-                },
+                new Date('2026-02-01T00:00:00.000Z'),
                 currentDate
             );
 
             expect(result).toBe(false);
         });
 
-        it('returns false when startAt or endAt is absent', () => {
-            expect(
-                util.isExpired({ startAt: null, endAt: null }, currentDate)
-            ).toBe(false);
-            expect(
-                util.isExpired(
-                    {
-                        startAt: new Date('2026-01-01T00:00:00.000Z'),
-                        endAt: null,
-                    },
-                    currentDate
-                )
-            ).toBe(false);
+        it('returns false when endAt is absent', () => {
+            expect(util.isExpired(null, currentDate)).toBe(false);
         });
     });
 
@@ -88,10 +71,7 @@ describe('ApiKeyUtil', () => {
 
         it('returns true when the current date is before startAt', () => {
             const result = util.isNotYetActive(
-                {
-                    startAt: new Date('2026-01-10T00:00:00.000Z'),
-                    endAt: new Date('2026-02-01T00:00:00.000Z'),
-                },
+                new Date('2026-01-10T00:00:00.000Z'),
                 currentDate
             );
 
@@ -100,20 +80,15 @@ describe('ApiKeyUtil', () => {
 
         it('returns false when the current date is at or after startAt', () => {
             const result = util.isNotYetActive(
-                {
-                    startAt: new Date('2026-01-01T00:00:00.000Z'),
-                    endAt: new Date('2026-02-01T00:00:00.000Z'),
-                },
+                new Date('2026-01-01T00:00:00.000Z'),
                 currentDate
             );
 
             expect(result).toBe(false);
         });
 
-        it('returns false when startAt or endAt is absent', () => {
-            expect(
-                util.isNotYetActive({ startAt: null, endAt: null }, currentDate)
-            ).toBe(false);
+        it('returns false when startAt is absent', () => {
+            expect(util.isNotYetActive(null, currentDate)).toBe(false);
         });
     });
 
@@ -121,58 +96,6 @@ describe('ApiKeyUtil', () => {
         it('returns the isActive flag', () => {
             expect(util.isActive({ isActive: true })).toBe(true);
             expect(util.isActive({ isActive: false })).toBe(false);
-        });
-    });
-
-    describe('isValid', () => {
-        const currentDate = new Date('2026-01-15T00:00:00.000Z');
-
-        it('returns true when active, not expired, and already started', () => {
-            const result = util.isValid(
-                {
-                    isActive: true,
-                    startAt: new Date('2026-01-01T00:00:00.000Z'),
-                    endAt: new Date('2026-02-01T00:00:00.000Z'),
-                },
-                currentDate
-            );
-
-            expect(result).toBe(true);
-        });
-
-        it('returns false when inactive', () => {
-            const result = util.isValid(
-                { isActive: false, startAt: null, endAt: null },
-                currentDate
-            );
-
-            expect(result).toBe(false);
-        });
-
-        it('returns false when expired', () => {
-            const result = util.isValid(
-                {
-                    isActive: true,
-                    startAt: new Date('2026-01-01T00:00:00.000Z'),
-                    endAt: new Date('2026-01-10T00:00:00.000Z'),
-                },
-                currentDate
-            );
-
-            expect(result).toBe(false);
-        });
-
-        it('returns false when not yet active', () => {
-            const result = util.isValid(
-                {
-                    isActive: true,
-                    startAt: new Date('2026-02-01T00:00:00.000Z'),
-                    endAt: new Date('2026-03-01T00:00:00.000Z'),
-                },
-                currentDate
-            );
-
-            expect(result).toBe(false);
         });
     });
 

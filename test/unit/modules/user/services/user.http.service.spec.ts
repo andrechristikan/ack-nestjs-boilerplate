@@ -225,10 +225,21 @@ describe('UserHttpService', () => {
             countryId: 'country-cinder',
         };
 
+        const adminUser: IUser = {
+            ...baseUser,
+            id: 'admin-cinder',
+            roleId: 'role-admin-cinder',
+            role: {
+                ...baseUser.role,
+                id: 'role-admin-cinder',
+                type: EnumRoleType.admin,
+            },
+        };
+
         it('delegates creation to OnboardingDomain and returns the id', async () => {
             onboardingDomain.createByAdmin.mockResolvedValue('user-cinder');
 
-            const result = await service.createByAdmin(dto, 'admin-cinder');
+            const result = await service.createByAdmin(dto, adminUser);
 
             expect(result).toEqual({ data: { id: 'user-cinder' } });
             expect(onboardingDomain.createByAdmin).toHaveBeenCalledWith(
@@ -239,7 +250,8 @@ describe('UserHttpService', () => {
                     roleId: dto.roleId,
                     countryId: dto.countryId,
                 },
-                'admin-cinder'
+                'admin-cinder',
+                { roleId: 'role-admin-cinder', roleType: EnumRoleType.admin }
             );
         });
 
@@ -248,12 +260,13 @@ describe('UserHttpService', () => {
 
             await service.createByAdmin(
                 { ...dto, name: 'Cinder Wolfe' },
-                'admin-cinder'
+                adminUser
             );
 
             expect(onboardingDomain.createByAdmin).toHaveBeenCalledWith(
                 expect.objectContaining({ name: 'Cinder Wolfe' }),
-                'admin-cinder'
+                'admin-cinder',
+                { roleId: 'role-admin-cinder', roleType: EnumRoleType.admin }
             );
         });
     });

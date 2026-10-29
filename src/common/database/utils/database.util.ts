@@ -4,6 +4,7 @@ import { ObjectId } from 'bson';
 import {
     DatabaseUnavailableCodes,
     DatabaseUniqueConstraintCode,
+    DatabaseUrlCensoredValue,
     DatabaseWriteConflictCode,
 } from '@common/database/constants/database.constant';
 import type { AppBaseException } from '@app/exceptions/app.base.exception';
@@ -21,6 +22,41 @@ export class DatabaseUtil {
 
     createId(): string {
         return new ObjectId().toHexString();
+    }
+
+    /**
+     * Masks a connection url for a log line: the password is dropped, the username keeps its first
+     * letter, every host stays, and the query is removed. A string without the `scheme://` shape
+     * returns the censored value.
+     */
+    censorUrl(url: string): string {
+        const schemeEnd = url.indexOf('://');
+        if (schemeEnd === -1) {
+            return DatabaseUrlCensoredValue;
+        }
+
+        const scheme = url.slice(0, schemeEnd + 3);
+        const rest = url.slice(schemeEnd + 3);
+        const queryStart = rest.indexOf('?');
+        const withoutQuery =
+            queryStart === -1 ? rest : rest.slice(0, queryStart);
+        const pathStart = withoutQuery.indexOf('/');
+        const authority =
+            pathStart === -1 ? withoutQuery : withoutQuery.slice(0, pathStart);
+        const path = pathStart === -1 ? '' : withoutQuery.slice(pathStart);
+        const credentialEnd = authority.lastIndexOf('@');
+        if (credentialEnd === -1) {
+            return `${scheme}${authority}${path}`;
+        }
+
+        const username = authority.slice(0, credentialEnd).split(':')[0] ?? '';
+        const hosts = authority.slice(credentialEnd + 1);
+        const user =
+            username === ''
+                ? ''
+                : `${username.slice(0, 1)}${DatabaseUrlCensoredValue}@`;
+
+        return `${scheme}${user}${hosts}${path}`;
     }
 
     /**

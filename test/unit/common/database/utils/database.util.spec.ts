@@ -31,6 +31,40 @@ describe('DatabaseUtil', () => {
         });
     });
 
+    describe('censorUrl', () => {
+        it('masks the password and keeps the first letter of the username', () => {
+            expect(
+                util.censorUrl('mongodb://admin:s3cret@localhost:27017/ack')
+            ).toBe('mongodb://a***@localhost:27017/ack');
+        });
+
+        it('keeps every host of a replica-set url and drops the query', () => {
+            expect(
+                util.censorUrl(
+                    'mongodb://admin:s3cret@h1:27017,h2:27017,h3:27017/ack?replicaSet=rs0&authSource=admin'
+                )
+            ).toBe('mongodb://a***@h1:27017,h2:27017,h3:27017/ack');
+        });
+
+        it('keeps a url without credentials as is, minus the query', () => {
+            expect(
+                util.censorUrl('mongodb://localhost:27017/ack?tls=true')
+            ).toBe('mongodb://localhost:27017/ack');
+        });
+
+        it('handles the srv scheme', () => {
+            expect(
+                util.censorUrl(
+                    'mongodb+srv://admin:s3cret@cluster0.example.com/ack'
+                )
+            ).toBe('mongodb+srv://a***@cluster0.example.com/ack');
+        });
+
+        it('returns the censored value for a string that is not a url', () => {
+            expect(util.censorUrl('not a url')).toBe('***');
+        });
+    });
+
     describe('createId', () => {
         it('returns a fresh, valid ObjectId hex string every call', () => {
             const first = util.createId();

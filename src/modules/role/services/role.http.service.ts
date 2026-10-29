@@ -18,6 +18,7 @@ import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.updat
 import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -111,31 +112,46 @@ export class RoleHttpService {
     }
 
     async createByAdmin(
-        body: RoleCreateRequestDto
+        body: RoleCreateRequestDto,
+        user: IUser
     ): Promise<IResponseReturn<RoleDto>> {
-        const created = await this.roleDomain.createByAdmin({
-            name: body.name,
-            description: body.description ?? null,
-            type: body.type,
-        });
+        const created = await this.roleDomain.createByAdmin(
+            {
+                name: body.name,
+                description: body.description ?? null,
+                type: body.type,
+            },
+            { roleId: user.roleId, roleType: user.role.type }
+        );
 
         return { data: created };
     }
 
     async updateByAdmin(
         id: string,
-        body: RoleUpdateRequestDto
+        body: RoleUpdateRequestDto,
+        user: IUser
     ): Promise<IResponseReturn<RoleDto>> {
-        const updated = await this.roleDomain.updateByAdmin(id, {
-            description: body.description,
-            type: body.type,
-        });
+        const updated = await this.roleDomain.updateByAdmin(
+            id,
+            {
+                description: body.description,
+                type: body.type,
+            },
+            { roleId: user.roleId, roleType: user.role.type }
+        );
 
         return { data: updated };
     }
 
-    async deleteByAdmin(id: string): Promise<IResponseReturn<void>> {
-        await this.roleDomain.deleteByAdmin(id);
+    async deleteByAdmin(
+        id: string,
+        user: IUser
+    ): Promise<IResponseReturn<void>> {
+        await this.roleDomain.deleteByAdmin(id, {
+            roleId: user.roleId,
+            roleType: user.role.type,
+        });
 
         return {};
     }

@@ -2,7 +2,7 @@ import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.re
 import { UserListRequestSchema } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import { UserExportRequestSchema } from '@modules/user/dtos/request/user.export.request.dto';
-import { Doc } from '@common/doc/decorators/doc.decorator';
+import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
 import {
     Body,
     Controller,
@@ -33,8 +33,13 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserCurrent,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
+    IUser,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -125,6 +130,10 @@ export class UserAdminController {
 
     @Doc({ summary: 'create a user' })
     @Response('user.create', { schema: DatabaseIdResponseSchema })
+    @DocErrors(HttpStatus.FORBIDDEN, {
+        statusCode: EnumRoleStatusCodeError.rankForbidden,
+        messagePath: 'role.error.rankForbidden',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -139,9 +148,9 @@ export class UserAdminController {
     async create(
         @Body({ schema: UserCreateRequestSchema })
         body: UserCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string
+        @UserCurrent() user: IUser
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userHttpService.createByAdmin(body, createdBy);
+        return this.userHttpService.createByAdmin(body, user);
     }
 
     @Doc({ summary: 'update status of user' })

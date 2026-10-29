@@ -1,0 +1,18 @@
+import { HttpStatus } from '@nestjs/common';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+
+/**
+ * Raised when an admin write targets the role the actor holds.
+ * @public
+ */
+export class RoleSelfForbiddenException extends AppBaseException {
+    readonly module = 'role';
+    readonly statusCode = EnumRoleStatusCodeError.selfForbidden;
+    readonly statusCodeKey = EnumRoleStatusCodeError[this.statusCode];
+    readonly httpStatus = HttpStatus.FORBIDDEN;
+
+    constructor() {
+        super('role.error.selfForbidden');
+    }
+}

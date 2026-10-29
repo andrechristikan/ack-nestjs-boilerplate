@@ -61,6 +61,7 @@ export function ApiKeySystemProtected(): MethodDecorator {
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.system]),
         ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
+        DocApiKeyErrorResponses.expired,
         DocApiKeyErrorResponses.forbidden,
         DocApiKeyErrorResponses.guardMissing
     );
@@ -76,6 +77,7 @@ export function ApiKeyProtected(): MethodDecorator {
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.default]),
         ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
+        DocApiKeyErrorResponses.expired,
         DocApiKeyErrorResponses.forbidden,
         DocApiKeyErrorResponses.guardMissing
     );

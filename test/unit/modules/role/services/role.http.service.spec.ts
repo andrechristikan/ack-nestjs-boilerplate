@@ -6,7 +6,13 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumRoleType,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import {
     RoleDefaultAvailableOrderBy,
@@ -18,7 +24,9 @@ import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.s
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import type {
+    IRoleActor,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
@@ -49,6 +57,55 @@ describe('RoleHttpService', () => {
         updatedBy: 'user-1',
     };
     const roleWithPolicies: IRoleWithPolicies = { ...role, policies: [] };
+    const actorRole: IRoleWithPolicies = {
+        ...roleWithPolicies,
+        id: 'role-actor',
+        type: EnumRoleType.superAdmin,
+    };
+    const actorUser: IUser = {
+        id: 'user-actor',
+        name: null,
+        username: 'actor',
+        isVerified: true,
+        verifiedAt: now,
+        email: 'actor@example.com',
+        roleId: actorRole.id,
+        password: null,
+        passwordExpired: null,
+        passwordCreated: null,
+        passwordAttempt: null,
+        signUpAt: now,
+        signUpFrom: EnumUserSignUpFrom.website,
+        signUpWith: EnumUserSignUpWith.credential,
+        status: EnumUserStatus.active,
+        gender: null,
+        countryId: 'country-1',
+        lastLoginAt: null,
+        lastIPAddress: null,
+        lastLoginFrom: null,
+        lastLoginWith: null,
+        lastWorkspaceId: null,
+        lastWorkspaceChangedAt: null,
+        termPolicy: {
+            termsOfService: true,
+            privacy: true,
+            marketing: false,
+            cookies: true,
+        },
+        photo: null,
+        createdAt: now,
+        createdBy: null,
+        updatedAt: now,
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+        role: actorRole,
+        twoFactor: null,
+    };
+    const actor: IRoleActor = {
+        roleId: actorRole.id,
+        roleType: EnumRoleType.superAdmin,
+    };
     const offsetPagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput> =
         { skip: 0, limit: 20, orderBy: [] };
     const cursorPagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
@@ -243,14 +300,17 @@ describe('RoleHttpService', () => {
             };
             roleDomain.createByAdmin.mockResolvedValue(roleWithPolicies);
 
-            const result = await service.createByAdmin(body);
+            const result = await service.createByAdmin(body, actorUser);
 
             expect(result).toEqual({ data: roleWithPolicies });
-            expect(roleDomain.createByAdmin).toHaveBeenCalledWith({
-                name: 'manager',
-                description: null,
-                type: EnumRoleType.admin,
-            });
+            expect(roleDomain.createByAdmin).toHaveBeenCalledWith(
+                {
+                    name: 'manager',
+                    description: null,
+                    type: EnumRoleType.admin,
+                },
+                actor
+            );
         });
     });
 
@@ -264,13 +324,15 @@ describe('RoleHttpService', () => {
 
             const result = await service.updateByAdmin(
                 roleWithPolicies.id,
-                body
+                body,
+                actorUser
             );
 
             expect(result).toEqual({ data: roleWithPolicies });
             expect(roleDomain.updateByAdmin).toHaveBeenCalledWith(
                 roleWithPolicies.id,
-                { description: 'Team lead role', type: EnumRoleType.user }
+                { description: 'Team lead role', type: EnumRoleType.user },
+                actor
             );
         });
 
@@ -281,11 +343,12 @@ describe('RoleHttpService', () => {
             };
             roleDomain.updateByAdmin.mockResolvedValue(roleWithPolicies);
 
-            await service.updateByAdmin(roleWithPolicies.id, body);
+            await service.updateByAdmin(roleWithPolicies.id, body, actorUser);
 
             expect(roleDomain.updateByAdmin).toHaveBeenCalledWith(
                 roleWithPolicies.id,
-                { description: null, type: EnumRoleType.user }
+                { description: null, type: EnumRoleType.user },
+                actor
             );
         });
     });
@@ -294,11 +357,15 @@ describe('RoleHttpService', () => {
         it('deletes the role and returns an empty response', async () => {
             roleDomain.deleteByAdmin.mockResolvedValue(roleWithPolicies);
 
-            const result = await service.deleteByAdmin(roleWithPolicies.id);
+            const result = await service.deleteByAdmin(
+                roleWithPolicies.id,
+                actorUser
+            );
 
             expect(result).toEqual({});
             expect(roleDomain.deleteByAdmin).toHaveBeenCalledWith(
-                roleWithPolicies.id
+                roleWithPolicies.id,
+                actor
             );
         });
     });

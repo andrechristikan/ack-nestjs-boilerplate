@@ -15,6 +15,13 @@ export type IRoleWithPolicyCount = Role & {
     _count: { policies: number };
 };
 
+export type IRoleRank = Record<EnumRoleType, number>;
+
+export interface IRoleActor {
+    roleId: string;
+    roleType: EnumRoleType;
+}
+
 export interface IRoleUpdate {
     description: string | null;
     type: EnumRoleType;

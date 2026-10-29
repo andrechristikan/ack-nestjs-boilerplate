@@ -14,12 +14,16 @@ import {
 import type { Policy, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { RoleRank } from '@modules/role/constants/role.constant';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRole,
+    IRoleActor,
     IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
@@ -94,7 +98,30 @@ export class RoleDomain {
         return role;
     }
 
-    async createByAdmin(data: IRoleCreate): Promise<IRoleWithPolicies> {
+    assertActorOutranks(
+        actorRoleType: EnumRoleType,
+        targetRoleType: EnumRoleType
+    ): void {
+        if (
+            actorRoleType !== EnumRoleType.superAdmin &&
+            RoleRank[actorRoleType] <= RoleRank[targetRoleType]
+        ) {
+            throw new RoleRankForbiddenException();
+        }
+    }
+
+    assertNotSelf(actorRoleId: string, targetRoleId: string): void {
+        if (actorRoleId === targetRoleId) {
+            throw new RoleSelfForbiddenException();
+        }
+    }
+
+    async createByAdmin(
+        data: IRoleCreate,
+        actor: IRoleActor
+    ): Promise<IRoleWithPolicies> {
+        this.assertActorOutranks(actor.roleType, data.type);
+
         // Sequential by design: gate before the work it guards
         const exist = await this.roleRepository.existsByName(data.name);
         if (exist) {
@@ -119,13 +146,18 @@ export class RoleDomain {
 
     async updateByAdmin(
         id: string,
-        data: IRoleUpdate
+        data: IRoleUpdate,
+        actor: IRoleActor
     ): Promise<IRoleWithPolicies> {
         // Sequential by design: gate before the work it guards
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new RoleNotFoundException();
         }
+
+        this.assertNotSelf(actor.roleId, role.id);
+        this.assertActorOutranks(actor.roleType, role.type);
+        this.assertActorOutranks(actor.roleType, data.type);
 
         const timestamp = this.helperDateService.create();
         const activityLogs = [
@@ -142,7 +174,7 @@ export class RoleDomain {
         return updated;
     }
 
-    async deleteByAdmin(id: string): Promise<Role> {
+    async deleteByAdmin(id: string, actor: IRoleActor): Promise<Role> {
         // Sequential by design: gate before the work it guards
         const [role, roleUsed] = await Promise.all([
             this.roleRepository.findOneById(id),
@@ -150,7 +182,12 @@ export class RoleDomain {
         ]);
         if (!role) {
             throw new RoleNotFoundException();
-        } else if (roleUsed) {
+        }
+
+        this.assertNotSelf(actor.roleId, role.id);
+        this.assertActorOutranks(actor.roleType, role.type);
+
+        if (roleUsed) {
             throw new RoleUsedException();
         }
 

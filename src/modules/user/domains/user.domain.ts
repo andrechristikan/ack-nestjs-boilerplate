@@ -38,6 +38,7 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -300,7 +301,8 @@ export class UserDomain {
 
     async prepareCreateByAdmin(
         { countryId, email, name, roleId, username }: IUserCreateByAdmin,
-        createdBy: string
+        createdBy: string,
+        actor: IRoleActor
     ): Promise<IUserCreateByAdminPrepared> {
         const [
             checkRole,
@@ -320,7 +322,11 @@ export class UserDomain {
 
         if (!checkRole) {
             throw new RoleNotFoundException();
-        } else if (!checkCountry) {
+        }
+
+        this.roleDomain.assertActorOutranks(actor.roleType, checkRole.type);
+
+        if (!checkCountry) {
             throw new CountryNotFoundException();
         } else if (emailExist) {
             throw new UserEmailExistException();

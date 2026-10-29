@@ -62,4 +62,13 @@ describe('RoleUpdateRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('rejects the superAdmin type', () => {
+        expect(
+            RoleUpdateRequestSchema.safeParse({
+                description: 'Team lead role',
+                type: EnumRoleType.superAdmin,
+            }).success
+        ).toBe(false);
+    });
 });

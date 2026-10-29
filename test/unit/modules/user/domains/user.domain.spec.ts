@@ -38,8 +38,10 @@ import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
     IRole,
+    IRoleActor,
     IRoleWithPolicies,
 } from '@modules/role/interfaces/role.interface';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
@@ -734,6 +736,10 @@ describe('UserDomain', () => {
             type: EnumRoleType.user,
             name: 'user',
         };
+        const adminActor: IRoleActor = {
+            roleId: 'role-actor-cobalt',
+            roleType: EnumRoleType.admin,
+        };
         const input = {
             countryId: 'country-cobalt',
             email: 'cobalt@example.com',
@@ -771,10 +777,57 @@ describe('UserDomain', () => {
             );
         });
 
+        it('checks the actor outranks the target role before preparing the input', async () => {
+            await domain.prepareCreateByAdmin(
+                input,
+                'admin-cobalt',
+                adminActor
+            );
+
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.user
+            );
+        });
+
+        it('throws RoleRankForbiddenException when the actor does not outrank the role', async () => {
+            roleDomain.getById.mockResolvedValue({
+                id: 'role-root-cobalt',
+                type: EnumRoleType.superAdmin,
+                name: 'superadmin',
+            });
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw new RoleRankForbiddenException();
+            });
+
+            await expect(
+                domain.prepareCreateByAdmin(
+                    { ...input, roleId: 'role-root-cobalt' },
+                    'admin-cobalt',
+                    adminActor
+                )
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.rankForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.superAdmin
+            );
+            expect(databaseUtil.createId).not.toHaveBeenCalled();
+        });
+
         it('prepares the create input with no verification for a plain user role', async () => {
             const result = await domain.prepareCreateByAdmin(
                 input,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             expect(result.input).toMatchObject({
@@ -796,7 +849,8 @@ describe('UserDomain', () => {
         it('keeps a null name null', async () => {
             const result = await domain.prepareCreateByAdmin(
                 { ...input, name: null },
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             expect(result.input.name).toBeNull();
@@ -820,7 +874,8 @@ describe('UserDomain', () => {
 
             const result = await domain.prepareCreateByAdmin(
                 input,
-                'admin-cobalt'
+                'admin-cobalt',
+                adminActor
             );
 
             expect(result.input.isVerified).toBe(true);
@@ -838,7 +893,11 @@ describe('UserDomain', () => {
         it('throws RoleNotFoundException when the role is missing', async () => {
             roleDomain.getById.mockResolvedValue(null);
 
-            const call = domain.prepareCreateByAdmin(input, 'admin-cobalt');
+            const call = domain.prepareCreateByAdmin(
+                input,
+                'admin-cobalt',
+                adminActor
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'role',
@@ -852,7 +911,11 @@ describe('UserDomain', () => {
         it('throws CountryNotFoundException when the country is missing', async () => {
             countryDomain.existsById.mockResolvedValue(false);
 
-            const call = domain.prepareCreateByAdmin(input, 'admin-cobalt');
+            const call = domain.prepareCreateByAdmin(
+                input,
+                'admin-cobalt',
+                adminActor
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'country',
@@ -868,7 +931,11 @@ describe('UserDomain', () => {
         it('throws UserEmailExistException when the email is taken', async () => {
             userRepository.existsByEmail.mockResolvedValue(true);
 
-            const call = domain.prepareCreateByAdmin(input, 'admin-cobalt');
+            const call = domain.prepareCreateByAdmin(
+                input,
+                'admin-cobalt',
+                adminActor
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -882,7 +949,11 @@ describe('UserDomain', () => {
         it('throws UserUsernameNotAllowedException when the username breaks the pattern', async () => {
             userUtil.checkUsernamePattern.mockReturnValue(true);
 
-            const call = domain.prepareCreateByAdmin(input, 'admin-cobalt');
+            const call = domain.prepareCreateByAdmin(
+                input,
+                'admin-cobalt',
+                adminActor
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -898,7 +969,11 @@ describe('UserDomain', () => {
         it('throws UserUsernameContainBadWordException when the username is profane', async () => {
             userUtil.checkBadWord.mockResolvedValue(true);
 
-            const call = domain.prepareCreateByAdmin(input, 'admin-cobalt');
+            const call = domain.prepareCreateByAdmin(
+                input,
+                'admin-cobalt',
+                adminActor
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -914,7 +989,11 @@ describe('UserDomain', () => {
         it('throws UserUsernameExistException when the username is taken', async () => {
             userRepository.existsByUsername.mockResolvedValue(true);
 
-            const call = domain.prepareCreateByAdmin(input, 'admin-cobalt');
+            const call = domain.prepareCreateByAdmin(
+                input,
+                'admin-cobalt',
+                adminActor
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',

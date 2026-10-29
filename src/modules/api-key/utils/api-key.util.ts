@@ -16,53 +16,16 @@ export class ApiKeyUtil {
         };
     }
 
-    isExpired(
-        apiKey: {
-            startAt: Date | null;
-            endAt: Date | null;
-        },
-        currentDate: Date
-    ): boolean {
-        if (apiKey.startAt && apiKey.endAt) {
-            return currentDate > apiKey.endAt;
-        }
-
-        return false;
+    isExpired(endAt: Date | null, currentDate: Date): boolean {
+        return endAt !== null && currentDate > endAt;
     }
 
-    isNotYetActive(
-        apiKey: {
-            startAt: Date | null;
-            endAt: Date | null;
-        },
-        currentDate: Date
-    ): boolean {
-        if (apiKey.startAt && apiKey.endAt) {
-            return currentDate < apiKey.startAt;
-        }
-
-        return false;
+    isNotYetActive(startAt: Date | null, currentDate: Date): boolean {
+        return startAt !== null && currentDate < startAt;
     }
 
     isActive(apiKey: { isActive: boolean }): boolean {
         return apiKey.isActive;
-    }
-
-    /**
-     * True when the key is active, not expired, and already within its start date.
-     */
-    isValid(
-        apiKey: {
-            startAt: Date | null;
-            endAt: Date | null;
-            isActive: boolean;
-        },
-        currentDate: Date
-    ): boolean {
-        const isExpired = this.isExpired(apiKey, currentDate);
-        const isNotYetActive = this.isNotYetActive(apiKey, currentDate);
-
-        return apiKey.isActive && !isExpired && !isNotYetActive;
     }
 
     validateType(

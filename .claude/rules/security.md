@@ -4,6 +4,9 @@ paths:
     - 'src/modules/session/**'
     - 'src/modules/api-key/**'
     - 'src/modules/user/**'
+    - 'src/modules/role/**'
+    - 'src/modules/policy/**'
+    - 'src/modules/term-policy/**'
     - 'src/modules/activity-log/**'
     - 'src/common/request/**'
     - 'src/common/helper/**'
@@ -28,24 +31,32 @@ A credential: a password hash or generated password; a 2FA secret, pending secre
 
 ## Two-factor
 
-`TwoFactor.secret` holds only a confirmed authenticator, encrypted with the two-factor root and the user id. Setup writes `pendingSecret`; confirming moves it into `secret`; disable and admin reset clear both. Setup while enabled consumes a valid backup code in the same transaction, a compare-and-set on the stored list that commits before a token is issued. A missing or undecryptable secret raises `AuthTwoFactorSecretUnavailableException` (409) from the domain.
+`TwoFactor.secret` holds only a confirmed authenticator, encrypted with the two-factor root and the user id. Setup writes `pendingSecret`; confirming moves it into `secret`; disable and admin reset clear both. Setup while enabled consumes a valid backup code in the same transaction, a compare-and-set on the stored list that commits before a token is issued. A missing or undecryptable secret raises `AuthTwoFactorSecretUnavailableException` (409).
 
 ## Session invalidation
 
-Password change or reset, logout, device removal, account self-deletion, the lockout at the maximum password attempts, two-factor disable or admin reset, a status change to `blocked` or `inactive`, and an admin revoke of one or all sessions each revoke the session rows in the database, then enqueue the session cache purge on the session module's queue after the commit; BullMQ retries the job, and the JWT guards read the cache, so revocation takes effect when the job runs. The purge job carries the user id and the exact `ISessionRef[]` the revoke returned, and `SessionCache.deleteLogins` deletes exactly those entries; no purge matches a key pattern, so a login made after the revoke keeps its entry. Order: commit, enqueue the purge, stage activity rows; the purge enqueues through `QueueBase.addSideEffect` (`exceptions.md`, Side effects). Every notification recipient snapshot (`changePassword`, `resetTwoFactorByAdmin`, welcome, verified email, new-device login) is read before the transaction, never in a `Promise.all` with it, so no read sits between the commit and the guarded enqueue (`queue.md`, Enqueuing). `isRevoked: false` is in the `where` of every revoke and of refresh rotation; the refresh cache write is conditional on the entry existing.
+Password change or reset, logout, device removal, account self-deletion, the max-attempt password lockout, two-factor disable or admin reset, a status change to `blocked` or `inactive`, refresh-token reuse, and an admin revoke of one or all sessions each revoke the session rows and enqueue the session cache purge; the JWT guards read the cache, so revocation takes effect when the job runs. The purge job carries the user id and the exact `ISessionRef[]` the revoke returned; `SessionCache.deleteLogins` deletes those entries, never a key pattern. Order: commit, enqueue the purge through `QueueBase.addSideEffect` (`exceptions.md`, Side effects), stage activity rows. Every notification recipient snapshot is read before the transaction, never in a `Promise.all` with it (`queue.md`, Enqueuing). `isRevoked: false` is in the `where` of every revoke and rotation.
+
+- A refresh re-reads the session row from the database, then rotates by compare-and-set on the old `jti`: the database `where` and the cache write each match it. A mismatch is reuse: revoke the session and enqueue its purge.
+- The login cache TTL equals the access-token lifetime (`auth.jwt.accessToken.expirationTimeInSeconds`).
 
 ## Sign-in and authorization
 
-The guard stack and what a guard reads: `guards.md`. `AuthSocialDomain` verifies Google with `audience` set to its client id and Apple against the set client ids; an unset provider throws its not-configured exception first, rethrown unwrapped by `AuthDomain`. CASL abilities come from the `Policy` rows on the caller's role; `@PolicyProtected` names subject and actions. A feature flag is never an authorization boundary (`feature-flag.md`). A login stamps the last login inside its transaction (`updateLoginInTx`, `user.login.domain.ts:193`).
+The guard stack: `guards.md`. `AuthSocialDomain` verifies Google with `audience` set to its client id and Apple against the set client ids; an unset provider throws its not-configured exception first, rethrown unwrapped by `AuthDomain`. CASL abilities come from the `Policy` rows on the caller's role; `@PolicyProtected` names subject and actions. A login stamps the last login inside its transaction (`updateLoginInTx`, `user.login.domain.ts:193`).
+
+- Role rank is `superAdmin > admin > user` (`EnumRoleType`). An admin-facing write on a role, its policies, or a user (create, role, status, password reset, 2FA reset) refuses a target ranked at or above the actor, except a superAdmin actor on a superAdmin target. No actor edits the role they hold or its policies. A role request DTO accepts `type` `admin` or `user` only.
+- The term-policy guard compares the user's `TermPolicyUserAcceptance` rows with the latest published policy of each required type; a type with no published version has nothing to accept. Publishing version N moves every earlier published version of that type to `archived`; every reader takes the latest published row per type. No per-user acceptance flag, no reset on publish. Sign-up throws a term-policy exception while a required type has no published version.
+- Login answers one invalid-credential error for unknown email, wrong password, and inactive account. Forgot-password and resend-verification answer 200 for every account state and send only when eligible.
+- Self-delete, and 2FA setup and enable while 2FA is off, require the current password.
+- A limit or lock exception answers 429: `UserForgotPasswordRequestLimitExceededException`, `UserVerificationEmailResendLimitExceededException`, `AuthTwoFactorAttemptTemporaryLockException`.
 
 ## Activity log
 
-`ActivityLogDomain.prepare` (`activity-log.domain.ts:213`) builds and validates one entry against `ActivityLogActionContract`; `stagePrepared` (`:238`) puts it on the CLS queue. Prepare before the write, stage after its commit; a value only the write produces is drawn before it (`DatabaseUtil.createId()`) or prepared after the commit. Every `EnumActivityLogAction` member has a contract row and an `activityLog` i18n key. An action one user takes on another writes two rows: the actor's under the plain action with `targetUserId`, the affected user's under the paired `…ByAdmin` / `…ByOwner` / `…ByInvitee` action with `actorUserId`.
+`ActivityLogDomain.prepare` (`activity-log.domain.ts:213`) validates one entry against `ActivityLogActionContract`; `stagePrepared` (`:238`) puts it on the CLS queue. Prepare before the write, stage after its commit; a value only the write produces is drawn before it (`DatabaseUtil.createId()`) or prepared after. Every `EnumActivityLogAction` member has a contract row and an `activityLog` i18n key. An action one user takes on another writes two rows: the actor's under the plain action with `targetUserId`, the affected user's under the paired `…ByAdmin` / `…ByOwner` / `…ByInvitee` action with `actorUserId`.
 
-- The activity log is HTTP-only: a job stages no entry. `ActivityLogDomain.flushStaged` (`:252`) runs when an HTTP request settles (`ActivityLogInterceptor`). It builds the rows while the store holds `RequestLogStoreKey` and `WorkspaceStoreKey`, draws each row id with `DatabaseUtil.createId()`, and adds the rows on `ActivityLogQueue`, the activity-log module's queue. Its processor writes them through `ActivityLogRepository.createMany`, the one `ActivityLog` writer; a retry writes only the rows whose id is absent.
-- On the error path the flush keeps every staged entry: each `stagePrepared` follows its write's commit.
-- The flush enqueues one job carrying every row: `ActivityLogQueue.createMany` calls `QueueBase.addSideEffect`; a failure: `exceptions.md`, Side effects.
+- The activity log is HTTP-only: a job stages no entry. `ActivityLogDomain.flushStaged` (`:252`) runs when an HTTP request settles (`ActivityLogInterceptor`), error path included, while the store holds `RequestLogStoreKey` and `WorkspaceStoreKey`. It draws each row id with `DatabaseUtil.createId()` and enqueues one job carrying every row through `ActivityLogQueue.createMany` (`QueueBase.addSideEffect`, `exceptions.md` Side effects).
+- Its processor writes through `ActivityLogRepository.createMany`, the one `ActivityLog` writer; a retry writes only the rows whose id is absent.
 
 ## Request store
 
-Per-request state lives in `RequestStoreService`, keyed by `*StoreKey` constants; add a key rather than a second store. A class injects `RequestStoreService`; a param decorator: `guards.md`. `RequestRequestIdMiddleware`, first in the `RequestMiddlewareModule` chain, is the one first-party writer of `req.id` (over pino-http's numeric default), `req.correlationId`, and both id store keys (via `RequestStoreService`); `logging.md` states the id values. `RequestLogStoreKey` holds the client IP, user agent, and geo-location resolved once per request (`request.request-log.middleware.ts`); a reader takes the stored value, never re-resolving it.
+Per-request state lives in `RequestStoreService`, keyed by `*StoreKey` constants; add a key, never a second store. A class injects `RequestStoreService`; a param decorator: `guards.md`. `RequestRequestIdMiddleware`, first in the `RequestMiddlewareModule` chain, alone writes `req.id`, `req.correlationId`, and both id store keys (`logging.md`). `RequestLogStoreKey` holds the client IP, user agent, and geo-location resolved once per request (`request.request-log.middleware.ts`); a reader never re-resolves it. The client IP is `req.ip` under `trust proxy` (`src/configure.ts:39`).

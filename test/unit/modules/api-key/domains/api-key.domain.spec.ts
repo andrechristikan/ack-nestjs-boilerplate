@@ -630,40 +630,6 @@ describe('ApiKeyDomain', () => {
         });
     });
 
-    describe('getOneActiveByKeyAndCache', () => {
-        it('returns the cached api key without reading the repository', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
-
-            const result = await domain.getOneActiveByKeyAndCache(apiKey.key);
-
-            expect(result).toBe(apiKey);
-            expect(apiKeyRepository.findOneByKey).not.toHaveBeenCalled();
-        });
-
-        it('reads the repository and caches the result on a cache miss', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(null);
-            apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
-
-            const result = await domain.getOneActiveByKeyAndCache(apiKey.key);
-
-            expect(result).toBe(apiKey);
-            expect(apiKeyCache.setApiKey).toHaveBeenCalledWith(
-                apiKey.key,
-                apiKey
-            );
-        });
-
-        it('returns null and writes nothing to the cache when the key is unknown', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(null);
-            apiKeyRepository.findOneByKey.mockResolvedValue(null);
-
-            const result = await domain.getOneActiveByKeyAndCache('unknown');
-
-            expect(result).toBeNull();
-            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
-        });
-    });
-
     describe('validateXApiKey', () => {
         it('throws ApiKeyXApiKeyRequiredException when the header is null', async () => {
             await expect(domain.validateXApiKey(null)).rejects.toMatchObject({
@@ -772,7 +738,6 @@ describe('ApiKeyDomain', () => {
         it('throws ApiKeyXApiKeyInvalidException when the credential does not match', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(false);
-            apiKeyUtil.isValid.mockReturnValue(true);
 
             await expect(
                 domain.validateXApiKey('local_abc123:wrong-secret')
@@ -786,31 +751,92 @@ describe('ApiKeyDomain', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
                 messagePath: 'apiKey.error.xApiKey.invalid',
             });
+            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
         });
 
-        it('throws ApiKeyXApiKeyInvalidException when the key is no longer valid', async () => {
+        it('throws ApiKeyXApiKeyInvalidException when the key is inactive', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isValid.mockReturnValue(false);
+            apiKeyUtil.isActive.mockReturnValue(false);
+
+            await expect(
+                domain.validateXApiKey('local_abc123:secret-1')
+            ).rejects.toMatchObject({
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+            });
+        });
+
+        it('throws ApiKeyXApiKeyInvalidException when the key is not yet active', async () => {
+            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
+            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
+            apiKeyUtil.isActive.mockReturnValue(true);
+            apiKeyUtil.isNotYetActive.mockReturnValue(true);
+
+            await expect(
+                domain.validateXApiKey('local_abc123:secret-1')
+            ).rejects.toMatchObject({
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+            });
+        });
+
+        it('throws ApiKeyExpiredException on a cache hit whose endAt is past', async () => {
+            const expiredApiKey: ApiKey = {
+                ...apiKey,
+                startAt: new Date('2026-01-01T00:00:00.000Z'),
+                endAt: new Date('2026-01-10T00:00:00.000Z'),
+            };
+            apiKeyCache.getApiKey.mockResolvedValue(expiredApiKey);
+            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
+            apiKeyUtil.isActive.mockReturnValue(true);
+            apiKeyUtil.isNotYetActive.mockReturnValue(false);
+            apiKeyUtil.isExpired.mockReturnValue(true);
 
             await expect(
                 domain.validateXApiKey('local_abc123:secret-1')
             ).rejects.toMatchObject({
                 module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+                statusCode: EnumApiKeyStatusCodeError.expired,
                 statusCodeKey:
                     EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyInvalid
+                        EnumApiKeyStatusCodeError.expired
                     ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.invalid',
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'apiKey.error.expired',
             });
+            expect(apiKeyUtil.isExpired).toHaveBeenCalledWith(
+                expiredApiKey.endAt,
+                now
+            );
+            expect(apiKeyRepository.findOneByKey).not.toHaveBeenCalled();
         });
 
-        it('returns the resolved api key when the credential and validity both pass', async () => {
+        it('throws ApiKeyExpiredException on a cache miss with a past endAt without caching', async () => {
+            const expiredApiKey: ApiKey = {
+                ...apiKey,
+                startAt: new Date('2026-01-01T00:00:00.000Z'),
+                endAt: new Date('2026-01-10T00:00:00.000Z'),
+            };
+            apiKeyCache.getApiKey.mockResolvedValue(null);
+            apiKeyRepository.findOneByKey.mockResolvedValue(expiredApiKey);
+            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
+            apiKeyUtil.isActive.mockReturnValue(true);
+            apiKeyUtil.isNotYetActive.mockReturnValue(false);
+            apiKeyUtil.isExpired.mockReturnValue(true);
+
+            await expect(
+                domain.validateXApiKey('local_abc123:secret-1')
+            ).rejects.toMatchObject({
+                statusCode: EnumApiKeyStatusCodeError.expired,
+            });
+            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
+        });
+
+        it('returns the cached api key without reading the repository on a cache hit', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isValid.mockReturnValue(true);
+            apiKeyUtil.isActive.mockReturnValue(true);
+            apiKeyUtil.isNotYetActive.mockReturnValue(false);
+            apiKeyUtil.isExpired.mockReturnValue(false);
 
             const result = await domain.validateXApiKey(
                 'local_abc123:secret-1'
@@ -820,6 +846,24 @@ describe('ApiKeyDomain', () => {
             expect(
                 apiKeyCredentialUtil.validateCredential
             ).toHaveBeenCalledWith('local_abc123', 'secret-1', apiKey);
+            expect(apiKeyRepository.findOneByKey).not.toHaveBeenCalled();
+            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
+        });
+
+        it('reads the repository and caches the validated key on a cache miss', async () => {
+            apiKeyCache.getApiKey.mockResolvedValue(null);
+            apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
+            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
+            apiKeyUtil.isActive.mockReturnValue(true);
+            apiKeyUtil.isNotYetActive.mockReturnValue(false);
+            apiKeyUtil.isExpired.mockReturnValue(false);
+
+            const result = await domain.validateXApiKey(
+                'local_abc123:secret-1'
+            );
+
+            expect(result).toBe(apiKey);
+            expect(apiKeyCache.setApiKey).toHaveBeenCalledWith(apiKey);
         });
     });
 

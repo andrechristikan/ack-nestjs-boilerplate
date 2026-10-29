@@ -67,4 +67,13 @@ describe('RoleCreateRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('rejects the superAdmin type', () => {
+        expect(
+            RoleCreateRequestSchema.safeParse({
+                name: 'manager',
+                type: EnumRoleType.superAdmin,
+            }).success
+        ).toBe(false);
+    });
 });
