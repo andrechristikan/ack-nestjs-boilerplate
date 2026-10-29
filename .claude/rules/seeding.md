@@ -33,8 +33,8 @@ src/migration/
 
 - A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature domain method that writes the database.
 - A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSESService`).
-- A seed injects a feature domain for two uses only: a non-database integration, the SES templates (`NotificationTemplate*Domain`); and a method that computes in memory and touches no database (`UserVerificationDomain.verificationCreateVerification`). A seed injects no feature repository.
-- A seed may inject any feature util or cache and read any contract (`ApiKeyCredentialUtil`, `ApiKeyCache`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`).
+- A seed injects a feature domain for one use only: a non-database integration, the SES templates (`NotificationTemplate*Domain`). A seed injects no feature repository.
+- A seed may inject any module's util, pure by `layering.md`, and any cache, and read any contract (`ApiKeyCredentialUtil`, `ApiKeyCache`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
 - A seed injects no queue class and stages no request side effect.
 - `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature domain module only for an injection allowed above; it imports no feature repository module.
 - What binds a seed: `naming.md`, `code-style.md`, `null-safety.md`, `concurrency.md`, and this file.
