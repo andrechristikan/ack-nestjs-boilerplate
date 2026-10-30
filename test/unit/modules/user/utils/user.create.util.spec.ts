@@ -255,158 +255,6 @@ describe('UserCreateUtil', () => {
         });
     });
 
-    describe('buildActivities', () => {
-        it('builds a sign-up personal create activity set with no acting admin', () => {
-            const input = personalInput;
-
-            const result = util['buildActivities'](
-                UserCreateContract.signUp,
-                input,
-                user
-            );
-
-            expect(result).toEqual([
-                {
-                    action: EnumActivityLogAction.userSignedUp,
-                    userId: user.id,
-                    workspaceId: null,
-                    createdBy: user.id,
-                    metadata: {},
-                },
-                {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
-                    userId: user.id,
-                    workspaceId: null,
-                    createdBy: user.id,
-                    metadata: {},
-                },
-                {
-                    action: EnumActivityLogAction.workspaceCreated,
-                    userId: user.id,
-                    workspaceId: personalContext.workspaceId,
-                    createdBy: user.id,
-                    metadata: {},
-                },
-            ]);
-        });
-
-        it('builds an admin personal create activity set naming the acting admin', () => {
-            const input = { ...personalInput, createdBy: 'admin-harbor' };
-
-            const result = util['buildActivities'](
-                UserCreateContract.admin,
-                input,
-                user
-            );
-
-            expect(result).toEqual([
-                {
-                    action: UserCreateContract.admin.createdAction,
-                    userId: user.id,
-                    workspaceId: null,
-                    createdBy: 'admin-harbor',
-                    metadata: {
-                        actorUserId: 'admin-harbor',
-                        timestamp: user.createdAt,
-                    },
-                },
-                {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
-                    userId: user.id,
-                    workspaceId: null,
-                    createdBy: 'admin-harbor',
-                    metadata: {},
-                },
-                {
-                    action: EnumActivityLogAction.workspaceCreatedByAdmin,
-                    userId: user.id,
-                    workspaceId: personalContext.workspaceId,
-                    createdBy: 'admin-harbor',
-                    metadata: { actorUserId: 'admin-harbor' },
-                },
-            ]);
-        });
-
-        it('builds an invite create activity set, skipping the verification email request and adding the inviter row', () => {
-            const inviteContext: IUserSignUpWorkspaceInvite = {
-                type: EnumUserSignUpWorkspaceContextType.invite,
-                workspaceId: 'workspace-harbor',
-                workspaceInviteId: 'invite-harbor',
-                invitedByUserId: 'inviter-harbor',
-                workspaceMemberRole: EnumWorkspaceMemberRole.member,
-                projectId: null,
-                projectMemberRole: null,
-            };
-            const input = { ...personalInput, workspaceContext: inviteContext };
-
-            const result = util['buildActivities'](
-                UserCreateContract.social,
-                input,
-                user
-            );
-
-            expect(result).toEqual([
-                {
-                    action: EnumActivityLogAction.userCreated,
-                    userId: user.id,
-                    workspaceId: null,
-                    createdBy: user.id,
-                    metadata: {},
-                },
-                {
-                    action: EnumActivityLogAction.workspaceInviteAccepted,
-                    userId: user.id,
-                    workspaceId: inviteContext.workspaceId,
-                    createdBy: user.id,
-                    metadata: { targetUserId: 'inviter-harbor' },
-                },
-                {
-                    action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
-                    userId: 'inviter-harbor',
-                    workspaceId: inviteContext.workspaceId,
-                    createdBy: user.id,
-                    metadata: { actorUserId: user.id },
-                },
-            ]);
-        });
-
-        it('builds an invite create activity set with no inviter row when the inviter is the new user', () => {
-            const inviteContext: IUserSignUpWorkspaceInvite = {
-                type: EnumUserSignUpWorkspaceContextType.invite,
-                workspaceId: 'workspace-harbor',
-                workspaceInviteId: 'invite-harbor',
-                invitedByUserId: user.id,
-                workspaceMemberRole: EnumWorkspaceMemberRole.admin,
-                projectId: 'project-harbor',
-                projectMemberRole: EnumProjectMemberRole.admin,
-            };
-            const input = { ...personalInput, workspaceContext: inviteContext };
-
-            const result = util['buildActivities'](
-                UserCreateContract.social,
-                input,
-                user
-            );
-
-            expect(result).toEqual([
-                {
-                    action: EnumActivityLogAction.userCreated,
-                    userId: user.id,
-                    workspaceId: null,
-                    createdBy: user.id,
-                    metadata: {},
-                },
-                {
-                    action: EnumActivityLogAction.workspaceInviteAccepted,
-                    userId: user.id,
-                    workspaceId: inviteContext.workspaceId,
-                    createdBy: user.id,
-                    metadata: { targetUserId: user.id },
-                },
-            ]);
-        });
-    });
-
     describe('buildStages', () => {
         it('builds the stage inputs of every input, omitting a null workspace id', () => {
             const result = util.buildStages(
@@ -457,7 +305,7 @@ describe('UserCreateUtil', () => {
                 action: UserCreateContract.admin.createdAction,
                 createdBy: 'admin-harbor',
             });
-            expect(result).toHaveLength(4);
+            expect(result).toHaveLength(3);
         });
     });
 
@@ -479,7 +327,7 @@ describe('UserCreateUtil', () => {
                 action: EnumActivityLogAction.adminUserImport,
                 metadata: { userCount: 2 },
             });
-            expect(result).toHaveLength(7);
+            expect(result).toHaveLength(5);
         });
     });
 
@@ -611,6 +459,151 @@ describe('UserCreateUtil', () => {
             const result = util.mapCreateCollision(error);
 
             expect(result).toBe(error);
+        });
+    });
+
+    describe('buildActivities', () => {
+        it('builds a sign-up personal create activity set with no acting admin', () => {
+            const input = personalInput;
+
+            const result = util['buildActivities'](
+                UserCreateContract.signUp,
+                input,
+                user
+            );
+
+            expect(result).toEqual([
+                {
+                    action: EnumActivityLogAction.userSignedUp,
+                    userId: user.id,
+                    workspaceId: null,
+                    createdBy: user.id,
+                    metadata: {},
+                },
+                {
+                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    userId: user.id,
+                    workspaceId: null,
+                    createdBy: user.id,
+                    metadata: {},
+                },
+                {
+                    action: EnumActivityLogAction.workspaceCreated,
+                    userId: user.id,
+                    workspaceId: personalContext.workspaceId,
+                    createdBy: user.id,
+                    metadata: {},
+                },
+            ]);
+        });
+
+        it('builds an admin personal create activity set naming the acting admin, with no verification email request', () => {
+            const input = { ...personalInput, createdBy: 'admin-harbor' };
+
+            const result = util['buildActivities'](
+                UserCreateContract.admin,
+                input,
+                user
+            );
+
+            expect(result).toEqual([
+                {
+                    action: UserCreateContract.admin.createdAction,
+                    userId: user.id,
+                    workspaceId: null,
+                    createdBy: 'admin-harbor',
+                    metadata: {
+                        actorUserId: 'admin-harbor',
+                        timestamp: user.createdAt,
+                    },
+                },
+                {
+                    action: EnumActivityLogAction.workspaceCreatedByAdmin,
+                    userId: user.id,
+                    workspaceId: personalContext.workspaceId,
+                    createdBy: 'admin-harbor',
+                    metadata: { actorUserId: 'admin-harbor' },
+                },
+            ]);
+        });
+
+        it('builds an invite create activity set, skipping the verification email request and adding the inviter row', () => {
+            const inviteContext: IUserSignUpWorkspaceInvite = {
+                type: EnumUserSignUpWorkspaceContextType.invite,
+                workspaceId: 'workspace-harbor',
+                workspaceInviteId: 'invite-harbor',
+                invitedByUserId: 'inviter-harbor',
+                workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                projectId: null,
+                projectMemberRole: null,
+            };
+            const input = { ...personalInput, workspaceContext: inviteContext };
+
+            const result = util['buildActivities'](
+                UserCreateContract.social,
+                input,
+                user
+            );
+
+            expect(result).toEqual([
+                {
+                    action: EnumActivityLogAction.userCreated,
+                    userId: user.id,
+                    workspaceId: null,
+                    createdBy: user.id,
+                    metadata: {},
+                },
+                {
+                    action: EnumActivityLogAction.workspaceInviteAccepted,
+                    userId: user.id,
+                    workspaceId: inviteContext.workspaceId,
+                    createdBy: user.id,
+                    metadata: { targetUserId: 'inviter-harbor' },
+                },
+                {
+                    action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
+                    userId: 'inviter-harbor',
+                    workspaceId: inviteContext.workspaceId,
+                    createdBy: user.id,
+                    metadata: { actorUserId: user.id },
+                },
+            ]);
+        });
+
+        it('builds an invite create activity set with no inviter row when the inviter is the new user', () => {
+            const inviteContext: IUserSignUpWorkspaceInvite = {
+                type: EnumUserSignUpWorkspaceContextType.invite,
+                workspaceId: 'workspace-harbor',
+                workspaceInviteId: 'invite-harbor',
+                invitedByUserId: user.id,
+                workspaceMemberRole: EnumWorkspaceMemberRole.admin,
+                projectId: 'project-harbor',
+                projectMemberRole: EnumProjectMemberRole.admin,
+            };
+            const input = { ...personalInput, workspaceContext: inviteContext };
+
+            const result = util['buildActivities'](
+                UserCreateContract.social,
+                input,
+                user
+            );
+
+            expect(result).toEqual([
+                {
+                    action: EnumActivityLogAction.userCreated,
+                    userId: user.id,
+                    workspaceId: null,
+                    createdBy: user.id,
+                    metadata: {},
+                },
+                {
+                    action: EnumActivityLogAction.workspaceInviteAccepted,
+                    userId: user.id,
+                    workspaceId: inviteContext.workspaceId,
+                    createdBy: user.id,
+                    metadata: { targetUserId: user.id },
+                },
+            ]);
         });
     });
 });

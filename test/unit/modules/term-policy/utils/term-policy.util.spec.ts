@@ -22,7 +22,7 @@ import type {
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
 describe('TermPolicyUtil', () => {
-    const configGet = vi.fn<(key: string) => string | undefined>();
+    const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
@@ -42,6 +42,9 @@ describe('TermPolicyUtil', () => {
             }
             if (key === 'termPolicy.contentPublicPath') {
                 return 'public/term-policies/{type}/{version}';
+            }
+            if (key === 'termPolicy.content.maxSizeInBytes') {
+                return 4096;
             }
             return undefined;
         });
@@ -94,6 +97,16 @@ describe('TermPolicyUtil', () => {
             helperArrayService.unique.mockReturnValue([EnumMessageLanguage.en]);
 
             expect(util.validateUniqueLanguages(contents)).toBe(false);
+        });
+    });
+
+    describe('isContentSizeAllowed', () => {
+        it('returns true at the configured maximum', () => {
+            expect(util.isContentSizeAllowed(4096)).toBe(true);
+        });
+
+        it('returns false above the configured maximum', () => {
+            expect(util.isContentSizeAllowed(4097)).toBe(false);
         });
     });
 

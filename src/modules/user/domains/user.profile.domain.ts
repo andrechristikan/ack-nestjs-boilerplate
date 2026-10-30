@@ -30,25 +30,18 @@ import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserProfileDomain {
     private readonly logger = new Logger(UserProfileDomain.name);
-    private readonly photoMaxSizeInBytes: number;
 
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
-        private readonly userQueue: UserQueue,
-        private readonly configService: ConfigService
-    ) {
-        this.photoMaxSizeInBytes = this.configService.get<number>(
-            'user.photo.maxSizeInBytes'
-        )!;
-    }
+        private readonly userQueue: UserQueue
+    ) {}
 
     private async deletePreviousPhoto(
         userId: string,
@@ -132,7 +125,8 @@ export class UserProfileDomain {
         userId: string,
         { extension, size }: IUserGeneratePhotoProfile
     ): Promise<IAwsS3Presign> {
-        if (size > this.photoMaxSizeInBytes) {
+        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(size);
+        if (!isSizeAllowed) {
             throw new UserPhotoSizeExceededException();
         }
 
@@ -166,6 +160,11 @@ export class UserProfileDomain {
         userId: string,
         { key, size }: IUserUpdatePhotoProfile
     ): Promise<void> {
+        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(size);
+        if (!isSizeAllowed) {
+            throw new UserPhotoSizeExceededException();
+        }
+
         const isS3Initialized = this.awsS3Service.isInitialized();
         if (!isS3Initialized) {
             throw new AwsS3NotConfiguredException();
@@ -206,6 +205,11 @@ export class UserProfileDomain {
     }
 
     async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
+        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(file.size);
+        if (!isSizeAllowed) {
+            throw new UserPhotoSizeExceededException();
+        }
+
         try {
             const extension: EnumFileExtensionImage =
                 this.fileService.extractExtensionFromFilename(

@@ -41,6 +41,7 @@ export interface IConfigAuth {
     };
     xApiKey: {
         keyPattern: string;
+        cacheTtlInMs: number;
     };
     twoFactor: {
         strategy: OTPStrategy;
@@ -125,6 +126,7 @@ export default registerAs('auth', (): IConfigAuth => {
         },
         xApiKey: {
             keyPattern: 'ApiKey:{key}',
+            cacheTtlInMs: ms('5m'),
         },
         twoFactor: {
             strategy: 'totp',

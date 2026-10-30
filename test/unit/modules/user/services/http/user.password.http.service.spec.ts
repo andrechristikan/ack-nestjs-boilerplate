@@ -56,7 +56,6 @@ import type {
     IUser,
     IUserForgotPassword,
     IUserForgotPasswordCreate,
-    IUserTwoFactorEnabled,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
@@ -224,10 +223,7 @@ describe('UserPasswordHttpService', () => {
         notificationUtil.mapRecipient.mockReturnValue(recipient);
         userTwoFactorDomain.verify.mockResolvedValue(twoFactorVerified);
         userUtil.hasPassword.mockReturnValue(true);
-        userUtil.isTwoFactorEnabled.mockImplementation(
-            (candidate): candidate is IUserTwoFactorEnabled =>
-                candidate.twoFactor?.enabled === true
-        );
+        userUtil.isTwoFactorEnabled.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -582,6 +578,7 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('verifies two-factor, records the verification on the transaction, and stages the verify row when two-factor is enabled', async () => {
+            userUtil.isTwoFactorEnabled.mockReturnValue(true);
             await service.changePassword(twoFactorUser, {
                 ...dto,
                 code: '123456',
@@ -614,6 +611,7 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('writes nothing when the two-factor check rejects', async () => {
+            userUtil.isTwoFactorEnabled.mockReturnValue(true);
             const failure = new Error('invalid');
             userTwoFactorDomain.verify.mockRejectedValue(failure);
 
@@ -1038,6 +1036,7 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('verifies two-factor of the reset user, records it on the transaction, and stages the verify row when two-factor is enabled', async () => {
+            userUtil.isTwoFactorEnabled.mockReturnValue(true);
             userPasswordDomain.getOneActiveReset.mockResolvedValue(
                 resetTwoFactorRow
             );

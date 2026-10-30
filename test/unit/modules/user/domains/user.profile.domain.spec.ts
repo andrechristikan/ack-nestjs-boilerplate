@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -28,8 +27,6 @@ import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
-import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
@@ -44,10 +41,6 @@ describe('UserProfileDomain', () => {
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
-    const configGet = vi.fn<(key: string) => number>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const photoMaxSizeInBytes = 2048;
 
     let domain: UserProfileDomain;
@@ -148,9 +141,11 @@ describe('UserProfileDomain', () => {
         userUtil.isPhotoProfileKeyOwned.mockImplementation((userId, key) =>
             key.startsWith(`photo-profile/${userId}/`)
         );
+        userUtil.isPhotoSizeAllowed.mockImplementation(
+            size => size <= photoMaxSizeInBytes
+        );
         userRepository.findOneById.mockResolvedValue(profile);
         userQueue.deletePhoto.mockResolvedValue();
-        configGet.mockReturnValue(photoMaxSizeInBytes);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -160,7 +155,6 @@ describe('UserProfileDomain', () => {
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
                 { provide: UserQueue, useValue: userQueue },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         domain = module.get(UserProfileDomain);
@@ -298,12 +292,13 @@ describe('UserProfileDomain', () => {
                 size: photoMaxSizeInBytes + 1,
             });
 
-            await expect(call).rejects.toBeInstanceOf(
-                UserPhotoSizeExceededException
-            );
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.photoSizeExceeded
+                    ],
                 messagePath: 'user.error.photoSizeExceeded',
             });
             expect(awsS3Service.presignPutItem).not.toHaveBeenCalled();
@@ -410,9 +405,6 @@ describe('UserProfileDomain', () => {
                     size: aws.size,
                 });
 
-                await expect(call).rejects.toBeInstanceOf(
-                    UserPhotoKeyInvalidException
-                );
                 await expect(call).rejects.toMatchObject({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.photoKeyInvalid,
@@ -478,6 +470,29 @@ describe('UserProfileDomain', () => {
                 size: aws.size,
             });
 
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPhotoSizeExceededException and writes nothing when size exceeds the configured max', async () => {
+            awsS3Service.isInitialized.mockReturnValue(true);
+
+            const call = domain.updatePhotoProfile(profile.id, {
+                key: aws.key,
+                size: photoMaxSizeInBytes + 1,
+            });
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.photoSizeExceeded
+                    ],
+                messagePath: 'user.error.photoSizeExceeded',
+                httpStatus: 400,
+            });
+            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+            expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
             expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
 
@@ -764,6 +779,29 @@ describe('UserProfileDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
+        });
+
+        it('throws UserPhotoSizeExceededException and uploads nothing when file.size exceeds the configured max', async () => {
+            const oversizedFile = {
+                ...file,
+                size: photoMaxSizeInBytes + 1,
+            } as IFile;
+
+            const call = domain.uploadPhotoProfile(profile.id, oversizedFile);
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.photoSizeExceeded
+                    ],
+                messagePath: 'user.error.photoSizeExceeded',
+                httpStatus: 400,
+            });
+            expect(awsS3Service.putItem).not.toHaveBeenCalled();
+            expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
     });
 

@@ -41,6 +41,7 @@ import { UserCreateContract } from '@modules/user/contracts/user.create.contract
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
@@ -76,6 +77,7 @@ export class UserAuthHttpService {
     constructor(
         private readonly userAuthDomain: UserAuthDomain,
         private readonly userDomain: UserDomain,
+        private readonly userPasswordDomain: UserPasswordDomain,
         private readonly userTwoFactorDomain: UserTwoFactorDomain,
         private readonly passwordHistoryDomain: PasswordHistoryDomain,
         private readonly notificationDomain: NotificationDomain,
@@ -770,7 +772,7 @@ export class UserAuthHttpService {
             this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
-        this.userAuthDomain.assertAttemptCounted(attempt);
+        this.userPasswordDomain.assertAttemptCounted(attempt.isAttemptCounted);
 
         const isMatch = await this.userAuthDomain.verifyCredential(
             attempt,

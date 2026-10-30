@@ -25,6 +25,7 @@ export class UserUtil {
     private readonly profanity: Profanity;
 
     private readonly uploadPhotoProfilePath: string;
+    private readonly photoMaxSizeInBytes: number;
 
     constructor(
         private readonly configService: ConfigService,
@@ -38,6 +39,9 @@ export class UserUtil {
         )!;
         this.uploadPhotoProfilePath = this.configService.get<string>(
             'user.uploadPhotoProfilePath'
+        )!;
+        this.photoMaxSizeInBytes = this.configService.get<number>(
+            'user.photo.maxSizeInBytes'
         )!;
         this.profanity = new Profanity({
             languages: availableLanguages,
@@ -61,6 +65,11 @@ export class UserUtil {
         const photoPath = this.buildPhotoProfilePath(userId);
 
         return key.startsWith(`${photoPath}/`);
+    }
+
+    /** True when the size is within `user.photo.maxSizeInBytes`. */
+    isPhotoSizeAllowed(size: number): boolean {
+        return size <= this.photoMaxSizeInBytes;
     }
 
     async checkBadWord(str: string): Promise<boolean> {

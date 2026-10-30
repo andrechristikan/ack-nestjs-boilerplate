@@ -86,6 +86,7 @@ import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interface
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
@@ -124,6 +125,8 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
 describe('UserAuthHttpService', () => {
     const userAuthDomain: MockProxy<UserAuthDomain> = mock<UserAuthDomain>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const userPasswordDomain: MockProxy<UserPasswordDomain> =
+        mock<UserPasswordDomain>();
     const userTwoFactorDomain: MockProxy<UserTwoFactorDomain> =
         mock<UserTwoFactorDomain>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
@@ -493,6 +496,10 @@ describe('UserAuthHttpService', () => {
                 UserAuthHttpService,
                 { provide: UserAuthDomain, useValue: userAuthDomain },
                 { provide: UserDomain, useValue: userDomain },
+                {
+                    provide: UserPasswordDomain,
+                    useValue: userPasswordDomain,
+                },
                 {
                     provide: UserTwoFactorDomain,
                     useValue: userTwoFactorDomain,
@@ -958,9 +965,9 @@ describe('UserAuthHttpService', () => {
             expect(
                 userAuthDomain.incrementCredentialAttempt
             ).toHaveBeenCalledWith(dto.email);
-            expect(userAuthDomain.assertAttemptCounted).toHaveBeenCalledWith(
-                counted
-            );
+            expect(
+                userPasswordDomain.assertAttemptCounted
+            ).toHaveBeenCalledWith(counted.isAttemptCounted);
             expect(userAuthDomain.verifyCredential).toHaveBeenCalledWith(
                 counted,
                 dto.password
@@ -1083,7 +1090,7 @@ describe('UserAuthHttpService', () => {
             userDomain.deactivateForMaxPasswordAttemptInTx.mockResolvedValue();
             sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedRef);
             const failure = new Error('attempt max');
-            userAuthDomain.assertAttemptCounted.mockImplementation(() => {
+            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
                 throw failure;
             });
             const callOrder: string[] = [];

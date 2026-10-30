@@ -13,3 +13,27 @@ export const DeviceFingerprintRegex = /^[A-Za-z0-9._:-]{8,128}$/;
 export const DeviceOwnershipNotificationTokenSelect = {
     notificationToken: true,
 } satisfies Prisma.DeviceOwnershipSelect;
+
+/**
+ * Column a revocation check of a device ownership returns.
+ * @public
+ */
+export const DeviceOwnershipRevokedSelect = {
+    isRevoked: true,
+} satisfies Prisma.DeviceOwnershipSelect;
+
+/**
+ * Column a device lookup of a device ownership returns.
+ * @public
+ */
+export const DeviceOwnershipDeviceIdSelect = {
+    deviceId: true,
+} satisfies Prisma.DeviceOwnershipSelect;
+
+/**
+ * Column the current-session marker of a device ownership list returns.
+ * @public
+ */
+export const DeviceOwnershipSessionIdSelect = {
+    id: true,
+} satisfies Prisma.SessionSelect;

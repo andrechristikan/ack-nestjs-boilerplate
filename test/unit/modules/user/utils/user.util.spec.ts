@@ -19,7 +19,9 @@ import { Duration } from 'luxon';
 
 describe('UserUtil', () => {
     const configGet =
-        vi.fn<(key: string) => RegExp | string[] | string | undefined>();
+        vi.fn<
+            (key: string) => RegExp | string[] | string | number | undefined
+        >();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
@@ -29,10 +31,11 @@ describe('UserUtil', () => {
 
     let util: UserUtil;
 
-    const configValues: Record<string, RegExp | string[] | string> = {
+    const configValues: Record<string, RegExp | string[] | string | number> = {
         'user.usernameRegex': /^[a-zA-Z0-9-_]+$/,
         'message.availableLanguage': ['en'],
         'user.uploadPhotoProfilePath': 'users/{userId}/profile',
+        'user.photo.maxSizeInBytes': 2048,
     };
 
     const user: User = {
@@ -246,6 +249,16 @@ describe('UserUtil', () => {
 
         it('keeps a replacement pattern in the user id literal', () => {
             expect(util.buildPhotoProfilePath('$&')).toBe('users/$&/profile');
+        });
+    });
+
+    describe('isPhotoSizeAllowed', () => {
+        it('returns true at the configured maximum', () => {
+            expect(util.isPhotoSizeAllowed(2048)).toBe(true);
+        });
+
+        it('returns false above the configured maximum', () => {
+            expect(util.isPhotoSizeAllowed(2049)).toBe(false);
         });
     });
 

@@ -12,7 +12,6 @@ import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserPasswordNotSetException } from '@modules/user/exceptions/user.password-not-set.exception';
@@ -59,12 +58,6 @@ export class UserAuthDomain {
             await this.userPasswordDomain.incrementPasswordAttempt(user.id);
 
         return { user, hashedPassword: user.password, isAttemptCounted };
-    }
-
-    assertAttemptCounted({ isAttemptCounted }: IUserCredentialAttempt): void {
-        if (!isAttemptCounted) {
-            throw new UserPasswordAttemptMaxException();
-        }
     }
 
     /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch, so the caller records the failure before asserting it. */

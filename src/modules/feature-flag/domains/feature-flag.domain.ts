@@ -145,7 +145,7 @@ export class FeatureFlagDomain {
         }
 
         const updated = await this.featureFlagRepository.updateStatus(id, data);
-        await this.featureFlagCache.setFeatureFlag(updated.key, updated);
+        await this.featureFlagCache.deleteFeatureFlag(updated.key);
 
         return updated;
     }
@@ -172,7 +172,7 @@ export class FeatureFlagDomain {
             id,
             data
         );
-        await this.featureFlagCache.setFeatureFlag(updated.key, updated);
+        await this.featureFlagCache.deleteFeatureFlag(updated.key);
 
         return updated;
     }

@@ -1,38 +1,28 @@
 import { UnrecoverableError } from 'bullmq';
-import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { Mock } from 'vitest';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
-import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
-import { WorkspaceProcessorService } from '@modules/workspace/services/processor/workspace.processor.service';
-import { WorkspaceProcessor } from '@modules/workspace/processors/workspace.processor';
+import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { QueueException } from '@queues/exceptions/queue.exception';
-import { buildProcessorJob } from '@test/unit/helpers/test.unit.queue.helper';
+import {
+    buildProcessorJob,
+    buildQueueProcessor,
+} from '@test/unit/helpers/test.unit.queue.helper';
 
 describe('QueueProcessorBase', () => {
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
-    const workspaceProcessorService: MockProxy<WorkspaceProcessorService> =
-        mock<WorkspaceProcessorService>();
-    let processor: WorkspaceProcessor;
+    let handle: Mock;
+    const jobName = 'testJob';
+    let processor: QueueProcessorBase;
 
-    beforeEach(async () => {
+    beforeEach(() => {
         vi.resetAllMocks();
 
-        const module = await Test.createTestingModule({
-            providers: [
-                WorkspaceProcessor,
-                {
-                    provide: WorkspaceProcessorService,
-                    useValue: workspaceProcessorService,
-                },
-                { provide: SentryService, useValue: sentryService },
-            ],
-        }).compile();
-
-        processor = module.get(WorkspaceProcessor);
+        ({ processor, handle } = buildQueueProcessor(sentryService));
     });
 
     describe('process', () => {
@@ -41,20 +31,16 @@ describe('QueueProcessorBase', () => {
                 opts: { attempts: 3 },
                 attemptsMade: 0,
             });
-            workspaceProcessorService.processExpireStaleInvites.mockResolvedValue(
-                { message: 'done' }
-            );
+            handle.mockResolvedValue({ message: 'done' });
 
             const result = await processor.process(job);
 
             expect(result).toEqual({ message: 'done' });
-            expect(
-                workspaceProcessorService.processExpireStaleInvites
-            ).toHaveBeenCalledWith();
+            expect(handle).toHaveBeenCalledWith(job);
             expect(job.log).toHaveBeenNthCalledWith(1, 'Job started');
             expect(job.log).toHaveBeenNthCalledWith(
                 2,
-                'Job input id=job-1 name=expireStaleInvites attemptsMade=0 maxAttempts=3'
+                'Job input id=job-1 name=testJob attemptsMade=0 maxAttempts=3'
             );
             expect(job.log).toHaveBeenNthCalledWith(
                 3,
@@ -64,24 +50,20 @@ describe('QueueProcessorBase', () => {
 
         it('defaults maxAttempts to 1 when the job carries no attempts option', async () => {
             const job = buildProcessorJob({ opts: {}, attemptsMade: 0 });
-            workspaceProcessorService.processExpireStaleInvites.mockResolvedValue(
-                { message: 'done' }
-            );
+            handle.mockResolvedValue({ message: 'done' });
 
             await processor.process(job);
 
             expect(job.log).toHaveBeenNthCalledWith(
                 2,
-                'Job input id=job-1 name=expireStaleInvites attemptsMade=0 maxAttempts=1'
+                'Job input id=job-1 name=testJob attemptsMade=0 maxAttempts=1'
             );
         });
 
         it('logs the failure line and wraps an Error raised by the handler in AppUnknownException', async () => {
             const job = buildProcessorJob({});
             const error = new Error('handle failed');
-            workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
-                error
-            );
+            handle.mockRejectedValue(error);
 
             await expect(processor.process(job)).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -97,9 +79,7 @@ describe('QueueProcessorBase', () => {
 
         it('logs the failure line with String(error) and wraps a non-Error raised by the handler', async () => {
             const job = buildProcessorJob({});
-            workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
-                'raw failure reason'
-            );
+            handle.mockRejectedValue('raw failure reason');
 
             await expect(processor.process(job)).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -115,9 +95,7 @@ describe('QueueProcessorBase', () => {
         it('rethrows a QueueException raised by the handler unchanged', async () => {
             const job = buildProcessorJob({});
             const error = new QueueException('send failed', true);
-            workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
-                error
-            );
+            handle.mockRejectedValue(error);
 
             await expect(processor.process(job)).rejects.toBe(error);
         });
@@ -125,9 +103,7 @@ describe('QueueProcessorBase', () => {
         it('rethrows an AppBaseException raised by the handler unchanged', async () => {
             const job = buildProcessorJob({});
             const error = new DatabaseUnavailableException();
-            workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
-                error
-            );
+            handle.mockRejectedValue(error);
 
             await expect(processor.process(job)).rejects.toBe(error);
         });
@@ -135,9 +111,7 @@ describe('QueueProcessorBase', () => {
         it('rethrows an UnrecoverableError raised by the handler unchanged', async () => {
             const job = buildProcessorJob({});
             const error = new UnrecoverableError('hopeless');
-            workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
-                error
-            );
+            handle.mockRejectedValue(error);
 
             await expect(processor.process(job)).rejects.toBe(error);
         });
@@ -151,11 +125,11 @@ describe('QueueProcessorBase', () => {
             processor.onFailed(job, error);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(error, {
-                tags: { 'job.name': EnumWorkspaceProcess.expireStaleInvites },
+                tags: { 'job.name': jobName },
                 contexts: {
                     job: {
                         id: 'job-1',
-                        name: EnumWorkspaceProcess.expireStaleInvites,
+                        name: jobName,
                         attemptsMade: 0,
                         maxAttempts: 1,
                     },

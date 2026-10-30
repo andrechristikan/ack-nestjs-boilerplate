@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -71,10 +70,6 @@ describe('TermPolicyContentDomain', () => {
         publishedAt: timestamp,
     };
 
-    const configGet = vi.fn<(key: string) => number>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const contentMaxSizeInBytes = 4096;
 
     let domain: TermPolicyContentDomain;
@@ -82,9 +77,11 @@ describe('TermPolicyContentDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        configGet.mockReturnValue(contentMaxSizeInBytes);
         awsS3Service.isInitialized.mockReturnValue(true);
         termPolicyUtil.toContents.mockReturnValue([existingContent]);
+        termPolicyUtil.isContentSizeAllowed.mockImplementation(
+            size => size <= contentMaxSizeInBytes
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -95,7 +92,6 @@ describe('TermPolicyContentDomain', () => {
                 },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
@@ -233,6 +229,29 @@ describe('TermPolicyContentDomain', () => {
     });
 
     describe('updateContentByAdmin', () => {
+        it('throws TermPolicyContentSizeExceededException and writes nothing when size exceeds the configured max', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+
+            const promise = domain.updateContentByAdmin('term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: contentMaxSizeInBytes + 1,
+                key: 'term-policies/privacy/v1/fr.hbs',
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.contentSizeExceeded
+                    ],
+                messagePath: 'termPolicy.error.contentSizeExceeded',
+                httpStatus: HttpStatus.BAD_REQUEST,
+            });
+            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+            expect(termPolicyRepository.updateContent).not.toHaveBeenCalled();
+        });
+
         it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(null);
 
@@ -423,6 +442,29 @@ describe('TermPolicyContentDomain', () => {
     });
 
     describe('addContentByAdmin', () => {
+        it('throws TermPolicyContentSizeExceededException and writes nothing when size exceeds the configured max', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+
+            const promise = domain.addContentByAdmin('term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: contentMaxSizeInBytes + 1,
+                key: 'term-policies/privacy/v1/fr.hbs',
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.contentSizeExceeded
+                    ],
+                messagePath: 'termPolicy.error.contentSizeExceeded',
+                httpStatus: HttpStatus.BAD_REQUEST,
+            });
+            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+            expect(termPolicyRepository.addContent).not.toHaveBeenCalled();
+        });
+
         it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(null);
 

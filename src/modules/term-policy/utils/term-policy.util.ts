@@ -24,6 +24,7 @@ import type {
 export class TermPolicyUtil {
     private readonly uploadContentPath: string;
     private readonly contentPublicPath: string;
+    private readonly contentMaxSizeInBytes: number;
 
     constructor(
         private readonly configService: ConfigService,
@@ -36,12 +37,20 @@ export class TermPolicyUtil {
         this.contentPublicPath = this.configService.get<string>(
             'termPolicy.contentPublicPath'
         )!;
+        this.contentMaxSizeInBytes = this.configService.get<number>(
+            'termPolicy.content.maxSizeInBytes'
+        )!;
     }
 
     validateUniqueLanguages(contents: TermPolicyContentRequestDto[]): boolean {
         const languages = contents.map(content => content.language);
         const uniqueLanguages = this.helperArrayService.unique(languages);
         return uniqueLanguages.length === languages.length;
+    }
+
+    /** True when the size is within `termPolicy.content.maxSizeInBytes`. */
+    isContentSizeAllowed(size: number): boolean {
+        return size <= this.contentMaxSizeInBytes;
     }
 
     getPath(termPolicy: TermPolicy): string {

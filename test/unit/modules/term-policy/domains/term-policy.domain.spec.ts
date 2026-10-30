@@ -103,6 +103,7 @@ describe('TermPolicyDomain', () => {
         awsS3Service.isInitialized.mockReturnValue(true);
         termPolicyQueue.deleteContent.mockResolvedValue();
         termPolicyUtil.toContents.mockReturnValue([contentEn]);
+        termPolicyUtil.isContentSizeAllowed.mockReturnValue(true);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -327,6 +328,48 @@ describe('TermPolicyDomain', () => {
                     ],
                 messagePath: 'termPolicy.error.contentsLanguageMustBeUnique',
             });
+            expect(termPolicyRepository.create).not.toHaveBeenCalled();
+        });
+
+        it('throws TermPolicyContentSizeExceededException and writes nothing when a content size exceeds the configured max', async () => {
+            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
+                false
+            );
+            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            termPolicyUtil.isContentSizeAllowed.mockReturnValueOnce(true);
+            termPolicyUtil.isContentSizeAllowed.mockReturnValueOnce(false);
+
+            const promise = domain.createByAdmin('term-policy-1', {
+                type: EnumTermPolicyType.privacy,
+                version: 1,
+                contents: [
+                    {
+                        language: EnumMessageLanguage.en,
+                        size: 1024,
+                        key: 'a.hbs',
+                    },
+                    {
+                        language: EnumMessageLanguage.en,
+                        size: 999999,
+                        key: 'b.hbs',
+                    },
+                ],
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.contentSizeExceeded
+                    ],
+                messagePath: 'termPolicy.error.contentSizeExceeded',
+                httpStatus: 400,
+            });
+            expect(termPolicyUtil.isContentSizeAllowed).toHaveBeenCalledWith(
+                999999
+            );
+            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
             expect(termPolicyRepository.create).not.toHaveBeenCalled();
         });
 

@@ -1,5 +1,7 @@
 import type { Job } from 'bullmq';
-import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
+import type { Mock } from 'vitest';
+import type { SentryService } from '@common/sentry/services/sentry.service';
+import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 
 export function buildQueueJob<T, R, N extends string>(data: T): Job<T, R, N> {
     return {
@@ -11,10 +13,27 @@ export function buildQueueJob<T, R, N extends string>(data: T): Job<T, R, N> {
 export function buildProcessorJob(overrides: Partial<Job>): Job {
     return {
         id: 'job-1',
-        name: EnumWorkspaceProcess.expireStaleInvites,
+        name: 'testJob',
         attemptsMade: 0,
         opts: { attempts: 3 },
         log: vi.fn().mockResolvedValue(1),
         ...overrides,
     } as unknown as Job;
+}
+
+export interface IQueueProcessorDoubles {
+    processor: QueueProcessorBase;
+    handle: Mock;
+}
+
+export function buildQueueProcessor(
+    sentryService: SentryService
+): IQueueProcessorDoubles {
+    const handle = vi.fn();
+    const processor = Object.assign(
+        Reflect.construct(QueueProcessorBase, [sentryService]),
+        { handle }
+    );
+
+    return { processor, handle };
 }

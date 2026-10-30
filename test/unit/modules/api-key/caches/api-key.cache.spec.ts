@@ -12,7 +12,7 @@ import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 
 describe('ApiKeyCache', () => {
     const cacheManager: MockProxy<Cache> = mock<Cache>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
+    const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
@@ -43,8 +43,9 @@ describe('ApiKeyCache', () => {
             (iso: string) => new Date(iso)
         );
         configGet.mockImplementation((key: string) => {
-            const values: Record<string, string> = {
+            const values: Record<string, string | number> = {
                 'auth.xApiKey.keyPattern': 'ApiKey:{key}',
+                'auth.xApiKey.cacheTtlInMs': 4000,
             };
             return values[key];
         });
@@ -127,7 +128,7 @@ describe('ApiKeyCache', () => {
     });
 
     describe('setApiKey', () => {
-        it('writes the api key to the cache with ISO date strings', async () => {
+        it('writes the api key to the cache with ISO date strings and the configured ttl', async () => {
             await cache.setApiKey({
                 ...apiKey,
                 startAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -142,7 +143,8 @@ describe('ApiKeyCache', () => {
                     endAt: '2026-02-01T00:00:00.000Z',
                     createdAt: '2026-01-01T00:00:00.000Z',
                     updatedAt: '2026-01-02T00:00:00.000Z',
-                }
+                },
+                4000
             );
         });
 

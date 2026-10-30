@@ -20,24 +20,16 @@ import type {
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyStatus } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyContentDomain {
-    private readonly contentMaxSizeInBytes: number;
-
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
-        private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly configService: ConfigService
-    ) {
-        this.contentMaxSizeInBytes = this.configService.get<number>(
-            'termPolicy.content.maxSizeInBytes'
-        )!;
-    }
+        private readonly termPolicyUtil: TermPolicyUtil
+    ) {}
 
     private async findOneDraftById(termPolicyId: string): Promise<TermPolicy> {
         const termPolicy =
@@ -57,7 +49,8 @@ export class TermPolicyContentDomain {
         type,
         version,
     }: ITermPolicyContentPresign): Promise<IAwsS3Presign> {
-        if (size > this.contentMaxSizeInBytes) {
+        const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
+        if (!isSizeAllowed) {
             throw new TermPolicyContentSizeExceededException();
         }
 
@@ -104,6 +97,11 @@ export class TermPolicyContentDomain {
         termPolicyId: string,
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<TermPolicy> {
+        const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
+        if (!isSizeAllowed) {
+            throw new TermPolicyContentSizeExceededException();
+        }
+
         const termPolicy = await this.findOneDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
@@ -149,6 +147,11 @@ export class TermPolicyContentDomain {
         termPolicyId: string,
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<TermPolicy> {
+        const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
+        if (!isSizeAllowed) {
+            throw new TermPolicyContentSizeExceededException();
+        }
+
         const termPolicy = await this.findOneDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {

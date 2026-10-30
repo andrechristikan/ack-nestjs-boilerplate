@@ -15,6 +15,7 @@ import type {
 import { FileService } from '@common/file/services/file.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
+import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
@@ -120,6 +121,14 @@ export class TermPolicyDomain {
             this.termPolicyUtil.validateUniqueLanguages(contents);
         if (!isUniqueLanguages) {
             throw new TermPolicyLanguageDuplicateException();
+        }
+
+        for (const { size } of contents) {
+            const isSizeAllowed =
+                this.termPolicyUtil.isContentSizeAllowed(size);
+            if (!isSizeAllowed) {
+                throw new TermPolicyContentSizeExceededException();
+            }
         }
 
         const isS3Initialized = this.awsS3Service.isInitialized();

@@ -11,6 +11,7 @@ import type { IApiKeyCache } from '@modules/api-key/interfaces/api-key.interface
 export class ApiKeyCache {
     private readonly logger = new Logger(ApiKeyCache.name);
     private readonly apiKeyKeyPattern: string;
+    private readonly apiKeyTtlInMs: number;
 
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
@@ -19,6 +20,9 @@ export class ApiKeyCache {
     ) {
         this.apiKeyKeyPattern = this.configService.get<string>(
             'auth.xApiKey.keyPattern'
+        )!;
+        this.apiKeyTtlInMs = this.configService.get<number>(
+            'auth.xApiKey.cacheTtlInMs'
         )!;
     }
 
@@ -69,7 +73,7 @@ export class ApiKeyCache {
             updatedAt: apiKey.updatedAt.toISOString(),
         };
         try {
-            await this.cacheManager.set(cacheKey, cached);
+            await this.cacheManager.set(cacheKey, cached, this.apiKeyTtlInMs);
         } catch (error: unknown) {
             this.logger.error(error, 'API key cache write failed');
         }

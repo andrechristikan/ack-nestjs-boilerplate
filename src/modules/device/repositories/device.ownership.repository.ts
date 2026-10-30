@@ -10,7 +10,12 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { EnumDeviceNotificationProvider } from '@generated/prisma-client/client';
-import { DeviceOwnershipNotificationTokenSelect } from '@modules/device/constants/device.constant';
+import {
+    DeviceOwnershipDeviceIdSelect,
+    DeviceOwnershipNotificationTokenSelect,
+    DeviceOwnershipRevokedSelect,
+    DeviceOwnershipSessionIdSelect,
+} from '@modules/device/constants/device.constant';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
@@ -65,7 +70,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         const where = { deviceId_userId: { deviceId, userId } };
         const existing = await tx.deviceOwnership.findUnique({
             where,
-            select: { isRevoked: true },
+            select: DeviceOwnershipRevokedSelect,
         });
         const isNewOwnership = existing === null || existing.isRevoked;
 
@@ -184,6 +189,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         isRevoked: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const today = this.helperDateService.create();
+        const ownershipInclude = this.ownershipInclude(today);
 
         return this.paginationService.offset<
             IDeviceOwnership,
@@ -195,27 +201,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                 ...isRevoked,
                 userId,
             },
-            include: {
-                device: true,
-                user: {
-                    select: UserRefSelect,
-                },
-                revokedBy: {
-                    select: UserRefSelect,
-                },
-                _count: {
-                    select: {
-                        sessions: {
-                            where: {
-                                isRevoked: false,
-                                expiredAt: {
-                                    gt: today,
-                                },
-                            },
-                        },
-                    },
-                },
-            },
+            include: ownershipInclude,
         });
     }
 
@@ -228,6 +214,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
         const today = this.helperDateService.create();
+        const ownershipInclude = this.ownershipInclude(today);
 
         return this.paginationService.cursor<
             IDeviceOwnershipWithSession,
@@ -240,33 +227,13 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                 isRevoked: false,
             },
             include: {
-                device: true,
-                user: {
-                    select: UserRefSelect,
-                },
-                revokedBy: {
-                    select: UserRefSelect,
-                },
-                _count: {
-                    select: {
-                        sessions: {
-                            where: {
-                                isRevoked: false,
-                                expiredAt: {
-                                    gt: today,
-                                },
-                            },
-                        },
-                    },
-                },
+                ...ownershipInclude,
                 sessions: {
                     where: {
                         id: sessionId,
                     },
                     take: 1,
-                    select: {
-                        id: true,
-                    },
+                    select: DeviceOwnershipSessionIdSelect,
                 },
             },
         });
@@ -322,9 +289,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                 ...(platform !== null && { notificationProvider }),
                 ...(notificationToken !== null && { notificationToken }),
             },
-            select: {
-                deviceId: true,
-            },
+            select: DeviceOwnershipDeviceIdSelect,
         });
 
         return ownership.deviceId;

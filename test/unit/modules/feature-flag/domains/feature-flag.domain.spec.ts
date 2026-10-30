@@ -524,7 +524,7 @@ describe('FeatureFlagDomain', () => {
             expect(featureFlagRepository.updateStatus).not.toHaveBeenCalled();
         });
 
-        it('updates the status and writes the committed flag through the cache', async () => {
+        it('updates the status and deletes the cached flag after the commit', async () => {
             const stored = baseFlag;
             const updated = { ...baseFlag, isEnable: false };
             featureFlagRepository.findOneById.mockResolvedValue(stored);
@@ -540,11 +540,10 @@ describe('FeatureFlagDomain', () => {
                 '507f1f77bcf86cd799439011',
                 statusUpdate
             );
-            expect(featureFlagCache.setFeatureFlag).toHaveBeenCalledWith(
-                updated.key,
-                updated
+            expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
+                updated.key
             );
-            expect(featureFlagCache.deleteFeatureFlag).not.toHaveBeenCalled();
+            expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
         });
     });
 
@@ -620,7 +619,7 @@ describe('FeatureFlagDomain', () => {
             expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
         });
 
-        it('updates the metadata and writes the committed flag through the cache', async () => {
+        it('updates the metadata and deletes the cached flag after the commit', async () => {
             const stored = { ...baseFlag, metadata: { enabled: false } };
             const updated = { ...baseFlag, metadata: { enabled: true } };
             featureFlagRepository.findOneById.mockResolvedValue(stored);
@@ -637,11 +636,10 @@ describe('FeatureFlagDomain', () => {
                 '507f1f77bcf86cd799439011',
                 metadataUpdate
             );
-            expect(featureFlagCache.setFeatureFlag).toHaveBeenCalledWith(
-                updated.key,
-                updated
+            expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
+                updated.key
             );
-            expect(featureFlagCache.deleteFeatureFlag).not.toHaveBeenCalled();
+            expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
         });
     });
 

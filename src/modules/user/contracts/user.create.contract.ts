@@ -25,7 +25,7 @@ export const UserCreateContract: IUserCreateContracts = {
     },
     admin: {
         createdAction: EnumActivityLogAction.userCreatedByAdmin,
-        logsVerificationEmailRequest: true,
+        logsVerificationEmailRequest: false,
         passwordHistoryType: EnumPasswordHistoryType.admin,
         personalWorkspaceAction: EnumActivityLogAction.workspaceCreatedByAdmin,
         logsActingAdmin: true,

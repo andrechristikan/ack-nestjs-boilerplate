@@ -9,8 +9,8 @@ export interface IConfigAnalytic {
         riskScoreTtlInMs: number;
         keyPatterns: {
             dashboard: string;
-            anomaly: string;
-            fraud: string;
+            anomalySummary: string;
+            fraudSummary: string;
             riskScore: string;
         };
         windowTokenPattern: string;
@@ -106,8 +106,8 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         riskScoreTtlInMs: ms('5m'),
         keyPatterns: {
             dashboard: 'Analytic:Dashboard:{metric}:{start}:{end}',
-            anomaly: 'Analytic:Anomaly:{signal}:{window}',
-            fraud: 'Analytic:Fraud:{signal}:{window}',
+            anomalySummary: 'Analytic:Anomaly:{signal}:{window}',
+            fraudSummary: 'Analytic:Fraud:{signal}:{window}',
             riskScore: 'Analytic:Fraud:Risk:{userId}',
         },
         windowTokenPattern: '{start}:{end}',

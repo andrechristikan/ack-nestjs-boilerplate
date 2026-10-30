@@ -38,7 +38,6 @@ import type { JwtModuleOptions } from '@nestjs/jwt';
         AuthPasswordUtil,
         AuthTwoFactorDomain,
         AuthTwoFactorUtil,
-        AuthCache,
     ],
     imports: [
         JwtModule.registerAsync({

@@ -12,8 +12,8 @@ import type { Cache } from 'cache-manager';
 export class AnalyticCache {
     private readonly logger = new Logger(AnalyticCache.name);
     private readonly dashboardKeyPattern: string;
-    private readonly anomalyKeyPattern: string;
-    private readonly fraudKeyPattern: string;
+    private readonly anomalySummaryKeyPattern: string;
+    private readonly fraudSummaryKeyPattern: string;
     private readonly riskScoreKeyPattern: string;
     private readonly dashboardTtlInMs: number;
     private readonly anomalySummaryTtlInMs: number;
@@ -28,11 +28,11 @@ export class AnalyticCache {
         this.dashboardKeyPattern = this.configService.get<string>(
             'analytic.cache.keyPatterns.dashboard'
         )!;
-        this.anomalyKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.anomaly'
+        this.anomalySummaryKeyPattern = this.configService.get<string>(
+            'analytic.cache.keyPatterns.anomalySummary'
         )!;
-        this.fraudKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.fraud'
+        this.fraudSummaryKeyPattern = this.configService.get<string>(
+            'analytic.cache.keyPatterns.fraudSummary'
         )!;
         this.riskScoreKeyPattern = this.configService.get<string>(
             'analytic.cache.keyPatterns.riskScore'
@@ -67,20 +67,26 @@ export class AnalyticCache {
         signal: EnumAnalyticAnomalySignal,
         window: string
     ): string {
-        return this.helperStringService.fillPattern(this.anomalyKeyPattern, {
-            signal,
-            window,
-        });
+        return this.helperStringService.fillPattern(
+            this.anomalySummaryKeyPattern,
+            {
+                signal,
+                window,
+            }
+        );
     }
 
     private buildFraudSummaryKey(
         signal: EnumAnalyticFraudSignal,
         window: string
     ): string {
-        return this.helperStringService.fillPattern(this.fraudKeyPattern, {
-            signal,
-            window,
-        });
+        return this.helperStringService.fillPattern(
+            this.fraudSummaryKeyPattern,
+            {
+                signal,
+                window,
+            }
+        );
     }
 
     private buildRiskScoreKey(userId: string): string {

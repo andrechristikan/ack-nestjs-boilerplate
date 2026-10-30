@@ -30,9 +30,10 @@ describe('AnalyticCache', () => {
             const values: Record<string, string | number> = {
                 'analytic.cache.keyPatterns.dashboard':
                     'Dashboard:{metric}:{start}:{end}',
-                'analytic.cache.keyPatterns.anomaly':
+                'analytic.cache.keyPatterns.anomalySummary':
                     'Anomaly:{signal}:{window}',
-                'analytic.cache.keyPatterns.fraud': 'Fraud:{signal}:{window}',
+                'analytic.cache.keyPatterns.fraudSummary':
+                    'Fraud:{signal}:{window}',
                 'analytic.cache.keyPatterns.riskScore': 'RiskScore:{userId}',
                 'analytic.cache.dashboardTtlInMs': 1000,
                 'analytic.cache.anomalySummaryTtlInMs': 2000,

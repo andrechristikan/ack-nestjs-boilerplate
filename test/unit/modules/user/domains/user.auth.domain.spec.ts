@@ -220,38 +220,6 @@ describe('UserAuthDomain', () => {
         });
     });
 
-    describe('assertAttemptCounted', () => {
-        it('passes when the attempt was counted', () => {
-            expect(() =>
-                domain.assertAttemptCounted({
-                    user: baseUser,
-                    hashedPassword: 'hashed-password',
-                    isAttemptCounted: true,
-                })
-            ).not.toThrow();
-        });
-
-        it('throws UserPasswordAttemptMaxException when the attempt budget is spent', () => {
-            expect(() =>
-                domain.assertAttemptCounted({
-                    user: baseUser,
-                    hashedPassword: 'hashed-password',
-                    isAttemptCounted: false,
-                })
-            ).toThrow(
-                expect.objectContaining({
-                    module: 'user',
-                    statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.passwordAttemptMax
-                        ],
-                    messagePath: 'user.error.passwordAttemptMax',
-                })
-            );
-        });
-    });
-
     describe('verifyCredential', () => {
         const counted = {
             user: baseUser,
