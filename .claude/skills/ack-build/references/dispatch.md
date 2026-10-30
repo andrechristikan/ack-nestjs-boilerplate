@@ -26,7 +26,7 @@ Before writing or judging, run `bash .claude/hooks/rules.sh <every file you touc
 Reply in English.
 ```
 
-Rules by path: `bash .claude/hooks/rules.sh <path>...` prints the rule files that bind those paths, the four unscoped rules included. Run it over the paths in a template's `Scope` and paste its output into the `Rules to read:` slot.
+Rules by path: `bash .claude/hooks/rules.sh <path>...` prints the rules binding those paths, the unscoped four included. A newline-joined list goes in as one argument (`"$P"`) or on stdin (`git diff HEAD --name-only | bash .claude/hooks/rules.sh`), zsh included. Run it over a template's `Scope` paths and paste its output into `Rules to read:`.
 
 ## Explorer
 
