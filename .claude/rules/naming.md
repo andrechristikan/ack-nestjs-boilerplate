@@ -2,14 +2,14 @@
 
 ## Files
 
-`<module>.<noun-or-action>[.<sub>].<role>.ts`. Every file under `src/` carries the `<module>.` prefix except `src/main.ts`, `src/migration.ts`, `src/instrument.ts`, `src/swagger.ts`, `src/configure.ts` (each aliased in `tsconfig.json` `paths`: `@main`, `@migration`, `@instrument`, `@swagger`, `@configure`) and generated code. A dot separates segments; a dash sits only inside one segment for a compound noun (`user.mobile-number.domain.ts`). At most four dot-separated name parts, three for `*.interface.ts`; a spec adds `.spec.ts` on top. Folders are kebab-case, plural when they hold a kind of file (`domains/`, `dtos/request/`).
+`<module>.<noun-or-action>[.<sub>].<role>.ts`. Every file under `src/` carries the `<module>.` prefix except `src/main.ts`, `src/migration.ts`, `src/instrument.ts`, `src/swagger.ts`, `src/configure.ts` (each aliased in `tsconfig.json` `paths`: `@main`, `@migration`, `@instrument`, `@swagger`, `@configure`) and generated code. A dot separates segments; a dash sits only inside one segment for a compound noun (`user.mobile-number.domain.ts`). At most four dot-separated name parts, three for `*.interface.ts`; a spec adds `.spec.ts` on top. Folders are kebab-case, plural when they hold a kind of file (`domains/`, `dtos/request/`). A feature module's services sit in role subfolders, `services/http/` and `services/processor/`, even when the module has one service; `src/common/` keeps `services/` flat.
 
 Role suffixes: `.domain .service .repository .controller .guard .strategy .decorator .interceptor .filter .middleware .pipe .processor .indicator .factory .validation .util .queue .cache .dto .module .enum .constant .interface .exception .contract`; tree-bound: `.config` (`src/configs/`), `.data` and `.seed` (`src/migration/`), `.base` (`src/migration/bases/`, `src/queues/bases/`), `.template.hbs` (`templates/`; a per-language template is `<module>.<type>.<lang>.hbs`).
 
 | File | Class |
 | --- | --- |
 | `<module>[.<concern>].domain.ts` under `domains/` | `<Module>[<Concern>]Domain` |
-| `<module>[.<concern>].http.service.ts` / `.processor.service.ts` | `<Module>[<Concern>]HttpService` / `ProcessorService` |
+| `services/http/<module>[.<concern>].http.service.ts` / `services/processor/<module>[.<concern>].processor.service.ts` | `<Module>[<Concern>]HttpService` / `ProcessorService` |
 | `<module>[.<concern>].repository.ts` + `<module>.[<concern>-]repository.interface.ts` | `<Module>[<Concern>]Repository` implements `I<Module>[<Concern>]Repository` |
 | `<module>[.<concern>].analytic.repository.ts` + `<module>.[<concern>-]analytic-repository.interface.ts` | `<Module>[<Concern>]AnalyticRepository` implements `I<Module>[<Concern>]AnalyticRepository` |
 | `<module>[.<concern>].cache.ts` under `caches/` | `<Module>[<Concern>]Cache` (no `Service`) |
@@ -24,6 +24,13 @@ Role suffixes: `.domain .service .repository .controller .guard .strategy .decor
 | `contracts/<module>.<concept>.contract.ts` | `<Module><Concept>Contract` + row `I<Module><Concept>Contract`, one per file |
 
 A DTO's `<concern>` is an action, a noun, or absent for the module's canonical shape; the direction segment is not optional, and file and exports agree on it. A list request DTO is `<module>.list.request.dto.ts`, or one `<module>.<scope>-list.request.dto.ts` per scope when several scopes list. At most two constants files: `<module>.constant.ts` (store keys, selects, everything the module owns) and `<module>.list.constant.ts` (list allow-lists and filter defaults, only with a list endpoint); a data constant never lives in a class file. `I*` declarations live under `interfaces/`: the repository port alone, data shapes collected in `<module>[.<concern>].interface.ts`.
+
+The user module's sign-in and sign-up flows are two HTTP services:
+
+- `UserAuthHttpService` (`user.auth.http.service.ts`): `loginCredential`, `loginWithSocial` with its first-login sign-up, `loginVerifyTwoFactor`, `loginSetupTwoFactor`, `refresh`, `logout`.
+- `UserRegistrationHttpService` (`user.registration.http.service.ts`): `signUp`, `createByAdmin`, `importByAdmin`.
+
+A util, interface, config key, or method one of them uses takes that service's concern, `auth` or `registration`; one both use takes its action concern, a config group included (`user.create` holds `timeoutInMs` and `bulkTimeoutInMs`). `onboarding` names nothing in the user module.
 
 Under `test/`, a spec with a subject file is that file's name plus `.spec.ts` and mirrors its `src/` path under `test/<type>/`. An e2e spec for a flow across several routes is `test/e2e/flows/<module>.<flow>.spec.ts` (`user.login-profile.spec.ts`); integration and e2e are held (`testing.md`), so their names are the planned ones. Every other file starts with `test.`: `test.[<type>.][<noun>.]<role>.ts`, role `setup` or `global-setup` at the root of `test/<type>/`, `helper` in a `helpers/` folder; the type segment is present everywhere except `test/helpers/`. `test/helpers/test.provided-context.d.ts` will type `inject()`. A binary fixture is `test.<type>.<noun>.fixture.<ext>` in that type's `helpers/`.
 

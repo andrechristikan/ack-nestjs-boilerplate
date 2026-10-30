@@ -1,6 +1,6 @@
 # Add a module
 
-Invariants: `.claude/rules/layering.md` (roles, tiers, module files, boot-only defects), `.claude/rules/http.md` (scopes, route paths), `.claude/rules/guards.md` (decorator order), `.claude/rules/naming.md`. Reference implementation: `src/modules/device/` (no queue) and `src/modules/workspace/` (with a queue and a processor).
+Invariants: `.claude/rules/layering.md` (roles, tiers, module files, boot-only defects), `.claude/rules/service.md` (HTTP and processor services), `.claude/rules/http.md` (scopes, route paths), `.claude/rules/guards.md` (decorator order), `.claude/rules/naming.md`. Reference implementation: `src/modules/device/` (no queue) and `src/modules/workspace/` (with a queue and a processor).
 
 ## 1. Claim the status-code block
 
@@ -23,10 +23,10 @@ Add the model to `prisma/schema.prisma` and run `pnpm db:generate`. Applying it 
 | exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `src/modules/device/exceptions/device.not-found.exception.ts:9-18` |
 | request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type; an update DTO requires every editable field (`.claude/rules/null-safety.md`, Update and create) | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |
 | response DTO | `dtos/response/<module>.response.dto.ts`: `DatabaseResponseSchema` extended, `.meta()` on every field | `src/modules/device/dtos/response/device.response.dto.ts:13-36` |
-| HTTP service | `services/<module>.http.service.ts` | `src/modules/device/services/device.http.service.ts:19` |
+| HTTP service | `services/http/<module>.http.service.ts` | `src/modules/device/services/http/device.http.service.ts:30` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:39-64` |
 
-A queue, a processor, and a processor service follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module. The domain injects its own module's classes, another module's util, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the HTTP or processor service around the domain call, and a write needing one transaction across modules goes in the HTTP or processor service, calling each feature domain's `*InTx` method (`.claude/rules/layering.md`, Roles).
+A queue, a processor, and a processor service follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module. The domain injects its own module's classes, another module's util, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the HTTP or processor service around the domain call, and a write needing one transaction across modules goes in the HTTP or processor service, calling each feature domain's `*InTx` method (`.claude/rules/service.md`).
 
 ## 4. The module files
 

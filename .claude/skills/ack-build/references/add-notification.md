@@ -30,7 +30,7 @@ Reuse: `INotificationQueuePayload<T>` (`:265-272`, recipient `:41-46`), `INotifi
 
 1. `NotificationQueue.send<Kind>(recipient, data, proceedBy)` (`src/modules/notification/queues/notification.queue.ts:818-864`): `encryptRecipient` (`:103-121`) and `encryptValue` (`:94-101`) seal against `recipient.userId`; one `DatabaseUtil.createId()` per row (`:829`); `completedSteps: []`; `this.addSideEffect` with `priority`, the `notification.queue.error.enqueue<Kind>` description, and a fixed `jobId` from a `notification.jobId.*Pattern` constructor field (`:50-56`): `referencePattern` here (`:843-849`), `userPattern` for a once-per-user kind, `eventPattern` for a repeat kind.
 2. `NotificationProcessor.handle` case (`src/modules/notification/processors/notification.processor.ts:158-165`).
-3. `NotificationProcessorService.process<Kind>` (`src/modules/notification/services/notification.processor.service.ts:439-465`): pass `job.data` fields to the concern domain; return `recordSteps(job, result)` (`:49-69`), which throws `QueueException` with a `notification.queue.error.<descriptor>` message on a failed step.
+3. `NotificationProcessorService.process<Kind>` (`src/modules/notification/services/processor/notification.processor.service.ts:439-465`): pass `job.data` fields to the concern domain; return `recordSteps(job, result)` (`:49-69`), which throws `QueueException` with a `notification.queue.error.<descriptor>` message on a failed step.
 4. `Notification<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.workspace.domain.ts:35-158`):
     - Empty `recipient.channels` returns the given `completedSteps`.
     - Unless `createNotification` is done, write the job's rows in one `notificationRepository.createMany` with `channels: recipient.channels` and the `metadata` the i18n body needs (`src/modules/notification/repositories/notification.repository.ts:119-145`). A failure returns at once.
@@ -41,7 +41,7 @@ Reuse: `INotificationQueuePayload<T>` (`:265-272`, recipient `:41-46`), `INotifi
 
 1. `NotificationEmailQueue.send<Kind>` (`src/modules/notification/queues/notification.email.queue.ts:650-672`): `add` (a job calls it); `jobId` with `EnumNotificationStep.sendEmail`. The unregistered variant (a request calls it) uses `addSideEffect`, writes no row, and seals to the invite reference (`:675-725`).
 2. `NotificationEmailProcessor.handle` case (`src/modules/notification/processors/notification.email.processor.ts:177-184`); its catch maps `HelperDecryptFailedException` and `NotificationEmailDeliveryUnknownException` to `UnrecoverableError` (`:227-236`).
-3. `NotificationEmailProcessorService.process<Kind>` (`src/modules/notification/services/notification.email.processor.service.ts:206-217`).
+3. `NotificationEmailProcessorService.process<Kind>` (`src/modules/notification/services/processor/notification.email.processor.service.ts:206-217`).
 4. `NotificationEmail<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.email.workspace.domain.ts:74-128`): decrypt against `userId` immediately before `awsSESService.send({ templateName: EnumNotificationProcess.<kind>, … })`, plaintext into `templateData` only.
 5. Template: `src/modules/notification/templates/notification.<kind-kebab>.template.hbs`, placeholders named as in `templateData`.
 6. `NotificationTemplate<Concern>Domain` gets `emailImport<Kind>`, `emailGet<Kind>`, `emailDelete<Kind>` (`src/modules/notification/domains/notification.template.workspace.domain.ts:17-70`); the import reads `join(import.meta.dirname, '../templates', '<file>.hbs')`, which `nest-cli.json` `assets` copies.
@@ -51,7 +51,7 @@ Reuse: `INotificationQueuePayload<T>` (`:265-272`, recipient `:41-46`), `INotifi
 
 1. `NotificationPushQueue.send<Kind>` (`src/modules/notification/queues/notification.push.queue.ts:203-246`): no secret; `add`; `completedSteps: []`, both token lists `null`; `jobId` with `EnumNotificationStep.sendPush`.
 2. `NotificationPushProcessor.handle` case (`src/modules/notification/processors/notification.push.processor.ts:91-98`).
-3. `NotificationPushProcessorService.process<Kind>` (`src/modules/notification/services/notification.push.processor.service.ts:190-214`); its `recordSteps` (`:38-60`) also writes both lists.
+3. `NotificationPushProcessorService.process<Kind>` (`src/modules/notification/services/processor/notification.push.processor.service.ts:190-214`); its `recordSteps` (`:38-60`) also writes both lists.
 4. `NotificationPush<Concern>Domain.process<Kind>` (`src/modules/notification/domains/notification.push.workspace.domain.ts:135-266`):
     - Unset `firebaseService.isInitialized()` returns the given steps and lists.
     - Unless `updateProcessAt` is done, mark the push delivery processed.
