@@ -26,15 +26,15 @@ Add the model to `prisma/schema.prisma` and run `pnpm db:generate`. Applying it 
 | HTTP service | `services/<module>.http.service.ts` | `src/modules/device/services/device.http.service.ts:19` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:39-64` |
 
-A queue, a processor, and a processor service follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module. The domain injects its own module's classes, another module's util, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the HTTP or processor service around the domain call, and a write needing one transaction across modules goes in a composition domain (`.claude/rules/layering.md`, Roles).
+A queue, a processor, and a processor service follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module. The domain injects its own module's classes, another module's util, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the HTTP or processor service around the domain call, and a write needing one transaction across modules goes in the HTTP or processor service, calling each feature domain's `*InTx` method (`.claude/rules/layering.md`, Roles).
 
 ## 4. The module files
 
 Copy the shape, not the names:
 
 - `<module>.repository.module.ts`: repositories in `providers` and `exports`, `imports: []` (`src/modules/device/device.repository.module.ts:7-22`).
-- `<module>.domain.module.ts`: domains, utils, caches, queue classes in `providers`; export what another module's HTTP service, processor service, composition domain, or domain (a util) injects; import the repository module plus each non-`@Global()` feature domain module whose util a domain uses (`src/modules/device/device.domain.module.ts:8-13`; a util import, `src/modules/user/user.domain.module.ts:83`; a queue's registration and `BullModule` export, `src/modules/workspace/workspace.domain.module.ts:37,50-54`).
-- `<module>.http.module.ts`: HTTP services in `providers` and `exports`, imports its own domain module plus the domain and composition modules its services inject (`src/modules/device/device.http.module.ts:5-11`; with a composition module, `src/modules/user/user.http.module.ts:35`).
+- `<module>.domain.module.ts`: domains, utils, caches, queue classes in `providers`; export what another module's HTTP service, processor service, domain (a util), or the aggregation domain (an analytic domain or util) injects; import the repository module plus each non-`@Global()` feature domain module whose util a domain uses (`src/modules/device/device.domain.module.ts:8-13`; a queue's registration and `BullModule` export, `src/modules/workspace/workspace.domain.module.ts:34,47-51`).
+- `<module>.http.module.ts`: HTTP services in `providers` and `exports`, imports its own domain module plus each other domain module its services inject (`src/modules/project/project.http.module.ts:7-12`).
 - `<module>.processor.module.ts` only with a processor (`src/modules/workspace/workspace.processor.module.ts:6-11`).
 
 `controllers: []` in all four. Only a file with something to provide exists.

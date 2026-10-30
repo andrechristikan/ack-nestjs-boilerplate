@@ -26,7 +26,7 @@ BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until
 - No producer calls `getJob`, `getState`, `retry`, or `remove`; no caller branches on an `add` result.
 - An operator-triggered re-run puts a fresh `DatabaseUtil.createId()` nonce in every job id it adds (`NotificationQueue.sendResendPublishTermPolicy`, `notification.jobId.termPolicyResendPattern`); the `TermPolicyRecipient` claim (`claimedAt`, `claimNonce`) keeps delivery at most once per recipient.
 - A request adds its side-effect jobs after its transaction commits, never inside it: an earlier `add` leaves a job for a rolled-back write.
-- A queue class is injected by its own module's domain or by an HTTP service, processor service, or composition domain (`layering.md`); a feature domain enqueues only its own module's jobs.
+- A queue class is injected by its own module's domain or by an HTTP or processor service (`layering.md`); a feature domain enqueues only its own module's jobs.
 - A queue-class method has one caller kind:
     - a request after commit: the protected `QueueBase.addSideEffect` or `addBulkSideEffect`, which resolve on failure (`exceptions.md`, Side effects), awaited unwrapped.
     - a job (fan-out, scheduler, cleanup) or the term-policy resend, whose only work is the enqueue: `add`, `addBulk`, or `upsertJobScheduler`, which throw.

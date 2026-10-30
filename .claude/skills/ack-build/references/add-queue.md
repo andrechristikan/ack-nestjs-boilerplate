@@ -25,7 +25,7 @@ Invariants: `.claude/rules/queue.md`. Reference implementation: the `workspace` 
     - A method serves one of the two caller kinds, never both (`.claude/rules/queue.md`, Enqueuing).
 4. Processor case: one `case` in `handle` awaiting the processor-service method (`src/modules/notification/processors/notification.email.processor.ts:177-184`). A failure no retry fixes is thrown as `UnrecoverableError` inside `handle`, and every other caught error passes the `instanceof` guard or is wrapped in `AppUnknownException` (`:228-248`).
 5. Processor-service method: translate `job.data`, call the domain (`src/modules/notification/services/notification.email.processor.service.ts:203-214`); the `IQueueResponse` carries the `<module>.queue.[<channel>.]<process>` message, built as New queue step 7 states, its keys added per step 10.
-6. Caller: the queue's own module's domain, or for another module's job an HTTP service, processor service, or composition domain, injects the queue class and `await`s the method, a request after its transaction commits and with no wrapper (`.claude/rules/queue.md`, Enqueuing; `.claude/rules/exceptions.md`, Side effects). A caller in another module has its HTTP, processor, or composition module import the owning domain module; a feature domain never enqueues another module's job.
+6. Caller: the queue's own module's domain, or for another module's job an HTTP or processor service, injects the queue class and `await`s the method, a request after its transaction commits and with no wrapper (`.claude/rules/queue.md`, Enqueuing; `.claude/rules/exceptions.md`, Side effects). A caller in another module has its HTTP or processor module import the owning domain module; a feature domain never enqueues another module's job.
 
 ## Rename
 

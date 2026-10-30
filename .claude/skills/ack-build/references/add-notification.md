@@ -1,6 +1,6 @@
 # Add a notification
 
-Invariants: `.claude/rules/queue.md` (Enqueuing, Messages, Notifications). Queue mechanics: `add-queue.md`. Reference: `workspaceInvite`; a broadcast: step 8. The producing HTTP or processor service injects `AccountDomain` (`AccountDomainModule`) and `NotificationQueue` (`@Global()` `NotificationDomainModule`), reads the recipient snapshot, and calls `send<Kind>` with plaintext values after commit.
+Invariants: `.claude/rules/queue.md` (Enqueuing, Messages, Notifications). Queue mechanics: `add-queue.md`. Reference: `workspaceInvite`; a broadcast: step 8. The producing HTTP or processor service reads the recipient snapshot (step 3) and calls `NotificationQueue.send<Kind>` (`@Global()` `NotificationDomainModule`) with plaintext values after commit.
 
 ## 1. Name the kind
 
@@ -15,10 +15,10 @@ One camelCase name in `src/modules/notification/enums/notification.enum.ts`: `En
 
 ## 3. Recipient snapshot
 
-1. `AccountDomain.getNotificationRecipient(userId, kind)` (`src/modules/account/domains/account.domain.ts:35-51`, `null` unless active), or `getNotificationRecipientOfUser(user, kind)` (`:56-67`) for a user read as `IUserRecipient` (`UserRecipientSelect`, `src/modules/user/constants/user.constant.ts:85-89`), returns `INotificationRecipient` from `NotificationUtil.mapRecipient` (`src/modules/notification/utils/notification.util.ts:206-220`).
+1. `Promise.all` reads the user (`UserDomain.getOneActive`, `null` sends nothing, or one held as `IUserRecipient`, `UserRecipientSelect`, `src/modules/user/constants/user.constant.ts:85-89`), its tokens (`DeviceDomain.getOwnershipsWithNotificationToken`), and its settings (`NotificationDomain.getListUserSetting`); `NotificationUtil.mapRecipient` (`src/modules/notification/utils/notification.util.ts:206-220`) returns `INotificationRecipient`.
 2. `channels` is `NotificationUtil.resolveChannels` (`:64-95`): the contract channels minus those the user disabled for a toggleable, non-mandatory type; `[]` when only `silent` survives (no row, no send).
 3. Read before the transaction.
-4. No account: call the unregistered email variant (`NotificationEmailQueue.sendWorkspaceInviteUnregistered`).
+4. No user: call the unregistered email variant (`NotificationEmailQueue.sendWorkspaceInviteUnregistered`).
 
 ## 4. Payload shapes
 
