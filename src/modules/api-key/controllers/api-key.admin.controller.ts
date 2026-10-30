@@ -27,7 +27,7 @@ import { ApiKeyUpdateRequestSchema } from '@modules/api-key/dtos/request/api-key
 import type { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseSchema } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { ApiKeyHttpService } from '@modules/api-key/services/api-key.http.service';
+import { ApiKeyHttpService } from '@modules/api-key/services/http/api-key.http.service';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,

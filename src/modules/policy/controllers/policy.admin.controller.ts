@@ -20,7 +20,7 @@ import { PolicyUpdateRequestSchema } from '@modules/policy/dtos/request/policy.u
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
-import { PolicyHttpService } from '@modules/policy/services/policy.http.service';
+import { PolicyHttpService } from '@modules/policy/services/http/policy.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {

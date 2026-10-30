@@ -8,16 +8,6 @@ export enum EnumUserSignUpWorkspaceContextType {
 }
 
 /**
- * Ways a user account is created: sign-up, social sign-in or by an admin.
- * @public
- */
-export enum EnumUserCreateMode {
-    signUp = 'signUp',
-    social = 'social',
-    admin = 'admin',
-}
-
-/**
  * Job names on the user queue.
  * @public
  */

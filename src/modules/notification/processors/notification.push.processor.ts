@@ -13,7 +13,7 @@ import type {
     INotificationWorkspaceJoinRejectedPayload,
     INotificationWorkspaceJoinRequestPushPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
+import { NotificationPushProcessorService } from '@modules/notification/services/processor/notification.push.processor.service';
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';

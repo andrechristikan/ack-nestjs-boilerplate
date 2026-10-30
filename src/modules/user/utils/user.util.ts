@@ -1,11 +1,17 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IUserTwoFactorStatus } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserPasswordSet,
+    IUserTwoFactorEnabled,
+    IUserTwoFactorStatus,
+} from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumUserLoginWith,
+    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { TwoFactor, User } from '@generated/prisma-client/client';
 import { Profanity } from '@2toad/profanity';
@@ -80,6 +86,40 @@ export class UserUtil {
             confirmedAt: twoFactor.confirmedAt,
             lastUsedAt: twoFactor.lastUsedAt,
         };
+    }
+
+    /** True when the user has not verified the email yet. */
+    isUnverified(user: IUser): boolean {
+        return !user.isVerified;
+    }
+
+    /** True when the user holds a password hash; false for an account created through social sign-in. */
+    hasPassword(user: IUser): user is IUserPasswordSet {
+        return user.password !== null;
+    }
+
+    /** True when the user holds a two-factor row that is enabled. */
+    isTwoFactorEnabled(user: IUser): user is IUserTwoFactorEnabled {
+        return !!user.twoFactor?.enabled;
+    }
+
+    /** True when the enabled two-factor row still needs a fresh authenticator setup. */
+    requiresTwoFactorSetup(user: IUserTwoFactorEnabled): boolean {
+        return user.twoFactor.requiredSetup;
+    }
+
+    /** True when moving to the status ends the open sessions; only active keeps them. */
+    revokesSessionsOn(status: EnumUserStatus): boolean {
+        return status !== EnumUserStatus.active;
+    }
+
+    /** Maps the new status onto the activity-log action that records the change. */
+    resolveStatusActivityLogAction(
+        status: EnumUserStatus
+    ): EnumActivityLogAction {
+        return status === EnumUserStatus.blocked
+            ? EnumActivityLogAction.userBlocked
+            : EnumActivityLogAction.userUpdateStatus;
     }
 
     /** Whole minutes, rounded up, left before a resend is allowed after `lastCreatedAt`; null once the window has passed. */

@@ -22,7 +22,7 @@ import type { NotificationUserSettingRequestDto } from '@modules/notification/dt
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseSchema } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
-import { NotificationHttpService } from '@modules/notification/services/notification.http.service';
+import { NotificationHttpService } from '@modules/notification/services/http/notification.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {

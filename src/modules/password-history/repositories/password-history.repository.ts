@@ -8,7 +8,10 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { PasswordHistoryListSelect } from '@modules/password-history/constants/password-history.constant';
-import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
+import type {
+    IPasswordHistoryCreate,
+    IPasswordHistoryList,
+} from '@modules/password-history/interfaces/password-history.interface';
 import type { IPasswordHistoryRepository } from '@modules/password-history/interfaces/password-history.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -99,5 +102,12 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
                 createdBy,
             },
         });
+    }
+
+    async createManyInTx(
+        tx: IDatabaseTransactionClient,
+        entries: IPasswordHistoryCreate[]
+    ): Promise<void> {
+        await tx.passwordHistory.createMany({ data: entries });
     }
 }

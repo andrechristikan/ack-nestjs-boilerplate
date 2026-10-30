@@ -9,10 +9,9 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    EnumVerificationType,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type {
     Country,
     ForgotPassword,
@@ -39,11 +38,19 @@ import type {
     IRoleWithPolicies,
 } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
 export interface IUser extends User {
     role: IRoleWithPolicies;
     twoFactor: TwoFactor | null;
+}
+
+export interface IUserTwoFactorEnabled extends IUser {
+    twoFactor: TwoFactor;
+}
+
+export interface IUserPasswordSet extends IUser {
+    password: string;
 }
 
 export type IUserList = Prisma.UserGetPayload<{
@@ -146,24 +153,6 @@ export interface IUserSignUpResolved {
     workspaceContext: IUserSignUpWorkspaceContext;
 }
 
-export interface IUserOnboardingActivity {
-    action: EnumActivityLogAction;
-    userId: string;
-    workspaceId: string | null;
-    createdBy: string;
-    metadata: IActivityLogMetadata;
-}
-
-export interface IUserOnboardingVerification {
-    reference: string;
-    token: string;
-    type: EnumVerificationType;
-    to: string;
-    expiredAt: Date;
-    verifiedAt: Date | null;
-    isUsed: boolean;
-}
-
 export interface IUserCreateContract {
     createdAction: EnumActivityLogAction;
     logsVerificationEmailRequest: boolean;
@@ -175,10 +164,6 @@ export interface IUserCreateContract {
 export interface IUserTermPolicyContract {
     requiredTypes: EnumTermPolicyType[];
 }
-
-export type IUserOnboardingAdminAction =
-    | typeof EnumActivityLogAction.adminUserCreate
-    | typeof EnumActivityLogAction.adminUserImport;
 
 export interface IUserCreateWithWorkspaceInput {
     userId: string;
@@ -193,7 +178,7 @@ export interface IUserCreateWithWorkspaceInput {
     acceptedTermPolicyTypes: EnumTermPolicyType[];
     password: IAuthPassword | null;
     passwordHistoryType: EnumPasswordHistoryType | null;
-    verification: IUserOnboardingVerification | null;
+    verification: IUserCreateVerification | null;
     workspaceContext: IUserSignUpWorkspaceContext;
     createdBy: string;
 }
@@ -329,6 +314,21 @@ export interface IUserTwoFactorSetup {
     otpauthUrl: string;
 }
 
+export interface IUserTwoFactorSetupSecret extends IUserTwoFactorSetup {
+    encryptedSecret: string;
+}
+
+export interface IUserTwoFactorVerifyInput {
+    method: EnumAuthTwoFactorMethod | null;
+    code: string | null;
+    backupCode: string | null;
+}
+
+export interface IUserTwoFactorVerifyResult {
+    method: EnumAuthTwoFactorMethod;
+    newBackupCodes: string[] | null;
+}
+
 interface IUserLoginTwoFactorChallengeBase {
     challengeToken: string;
     challengeExpiresInMs: number;
@@ -399,7 +399,8 @@ export type IUserField = Extract<keyof IUser, string>;
 
 export type IUserFieldValue = NonNullable<IUser[IUserField]>;
 
-export type IUserCreateContracts = Record<
-    EnumUserCreateMode,
-    IUserCreateContract
->;
+export interface IUserCreateContracts {
+    signUp: IUserCreateContract;
+    social: IUserCreateContract;
+    admin: IUserCreateContract;
+}

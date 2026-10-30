@@ -4,7 +4,10 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
+import type {
+    IPasswordHistoryCreate,
+    IPasswordHistoryList,
+} from '@modules/password-history/interfaces/password-history.interface';
 import {
     EnumPasswordHistoryType,
     Prisma,
@@ -36,4 +39,8 @@ export interface IPasswordHistoryRepository {
         createdAt: Date,
         createdBy: string
     ): Promise<PasswordHistory>;
+    createManyInTx(
+        tx: IDatabaseTransactionClient,
+        entries: IPasswordHistoryCreate[]
+    ): Promise<void>;
 }

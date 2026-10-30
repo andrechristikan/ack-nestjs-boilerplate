@@ -12,7 +12,7 @@ import type {
     IUserCheckEmail,
     IUserCheckUsername,
 } from '@modules/user/interfaces/user.interface';
-import { UserHttpService } from '@modules/user/services/user.http.service';
+import { UserHttpService } from '@modules/user/services/http/user.http.service';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 

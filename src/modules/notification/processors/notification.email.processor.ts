@@ -28,7 +28,7 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
-import { NotificationEmailProcessorService } from '@modules/notification/services/notification.email.processor.service';
+import { NotificationEmailProcessorService } from '@modules/notification/services/processor/notification.email.processor.service';
 import {
     AwsSESRateLimitDurationInMs,
     AwsSESRateLimitPerDuration,

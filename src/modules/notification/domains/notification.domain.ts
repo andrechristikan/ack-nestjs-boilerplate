@@ -115,13 +115,17 @@ export class NotificationDomain {
         }
     }
 
-    async createDefaultsInTx(
+    async createDefaultsManyInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userIds: string[]
     ): Promise<void> {
-        await this.notificationUserSettingRepository.createDefaultsInTx(
+        if (userIds.length === 0) {
+            return;
+        }
+
+        await this.notificationUserSettingRepository.createDefaultsManyInTx(
             tx,
-            userId
+            userIds
         );
     }
 

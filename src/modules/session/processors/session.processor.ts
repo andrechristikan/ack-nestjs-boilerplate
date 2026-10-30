@@ -1,6 +1,6 @@
 import { EnumSessionProcess } from '@modules/session/enums/session.enum';
 import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
-import { SessionProcessorService } from '@modules/session/services/session.processor.service';
+import { SessionProcessorService } from '@modules/session/services/processor/session.processor.service';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { SentryService } from '@common/sentry/services/sentry.service';

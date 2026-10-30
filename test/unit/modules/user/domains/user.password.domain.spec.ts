@@ -19,6 +19,7 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IUser,
+    IUserPasswordSet,
     IUserForgotPassword,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
@@ -245,55 +246,52 @@ describe('UserPasswordDomain', () => {
         });
     });
 
-    describe('verifyOldPassword', () => {
-        it('counts the attempt and compares, leaving the counter to the caller', async () => {
-            userRepository.incrementPasswordAttempt.mockResolvedValue(1);
+    describe('assertAttemptCounted', () => {
+        it('returns when the attempt was counted', () => {
+            expect(() => domain.assertAttemptCounted(true)).not.toThrow();
+        });
+
+        it('throws UserPasswordAttemptMaxException when the attempt budget is spent', () => {
+            expect(() => domain.assertAttemptCounted(false)).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                    messagePath: 'user.error.passwordAttemptMax',
+                })
+            );
+        });
+    });
+
+    describe('assertOldPasswordMatch', () => {
+        const userWithPassword: IUserPasswordSet = {
+            ...baseUser,
+            password: 'hashed-password',
+        };
+
+        it('compares the old password against the stored hash and leaves the counter to the caller', async () => {
             authPasswordUtil.validatePassword.mockResolvedValue(true);
 
-            await domain.verifyOldPassword(
-                'user-hollow',
-                'hashed-password',
+            await domain.assertOldPasswordMatch(
+                userWithPassword,
                 'old-password'
             );
 
-            expect(
-                userRepository.incrementPasswordAttempt
-            ).toHaveBeenCalledWith('user-hollow', 5);
-            expect(
-                userRepository.incrementPasswordAttempt
-            ).toHaveBeenCalledBefore(authPasswordUtil.validatePassword);
             expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
                 'old-password',
                 'hashed-password'
             );
+            expect(
+                userRepository.incrementPasswordAttempt
+            ).not.toHaveBeenCalled();
             expect(userDomain.resetPasswordAttempt).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordAttemptMaxException without comparing when the attempt budget is spent', async () => {
-            userRepository.incrementPasswordAttempt.mockResolvedValue(null);
-
-            await expect(
-                domain.verifyOldPassword(
-                    'user-hollow',
-                    'hashed-password',
-                    'old-password'
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                messagePath: 'user.error.passwordAttemptMax',
-            });
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
-        });
-
         it('throws UserPasswordNotMatchException on a wrong old password', async () => {
-            userRepository.incrementPasswordAttempt.mockResolvedValue(1);
             authPasswordUtil.validatePassword.mockResolvedValue(false);
 
             await expect(
-                domain.verifyOldPassword(
-                    'user-hollow',
-                    'hashed-password',
+                domain.assertOldPasswordMatch(
+                    userWithPassword,
                     'wrong-password'
                 )
             ).rejects.toMatchObject({

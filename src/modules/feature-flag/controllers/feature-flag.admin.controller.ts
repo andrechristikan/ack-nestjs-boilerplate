@@ -18,7 +18,7 @@ import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/
 import { FeatureFlagUpdateStatusRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
-import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
+import { FeatureFlagHttpService } from '@modules/feature-flag/services/http/feature-flag.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';

@@ -1,7 +1,9 @@
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { AuthTwoFactorSecretEncryptionPurpose } from '@modules/auth/constants/auth.constant';
+import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exceptions/auth.two-factor-secret-unavailable.exception';
 import type {
     IAuthTwoFactorBackupCodes,
     IAuthTwoFactorBackupCodesVerifyResult,
@@ -138,5 +140,14 @@ export class AuthTwoFactorUtil {
             AuthTwoFactorSecretEncryptionPurpose,
             userId
         );
+    }
+
+    /** Maps a failed secret decryption to the exception for the caller to throw; null for any other error. */
+    toDecryptException(
+        err: unknown
+    ): AuthTwoFactorSecretUnavailableException | null {
+        return err instanceof HelperDecryptFailedException
+            ? new AuthTwoFactorSecretUnavailableException()
+            : null;
     }
 }

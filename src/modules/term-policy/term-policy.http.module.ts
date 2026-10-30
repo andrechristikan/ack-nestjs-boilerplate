@@ -1,7 +1,7 @@
 import { DeviceDomainModule } from '@modules/device/device.domain.module';
-import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
-import { TermPolicyContentHttpService } from '@modules/term-policy/services/term-policy.content.http.service';
-import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
+import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/http/term-policy.acceptance.http.service';
+import { TermPolicyContentHttpService } from '@modules/term-policy/services/http/term-policy.content.http.service';
+import { TermPolicyHttpService } from '@modules/term-policy/services/http/term-policy.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

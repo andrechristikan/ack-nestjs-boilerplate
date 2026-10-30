@@ -22,11 +22,11 @@ import {
     ResponseFile,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import { UserHttpService } from '@modules/user/services/user.http.service';
-import { UserExportHttpService } from '@modules/user/services/user.export.http.service';
-import { UserOnboardingHttpService } from '@modules/user/services/user.onboarding.http.service';
-import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
-import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
+import { UserHttpService } from '@modules/user/services/http/user.http.service';
+import { UserExportHttpService } from '@modules/user/services/http/user.export.http.service';
+import { UserRegistrationHttpService } from '@modules/user/services/http/user.registration.http.service';
+import { UserPasswordHttpService } from '@modules/user/services/http/user.password.http.service';
+import { UserTwoFactorHttpService } from '@modules/user/services/http/user.two-factor.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
@@ -87,7 +87,7 @@ export class UserAdminController {
         private readonly userHttpService: UserHttpService,
         private readonly userPasswordHttpService: UserPasswordHttpService,
         private readonly userTwoFactorHttpService: UserTwoFactorHttpService,
-        private readonly userOnboardingHttpService: UserOnboardingHttpService,
+        private readonly userRegistrationHttpService: UserRegistrationHttpService,
         private readonly userExportHttpService: UserExportHttpService
     ) {}
 
@@ -152,7 +152,7 @@ export class UserAdminController {
         body: UserCreateRequestDto,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userOnboardingHttpService.createByAdmin(body, user);
+        return this.userRegistrationHttpService.createByAdmin(body, user);
     }
 
     @Doc({ summary: 'update status of user' })
@@ -264,7 +264,7 @@ export class UserAdminController {
         )
         data: UserImportRequestDto[]
     ): Promise<IResponseReturn<void>> {
-        return this.userOnboardingHttpService.importByAdmin(data, createdBy);
+        return this.userRegistrationHttpService.importByAdmin(data, createdBy);
     }
 
     @Doc({ summary: 'export users via csv file' })

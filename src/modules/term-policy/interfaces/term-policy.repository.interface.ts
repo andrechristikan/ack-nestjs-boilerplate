@@ -8,6 +8,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type {
+    ITermPolicyAcceptanceRow,
     ITermPolicyContent,
     ITermPolicyRef,
     ITermPolicyUserAcceptance,
@@ -73,6 +74,10 @@ export interface ITermPolicyRepository {
         createdBy: string,
         acceptedAt: Date
     ): Promise<ITermPolicyUserAcceptance>;
+    acceptManyInTx(
+        tx: IDatabaseTransactionClient,
+        rows: ITermPolicyAcceptanceRow[]
+    ): Promise<void>;
     create(
         termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,

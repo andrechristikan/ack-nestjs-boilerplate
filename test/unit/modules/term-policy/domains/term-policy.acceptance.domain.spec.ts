@@ -251,39 +251,112 @@ describe('TermPolicyAcceptanceDomain', () => {
         });
     });
 
-    describe('acceptPublishedInTx', () => {
-        it('writes one acceptance row per latest published type and skips a type with no published policy', async () => {
+    describe('acceptPublishedManyInTx', () => {
+        const privacyRef: ITermPolicyRef = {
+            id: 'term-policy-privacy',
+            type: EnumTermPolicyType.privacy,
+            version: 2,
+        };
+        const marketingRef: ITermPolicyRef = {
+            id: 'term-policy-marketing',
+            type: EnumTermPolicyType.marketing,
+            version: 1,
+        };
+
+        it('writes the acceptance rows of every entry in one repository statement', async () => {
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
-                [
-                    {
-                        id: 'term-policy-1',
-                        type: EnumTermPolicyType.privacy,
-                        version: 2,
-                    },
-                ]
+                [privacyRef, marketingRef]
             );
 
-            await domain.acceptPublishedInTx(
-                tx,
-                'user-1',
-                [EnumTermPolicyType.privacy, EnumTermPolicyType.marketing],
-                'user-1'
-            );
+            await domain.acceptPublishedManyInTx(tx, [
+                {
+                    userId: 'user-one',
+                    types: [
+                        EnumTermPolicyType.privacy,
+                        EnumTermPolicyType.marketing,
+                    ],
+                    createdBy: 'user-one',
+                },
+                {
+                    userId: 'user-two',
+                    types: [EnumTermPolicyType.privacy],
+                    createdBy: 'admin-id',
+                },
+            ]);
 
+            expect(
+                termPolicyRepository.findLatestPublishedByTypesInTx
+            ).toHaveBeenCalledTimes(1);
             expect(
                 termPolicyRepository.findLatestPublishedByTypesInTx
             ).toHaveBeenCalledWith(tx, [
                 EnumTermPolicyType.privacy,
                 EnumTermPolicyType.marketing,
             ]);
-            expect(termPolicyRepository.acceptInTx).toHaveBeenCalledTimes(1);
-            expect(termPolicyRepository.acceptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'term-policy-1',
-                'user-1',
-                timestamp
+            expect(termPolicyRepository.acceptManyInTx).toHaveBeenCalledTimes(
+                1
             );
+            expect(termPolicyRepository.acceptManyInTx).toHaveBeenCalledWith(
+                tx,
+                [
+                    {
+                        userId: 'user-one',
+                        termPolicyId: 'term-policy-privacy',
+                        createdBy: 'user-one',
+                        acceptedAt: timestamp,
+                    },
+                    {
+                        userId: 'user-one',
+                        termPolicyId: 'term-policy-marketing',
+                        createdBy: 'user-one',
+                        acceptedAt: timestamp,
+                    },
+                    {
+                        userId: 'user-two',
+                        termPolicyId: 'term-policy-privacy',
+                        createdBy: 'admin-id',
+                        acceptedAt: timestamp,
+                    },
+                ]
+            );
+        });
+
+        it('skips a type with no published policy', async () => {
+            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
+                [privacyRef]
+            );
+
+            await domain.acceptPublishedManyInTx(tx, [
+                {
+                    userId: 'user-one',
+                    types: [
+                        EnumTermPolicyType.privacy,
+                        EnumTermPolicyType.marketing,
+                    ],
+                    createdBy: 'user-one',
+                },
+            ]);
+
+            expect(termPolicyRepository.acceptManyInTx).toHaveBeenCalledWith(
+                tx,
+                [
+                    {
+                        userId: 'user-one',
+                        termPolicyId: 'term-policy-privacy',
+                        createdBy: 'user-one',
+                        acceptedAt: timestamp,
+                    },
+                ]
+            );
+        });
+
+        it('issues no statement for an empty list', async () => {
+            await domain.acceptPublishedManyInTx(tx, []);
+
+            expect(
+                termPolicyRepository.findLatestPublishedByTypesInTx
+            ).not.toHaveBeenCalled();
+            expect(termPolicyRepository.acceptManyInTx).not.toHaveBeenCalled();
         });
     });
 

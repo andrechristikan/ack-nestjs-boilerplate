@@ -115,7 +115,7 @@ import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/a
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
 import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
-import { AnalyticDashboardHttpService } from '@modules/analytic/services/analytic.dashboard.http.service';
+import { AnalyticDashboardHttpService } from '@modules/analytic/services/http/analytic.dashboard.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
@@ -147,14 +147,14 @@ import { AnalyticKeyCountResponseSchema } from '@modules/analytic/dtos/response/
 import { AnalyticSessionAfterAdminResponseSchema } from '@modules/analytic/dtos/response/analytic.session-after-admin.response.dto';
 import { AnalyticSharedFingerprintResponseSchema } from '@modules/analytic/dtos/response/analytic.shared-fingerprint.response.dto';
 import { AnalyticUserCountResponseSchema } from '@modules/analytic/dtos/response/analytic.user-count.response.dto';
-import { AnalyticFraudHttpService } from '@modules/analytic/services/analytic.fraud.http.service';
+import { AnalyticFraudHttpService } from '@modules/analytic/services/http/analytic.fraud.http.service';
 import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-summary.response.dto';
 import { AnalyticDeviceProliferationResponseSchema } from '@modules/analytic/dtos/response/analytic.device-proliferation.response.dto';
 import { AnalyticImpossibleTravelResponseSchema } from '@modules/analytic/dtos/response/analytic.impossible-travel.response.dto';
 import { AnalyticLoginSpikeIpResponseSchema } from '@modules/analytic/dtos/response/analytic.login-spike-ip.response.dto';
 import { AnalyticLoginTimeAnomalyResponseSchema } from '@modules/analytic/dtos/response/analytic.login-time-anomaly.response.dto';
 import { AnalyticNearLockoutResponseSchema } from '@modules/analytic/dtos/response/analytic.near-lockout.response.dto';
-import { AnalyticAnomalyHttpService } from '@modules/analytic/services/analytic.anomaly.http.service';
+import { AnalyticAnomalyHttpService } from '@modules/analytic/services/http/analytic.anomaly.http.service';
 
 @ApiTags('modules.admin.analytic')
 @Controller({

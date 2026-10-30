@@ -9,10 +9,8 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
-import type {
-    DeviceOwnership,
-    EnumDeviceNotificationProvider,
-} from '@generated/prisma-client/client';
+import type { EnumDeviceNotificationProvider } from '@generated/prisma-client/client';
+import { DeviceOwnershipNotificationTokenSelect } from '@modules/device/constants/device.constant';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
@@ -274,14 +272,21 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         });
     }
 
-    async findTokensByUserId(userId: string): Promise<DeviceOwnership[]> {
-        return this.databaseService.client.deviceOwnership.findMany({
-            where: {
-                userId,
-                isRevoked: false,
-                notificationToken: { not: null },
-            },
-        });
+    async findTokensByUserId(userId: string): Promise<string[]> {
+        const rows = await this.databaseService.client.deviceOwnership.findMany(
+            {
+                where: {
+                    userId,
+                    isRevoked: false,
+                    notificationToken: { not: null },
+                },
+                select: DeviceOwnershipNotificationTokenSelect,
+            }
+        );
+
+        return rows.flatMap(({ notificationToken }) =>
+            notificationToken === null ? [] : [notificationToken]
+        );
     }
 
     async existsActive(

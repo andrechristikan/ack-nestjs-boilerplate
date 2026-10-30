@@ -4,9 +4,9 @@ import type { NotificationUserSetting } from '@generated/prisma-client/client';
 
 export interface INotificationUserSettingRepository {
     findUserSetting(userId: string): Promise<NotificationUserSetting[]>;
-    createDefaultsInTx(
+    createDefaultsManyInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userIds: string[]
     ): Promise<void>;
     updateUserSetting(
         userId: string,

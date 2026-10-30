@@ -9,7 +9,7 @@ import { ResponsePagination } from '@common/response/decorators/response.decorat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
+import { ActivityLogHttpService } from '@modules/activity-log/services/http/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';

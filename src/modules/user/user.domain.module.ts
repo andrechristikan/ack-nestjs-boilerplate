@@ -9,11 +9,12 @@ import { UserImportDomain } from '@modules/user/domains/user.import.domain';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
+import { UserTwoFactorCache } from '@modules/user/caches/user.two-factor.cache';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserRepositoryModule } from '@modules/user/user.repository.module';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
@@ -38,7 +39,7 @@ import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobil
         UserProfileDomain,
         UserMobileNumberDomain,
         UserUtil,
-        UserOnboardingUtil,
+        UserCreateUtil,
         UserVerificationUtil,
         UserPasswordUtil,
         UserAnalyticDomain,
@@ -48,6 +49,7 @@ import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobil
         UserVerificationAnalyticDomain,
         UserMobileNumberAnalyticDomain,
         UserQueue,
+        UserTwoFactorCache,
     ],
     exports: [
         BullModule,
@@ -59,7 +61,7 @@ import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobil
         UserTwoFactorDomain,
         UserProfileDomain,
         UserMobileNumberDomain,
-        UserOnboardingUtil,
+        UserCreateUtil,
         UserUtil,
         UserVerificationUtil,
         UserPasswordUtil,

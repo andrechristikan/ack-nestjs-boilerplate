@@ -1,5 +1,5 @@
 import { DeviceDomainModule } from '@modules/device/device.domain.module';
-import { DeviceHttpService } from '@modules/device/services/device.http.service';
+import { DeviceHttpService } from '@modules/device/services/http/device.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

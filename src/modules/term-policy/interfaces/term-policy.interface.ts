@@ -47,6 +47,19 @@ export interface ITermPolicyDeleteContentPayload {
     path: string;
 }
 
+export interface ITermPolicyAcceptanceCreate {
+    userId: string;
+    types: EnumTermPolicyType[];
+    createdBy: string;
+}
+
+export interface ITermPolicyAcceptanceRow {
+    userId: string;
+    termPolicyId: string;
+    createdBy: string;
+    acceptedAt: Date;
+}
+
 export type ITermPolicyRef = Pick<TermPolicy, 'id' | 'type' | 'version'>;
 
 export type ITermPolicyActivityLogSubject = Pick<

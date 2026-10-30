@@ -306,7 +306,14 @@ export class UserRepository implements IUserRepository {
         tx: IDatabaseTransactionClient,
         inputs: IUserCreateWithWorkspaceInput[]
     ): Promise<IUser[]> {
-        return Promise.all(inputs.map(input => this.createInTx(tx, input)));
+        const users: IUser[] = [];
+
+        for (const input of inputs) {
+            const user = await this.createInTx(tx, input);
+            users.push(user);
+        }
+
+        return users;
     }
 
     async updateStatusByAdminInTx(

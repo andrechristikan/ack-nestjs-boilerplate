@@ -16,6 +16,7 @@ import {
     TermPolicyRefSelect,
 } from '@modules/term-policy/constants/term-policy.constant';
 import type {
+    ITermPolicyAcceptanceRow,
     ITermPolicyContent,
     ITermPolicyRef,
     ITermPolicyUserAcceptance,
@@ -226,6 +227,13 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             },
             include: TermPolicyAcceptanceInclude,
         });
+    }
+
+    async acceptManyInTx(
+        tx: IDatabaseTransactionClient,
+        rows: ITermPolicyAcceptanceRow[]
+    ): Promise<void> {
+        await tx.termPolicyUserAcceptance.createMany({ data: rows });
     }
 
     async create(

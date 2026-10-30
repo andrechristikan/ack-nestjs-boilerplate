@@ -28,8 +28,8 @@ import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
-import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
+import { WorkspaceHttpService } from '@modules/workspace/services/http/workspace.http.service';
+import { WorkspaceMemberHttpService } from '@modules/workspace/services/http/workspace.member.http.service';
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 

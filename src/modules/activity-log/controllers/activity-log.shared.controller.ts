@@ -7,7 +7,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
+import { ActivityLogHttpService } from '@modules/activity-log/services/http/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,

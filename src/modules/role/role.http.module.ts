@@ -1,4 +1,4 @@
-import { RoleHttpService } from '@modules/role/services/role.http.service';
+import { RoleHttpService } from '@modules/role/services/http/role.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

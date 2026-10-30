@@ -1,4 +1,4 @@
-import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
+import { FeatureFlagHttpService } from '@modules/feature-flag/services/http/feature-flag.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

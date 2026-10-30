@@ -5,7 +5,7 @@ import { ResponsePagination } from '@common/response/decorators/response.decorat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
+import { TermPolicyHttpService } from '@modules/term-policy/services/http/term-policy.http.service';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { TermPolicy } from '@generated/prisma-client/client';

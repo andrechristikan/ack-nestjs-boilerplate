@@ -24,33 +24,36 @@ import type {
     IRoleWithPolicies,
 } from '@modules/role/interfaces/role.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserList,
-    IUserOnboardingVerification,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
+import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 
 describe('UserDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
         mock<UserVerificationUtil>();
-    const userOnboardingUtil: MockProxy<UserOnboardingUtil> =
-        mock<UserOnboardingUtil>();
+    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
+    const userVerificationDomain: MockProxy<UserVerificationDomain> =
+        mock<UserVerificationDomain>();
+    const userTwoFactorDomain: MockProxy<UserTwoFactorDomain> =
+        mock<UserTwoFactorDomain>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -139,7 +142,15 @@ describe('UserDomain', () => {
                     provide: UserVerificationUtil,
                     useValue: userVerificationUtil,
                 },
-                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
+                { provide: UserCreateUtil, useValue: userCreateUtil },
+                {
+                    provide: UserVerificationDomain,
+                    useValue: userVerificationDomain,
+                },
+                {
+                    provide: UserTwoFactorDomain,
+                    useValue: userTwoFactorDomain,
+                },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -157,7 +168,6 @@ describe('UserDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toBeInstanceOf(RequestContextMissingException);
             expect(thrown).toMatchObject({
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.contextMissing,
@@ -453,17 +463,103 @@ describe('UserDomain', () => {
     });
 
     describe('createManyInTx', () => {
-        it('delegates to the repository', async () => {
-            const inputs: IUserCreateWithWorkspaceInput[] = [];
-            userRepository.createManyInTx.mockResolvedValue([baseUser]);
+        const verification: IUserCreateVerification = {
+            reference: 'ref-cobalt',
+            token: 'hashed-token',
+            type: EnumVerificationType.email,
+            to: 'cobalt@example.com',
+            expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+            verifiedAt: null,
+            isUsed: false,
+        };
+        const withVerification: IUserCreateWithWorkspaceInput = {
+            userId: 'user-cobalt',
+            email: 'cobalt@example.com',
+            name: 'Cobalt Reyes',
+            username: 'cobaltReyes',
+            countryId: 'country-cobalt',
+            roleId: role.id,
+            signUpFrom: EnumUserSignUpFrom.website,
+            signUpWith: EnumUserSignUpWith.credential,
+            isVerified: false,
+            acceptedTermPolicyTypes: [],
+            password: null,
+            passwordHistoryType: null,
+            verification,
+            workspaceContext: {
+                type: EnumUserSignUpWorkspaceContextType.personal,
+                workspaceId: 'workspace-cobalt',
+                slugCandidates: ['w-cobalt'],
+                name: "cobaltReyes's Workspace",
+            },
+            createdBy: 'user-cobalt',
+        };
+        const withoutVerification: IUserCreateWithWorkspaceInput = {
+            ...withVerification,
+            userId: 'user-marigold',
+            verification: null,
+            createdBy: 'admin-cobalt',
+        };
+        const marigoldTwoFactor: TwoFactor = {
+            ...twoFactor,
+            id: 'two-factor-marigold',
+            userId: 'user-marigold',
+        };
 
-            await expect(domain.createManyInTx(tx, inputs)).resolves.toEqual([
-                baseUser,
+        it('writes the users, then the verification row when the input carries one and the disabled two-factor row per user', async () => {
+            const marigold: IUser = {
+                ...baseUser,
+                id: 'user-marigold',
+                twoFactor: null,
+            };
+            userRepository.createManyInTx.mockResolvedValue([
+                { ...baseUser, twoFactor: null },
+                marigold,
             ]);
-            expect(userRepository.createManyInTx).toHaveBeenCalledWith(
+            userTwoFactorDomain.createDisabledInTx
+                .mockResolvedValueOnce(twoFactor)
+                .mockResolvedValueOnce(marigoldTwoFactor);
+
+            const result = await domain.createManyInTx(tx, [
+                withVerification,
+                withoutVerification,
+            ]);
+
+            expect(userRepository.createManyInTx).toHaveBeenCalledWith(tx, [
+                withVerification,
+                withoutVerification,
+            ]);
+            expect(userVerificationDomain.createInTx).toHaveBeenCalledTimes(1);
+            expect(userVerificationDomain.createInTx).toHaveBeenCalledWith(
                 tx,
-                inputs
+                'user-cobalt',
+                verification,
+                'user-cobalt'
             );
+            expect(userTwoFactorDomain.createDisabledInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt',
+                'user-cobalt'
+            );
+            expect(userTwoFactorDomain.createDisabledInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marigold',
+                'admin-cobalt'
+            );
+            expect(result).toEqual([
+                { ...baseUser, twoFactor },
+                { ...marigold, twoFactor: marigoldTwoFactor },
+            ]);
+        });
+
+        it('issues no statement for an empty list', async () => {
+            userRepository.createManyInTx.mockResolvedValue([]);
+
+            await expect(domain.createManyInTx(tx, [])).resolves.toEqual([]);
+            expect(userVerificationDomain.createInTx).not.toHaveBeenCalled();
+            expect(
+                userTwoFactorDomain.createDisabledInTx
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -508,14 +604,17 @@ describe('UserDomain', () => {
             ).toHaveBeenCalledWith(tx, 'user-cobalt');
         });
 
-        it('throws UserPasswordAttemptMaxException when the account was no longer active', async () => {
+        it('throws the password-attempt-max error when the account was no longer active', async () => {
             userRepository.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
                 false
             );
 
             await expect(
                 domain.deactivateForMaxPasswordAttemptInTx(tx, 'user-cobalt')
-            ).rejects.toBeInstanceOf(UserPasswordAttemptMaxException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+            });
         });
     });
 
@@ -664,7 +763,7 @@ describe('UserDomain', () => {
                 passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
                 passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
             });
-            userOnboardingUtil.buildPersonalWorkspaceContexts.mockReturnValue([
+            userCreateUtil.buildPersonalWorkspaceContexts.mockReturnValue([
                 {
                     type: EnumUserSignUpWorkspaceContextType.personal,
                     workspaceId: 'workspace-cobalt',
@@ -708,7 +807,7 @@ describe('UserDomain', () => {
         });
 
         it('prepares the create input with a verified, used verification for an elevated role', async () => {
-            const verified: IUserOnboardingVerification = {
+            const verified: IUserCreateVerification = {
                 reference: 'ref-cobalt',
                 token: 'hashed-token',
                 type: EnumVerificationType.email,

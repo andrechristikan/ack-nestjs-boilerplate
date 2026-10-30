@@ -7,7 +7,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
-import { WorkspaceProcessorService } from '@modules/workspace/services/workspace.processor.service';
+import { WorkspaceProcessorService } from '@modules/workspace/services/processor/workspace.processor.service';
 import { WorkspaceProcessor } from '@modules/workspace/processors/workspace.processor';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { buildProcessorJob } from '@test/unit/helpers/test.unit.queue.helper';

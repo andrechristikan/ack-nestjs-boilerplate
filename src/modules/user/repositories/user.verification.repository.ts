@@ -7,10 +7,8 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
-import type {
-    IUserOnboardingVerification,
-    IUserVerificationCreate,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserVerificationCreate } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import type { IUserVerificationRepository } from '@modules/user/interfaces/user.verification-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -76,7 +74,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         return count > 0;
     }
 
-    async createFromOnboardingInTx(
+    async createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         {
@@ -87,7 +85,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
             expiredAt,
             verifiedAt,
             isUsed,
-        }: IUserOnboardingVerification,
+        }: IUserCreateVerification,
         createdBy: string
     ): Promise<Verification> {
         return tx.verification.create({

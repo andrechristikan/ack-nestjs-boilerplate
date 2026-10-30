@@ -1,4 +1,4 @@
-import { SessionHttpService } from '@modules/session/services/session.http.service';
+import { SessionHttpService } from '@modules/session/services/http/session.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

@@ -67,12 +67,12 @@ import type {
     IUserProfile,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
-import { UserOnboardingHttpService } from '@modules/user/services/user.onboarding.http.service';
-import { UserMobileNumberHttpService } from '@modules/user/services/user.mobile-number.http.service';
-import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
+import { UserAuthHttpService } from '@modules/user/services/http/user.auth.http.service';
+import { UserMobileNumberHttpService } from '@modules/user/services/http/user.mobile-number.http.service';
+import { UserPasswordHttpService } from '@modules/user/services/http/user.password.http.service';
 import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
-import { UserProfileHttpService } from '@modules/user/services/user.profile.http.service';
-import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
+import { UserProfileHttpService } from '@modules/user/services/http/user.profile.http.service';
+import { UserTwoFactorHttpService } from '@modules/user/services/http/user.two-factor.http.service';
 import {
     Body,
     Controller,
@@ -95,7 +95,7 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class UserSharedController {
     constructor(
-        private readonly userOnboardingHttpService: UserOnboardingHttpService,
+        private readonly userAuthHttpService: UserAuthHttpService,
         private readonly userProfileHttpService: UserProfileHttpService,
         private readonly userPasswordHttpService: UserPasswordHttpService,
         private readonly userMobileNumberHttpService: UserMobileNumberHttpService,
@@ -114,7 +114,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @AuthJwtToken() refreshToken: string
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userOnboardingHttpService.refresh(user, refreshToken);
+        return this.userAuthHttpService.refresh(user, refreshToken);
     }
 
     @Doc({ summary: 'get profile' })
@@ -425,7 +425,7 @@ export class UserSharedController {
         @AuthJwtPayload()
         { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
     ): Promise<IResponseReturn<void>> {
-        return this.userOnboardingHttpService.logout(
+        return this.userAuthHttpService.logout(
             userId,
             sessionId,
             deviceOwnershipId

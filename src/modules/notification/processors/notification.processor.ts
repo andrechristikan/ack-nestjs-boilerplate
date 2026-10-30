@@ -17,7 +17,7 @@ import type {
     INotificationWorkspaceJoinRejectedPayload,
     INotificationWorkspaceJoinRequestEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
+import { NotificationProcessorService } from '@modules/notification/services/processor/notification.processor.service';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { SentryService } from '@common/sentry/services/sentry.service';

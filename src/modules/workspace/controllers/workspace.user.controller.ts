@@ -70,10 +70,10 @@ import {
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
-import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
-import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
-import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/workspace.join-request.http.service';
-import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
+import { WorkspaceHttpService } from '@modules/workspace/services/http/workspace.http.service';
+import { WorkspaceInviteHttpService } from '@modules/workspace/services/http/workspace.invite.http.service';
+import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/http/workspace.join-request.http.service';
+import { WorkspaceMemberHttpService } from '@modules/workspace/services/http/workspace.member.http.service';
 import {
     Body,
     Controller,

@@ -391,15 +391,26 @@ describe('NotificationDomain', () => {
         });
     });
 
-    describe('createDefaultsInTx', () => {
-        it('creates the default settings for the user inside the transaction', async () => {
-            const tx = {} as IDatabaseTransactionClient;
+    describe('createDefaultsManyInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
 
-            await domain.createDefaultsInTx(tx, 'user-id');
+        it('creates the default settings of every user in one repository statement', async () => {
+            await domain.createDefaultsManyInTx(tx, ['user-one', 'user-two']);
 
             expect(
-                notificationUserSettingRepository.createDefaultsInTx
-            ).toHaveBeenCalledWith(tx, 'user-id');
+                notificationUserSettingRepository.createDefaultsManyInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                notificationUserSettingRepository.createDefaultsManyInTx
+            ).toHaveBeenCalledWith(tx, ['user-one', 'user-two']);
+        });
+
+        it('issues no statement for an empty list', async () => {
+            await domain.createDefaultsManyInTx(tx, []);
+
+            expect(
+                notificationUserSettingRepository.createDefaultsManyInTx
+            ).not.toHaveBeenCalled();
         });
     });
 

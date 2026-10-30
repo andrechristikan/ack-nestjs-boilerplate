@@ -13,6 +13,7 @@ import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/ter
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
 import { TermPolicyRequiredInvalidException } from '@modules/term-policy/exceptions/term-policy.required-invalid.exception';
 import type {
+    ITermPolicyAcceptanceCreate,
     ITermPolicyRef,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -86,28 +87,33 @@ export class TermPolicyAcceptanceDomain {
         return this.termPolicyRepository.findUserAccepted(userId, pagination);
     }
 
-    async acceptPublishedInTx(
+    async acceptPublishedManyInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
-        types: EnumTermPolicyType[],
-        createdBy: string
+        entries: ITermPolicyAcceptanceCreate[]
     ): Promise<void> {
+        if (entries.length === 0) {
+            return;
+        }
+
         const acceptedAt = this.helperDateService.create();
+        const types = [...new Set(entries.flatMap(entry => entry.types))];
         const refs =
             await this.termPolicyRepository.findLatestPublishedByTypesInTx(
                 tx,
                 types
             );
+        const rows = entries.flatMap(({ userId, types: accepted, createdBy }) =>
+            refs
+                .filter(ref => accepted.includes(ref.type))
+                .map(ref => ({
+                    userId,
+                    termPolicyId: ref.id,
+                    createdBy,
+                    acceptedAt,
+                }))
+        );
 
-        for (const ref of refs) {
-            await this.termPolicyRepository.acceptInTx(
-                tx,
-                userId,
-                ref.id,
-                createdBy,
-                acceptedAt
-            );
-        }
+        await this.termPolicyRepository.acceptManyInTx(tx, rows);
     }
 
     async userAccept(

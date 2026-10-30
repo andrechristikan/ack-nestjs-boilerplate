@@ -1,5 +1,5 @@
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
-import { WorkspaceProcessorService } from '@modules/workspace/services/workspace.processor.service';
+import { WorkspaceProcessorService } from '@modules/workspace/services/processor/workspace.processor.service';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { SentryService } from '@common/sentry/services/sentry.service';

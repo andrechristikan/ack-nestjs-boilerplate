@@ -2,7 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type { IUserDeletePhotoPayload } from '@modules/user/interfaces/user.interface';
-import { UserProcessorService } from '@modules/user/services/user.processor.service';
+import { UserProcessorService } from '@modules/user/services/processor/user.processor.service';
 import { Job, UnrecoverableError } from 'bullmq';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';

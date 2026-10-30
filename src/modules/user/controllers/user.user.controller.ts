@@ -10,7 +10,7 @@ import {
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { UserHttpService } from '@modules/user/services/user.http.service';
+import { UserHttpService } from '@modules/user/services/http/user.http.service';
 import { Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client/client';

@@ -1,4 +1,4 @@
-import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
+import { ActivityLogHttpService } from '@modules/activity-log/services/http/activity-log.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

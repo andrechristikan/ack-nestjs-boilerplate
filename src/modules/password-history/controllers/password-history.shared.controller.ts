@@ -11,7 +11,7 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
-import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
+import { PasswordHistoryHttpService } from '@modules/password-history/services/http/password-history.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Query } from '@nestjs/common';

@@ -1,4 +1,4 @@
-import { PolicyHttpService } from '@modules/policy/services/policy.http.service';
+import { PolicyHttpService } from '@modules/policy/services/http/policy.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

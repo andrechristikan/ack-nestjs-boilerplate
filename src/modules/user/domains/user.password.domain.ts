@@ -11,6 +11,7 @@ import type {
     IUserForgotPassword,
     IUserForgotPasswordCreate,
     IUserForgotPasswordPrepared,
+    IUserPasswordSet,
     IUserPasswordTemporary,
 } from '@modules/user/interfaces/user.interface';
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
@@ -78,20 +79,20 @@ export class UserPasswordDomain {
         return attempt !== null;
     }
 
-    /** Counts the attempt, then checks the old password; the caller resets the counter. */
-    async verifyOldPassword(
-        userId: string,
-        hashedPassword: string,
-        oldPassword: string
-    ): Promise<void> {
-        const isAttemptCounted = await this.incrementPasswordAttempt(userId);
+    assertAttemptCounted(isAttemptCounted: boolean): void {
         if (!isAttemptCounted) {
             throw new UserPasswordAttemptMaxException();
         }
+    }
 
+    /** Checks the old password against the stored hash; the caller counts the attempt and resets the counter. */
+    async assertOldPasswordMatch(
+        user: IUserPasswordSet,
+        password: string
+    ): Promise<void> {
         const isPasswordValid = await this.authPasswordUtil.validatePassword(
-            oldPassword,
-            hashedPassword
+            password,
+            user.password
         );
         if (!isPasswordValid) {
             throw new UserPasswordNotMatchException();

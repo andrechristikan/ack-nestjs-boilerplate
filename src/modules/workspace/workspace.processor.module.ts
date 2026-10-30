@@ -1,5 +1,5 @@
 import { WorkspaceProcessor } from '@modules/workspace/processors/workspace.processor';
-import { WorkspaceProcessorService } from '@modules/workspace/services/workspace.processor.service';
+import { WorkspaceProcessorService } from '@modules/workspace/services/processor/workspace.processor.service';
 import { WorkspaceDomainModule } from '@modules/workspace/workspace.domain.module';
 import { Module } from '@nestjs/common';
 

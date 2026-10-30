@@ -22,7 +22,7 @@ import {
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleHttpService } from '@modules/role/services/role.http.service';
+import { RoleHttpService } from '@modules/role/services/http/role.http.service';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,

@@ -6,7 +6,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
-    DeviceOwnership,
     EnumDeviceNotificationProvider,
     Prisma,
 } from '@generated/prisma-client/client';
@@ -62,7 +61,7 @@ export interface IDeviceOwnershipRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>>;
-    findTokensByUserId(userId: string): Promise<DeviceOwnership[]>;
+    findTokensByUserId(userId: string): Promise<string[]>;
     existsActive(userId: string, deviceOwnershipId: string): Promise<boolean>;
     refreshInTx(
         tx: IDatabaseTransactionClient,

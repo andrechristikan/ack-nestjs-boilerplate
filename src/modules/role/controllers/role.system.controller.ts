@@ -6,7 +6,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
 import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleHttpService } from '@modules/role/services/role.http.service';
+import { RoleHttpService } from '@modules/role/services/http/role.http.service';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 

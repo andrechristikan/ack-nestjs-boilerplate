@@ -7,7 +7,7 @@ import { DatabaseUnavailableException } from '@common/database/exceptions/databa
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import { UserProcessor } from '@modules/user/processors/user.processor';
-import { UserProcessorService } from '@modules/user/services/user.processor.service';
+import { UserProcessorService } from '@modules/user/services/processor/user.processor.service';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { buildProcessorJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { MessageService } from '@common/message/services/message.service';

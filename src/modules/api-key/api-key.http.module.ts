@@ -1,4 +1,4 @@
-import { ApiKeyHttpService } from '@modules/api-key/services/api-key.http.service';
+import { ApiKeyHttpService } from '@modules/api-key/services/http/api-key.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

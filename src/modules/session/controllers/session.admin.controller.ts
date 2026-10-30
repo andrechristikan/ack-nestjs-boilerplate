@@ -18,7 +18,7 @@ import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.en
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
-import { SessionHttpService } from '@modules/session/services/session.http.service';
+import { SessionHttpService } from '@modules/session/services/http/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserCurrent,

@@ -244,4 +244,25 @@ describe('AuthTwoFactorUtil', () => {
             );
         });
     });
+
+    describe('toDecryptException', () => {
+        it('maps a failed decryption to AuthTwoFactorSecretUnavailableException', async () => {
+            const { HelperDecryptFailedException } =
+                await import('@common/helper/exceptions/helper.decrypt-failed.exception');
+            const { AuthTwoFactorSecretUnavailableException } =
+                await import('@modules/auth/exceptions/auth.two-factor-secret-unavailable.exception');
+
+            const result = util.toDecryptException(
+                new HelperDecryptFailedException()
+            );
+
+            expect(result).toBeInstanceOf(
+                AuthTwoFactorSecretUnavailableException
+            );
+        });
+
+        it('returns null for any other error', () => {
+            expect(util.toDecryptException(new Error('boom'))).toBeNull();
+        });
+    });
 });

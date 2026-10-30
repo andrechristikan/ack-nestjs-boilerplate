@@ -20,7 +20,7 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
-import { DeviceHttpService } from '@modules/device/services/device.http.service';
+import { DeviceHttpService } from '@modules/device/services/http/device.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';

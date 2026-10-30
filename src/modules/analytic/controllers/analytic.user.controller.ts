@@ -16,7 +16,7 @@ import type {
     IAnalyticStatusCountList,
     IAnalyticWorkspaceSummary,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/analytic.workspace-user.http.service';
+import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/http/analytic.workspace-user.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';

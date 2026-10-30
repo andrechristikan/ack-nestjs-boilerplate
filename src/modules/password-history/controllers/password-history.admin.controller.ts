@@ -9,7 +9,7 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
-import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
+import { PasswordHistoryHttpService } from '@modules/password-history/services/http/password-history.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';

@@ -1,35 +1,167 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumUserStatus } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
 import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
+import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
 import { AuthTwoFactorNotRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-not-required-setup.exception';
 import { AuthTwoFactorRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-required-setup.exception';
+import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exceptions/auth.two-factor-secret-unavailable.exception';
 import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
-import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
+import { UserTwoFactorCache } from '@modules/user/caches/user.two-factor.cache';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
     IUserTwoFactorLoginSetup,
+    IUserTwoFactorSetupSecret,
+    IUserTwoFactorVerifyInput,
+    IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserTwoFactorDomain {
+    private readonly maxAttempt: number;
+
     constructor(
         private readonly userTwoFactorRepository: UserTwoFactorRepository,
         private readonly userRepository: UserRepository,
-        private readonly authTwoFactorUtil: AuthTwoFactorUtil
-    ) {}
+        private readonly userTwoFactorCache: UserTwoFactorCache,
+        private readonly authTwoFactorUtil: AuthTwoFactorUtil,
+        private readonly sentryService: SentryService,
+        private readonly configService: ConfigService
+    ) {
+        this.maxAttempt = this.configService.get<number>(
+            'auth.twoFactor.maxAttempt'
+        )!;
+    }
+
+    private getEnabledTwoFactor({ twoFactor }: IUser): TwoFactor {
+        if (!twoFactor?.enabled) {
+            throw new AuthTwoFactorNotEnabledException();
+        }
+
+        return twoFactor;
+    }
+
+    private assertMethodProvided(
+        method: EnumAuthTwoFactorMethod | null
+    ): asserts method is EnumAuthTwoFactorMethod {
+        if (!method) {
+            throw new AuthTwoFactorMethodRequiredException();
+        }
+    }
+
+    private async assertUnlocked(user: IUser): Promise<void> {
+        const remainingMs =
+            await this.userTwoFactorCache.getTwoFactorLockTtlInMs(user);
+        if (remainingMs > 0) {
+            throw new AuthTwoFactorAttemptTemporaryLockException(
+                Math.ceil(remainingMs / 1000)
+            );
+        }
+    }
+
+    /** Counts one verification attempt and judges it before the code is checked: a count on a multiple of the max locks two-factor with the escalating TTL and any other count re-checks the lock a parallel request set; both answer the lock exception without verifying. */
+    private async countAttempt(user: IUser): Promise<void> {
+        const attempt = await this.userTwoFactorRepository.incrementAttempt(
+            user.id
+        );
+        if (attempt % this.maxAttempt !== 0) {
+            await this.assertUnlocked(user);
+
+            return;
+        }
+
+        const counted: IUser =
+            user.twoFactor === null
+                ? user
+                : { ...user, twoFactor: { ...user.twoFactor, attempt } };
+        await this.userTwoFactorCache.setTwoFactorLock(counted);
+        const remainingMs =
+            await this.userTwoFactorCache.getTwoFactorLockTtlInMs(counted);
+
+        throw new AuthTwoFactorAttemptTemporaryLockException(
+            Math.ceil(remainingMs / 1000)
+        );
+    }
+
+    /** An absent secret is an expected account state; a secret that fails to decrypt is an operator fault and is reported. */
+    private readSecret(encryptedSecret: string | null, userId: string): string {
+        if (!encryptedSecret) {
+            throw new AuthTwoFactorSecretUnavailableException();
+        }
+
+        try {
+            return this.authTwoFactorUtil.decryptSecret(
+                encryptedSecret,
+                userId
+            );
+        } catch (err: unknown) {
+            const exception = this.authTwoFactorUtil.toDecryptException(err);
+            if (exception !== null) {
+                this.sentryService.captureException(err);
+            }
+
+            throw exception ?? new AppUnknownException(err);
+        }
+    }
+
+    /** Checks a TOTP code against the confirmed secret, or a backup code against the stored hashes; null when it does not match, otherwise the backup codes left once a used one is removed. */
+    private checkCode(
+        twoFactor: TwoFactor,
+        method: EnumAuthTwoFactorMethod,
+        { code, backupCode }: IUserTwoFactorVerifyInput
+    ): IUserTwoFactorVerifyResult | null {
+        const normalizedCode =
+            method === EnumAuthTwoFactorMethod.code
+                ? code?.trim()
+                : backupCode?.trim();
+        if (!normalizedCode) {
+            return null;
+        }
+
+        if (method === EnumAuthTwoFactorMethod.code) {
+            const secret = this.readSecret(twoFactor.secret, twoFactor.userId);
+
+            const isValid = this.authTwoFactorUtil.verifyCode(
+                secret,
+                normalizedCode
+            );
+
+            return isValid ? { method, newBackupCodes: null } : null;
+        }
+
+        if (twoFactor.backupCodes.length === 0) {
+            return null;
+        }
+
+        const backupValidation = this.authTwoFactorUtil.verifyBackupCode(
+            twoFactor.backupCodes,
+            normalizedCode
+        );
+        if (!backupValidation.isValid) {
+            return null;
+        }
+
+        const newBackupCodes = [...twoFactor.backupCodes];
+        newBackupCodes.splice(backupValidation.index, 1);
+
+        return { method, newBackupCodes };
+    }
 
     /** Resolves the active, verified user of a login challenge whose two-factor is enabled. */
     private async getOneEnabledForLogin(userId: string): Promise<IUser> {
@@ -72,12 +204,66 @@ export class UserTwoFactorDomain {
         return { user, pendingSecret };
     }
 
-    async incrementAttempt(userId: string): Promise<number> {
-        return this.userTwoFactorRepository.incrementAttempt(userId);
+    /** Counts one verification attempt, checks the code or backup code against the confirmed secret, and resets the counter on a match; a backup code is not consumed here. */
+    async verify(
+        user: IUser,
+        input: IUserTwoFactorVerifyInput
+    ): Promise<IUserTwoFactorVerifyResult> {
+        // Sequential by design: gate before the work it guards
+        await this.assertUnlocked(user);
+        this.assertMethodProvided(input.method);
+        const twoFactor = this.getEnabledTwoFactor(user);
+
+        // Sequential by design: gate before the work it guards
+        await this.countAttempt(user);
+
+        const verified = this.checkCode(twoFactor, input.method, input);
+        if (!verified) {
+            throw new AuthTwoFactorInvalidException();
+        }
+
+        await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
+
+        return verified;
     }
 
-    async resetAttempt(userId: string): Promise<void> {
-        await this.userTwoFactorRepository.resetTwoFactorAttempt(userId);
+    /** Counts one verification attempt, checks a code from a newly set-up authenticator against the pending secret, and resets the counter on a match. */
+    async verifySetupCode(
+        user: IUser,
+        pendingSecret: string,
+        code: string
+    ): Promise<void> {
+        // Sequential by design: gate before the work it guards
+        await this.assertUnlocked(user);
+        // Sequential by design: gate before the work it guards
+        await this.countAttempt(user);
+
+        const secret = this.readSecret(pendingSecret, user.id);
+        const isValid = this.authTwoFactorUtil.verifyCode(secret, code.trim());
+        if (!isValid) {
+            throw new AuthTwoFactorInvalidException();
+        }
+
+        await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
+    }
+
+    /** Generates a new secret with its encrypted form bound to the user and the otpauth URL for enrollment. */
+    async setup(user: IUser): Promise<IUserTwoFactorSetupSecret> {
+        const secret = this.authTwoFactorUtil.generateSecret();
+        const encryptedSecret = this.authTwoFactorUtil.encryptSecret(
+            secret,
+            user.id
+        );
+        const otpauthUrl = this.authTwoFactorUtil.createKeyUri(
+            user.email,
+            secret
+        );
+
+        return { secret, otpauthUrl, encryptedSecret };
+    }
+
+    async clearLock(user: IUser): Promise<void> {
+        await this.userTwoFactorCache.deleteTwoFactorLock(user);
     }
 
     async saveSetup(userId: string, encryptedSecret: string): Promise<void> {
@@ -91,7 +277,7 @@ export class UserTwoFactorDomain {
     async saveSetupConsumingBackupCode(
         user: IUser,
         encryptedSecret: string,
-        verified: IAuthTwoFactorVerifyResult
+        verified: IUserTwoFactorVerifyResult
     ): Promise<void> {
         const isSetUp =
             await this.userTwoFactorRepository.setupTwoFactorConsumingBackupCode(
@@ -145,14 +331,6 @@ export class UserTwoFactorDomain {
         }
     }
 
-    getEnabledTwoFactor({ twoFactor }: IUser): TwoFactor {
-        if (!twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
-        }
-
-        return twoFactor;
-    }
-
     getBackupCodeForSetup(
         user: IUser,
         backupCode: string | null
@@ -189,7 +367,7 @@ export class UserTwoFactorDomain {
     async recordVerificationInTx(
         tx: IDatabaseTransactionClient,
         user: IUser,
-        verified: IAuthTwoFactorVerifyResult
+        verified: IUserTwoFactorVerifyResult
     ): Promise<void> {
         const recorded = await this.userTwoFactorRepository.verifyTwoFactorInTx(
             tx,
@@ -205,7 +383,7 @@ export class UserTwoFactorDomain {
     /** Persists a successful 2FA check; a backup code is consumed only while the stored codes are still the ones it was verified against, otherwise the check is rejected. */
     async recordVerification(
         user: IUser,
-        verified: IAuthTwoFactorVerifyResult
+        verified: IUserTwoFactorVerifyResult
     ): Promise<void> {
         const recorded = await this.userTwoFactorRepository.verifyTwoFactor(
             user.id,

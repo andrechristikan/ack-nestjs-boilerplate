@@ -10,7 +10,10 @@ import {
 } from '@generated/prisma-client/client';
 import type { PasswordHistory } from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
+import type {
+    IPasswordHistoryCreate,
+    IPasswordHistoryList,
+} from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { UserPasswordMustNewException } from '@modules/user/exceptions/user.password-must-new.exception';
 import { Injectable } from '@nestjs/common';
@@ -75,5 +78,16 @@ export class PasswordHistoryDomain {
             createdAt,
             createdBy
         );
+    }
+
+    async createManyInTx(
+        tx: IDatabaseTransactionClient,
+        entries: IPasswordHistoryCreate[]
+    ): Promise<void> {
+        if (entries.length === 0) {
+            return;
+        }
+
+        await this.passwordHistoryRepository.createManyInTx(tx, entries);
     }
 }

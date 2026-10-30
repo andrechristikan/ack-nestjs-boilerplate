@@ -20,7 +20,7 @@ import { DeviceRefreshRequestSchema } from '@modules/device/dtos/request/device.
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
-import { DeviceHttpService } from '@modules/device/services/device.http.service';
+import { DeviceHttpService } from '@modules/device/services/http/device.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {

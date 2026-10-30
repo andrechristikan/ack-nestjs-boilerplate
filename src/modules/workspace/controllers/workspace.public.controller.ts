@@ -12,8 +12,8 @@ import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/r
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
-import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
-import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
+import { WorkspaceHttpService } from '@modules/workspace/services/http/workspace.http.service';
+import { WorkspaceInviteHttpService } from '@modules/workspace/services/http/workspace.invite.http.service';
 import {
     Body,
     Controller,

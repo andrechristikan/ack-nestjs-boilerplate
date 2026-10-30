@@ -1,6 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
-import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import type { IUserTwoFactorVerifyResult } from '@modules/user/interfaces/user.interface';
 
 export interface IUserTwoFactorRepository {
     createDisabledInTx(
@@ -11,12 +11,12 @@ export interface IUserTwoFactorRepository {
     verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        verified: IAuthTwoFactorVerifyResult,
+        verified: IUserTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean>;
     verifyTwoFactor(
         userId: string,
-        verified: IAuthTwoFactorVerifyResult,
+        verified: IUserTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean>;
     setupTwoFactor(
@@ -26,7 +26,7 @@ export interface IUserTwoFactorRepository {
     setupTwoFactorConsumingBackupCode(
         userId: string,
         pendingSecretEncrypted: string,
-        verified: IAuthTwoFactorVerifyResult,
+        verified: IUserTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean>;
     enableTwoFactor(

@@ -5,12 +5,14 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
+    EnumRoleType,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { TwoFactor, User } from '@generated/prisma-client/client';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Duration } from 'luxon';
@@ -64,6 +66,39 @@ describe('UserUtil', () => {
         updatedBy: null,
         deletedAt: null,
         deletedBy: null,
+    };
+
+    const twoFactorRow: TwoFactor = {
+        id: 'two-factor-marigold',
+        userId: user.id,
+        secret: 'secret',
+        pendingSecret: null,
+        backupCodes: ['code-one'],
+        enabled: false,
+        requiredSetup: false,
+        confirmedAt: null,
+        lastUsedAt: null,
+        attempt: 0,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+
+    const iUser: IUser = {
+        ...user,
+        role: {
+            id: 'role-marigold',
+            name: 'user',
+            description: null,
+            type: EnumRoleType.user,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+            policies: [],
+        },
+        twoFactor: null,
     };
 
     beforeEach(async () => {
@@ -278,6 +313,108 @@ describe('UserUtil', () => {
                     'unknown' as EnumUserLoginWith
                 )
             ).toBe(EnumActivityLogAction.userLoginCredential);
+        });
+    });
+
+    describe('revokesSessionsOn', () => {
+        it('returns false for active', () => {
+            expect(util.revokesSessionsOn(EnumUserStatus.active)).toBe(false);
+        });
+
+        it('returns true for inactive', () => {
+            expect(util.revokesSessionsOn(EnumUserStatus.inactive)).toBe(true);
+        });
+
+        it('returns true for blocked', () => {
+            expect(util.revokesSessionsOn(EnumUserStatus.blocked)).toBe(true);
+        });
+    });
+
+    describe('resolveStatusActivityLogAction', () => {
+        it('resolves userBlocked for blocked', () => {
+            expect(
+                util.resolveStatusActivityLogAction(EnumUserStatus.blocked)
+            ).toBe(EnumActivityLogAction.userBlocked);
+        });
+
+        it('resolves userUpdateStatus for inactive', () => {
+            expect(
+                util.resolveStatusActivityLogAction(EnumUserStatus.inactive)
+            ).toBe(EnumActivityLogAction.userUpdateStatus);
+        });
+
+        it('resolves userUpdateStatus for active', () => {
+            expect(
+                util.resolveStatusActivityLogAction(EnumUserStatus.active)
+            ).toBe(EnumActivityLogAction.userUpdateStatus);
+        });
+    });
+
+    describe('isUnverified', () => {
+        it('returns false for a verified user', () => {
+            expect(util.isUnverified(iUser)).toBe(false);
+        });
+
+        it('returns true for an unverified user', () => {
+            expect(util.isUnverified({ ...iUser, isVerified: false })).toBe(
+                true
+            );
+        });
+    });
+
+    describe('hasPassword', () => {
+        it('returns true when the user holds a password hash', () => {
+            expect(util.hasPassword({ ...iUser, password: 'hash' })).toBe(true);
+        });
+
+        it('returns false when the user has no password', () => {
+            expect(util.hasPassword({ ...iUser, password: null })).toBe(false);
+        });
+    });
+
+    describe('isTwoFactorEnabled', () => {
+        it('returns false when the user has no two-factor row', () => {
+            expect(util.isTwoFactorEnabled(iUser)).toBe(false);
+        });
+
+        it('returns false when the two-factor row is disabled', () => {
+            expect(
+                util.isTwoFactorEnabled({
+                    ...iUser,
+                    twoFactor: { ...twoFactorRow, enabled: false },
+                })
+            ).toBe(false);
+        });
+
+        it('returns true when the two-factor row is enabled', () => {
+            expect(
+                util.isTwoFactorEnabled({
+                    ...iUser,
+                    twoFactor: { ...twoFactorRow, enabled: true },
+                })
+            ).toBe(true);
+        });
+    });
+
+    describe('requiresTwoFactorSetup', () => {
+        const enabled = { ...twoFactorRow, enabled: true };
+
+        it('returns true when the enabled row still requires setup', () => {
+            expect(
+                util.requiresTwoFactorSetup({
+                    ...iUser,
+                    twoFactor: { ...enabled, requiredSetup: true },
+                })
+            ).toBe(true);
+        });
+
+        it('returns false when the enabled row requires no setup', () => {
+            expect(
+                util.requiresTwoFactorSetup({
+                    ...iUser,
+                    twoFactor: { ...enabled, requiredSetup: false },
+                })
+            ).toBe(false);
         });
     });
 

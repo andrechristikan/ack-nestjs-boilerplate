@@ -23,7 +23,6 @@ import type {
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
@@ -47,13 +46,15 @@ import type {
     IUserCreateRole,
     IUserCreateWithWorkspaceInput,
     IUserList,
-    IUserOnboardingVerification,
     IUserProfile,
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
+import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
+import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
@@ -62,9 +63,11 @@ import { Injectable } from '@nestjs/common';
 export class UserDomain {
     constructor(
         private readonly userRepository: UserRepository,
+        private readonly userVerificationDomain: UserVerificationDomain,
+        private readonly userTwoFactorDomain: UserTwoFactorDomain,
         private readonly userUtil: UserUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
-        private readonly userOnboardingUtil: UserOnboardingUtil,
+        private readonly userCreateUtil: UserCreateUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -139,7 +142,28 @@ export class UserDomain {
         tx: IDatabaseTransactionClient,
         inputs: IUserCreateWithWorkspaceInput[]
     ): Promise<IUser[]> {
-        return this.userRepository.createManyInTx(tx, inputs);
+        const users = await this.userRepository.createManyInTx(tx, inputs);
+        const rows: IUser[] = [];
+
+        for (const [index, input] of inputs.entries()) {
+            if (input.verification) {
+                await this.userVerificationDomain.createInTx(
+                    tx,
+                    input.userId,
+                    input.verification,
+                    input.createdBy
+                );
+            }
+
+            const twoFactor = await this.userTwoFactorDomain.createDisabledInTx(
+                tx,
+                input.userId,
+                input.createdBy
+            );
+            rows.push({ ...users[index]!, twoFactor });
+        }
+
+        return rows;
     }
 
     async setLastWorkspaceInTx(
@@ -250,10 +274,10 @@ export class UserDomain {
                 temporary: true,
             });
         const workspaceContexts =
-            this.userOnboardingUtil.buildPersonalWorkspaceContexts([username]);
+            this.userCreateUtil.buildPersonalWorkspaceContexts([username]);
         const workspaceContext = workspaceContexts[0]!;
         const isVerified = role.type !== EnumRoleType.user;
-        let verification: IUserOnboardingVerification | null;
+        let verification: IUserCreateVerification | null;
         if (isVerified) {
             verification = this.userVerificationUtil.createVerified(email);
         } else {
@@ -276,8 +300,7 @@ export class UserDomain {
                 ],
                 password,
                 passwordHistoryType:
-                    UserCreateContract[EnumUserCreateMode.admin]
-                        .passwordHistoryType,
+                    UserCreateContract.admin.passwordHistoryType,
                 verification,
                 workspaceContext,
                 createdBy,

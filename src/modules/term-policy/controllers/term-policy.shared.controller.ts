@@ -23,7 +23,7 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
+import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/http/term-policy.acceptance.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import type {

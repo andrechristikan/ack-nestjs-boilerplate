@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -12,15 +13,20 @@ import {
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { AppBaseException } from '@app/exceptions/app.base.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exceptions/auth.two-factor-secret-unavailable.exception';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
+import { SentryService } from '@common/sentry/services/sentry.service';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
+import { UserTwoFactorCache } from '@modules/user/caches/user.two-factor.cache';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserTwoFactorVerifyResult,
+} from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
@@ -31,6 +37,13 @@ describe('UserTwoFactorDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const authTwoFactorUtil: MockProxy<AuthTwoFactorUtil> =
         mock<AuthTwoFactorUtil>();
+    const userTwoFactorCache: MockProxy<UserTwoFactorCache> =
+        mock<UserTwoFactorCache>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const configGet = vi.fn<(key: string) => string | number | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
 
     let domain: UserTwoFactorDomain;
 
@@ -98,13 +111,19 @@ describe('UserTwoFactorDomain', () => {
         twoFactor: baseTwoFactor,
     };
 
-    const verifiedResult: IAuthTwoFactorVerifyResult = {
-        isValid: true,
+    const verifiedResult: IUserTwoFactorVerifyResult = {
         method: EnumAuthTwoFactorMethod.code,
         newBackupCodes: null,
     };
     beforeEach(async () => {
         vi.resetAllMocks();
+
+        configGet.mockImplementation((key: string) => {
+            const values: Record<string, string | number> = {
+                'auth.twoFactor.maxAttempt': 5,
+            };
+            return values[key];
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -115,6 +134,9 @@ describe('UserTwoFactorDomain', () => {
                 },
                 { provide: UserRepository, useValue: userRepository },
                 { provide: AuthTwoFactorUtil, useValue: authTwoFactorUtil },
+                { provide: UserTwoFactorCache, useValue: userTwoFactorCache },
+                { provide: SentryService, useValue: sentryService },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         domain = module.get(UserTwoFactorDomain);
@@ -311,26 +333,468 @@ describe('UserTwoFactorDomain', () => {
         });
     });
 
-    describe('incrementAttempt', () => {
-        it('returns the attempt count the repository stored', async () => {
-            userTwoFactorRepository.incrementAttempt.mockResolvedValue(3);
+    describe('verify', () => {
+        const codeInput = {
+            method: EnumAuthTwoFactorMethod.code,
+            code: ' 123456 ',
+            backupCode: null,
+        };
+        const backupInput = {
+            method: EnumAuthTwoFactorMethod.backupCodes,
+            code: null,
+            backupCode: ' backup-one ',
+        };
 
-            await expect(domain.incrementAttempt('user-quartz')).resolves.toBe(
-                3
-            );
-            expect(
-                userTwoFactorRepository.incrementAttempt
-            ).toHaveBeenCalledWith('user-quartz');
+        beforeEach(() => {
+            userTwoFactorCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(1);
+            authTwoFactorUtil.decryptSecret.mockReturnValue('plain-secret');
+            authTwoFactorUtil.verifyCode.mockReturnValue(true);
         });
-    });
 
-    describe('resetAttempt', () => {
-        it('resets the attempt counter', async () => {
-            await domain.resetAttempt('user-quartz');
+        it('verifies the trimmed code against the decrypted secret and resets the attempt', async () => {
+            await expect(domain.verify(baseUser, codeInput)).resolves.toEqual(
+                verifiedResult
+            );
 
+            expect(authTwoFactorUtil.decryptSecret).toHaveBeenCalledWith(
+                'encrypted-secret',
+                'user-quartz'
+            );
+            expect(authTwoFactorUtil.verifyCode).toHaveBeenCalledWith(
+                'plain-secret',
+                '123456'
+            );
             expect(
                 userTwoFactorRepository.resetTwoFactorAttempt
             ).toHaveBeenCalledWith('user-quartz');
+        });
+
+        it('returns the stored backup codes without the matched one for a backup code', async () => {
+            authTwoFactorUtil.verifyBackupCode.mockReturnValue({
+                isValid: true,
+                index: 0,
+            });
+
+            await expect(domain.verify(baseUser, backupInput)).resolves.toEqual(
+                {
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    newBackupCodes: ['hash-two'],
+                }
+            );
+            expect(authTwoFactorUtil.verifyBackupCode).toHaveBeenCalledWith(
+                ['hash-one', 'hash-two'],
+                'backup-one'
+            );
+        });
+
+        it('throws AuthTwoFactorAttemptTemporaryLockException with the remaining seconds rounded up while locked', async () => {
+            userTwoFactorCache.getTwoFactorLockTtlInMs.mockResolvedValue(1500);
+
+            const call = domain.verify(baseUser, codeInput);
+
+            await expect(call).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+            });
+            await expect(call).rejects.toMatchObject({
+                messageProperties: { retryAfterSeconds: 2 },
+            });
+            expect(
+                userTwoFactorRepository.incrementAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorMethodRequiredException when no method is given', async () => {
+            await expect(
+                domain.verify(baseUser, { ...codeInput, method: null })
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
+            });
+            expect(
+                userTwoFactorRepository.incrementAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', async () => {
+            await expect(
+                domain.verify({ ...baseUser, twoFactor: null }, codeInput)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+            });
+        });
+
+        it('re-checks the lock a parallel request set when the count is below a multiple of the max', async () => {
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(3);
+            userTwoFactorCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(3000);
+
+            await expect(
+                domain.verify(baseUser, codeInput)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+            });
+            expect(userTwoFactorCache.setTwoFactorLock).not.toHaveBeenCalled();
+            expect(authTwoFactorUtil.verifyCode).not.toHaveBeenCalled();
+        });
+
+        it('locks with the count and throws on a multiple of the max', async () => {
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(5);
+            userTwoFactorCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(30000);
+
+            const call = domain.verify(baseUser, codeInput);
+
+            await expect(call).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+            });
+            await expect(call).rejects.toMatchObject({
+                messageProperties: { retryAfterSeconds: 30 },
+            });
+            expect(userTwoFactorCache.setTwoFactorLock).toHaveBeenCalledWith({
+                ...baseUser,
+                twoFactor: { ...baseTwoFactor, attempt: 5 },
+            });
+            expect(authTwoFactorUtil.verifyCode).not.toHaveBeenCalled();
+        });
+
+        it('fails the request when the lock write fails', async () => {
+            const failure = new Error('redis down');
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(5);
+            userTwoFactorCache.setTwoFactorLock.mockRejectedValue(failure);
+
+            await expect(domain.verify(baseUser, codeInput)).rejects.toBe(
+                failure
+            );
+        });
+
+        it('locks after the max attempt and a later verify of any flow throws AuthTwoFactorAttemptTemporaryLockException', async () => {
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(5);
+            userTwoFactorCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(30000);
+            await expect(
+                domain.verify(baseUser, codeInput)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+            });
+
+            userTwoFactorCache.getTwoFactorLockTtlInMs.mockResolvedValue(30000);
+
+            await expect(
+                domain.verifySetupCode(baseUser, 'pending-secret', '123456')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+            });
+            await expect(
+                domain.verify(baseUser, backupInput)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+            });
+            expect(authTwoFactorUtil.verifyCode).not.toHaveBeenCalled();
+            expect(authTwoFactorUtil.verifyBackupCode).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorInvalidException without a reset when the code does not match', async () => {
+            authTwoFactorUtil.verifyCode.mockReturnValue(false);
+
+            await expect(
+                domain.verify(baseUser, codeInput)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+            });
+            expect(
+                userTwoFactorRepository.resetTwoFactorAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorInvalidException when the chosen credential is blank', async () => {
+            await expect(
+                domain.verify(baseUser, { ...codeInput, code: '   ' })
+            ).rejects.toMatchObject({
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+            });
+            expect(authTwoFactorUtil.verifyCode).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorInvalidException when the user has no backup codes left', async () => {
+            const user = {
+                ...baseUser,
+                twoFactor: { ...baseTwoFactor, backupCodes: [] },
+            };
+
+            await expect(
+                domain.verify(user, backupInput)
+            ).rejects.toMatchObject({
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+            });
+            expect(authTwoFactorUtil.verifyBackupCode).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorInvalidException when the backup code matches none', async () => {
+            authTwoFactorUtil.verifyBackupCode.mockReturnValue({
+                isValid: false,
+                index: -1,
+            });
+
+            await expect(
+                domain.verify(baseUser, backupInput)
+            ).rejects.toMatchObject({
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+            });
+        });
+
+        it('throws AuthTwoFactorSecretUnavailableException when the user has no confirmed secret', async () => {
+            const user = {
+                ...baseUser,
+                twoFactor: { ...baseTwoFactor, secret: null },
+            };
+
+            await expect(domain.verify(user, codeInput)).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorSecretUnavailable,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorSecretUnavailable
+                    ],
+                messagePath: 'auth.error.twoFactorSecretUnavailable',
+            });
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+
+        it('reports a secret that fails to decrypt and throws AuthTwoFactorSecretUnavailableException', async () => {
+            const failure = new HelperDecryptFailedException();
+            const mapped = new AuthTwoFactorSecretUnavailableException();
+            authTwoFactorUtil.decryptSecret.mockImplementation(() => {
+                throw failure;
+            });
+            authTwoFactorUtil.toDecryptException.mockReturnValue(mapped);
+
+            await expect(domain.verify(baseUser, codeInput)).rejects.toBe(
+                mapped
+            );
+            expect(authTwoFactorUtil.toDecryptException).toHaveBeenCalledWith(
+                failure
+            );
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                failure
+            );
+        });
+
+        it('wraps an unmapped decrypt error in AppUnknownException', async () => {
+            const failure = new Error('boom');
+            authTwoFactorUtil.decryptSecret.mockImplementation(() => {
+                throw failure;
+            });
+            authTwoFactorUtil.toDecryptException.mockReturnValue(null);
+
+            await expect(
+                domain.verify(baseUser, codeInput)
+            ).rejects.toMatchObject({
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: failure,
+            });
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('verifySetupCode', () => {
+        beforeEach(() => {
+            userTwoFactorCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(1);
+            authTwoFactorUtil.decryptSecret.mockReturnValue('plain-pending');
+            authTwoFactorUtil.verifyCode.mockReturnValue(true);
+        });
+
+        it('verifies the trimmed code against the decrypted pending secret and resets the attempt', async () => {
+            await expect(
+                domain.verifySetupCode(
+                    baseUser,
+                    'encrypted-pending',
+                    ' 654321 '
+                )
+            ).resolves.toBeUndefined();
+
+            expect(authTwoFactorUtil.decryptSecret).toHaveBeenCalledWith(
+                'encrypted-pending',
+                'user-quartz'
+            );
+            expect(authTwoFactorUtil.verifyCode).toHaveBeenCalledWith(
+                'plain-pending',
+                '654321'
+            );
+            expect(
+                userTwoFactorRepository.resetTwoFactorAttempt
+            ).toHaveBeenCalledWith('user-quartz');
+        });
+
+        it('throws AuthTwoFactorAttemptTemporaryLockException while locked', async () => {
+            userTwoFactorCache.getTwoFactorLockTtlInMs.mockResolvedValue(2000);
+
+            await expect(
+                domain.verifySetupCode(baseUser, 'encrypted-pending', '654321')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+            });
+            expect(
+                userTwoFactorRepository.incrementAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('locks and throws on a multiple of the max attempt', async () => {
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(5);
+            userTwoFactorCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(30000);
+
+            await expect(
+                domain.verifySetupCode(baseUser, 'encrypted-pending', '654321')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode:
+                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptTemporaryLock',
+            });
+            expect(userTwoFactorCache.setTwoFactorLock).toHaveBeenCalledWith({
+                ...baseUser,
+                twoFactor: { ...baseTwoFactor, attempt: 5 },
+            });
+        });
+
+        it('locks a user row without two-factor data as given', async () => {
+            const user = { ...baseUser, twoFactor: null };
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(5);
+            userTwoFactorCache.getTwoFactorLockTtlInMs
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(60000);
+
+            await expect(
+                domain.verifySetupCode(user, 'encrypted-pending', '654321')
+            ).rejects.toMatchObject({
+                messageProperties: { retryAfterSeconds: 60 },
+            });
+            expect(userTwoFactorCache.setTwoFactorLock).toHaveBeenCalledWith(
+                user
+            );
+        });
+
+        it('throws AuthTwoFactorInvalidException without a reset when the code does not match', async () => {
+            authTwoFactorUtil.verifyCode.mockReturnValue(false);
+
+            await expect(
+                domain.verifySetupCode(baseUser, 'encrypted-pending', '654321')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+            });
+            expect(
+                userTwoFactorRepository.resetTwoFactorAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('reports a pending secret that fails to decrypt and throws AuthTwoFactorSecretUnavailableException', async () => {
+            const failure = new HelperDecryptFailedException();
+            const mapped = new AuthTwoFactorSecretUnavailableException();
+            authTwoFactorUtil.decryptSecret.mockImplementation(() => {
+                throw failure;
+            });
+            authTwoFactorUtil.toDecryptException.mockReturnValue(mapped);
+
+            await expect(
+                domain.verifySetupCode(baseUser, 'encrypted-pending', '654321')
+            ).rejects.toBe(mapped);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                failure
+            );
+        });
+    });
+
+    describe('setup', () => {
+        it('generates a secret and answers it with its encrypted form and key URI', async () => {
+            authTwoFactorUtil.generateSecret.mockReturnValue('plain-secret');
+            authTwoFactorUtil.encryptSecret.mockReturnValue('encrypted-secret');
+            authTwoFactorUtil.createKeyUri.mockReturnValue('otpauth://totp/x');
+
+            await expect(domain.setup(baseUser)).resolves.toEqual({
+                secret: 'plain-secret',
+                encryptedSecret: 'encrypted-secret',
+                otpauthUrl: 'otpauth://totp/x',
+            });
+            expect(authTwoFactorUtil.encryptSecret).toHaveBeenCalledWith(
+                'plain-secret',
+                'user-quartz'
+            );
+            expect(authTwoFactorUtil.createKeyUri).toHaveBeenCalledWith(
+                'quartz@example.com',
+                'plain-secret'
+            );
+        });
+    });
+
+    describe('clearLock', () => {
+        it('deletes the lock of the user', async () => {
+            await domain.clearLock(baseUser);
+
+            expect(userTwoFactorCache.deleteTwoFactorLock).toHaveBeenCalledWith(
+                baseUser
+            );
         });
     });
 
@@ -497,7 +961,6 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.enableTwoFactor('user-quartz', 'pending');
 
-            await expect(call).rejects.toBeInstanceOf(AppBaseException);
             await expect(call).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -575,35 +1038,6 @@ describe('UserTwoFactorDomain', () => {
         it('throws AuthTwoFactorNotEnabledException when the user has no two-factor row', () => {
             expect(() =>
                 domain.assertEnabled({ ...baseUser, twoFactor: null })
-            ).toThrow(
-                expect.objectContaining({
-                    statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                })
-            );
-        });
-    });
-
-    describe('getEnabledTwoFactor', () => {
-        it('returns the two-factor row when two-factor is enabled', () => {
-            expect(domain.getEnabledTwoFactor(baseUser)).toBe(baseTwoFactor);
-        });
-
-        it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-
-            expect(() => domain.getEnabledTwoFactor(user)).toThrow(
-                expect.objectContaining({
-                    statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                })
-            );
-        });
-
-        it('throws AuthTwoFactorNotEnabledException when the user has no two-factor row', () => {
-            expect(() =>
-                domain.getEnabledTwoFactor({ ...baseUser, twoFactor: null })
             ).toThrow(
                 expect.objectContaining({
                     statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
@@ -769,6 +1203,35 @@ describe('UserTwoFactorDomain', () => {
             expect(
                 userTwoFactorRepository.createDisabledInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz', 'admin-quartz');
+        });
+    });
+
+    describe('getEnabledTwoFactor', () => {
+        it('returns the two-factor row when two-factor is enabled', () => {
+            expect(domain['getEnabledTwoFactor'](baseUser)).toBe(baseTwoFactor);
+        });
+
+        it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', () => {
+            const user = {
+                ...baseUser,
+                twoFactor: { ...baseTwoFactor, enabled: false },
+            };
+
+            expect(() => domain['getEnabledTwoFactor'](user)).toThrow(
+                expect.objectContaining({
+                    statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                })
+            );
+        });
+
+        it('throws AuthTwoFactorNotEnabledException when the user has no two-factor row', () => {
+            expect(() =>
+                domain['getEnabledTwoFactor']({ ...baseUser, twoFactor: null })
+            ).toThrow(
+                expect.objectContaining({
+                    statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                })
+            );
         });
     });
 });

@@ -3,7 +3,7 @@ import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { HelloResponseSchema } from '@modules/hello/dtos/response/hello.response.dto';
 import type { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
-import { HelloHttpService } from '@modules/hello/services/hello.http.service';
+import { HelloHttpService } from '@modules/hello/services/http/hello.http.service';
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 

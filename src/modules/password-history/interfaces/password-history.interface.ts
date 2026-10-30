@@ -12,3 +12,12 @@ export interface IPasswordHistoryAnalytic {
     type: EnumPasswordHistoryType;
     createdAt: Date;
 }
+
+export interface IPasswordHistoryCreate {
+    userId: string;
+    password: string;
+    type: EnumPasswordHistoryType;
+    expiredAt: Date;
+    createdAt: Date;
+    createdBy: string;
+}

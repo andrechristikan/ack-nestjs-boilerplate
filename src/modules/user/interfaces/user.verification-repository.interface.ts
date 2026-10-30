@@ -1,9 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { Verification } from '@generated/prisma-client/client';
-import type {
-    IUserOnboardingVerification,
-    IUserVerificationCreate,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserVerificationCreate } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
 export interface IUserVerificationRepository {
     findOneActiveByVerificationEmailToken(
@@ -17,7 +15,7 @@ export interface IUserVerificationRepository {
         id: string,
         verifiedAt: Date
     ): Promise<boolean>;
-    createFromOnboardingInTx(
+    createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         {
@@ -28,7 +26,7 @@ export interface IUserVerificationRepository {
             expiredAt,
             verifiedAt,
             isUsed,
-        }: IUserOnboardingVerification,
+        }: IUserCreateVerification,
         createdBy: string
     ): Promise<Verification>;
     createReplacingActive(

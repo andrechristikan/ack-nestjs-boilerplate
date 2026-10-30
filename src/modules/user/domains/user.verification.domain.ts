@@ -12,10 +12,10 @@ import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-i
 import { UserVerificationEmailResendLimitExceededException } from '@modules/user/exceptions/user.verification-email-resend-limit-exceeded.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
-    IUserOnboardingVerification,
     IUserVerificationCreate,
     IUserVerificationEmailTarget,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -149,13 +149,13 @@ export class UserVerificationDomain {
         );
     }
 
-    async createFromOnboardingInTx(
+    async createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        verification: IUserOnboardingVerification,
+        verification: IUserCreateVerification,
         createdBy: string
     ): Promise<Verification> {
-        return this.userVerificationRepository.createFromOnboardingInTx(
+        return this.userVerificationRepository.createInTx(
             tx,
             userId,
             verification,

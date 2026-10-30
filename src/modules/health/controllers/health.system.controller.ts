@@ -14,7 +14,7 @@ import { HealthInstanceResponseSchema } from '@modules/health/dtos/response/heal
 import type { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
 import { HealthThirdPartyResponseSchema } from '@modules/health/dtos/response/health.third-party.response.dto';
 import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
-import { HealthHttpService } from '@modules/health/services/health.http.service';
+import { HealthHttpService } from '@modules/health/services/http/health.http.service';
 import { Controller, Get, Header, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 

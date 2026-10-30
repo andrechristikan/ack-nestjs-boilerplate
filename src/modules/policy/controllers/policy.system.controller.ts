@@ -5,7 +5,7 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
-import { PolicyHttpService } from '@modules/policy/services/policy.http.service';
+import { PolicyHttpService } from '@modules/policy/services/http/policy.http.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 

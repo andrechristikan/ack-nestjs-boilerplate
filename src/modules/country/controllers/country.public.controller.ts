@@ -6,7 +6,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 import type { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
-import { CountryHttpService } from '@modules/country/services/country.http.service';
+import { CountryHttpService } from '@modules/country/services/http/country.http.service';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 

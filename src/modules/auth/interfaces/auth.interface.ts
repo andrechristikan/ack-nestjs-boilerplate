@@ -1,4 +1,3 @@
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import {
     EnumRoleType,
@@ -98,24 +97,6 @@ export interface IAuthTwoFactorChallengeCache {
     device: IDeviceIdentity;
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
-}
-
-export interface IAuthTwoFactorVerify {
-    method: EnumAuthTwoFactorMethod | null;
-    code: string | null;
-    backupCode: string | null;
-}
-
-export interface IAuthTwoFactorVerifyResult {
-    isValid: boolean;
-    method: EnumAuthTwoFactorMethod;
-    newBackupCodes: string[] | null;
-}
-
-export interface IAuthTwoFactorSetup {
-    secret: string;
-    otpauthUrl: string;
-    encryptedSecret: string;
 }
 
 export type IAuthJwtPayloadField<T> = Extract<keyof T, string>;

@@ -13,7 +13,6 @@ import {
     EnumDeviceNotificationProvider,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { DeviceOwnership } from '@generated/prisma-client/client';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
@@ -63,9 +62,7 @@ export class DeviceDomain {
         );
     }
 
-    async getOwnershipsWithNotificationToken(
-        userId: string
-    ): Promise<DeviceOwnership[]> {
+    async getNotificationTokens(userId: string): Promise<string[]> {
         return this.deviceOwnershipRepository.findTokensByUserId(userId);
     }
 

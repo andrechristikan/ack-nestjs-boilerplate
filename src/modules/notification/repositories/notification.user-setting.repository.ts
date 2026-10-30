@@ -19,13 +19,13 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
         });
     }
 
-    async createDefaultsInTx(
+    async createDefaultsManyInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userIds: string[]
     ): Promise<void> {
         await tx.notificationUserSetting.createMany({
-            data: Object.values(EnumNotificationChannel)
-                .map(channel =>
+            data: userIds.flatMap(userId =>
+                Object.values(EnumNotificationChannel).flatMap(channel =>
                     Object.values(EnumNotificationType).map(type => ({
                         userId,
                         channel,
@@ -33,7 +33,7 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
                         isActive: true,
                     }))
                 )
-                .flat(),
+            ),
         });
     }
 

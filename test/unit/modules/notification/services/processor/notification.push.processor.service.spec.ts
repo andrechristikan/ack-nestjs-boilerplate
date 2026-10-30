@@ -1,0 +1,1096 @@
+import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import {
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    EnumWorkspaceJoinRejectReason,
+    EnumWorkspaceMemberRole,
+} from '@generated/prisma-client/client';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
+import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
+import {
+    EnumNotificationPushProcess,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
+import type {
+    INotificationNewDeviceLoginPayload,
+    INotificationPushCleanupTokenEncryptedPayload,
+    INotificationPushQueuePayload,
+    INotificationPushStepResult,
+    INotificationSendPushEncryptedPayload,
+    INotificationWorkspaceInvitePushPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+} from '@modules/notification/interfaces/notification.interface';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { NotificationPushProcessorService } from '@modules/notification/services/processor/notification.push.processor.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
+import { MessageService } from '@common/message/services/message.service';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+
+describe('NotificationPushProcessorService', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
+    const notificationPushSecurityDomain: MockProxy<NotificationPushSecurityDomain> =
+        mock<NotificationPushSecurityDomain>();
+    const notificationPushWorkspaceDomain: MockProxy<NotificationPushWorkspaceDomain> =
+        mock<NotificationPushWorkspaceDomain>();
+    const notificationPushQueue: MockProxy<NotificationPushQueue> =
+        mock<NotificationPushQueue>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    let service: NotificationPushProcessorService;
+
+    const send: INotificationSendPushEncryptedPayload = {
+        userId: 'user-id',
+        notificationId: 'notification-id',
+        encryptedNotificationTokens: ['cipher(token-1)'],
+        username: 'nadia',
+    };
+    const progress = [
+        EnumNotificationStep.updateProcessAt,
+        EnumNotificationStep.sendMulticast,
+    ];
+    const completed: INotificationPushStepResult = {
+        message: 'm',
+        completedSteps: [
+            ...progress,
+            EnumNotificationStep.cleanupTokens,
+            EnumNotificationStep.updateSentAt,
+        ],
+        failedSteps: [],
+        encryptedFailureTokens: ['bad'],
+        encryptedPendingTokens: [],
+    };
+    const failed: INotificationPushStepResult = {
+        message: 'm',
+        completedSteps: progress,
+        failedSteps: [
+            { step: EnumNotificationStep.cleanupTokens, error: 'redis' },
+        ],
+        encryptedFailureTokens: ['bad'],
+        encryptedPendingTokens: [],
+    };
+    const outage: INotificationPushStepResult = {
+        message: 'm',
+        completedSteps: [EnumNotificationStep.updateProcessAt],
+        failedSteps: [
+            {
+                step: EnumNotificationStep.sendMulticast,
+                error: '2 tokens pending retry',
+            },
+        ],
+        encryptedFailureTokens: [],
+        encryptedPendingTokens: ['t1', 't2'],
+    };
+    const pending = ['t1', 't2'];
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
+        vi.mocked(configService.get).mockImplementation((key: string) => {
+            const values: Record<string, number | string> = {
+                'notification.push.staleTokenThresholdInMs': 86_400_000,
+                'app.encryptionSecretKey': 'secret-key',
+            };
+
+            return values[key];
+        });
+        const module = await Test.createTestingModule({
+            providers: [
+                { provide: MessageService, useValue: messageService },
+                { provide: ConfigService, useValue: configService },
+                {
+                    provide: HelperEncryptionService,
+                    useValue: helperEncryptionService,
+                },
+                NotificationPushProcessorService,
+                NotificationUtil,
+                {
+                    provide: NotificationPushSecurityDomain,
+                    useValue: notificationPushSecurityDomain,
+                },
+                {
+                    provide: NotificationPushWorkspaceDomain,
+                    useValue: notificationPushWorkspaceDomain,
+                },
+                {
+                    provide: NotificationPushQueue,
+                    useValue: notificationPushQueue,
+                },
+                { provide: DeviceDomain, useValue: deviceDomain },
+            ],
+        }).compile();
+        service = module.get(NotificationPushProcessorService);
+    });
+
+    describe('onModuleInit', () => {
+        it('schedules the recurring stale-token cleanup job', async () => {
+            notificationPushQueue.sendCleanupStaleTokens.mockResolvedValue(
+                undefined
+            );
+
+            await service.onModuleInit();
+
+            expect(
+                notificationPushQueue.sendCleanupStaleTokens
+            ).toHaveBeenCalledWith();
+        });
+    });
+
+    describe('processNewDeviceLogin', () => {
+        const requestLog: IRequestLog = {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: null,
+            geoLocation: null,
+        };
+        const data: INotificationNewDeviceLoginPayload = {
+            loginFrom: EnumUserLoginFrom.website,
+            loginWith: EnumUserLoginWith.credential,
+            loginAt: '2024-01-01T00:00:00.000Z',
+            requestLog,
+        };
+        const jobData = {
+            send,
+            data,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushSecurityDomain.processNewDeviceLogin.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processNewDeviceLogin(job);
+
+            expect(
+                notificationPushSecurityDomain.processNewDeviceLogin
+            ).toHaveBeenCalledWith(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushSecurityDomain.processNewDeviceLogin.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processNewDeviceLogin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processNewDeviceLogin.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processNewDeviceLogin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processResetTwoFactorByAdmin', () => {
+        const jobData = {
+            send,
+            data: null,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushSecurityDomain.processResetTwoFactorByAdmin.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processResetTwoFactorByAdmin(job);
+
+            expect(
+                notificationPushSecurityDomain.processResetTwoFactorByAdmin
+            ).toHaveBeenCalledWith(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushSecurityDomain.processResetTwoFactorByAdmin.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processResetTwoFactorByAdmin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processResetTwoFactorByAdmin.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processResetTwoFactorByAdmin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processTemporaryPasswordByAdmin', () => {
+        const data = {
+            passwordExpiredAt: '2024-02-01T00:00:00.000Z',
+            passwordCreatedAt: '2024-01-01T00:00:00.000Z',
+        };
+        const jobData = {
+            send,
+            data,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushSecurityDomain.processTemporaryPasswordByAdmin.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processTemporaryPasswordByAdmin(job);
+
+            expect(
+                notificationPushSecurityDomain.processTemporaryPasswordByAdmin
+            ).toHaveBeenCalledWith(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushSecurityDomain.processTemporaryPasswordByAdmin.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processTemporaryPasswordByAdmin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processTemporaryPasswordByAdmin.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processTemporaryPasswordByAdmin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processResetPassword', () => {
+        const jobData = {
+            send,
+            data: null,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushSecurityDomain.processResetPassword.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processResetPassword(job);
+
+            expect(
+                notificationPushSecurityDomain.processResetPassword
+            ).toHaveBeenCalledWith(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushSecurityDomain.processResetPassword.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processResetPassword(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processResetPassword.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processResetPassword(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processForgotPassword', () => {
+        const jobData = {
+            send,
+            data: null,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushSecurityDomain.processForgotPassword.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processForgotPassword(job);
+
+            expect(
+                notificationPushSecurityDomain.processForgotPassword
+            ).toHaveBeenCalledWith(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushSecurityDomain.processForgotPassword.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processForgotPassword(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processForgotPassword.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processForgotPassword(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processWorkspaceInvite', () => {
+        const data: INotificationWorkspaceInvitePushPayload = {
+            workspaceId: 'workspace-id',
+            workspaceName: 'Acme',
+            inviterName: 'Omar',
+            workspaceMemberRole: EnumWorkspaceMemberRole.member,
+            reference: 'ref-1',
+            expiredAt: '2024-02-01T00:00:00.000Z',
+        };
+        const jobData = {
+            send,
+            data,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceInvite.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processWorkspaceInvite(job);
+
+            expect(
+                notificationPushWorkspaceDomain.processWorkspaceInvite
+            ).toHaveBeenCalledWith(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceInvite.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceInvite(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceInvite.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceInvite(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processWorkspaceJoinRequest', () => {
+        const data = {
+            workspaceId: 'workspace-id',
+            workspaceName: 'Acme',
+            requesterName: 'Omar',
+        };
+        const jobData = {
+            send,
+            data,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinRequest.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processWorkspaceJoinRequest(job);
+
+            expect(
+                notificationPushWorkspaceDomain.processWorkspaceJoinRequest
+            ).toHaveBeenCalledWith(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinRequest.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinRequest(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinRequest.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinRequest(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processWorkspaceJoinAccepted', () => {
+        const data = { workspaceId: 'workspace-id', workspaceName: 'Acme' };
+        const jobData = {
+            send,
+            data,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinAccepted.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processWorkspaceJoinAccepted(job);
+
+            expect(
+                notificationPushWorkspaceDomain.processWorkspaceJoinAccepted
+            ).toHaveBeenCalledWith(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinAccepted.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinAccepted(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinAccepted.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinAccepted(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processWorkspaceJoinRejected', () => {
+        const data: INotificationWorkspaceJoinRejectedPayload = {
+            workspaceId: 'workspace-id',
+            workspaceName: 'Acme',
+            rejectReasonCode: EnumWorkspaceJoinRejectReason.memberLimitReached,
+        };
+        const jobData = {
+            send,
+            data,
+            completedSteps: [EnumNotificationStep.updateProcessAt],
+            encryptedFailureTokens: null,
+            encryptedPendingTokens: pending,
+        };
+
+        it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinRejected.mockResolvedValue(
+                completed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            const result = await service.processWorkspaceJoinRejected(job);
+
+            expect(
+                notificationPushWorkspaceDomain.processWorkspaceJoinRejected
+            ).toHaveBeenCalledWith(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                null,
+                pending
+            );
+            expect(job.updateData).toHaveBeenCalledTimes(1);
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: completed.completedSteps,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+            expect(result).toEqual({
+                message: 'm',
+                completedSteps: completed.completedSteps,
+            });
+        });
+
+        it('records progress then throws a fatal QueueException when a step failed', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinRejected.mockResolvedValue(
+                failed
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinRejected(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: progress,
+                encryptedFailureTokens: ['bad'],
+                encryptedPendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinRejected.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinRejected(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message: 'notification.queue.error.stepsFailed',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: pending,
+            });
+        });
+    });
+
+    describe('processCleanupTokens', () => {
+        it('decrypts the failure tokens, cleans them up, and reports the requested and removed counts', async () => {
+            stubCipherDecryption(helperEncryptionService);
+            deviceDomain.cleanupNotificationTokens.mockResolvedValue(1);
+            const job = buildQueueJob<
+                INotificationPushCleanupTokenEncryptedPayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >({
+                userId: 'user-id',
+                encryptedFailureTokens: ['cipher(token-1)', 'cipher(token-2)'],
+            });
+
+            const result = await service.processCleanupTokens(job);
+
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                'cipher(token-1)',
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+            expect(deviceDomain.cleanupNotificationTokens).toHaveBeenCalledWith(
+                'user-id',
+                ['token-1', 'token-2']
+            );
+            expect(result).toEqual({
+                message: 'notification.queue.push.cleanupTokens',
+                countRequestedTokens: 2,
+                countRemovedTokens: 1,
+            });
+        });
+
+        it('cleans up nothing when the decryption fails', async () => {
+            const failure = new Error('decrypt');
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                throw failure;
+            });
+            const job = buildQueueJob<
+                INotificationPushCleanupTokenEncryptedPayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >({ userId: 'user-id', encryptedFailureTokens: ['bad'] });
+
+            await expect(service.processCleanupTokens(job)).rejects.toBe(
+                failure
+            );
+            expect(
+                deviceDomain.cleanupNotificationTokens
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('processCleanupStaleTokens', () => {
+        it('cleans up tokens older than the configured threshold and reports the removed count', async () => {
+            deviceDomain.cleanupStaleNotificationTokens.mockResolvedValue(3);
+
+            const result = await service.processCleanupStaleTokens();
+
+            expect(
+                deviceDomain.cleanupStaleNotificationTokens
+            ).toHaveBeenCalledWith(86_400_000);
+            expect(result).toEqual({
+                message: 'notification.queue.push.cleanupStaleTokens',
+                countRemovedTokens: 3,
+            });
+        });
+    });
+
+    describe('processUnknown', () => {
+        it('throws a fatal QueueException naming the unknown process', () => {
+            expect(() => service.processUnknown('unknownProcess')).toThrow(
+                expect.objectContaining({
+                    message: 'notification.queue.push.error.unknownProcess',
+                    isFatal: true,
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.push.error.unknownProcess',
+                { properties: { process: 'unknownProcess' } }
+            );
+        });
+    });
+});

@@ -12,7 +12,6 @@ import {
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 import { UserImportUsernameExistException } from '@modules/user/exceptions/user.import-username-exist.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
@@ -25,7 +24,7 @@ import type {
     IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -37,7 +36,7 @@ export class UserImportDomain {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userUtil: UserUtil,
-        private readonly userOnboardingUtil: UserOnboardingUtil,
+        private readonly userCreateUtil: UserCreateUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
@@ -109,7 +108,7 @@ export class UserImportDomain {
             )
         );
         const workspaceContexts =
-            this.userOnboardingUtil.buildPersonalWorkspaceContexts(usernames);
+            this.userCreateUtil.buildPersonalWorkspaceContexts(usernames);
         const isVerified = role.type !== EnumRoleType.user;
         const inputs: IUserCreateWithWorkspaceInput[] = data.map(
             ({ email, name }, index) => ({
@@ -127,8 +126,7 @@ export class UserImportDomain {
                 ],
                 password: passwordHasheds[index]!,
                 passwordHistoryType:
-                    UserCreateContract[EnumUserCreateMode.admin]
-                        .passwordHistoryType,
+                    UserCreateContract.admin.passwordHistoryType,
                 verification: null,
                 workspaceContext: workspaceContexts[index]!,
                 createdBy,

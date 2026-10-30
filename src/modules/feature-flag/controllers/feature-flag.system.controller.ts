@@ -6,7 +6,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
-import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
+import { FeatureFlagHttpService } from '@modules/feature-flag/services/http/feature-flag.http.service';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 

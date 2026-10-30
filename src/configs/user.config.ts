@@ -14,9 +14,9 @@ export interface IConfigUser {
         role: string;
         country: string;
     };
-    onboarding: {
-        createTimeoutInMs: number;
-        createBulkTimeoutInMs: number;
+    create: {
+        timeoutInMs: number;
+        bulkTimeoutInMs: number;
     };
     jobId: {
         deletePhotoPattern: string;
@@ -35,9 +35,9 @@ export default registerAs('user', (): IConfigUser => ({
         role: 'user',
         country: 'ID',
     },
-    onboarding: {
-        createTimeoutInMs: ms('10s'),
-        createBulkTimeoutInMs: ms('30s'),
+    create: {
+        timeoutInMs: ms('10s'),
+        bulkTimeoutInMs: ms('30s'),
     },
     jobId: {
         deletePhotoPattern: '{process}-{nonce}',

@@ -11,7 +11,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { PasswordHistory, Prisma } from '@generated/prisma-client/client';
 import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
-import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
+import type {
+    IPasswordHistoryCreate,
+    IPasswordHistoryList,
+} from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -129,6 +132,47 @@ describe('PasswordHistoryDomain', () => {
                 createdAt,
                 'admin-id'
             );
+        });
+    });
+
+    describe('createManyInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const entries: IPasswordHistoryCreate[] = [
+            {
+                userId: 'user-one',
+                password: 'hashed-one',
+                type: EnumPasswordHistoryType.admin,
+                expiredAt: new Date('2024-02-01T00:00:00.000Z'),
+                createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdBy: 'admin-id',
+            },
+            {
+                userId: 'user-two',
+                password: 'hashed-two',
+                type: EnumPasswordHistoryType.admin,
+                expiredAt: new Date('2024-02-01T00:00:00.000Z'),
+                createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdBy: 'admin-id',
+            },
+        ];
+
+        it('writes every entry in one repository statement', async () => {
+            await domain.createManyInTx(tx, entries);
+
+            expect(
+                passwordHistoryRepository.createManyInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                passwordHistoryRepository.createManyInTx
+            ).toHaveBeenCalledWith(tx, entries);
+        });
+
+        it('issues no statement for an empty list', async () => {
+            await domain.createManyInTx(tx, []);
+
+            expect(
+                passwordHistoryRepository.createManyInTx
+            ).not.toHaveBeenCalled();
         });
     });
 

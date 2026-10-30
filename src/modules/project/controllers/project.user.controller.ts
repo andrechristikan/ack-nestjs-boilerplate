@@ -45,8 +45,8 @@ import {
     ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
-import { ProjectMemberHttpService } from '@modules/project/services/project.member.http.service';
-import { ProjectHttpService } from '@modules/project/services/project.http.service';
+import { ProjectMemberHttpService } from '@modules/project/services/http/project.member.http.service';
+import { ProjectHttpService } from '@modules/project/services/http/project.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {

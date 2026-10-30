@@ -7,7 +7,6 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
@@ -137,9 +136,7 @@ export class UserAuthDomain {
                 ...(marketing ? [EnumTermPolicyType.marketing] : []),
             ],
             password: null,
-            passwordHistoryType:
-                UserCreateContract[EnumUserCreateMode.social]
-                    .passwordHistoryType,
+            passwordHistoryType: UserCreateContract.social.passwordHistoryType,
             verification: null,
             workspaceContext,
             createdBy: userId,
@@ -223,8 +220,7 @@ export class UserAuthDomain {
                 ],
                 password,
                 passwordHistoryType:
-                    UserCreateContract[EnumUserCreateMode.signUp]
-                        .passwordHistoryType,
+                    UserCreateContract.signUp.passwordHistoryType,
                 verification: {
                     reference: emailVerification.reference,
                     token: emailVerification.hashedToken,

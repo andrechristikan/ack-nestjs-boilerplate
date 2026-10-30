@@ -1,6 +1,6 @@
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import type { ITermPolicyDeleteContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
-import { TermPolicyProcessorService } from '@modules/term-policy/services/term-policy.processor.service';
+import { TermPolicyProcessorService } from '@modules/term-policy/services/processor/term-policy.processor.service';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { SentryService } from '@common/sentry/services/sentry.service';

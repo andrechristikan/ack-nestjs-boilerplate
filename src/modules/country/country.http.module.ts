@@ -1,5 +1,5 @@
 import { CountryDomainModule } from '@modules/country/country.domain.module';
-import { CountryHttpService } from '@modules/country/services/country.http.service';
+import { CountryHttpService } from '@modules/country/services/http/country.http.service';
 import { Module } from '@nestjs/common';
 
 @Module({

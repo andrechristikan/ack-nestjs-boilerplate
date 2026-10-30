@@ -4,7 +4,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Prisma } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import type { IUserTwoFactorVerifyResult } from '@modules/user/interfaces/user.interface';
 import type { IUserTwoFactorRepository } from '@modules/user/interfaces/user.two-factor-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -17,7 +17,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
 
     private buildVerifyTwoFactorArgs(
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
+        { method, newBackupCodes }: IUserTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Prisma.TwoFactorUpdateManyArgs {
         const isBackupCode = method === EnumAuthTwoFactorMethod.backupCodes;
@@ -70,7 +70,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        verified: IAuthTwoFactorVerifyResult,
+        verified: IUserTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean> {
         const verifyArgs = this.buildVerifyTwoFactorArgs(
@@ -85,7 +85,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
 
     async verifyTwoFactor(
         userId: string,
-        verified: IAuthTwoFactorVerifyResult,
+        verified: IUserTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean> {
         const verifyArgs = this.buildVerifyTwoFactorArgs(
@@ -114,7 +114,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async setupTwoFactorConsumingBackupCode(
         userId: string,
         pendingSecretEncrypted: string,
-        verified: IAuthTwoFactorVerifyResult,
+        verified: IUserTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean> {
         return this.databaseService.withTransaction(async tx => {

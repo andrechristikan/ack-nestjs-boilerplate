@@ -4,10 +4,10 @@ import { HelperNumberService } from '@common/helper/services/helper.number.servi
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumVerificationType } from '@generated/prisma-client/client';
 import type {
-    IUserOnboardingVerification,
     IUserVerificationEmailCreate,
     IUserVerificationMobileNumberCreate,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
@@ -128,7 +128,7 @@ export class UserVerificationUtil {
     }
 
     /** Builds the used-and-verified email verification an admin-created or seeded account is verified by. */
-    createVerified(email: string): IUserOnboardingVerification {
+    createVerified(email: string): IUserCreateVerification {
         const token = this.createToken();
         const reference = this.createReference();
         const hashedToken = this.helperHashService.sha256Hash(token);

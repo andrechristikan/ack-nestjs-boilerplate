@@ -1,6 +1,6 @@
 import { EnumActivityLogProcess } from '@modules/activity-log/enums/activity-log.enum';
 import type { IActivityLogCreateManyPayload } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogProcessorService } from '@modules/activity-log/services/activity-log.processor.service';
+import { ActivityLogProcessorService } from '@modules/activity-log/services/processor/activity-log.processor.service';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { SentryService } from '@common/sentry/services/sentry.service';

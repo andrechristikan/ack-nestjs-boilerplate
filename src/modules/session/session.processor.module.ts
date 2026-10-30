@@ -1,5 +1,5 @@
 import { SessionProcessor } from '@modules/session/processors/session.processor';
-import { SessionProcessorService } from '@modules/session/services/session.processor.service';
+import { SessionProcessorService } from '@modules/session/services/processor/session.processor.service';
 import { SessionDomainModule } from '@modules/session/session.domain.module';
 import { Module } from '@nestjs/common';
 

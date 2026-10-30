@@ -200,23 +200,16 @@ describe('DeviceDomain', () => {
         });
     });
 
-    describe('getOwnershipsWithNotificationToken', () => {
-        it('reads the push tokens from the ownership rows', async () => {
-            const rows: DeviceOwnership[] = [
-                {
-                    ...deviceOwnership,
-                    notificationToken: 'token-1',
-                    notificationProvider: EnumDeviceNotificationProvider.fcm,
-                },
-            ];
-            deviceOwnershipRepository.findTokensByUserId.mockResolvedValue(
-                rows
-            );
+    describe('getNotificationTokens', () => {
+        it('getNotificationTokens returns the notification token of each ownership that has one', async () => {
+            deviceOwnershipRepository.findTokensByUserId.mockResolvedValue([
+                'a',
+                'b',
+            ]);
 
-            const result =
-                await domain.getOwnershipsWithNotificationToken('user-1');
+            const result = await domain.getNotificationTokens('user-1');
 
-            expect(result).toBe(rows);
+            expect(result).toEqual(['a', 'b']);
             expect(
                 deviceOwnershipRepository.findTokensByUserId
             ).toHaveBeenCalledWith('user-1');

@@ -22,9 +22,9 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
-    IUserOnboardingVerification,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
@@ -412,10 +412,10 @@ describe('UserVerificationDomain', () => {
         });
     });
 
-    describe('createFromOnboardingInTx', () => {
+    describe('createInTx', () => {
         it('delegates to the repository', async () => {
-            const onboardingVerification: IUserOnboardingVerification = {
-                reference: 'VRF-onboarding',
+            const createVerification: IUserCreateVerification = {
+                reference: 'VRF-create',
                 token: 'hashed-token',
                 type: EnumVerificationType.email,
                 to: 'flint@example.com',
@@ -423,24 +423,22 @@ describe('UserVerificationDomain', () => {
                 verifiedAt: null,
                 isUsed: false,
             };
-            userVerificationRepository.createFromOnboardingInTx.mockResolvedValue(
+            userVerificationRepository.createInTx.mockResolvedValue(
                 verification
             );
 
             await expect(
-                domain.createFromOnboardingInTx(
+                domain.createInTx(
                     tx,
                     'user-flint',
-                    onboardingVerification,
+                    createVerification,
                     'admin-flint'
                 )
             ).resolves.toBe(verification);
-            expect(
-                userVerificationRepository.createFromOnboardingInTx
-            ).toHaveBeenCalledWith(
+            expect(userVerificationRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-flint',
-                onboardingVerification,
+                createVerification,
                 'admin-flint'
             );
         });

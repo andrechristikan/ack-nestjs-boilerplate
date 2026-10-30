@@ -15,7 +15,7 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { UserImportDomain } from '@modules/user/domains/user.import.domain';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
@@ -29,8 +29,7 @@ import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface'
 describe('UserImportDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const userOnboardingUtil: MockProxy<UserOnboardingUtil> =
-        mock<UserOnboardingUtil>();
+    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -116,7 +115,7 @@ describe('UserImportDomain', () => {
                 UserImportDomain,
                 { provide: UserRepository, useValue: userRepository },
                 { provide: UserUtil, useValue: userUtil },
-                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
+                { provide: UserCreateUtil, useValue: userCreateUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: ConfigService, useValue: configService },
@@ -152,7 +151,7 @@ describe('UserImportDomain', () => {
                 .mockReturnValueOnce('password-one')
                 .mockReturnValueOnce('password-two');
             authPasswordUtil.createPassword.mockResolvedValue(password);
-            userOnboardingUtil.buildPersonalWorkspaceContexts.mockReturnValue([
+            userCreateUtil.buildPersonalWorkspaceContexts.mockReturnValue([
                 {
                     type: EnumUserSignUpWorkspaceContextType.personal,
                     workspaceId: 'workspace-one',
