@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -83,6 +84,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: MessageService, useValue: messageService },
+                NotificationUtil,
                 {
                     provide: HelperEncryptionService,
                     useValue: helperEncryptionService,

@@ -1,3 +1,4 @@
+import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -5,7 +6,6 @@ import { JwtService } from '@nestjs/jwt';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { generateKeyPairSync } from 'node:crypto';
-import { Duration } from 'luxon';
 import {
     EnumRoleType,
     EnumUserLoginFrom,
@@ -15,7 +15,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import type {
@@ -40,12 +40,11 @@ const refreshPrivateKeyBase64 = refreshKeyPair.privateKey
 const refreshPublicKeyBase64 = refreshKeyPair.publicKey
     .export({ type: 'spki', format: 'der' })
     .toString('base64');
-const invalidKeyBase64 = Buffer.from('not-a-real-key').toString('base64');
 
 describe('AuthJwtDomain', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
     const jwtService: MockProxy<JwtService> = mock<JwtService>();
     const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
@@ -118,12 +117,18 @@ describe('AuthJwtDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => configValues[key]);
+        helperEncryptionService.derBase64ToPem.mockImplementation(
+            (der, label) => `pem(${label}:${der})`
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtDomain,
                 { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                {
+                    provide: HelperEncryptionService,
+                    useValue: helperEncryptionService,
+                },
                 { provide: JwtService, useValue: jwtService },
                 { provide: ConfigService, useValue: configService },
                 { provide: AuthUtil, useValue: authUtil },
@@ -379,7 +384,7 @@ describe('AuthJwtDomain', () => {
                 })
             );
             expect(databaseUtil.createId).not.toHaveBeenCalled();
-            expect(helperDateService.create).not.toHaveBeenCalled();
+            expect(authUtil.remainingSeconds).not.toHaveBeenCalled();
         });
     });
 
@@ -423,12 +428,7 @@ describe('AuthJwtDomain', () => {
             authUtil.createPayloadRefreshToken.mockReturnValue(
                 newRefreshPayload
             );
-            const today = new Date('2026-01-02T00:00:00.000Z');
-            const expiredAt = new Date('2026-01-08T00:00:00.000Z');
-            helperDateService.create.mockReturnValue(today);
-            helperDateService.createFromTimestamp.mockReturnValue(expiredAt);
-            const diff = Duration.fromObject({ seconds: 518400 });
-            helperDateService.diff.mockReturnValue(diff);
+            authUtil.remainingSeconds.mockReturnValue(518400);
             jwtService.sign
                 .mockReturnValueOnce('signed-access-token')
                 .mockReturnValueOnce('signed-refresh-token');
@@ -446,8 +446,8 @@ describe('AuthJwtDomain', () => {
                 jti: 'new-jti',
                 sessionId: 'session-1',
             });
-            expect(helperDateService.createFromTimestamp).toHaveBeenCalledWith(
-                oldExpSeconds * 1000
+            expect(authUtil.remainingSeconds).toHaveBeenCalledWith(
+                oldExpSeconds
             );
             expect(authUtil.createPayloadAccessToken).toHaveBeenCalledWith(
                 user,
@@ -464,7 +464,7 @@ describe('AuthJwtDomain', () => {
             );
         });
 
-        it('falls back to milliseconds when the duration carries no whole seconds', () => {
+        it('passes a missing expiry to the remaining-seconds calculation as null', () => {
             const loginAt = new Date('2026-01-01T00:00:00.000Z');
             const decodedRefresh: IAuthJwtRefreshTokenPayload = {
                 loginAt,
@@ -495,20 +495,14 @@ describe('AuthJwtDomain', () => {
                 sessionId: 'session-1',
                 deviceOwnershipId: 'device-ownership-1',
             });
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            helperDateService.createFromTimestamp.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            const diff = Duration.fromObject({ milliseconds: 2500 });
-            helperDateService.diff.mockReturnValue(diff);
+            authUtil.remainingSeconds.mockReturnValue(2);
             jwtService.sign
                 .mockReturnValueOnce('signed-access-token')
                 .mockReturnValueOnce('signed-refresh-token');
 
             domain.refreshToken(user, 'old-refresh-token');
 
+            expect(authUtil.remainingSeconds).toHaveBeenCalledWith(null);
             expect(jwtService.sign).toHaveBeenNthCalledWith(
                 2,
                 expect.anything(),
@@ -517,7 +511,7 @@ describe('AuthJwtDomain', () => {
         });
     });
 
-    describe('parseRequiredBase64DerPrivateKey', () => {
+    describe('parseRequiredBase64Der', () => {
         it('throws when the configured key is missing', () => {
             configGet.mockImplementation((key: string) =>
                 key === 'auth.jwt.accessToken.privateKey'
@@ -526,98 +520,74 @@ describe('AuthJwtDomain', () => {
             );
 
             expect(() =>
-                domain['parseRequiredBase64DerPrivateKey'](
-                    'auth.jwt.accessToken.privateKey'
+                domain['parseRequiredBase64Der'](
+                    'auth.jwt.accessToken.privateKey',
+                    EnumHelperPemLabel.privateKey,
+                    'PKCS#8 DER private key'
                 )
             ).toThrow(AuthJwtConfigMissingException);
             expect(() =>
-                domain['parseRequiredBase64DerPrivateKey'](
-                    'auth.jwt.accessToken.privateKey'
+                domain['parseRequiredBase64Der'](
+                    'auth.jwt.accessToken.privateKey',
+                    EnumHelperPemLabel.privateKey,
+                    'PKCS#8 DER private key'
                 )
             ).toThrow(
                 'Invalid JWT configuration: auth.jwt.accessToken.privateKey is missing.'
             );
         });
 
-        it('throws when the configured key is not a valid PKCS#8 DER private key', () => {
-            configGet.mockImplementation((key: string) =>
-                key === 'auth.jwt.accessToken.privateKey'
-                    ? invalidKeyBase64
-                    : configValues[key]
-            );
+        it('throws when the kit helper rejects the private key bytes', () => {
+            helperEncryptionService.derBase64ToPem.mockImplementation(() => {
+                throw new Error('bad der');
+            });
 
             expect(() =>
-                domain['parseRequiredBase64DerPrivateKey'](
-                    'auth.jwt.accessToken.privateKey'
+                domain['parseRequiredBase64Der'](
+                    'auth.jwt.accessToken.privateKey',
+                    EnumHelperPemLabel.privateKey,
+                    'PKCS#8 DER private key'
                 )
             ).toThrow(AuthJwtConfigInvalidException);
             expect(() =>
-                domain['parseRequiredBase64DerPrivateKey'](
-                    'auth.jwt.accessToken.privateKey'
+                domain['parseRequiredBase64Der'](
+                    'auth.jwt.accessToken.privateKey',
+                    EnumHelperPemLabel.privateKey,
+                    'PKCS#8 DER private key'
                 )
             ).toThrow(
                 'Invalid JWT configuration: auth.jwt.accessToken.privateKey must be a valid base64-encoded PKCS#8 DER private key.'
             );
         });
 
-        it('returns the PEM-exported private key when valid', () => {
-            const result = domain['parseRequiredBase64DerPrivateKey'](
-                'auth.jwt.accessToken.privateKey'
-            );
-
-            expect(result).toContain('BEGIN PRIVATE KEY');
-        });
-    });
-
-    describe('parseRequiredBase64DerPublicKey', () => {
-        it('throws when the configured key is missing', () => {
-            configGet.mockImplementation((key: string) =>
-                key === 'auth.jwt.accessToken.publicKey'
-                    ? undefined
-                    : configValues[key]
-            );
+        it('throws when the kit helper rejects the public key bytes', () => {
+            helperEncryptionService.derBase64ToPem.mockImplementation(() => {
+                throw new Error('bad der');
+            });
 
             expect(() =>
-                domain['parseRequiredBase64DerPublicKey'](
-                    'auth.jwt.accessToken.publicKey'
-                )
-            ).toThrow(AuthJwtConfigMissingException);
-            expect(() =>
-                domain['parseRequiredBase64DerPublicKey'](
-                    'auth.jwt.accessToken.publicKey'
-                )
-            ).toThrow(
-                'Invalid JWT configuration: auth.jwt.accessToken.publicKey is missing.'
-            );
-        });
-
-        it('throws when the configured key is not a valid SPKI DER public key', () => {
-            configGet.mockImplementation((key: string) =>
-                key === 'auth.jwt.accessToken.publicKey'
-                    ? invalidKeyBase64
-                    : configValues[key]
-            );
-
-            expect(() =>
-                domain['parseRequiredBase64DerPublicKey'](
-                    'auth.jwt.accessToken.publicKey'
-                )
-            ).toThrow(AuthJwtConfigInvalidException);
-            expect(() =>
-                domain['parseRequiredBase64DerPublicKey'](
-                    'auth.jwt.accessToken.publicKey'
+                domain['parseRequiredBase64Der'](
+                    'auth.jwt.accessToken.publicKey',
+                    EnumHelperPemLabel.publicKey,
+                    'SPKI DER public key'
                 )
             ).toThrow(
                 'Invalid JWT configuration: auth.jwt.accessToken.publicKey must be a valid base64-encoded SPKI DER public key.'
             );
         });
 
-        it('returns the PEM-exported public key when valid', () => {
-            const result = domain['parseRequiredBase64DerPublicKey'](
-                'auth.jwt.accessToken.publicKey'
+        it('frames the configured key through the kit helper under the label', () => {
+            const result = domain['parseRequiredBase64Der'](
+                'auth.jwt.accessToken.publicKey',
+                EnumHelperPemLabel.publicKey,
+                'SPKI DER public key'
             );
 
-            expect(result).toContain('BEGIN PUBLIC KEY');
+            expect(result).toBe(`pem(PUBLIC KEY:${accessPublicKeyBase64})`);
+            expect(helperEncryptionService.derBase64ToPem).toHaveBeenCalledWith(
+                accessPublicKeyBase64,
+                EnumHelperPemLabel.publicKey
+            );
         });
     });
 });

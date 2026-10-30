@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { BulkEmailStatus } from '@aws-sdk/client-ses';
 import type { SendBulkTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 import { ConfigService } from '@nestjs/config';
@@ -81,6 +82,7 @@ describe('NotificationEmailTermPolicyDomain', () => {
         const module = await Test.createTestingModule({
             providers: [
                 { provide: MessageService, useValue: messageService },
+                NotificationUtil,
                 NotificationEmailTermPolicyDomain,
                 { provide: AwsSESService, useValue: awsSESService },
                 { provide: ConfigService, useValue: configService },

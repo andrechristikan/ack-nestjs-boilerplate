@@ -3,8 +3,9 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
@@ -21,6 +22,7 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceMemberHttpService {
     constructor(
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly activityLogDomain: ActivityLogDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -30,11 +32,30 @@ export class WorkspaceMemberHttpService {
         actorMember: WorkspaceMember,
         { targetUserId }: WorkspaceTransferOwnershipRequestDto
     ): Promise<IResponseReturn<void>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceOwnershipTransferred,
+                userId: actorMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId,
+                metadata: { targetUserId },
+            }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
+                userId: targetUserId,
+                createdBy: actorMember.userId,
+                workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            }),
+        ];
+
         await this.workspaceMemberDomain.transferOwnership(
             workspaceId,
             actorMember,
             targetUserId
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -43,7 +64,18 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         member: WorkspaceMember
     ): Promise<IResponseReturn<void>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberLeft,
+                userId: member.userId,
+                createdBy: member.userId,
+                workspaceId,
+            }),
+        ];
+
         await this.workspaceMemberDomain.leaveWorkspace(workspaceId, member);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -89,12 +121,30 @@ export class WorkspaceMemberHttpService {
         targetMemberId: string,
         { role }: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceMemberDomain.updateMemberRole(
+        const targetMember = await this.workspaceMemberDomain.updateMemberRole(
             workspaceId,
             actorMember,
             targetMemberId,
             role
         );
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberRoleUpdated,
+                userId: actorMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId,
+                metadata: { targetUserId: targetMember.userId },
+            }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            }),
+        ];
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -104,11 +154,29 @@ export class WorkspaceMemberHttpService {
         actorMember: WorkspaceMember,
         targetMemberId: string
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceMemberDomain.removeMember(
+        const targetMember = await this.workspaceMemberDomain.removeMember(
             workspaceId,
             actorMember,
             targetMemberId
         );
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberRemoved,
+                userId: actorMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId,
+                metadata: { targetUserId: targetMember.userId },
+            }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            }),
+        ];
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

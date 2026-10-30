@@ -5,7 +5,7 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import {
     ProjectCursorAvailableOrderBy,
@@ -17,6 +17,7 @@ import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/pr
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -25,7 +26,8 @@ export class ProjectHttpService {
     constructor(
         private readonly projectDomain: ProjectDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
     async getListCursorByMember(
@@ -58,19 +60,27 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const project = await this.projectDomain.createProject(
-            workspaceId,
-            actorId,
-            { name, description: description ?? null }
-        );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectCreated,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId,
+            }),
+        ];
+
+        const project = await this.projectDomain.createProject(workspaceId, {
+            name,
+            description: description ?? null,
+        });
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: project };
     }
 
     getProject(project: Project): IResponseReturn<Project> {
-        const current = this.projectDomain.getProject(project);
-
-        return { data: current };
+        return { data: project };
     }
 
     async updateProject(
@@ -78,11 +88,21 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const updated = await this.projectDomain.updateProject(
-            project,
-            actorId,
-            { name, description }
-        );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectUpdated,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+            }),
+        ];
+
+        const updated = await this.projectDomain.updateProject(project, {
+            name,
+            description,
+        });
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: updated };
     }
@@ -92,11 +112,21 @@ export class ProjectHttpService {
         actorId: string,
         { slug }: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectUpdated,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+            }),
+        ];
+
         const updated = await this.projectDomain.updateProjectSlug(
             project,
-            actorId,
             slug
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: updated };
     }
@@ -105,7 +135,18 @@ export class ProjectHttpService {
         project: Project,
         actorId: string
     ): Promise<IResponseReturn<void>> {
-        await this.projectDomain.softDeleteProject(project, actorId);
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectDeleted,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+            }),
+        ];
+
+        await this.projectDomain.softDeleteProject(project);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

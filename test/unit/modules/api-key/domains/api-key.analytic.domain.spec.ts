@@ -2,11 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumActivityLogAction,
-    EnumApiKeyType,
-} from '@generated/prisma-client/client';
-import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
 import { ApiKeyAnalyticDomain } from '@modules/api-key/domains/api-key.analytic.domain';
 import type { IApiKeyAnalyticCreated } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyAnalyticRepository } from '@modules/api-key/repositories/api-key.analytic.repository';
@@ -14,8 +10,6 @@ import { ApiKeyAnalyticRepository } from '@modules/api-key/repositories/api-key.
 describe('ApiKeyAnalyticDomain', () => {
     const apiKeyAnalyticRepository: MockProxy<ApiKeyAnalyticRepository> =
         mock<ApiKeyAnalyticRepository>();
-    const activityLogAnalyticDomain: MockProxy<ActivityLogAnalyticDomain> =
-        mock<ActivityLogAnalyticDomain>();
 
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-02-01T00:00:00.000Z');
@@ -32,69 +26,10 @@ describe('ApiKeyAnalyticDomain', () => {
                     provide: ApiKeyAnalyticRepository,
                     useValue: apiKeyAnalyticRepository,
                 },
-                {
-                    provide: ActivityLogAnalyticDomain,
-                    useValue: activityLogAnalyticDomain,
-                },
             ],
         }).compile();
 
         domain = module.get(ApiKeyAnalyticDomain);
-    });
-
-    describe('getLifecycle', () => {
-        it('counts create, reset, updated, and deleted actions in the range', async () => {
-            activityLogAnalyticDomain.getCountByActionsInRange
-                .mockResolvedValueOnce(1)
-                .mockResolvedValueOnce(2)
-                .mockResolvedValueOnce(3)
-                .mockResolvedValueOnce(4);
-
-            const result = await domain.getLifecycle(startDate, endDate);
-
-            expect(result).toEqual({
-                created: 1,
-                reset: 2,
-                updated: 3,
-                deleted: 4,
-            });
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenNthCalledWith(
-                1,
-                [EnumActivityLogAction.adminApiKeyCreate],
-                startDate,
-                endDate
-            );
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenNthCalledWith(
-                2,
-                [EnumActivityLogAction.adminApiKeyReset],
-                startDate,
-                endDate
-            );
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenNthCalledWith(
-                3,
-                [
-                    EnumActivityLogAction.adminApiKeyUpdate,
-                    EnumActivityLogAction.adminApiKeyUpdateDate,
-                    EnumActivityLogAction.adminApiKeyUpdateStatus,
-                ],
-                startDate,
-                endDate
-            );
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenNthCalledWith(
-                4,
-                [EnumActivityLogAction.adminApiKeyDelete],
-                startDate,
-                endDate
-            );
-        });
     });
 
     describe('getActiveExpired', () => {

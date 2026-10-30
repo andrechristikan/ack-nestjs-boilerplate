@@ -4,21 +4,17 @@ import type {
     UserMobileNumber,
 } from '@generated/prisma-client/client';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { IUserMobileNumberSummary } from '@modules/user/interfaces/user.interface';
 
 export interface IUserMobileNumberRepository {
     findOneMobileNumber(
         userId: string,
         mobileNumberId: string
-    ): Promise<{
-        id: string;
-        number: string;
-        phoneCode: string;
-        isVerified: boolean;
-    } | null>;
+    ): Promise<IUserMobileNumberSummary | null>;
     existsMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        excludeId?: string
+        excludeId: string | null
     ): Promise<boolean>;
     addInTx(
         tx: IDatabaseTransactionClient,

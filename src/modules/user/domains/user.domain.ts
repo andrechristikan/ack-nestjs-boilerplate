@@ -1,9 +1,5 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
     IPaginationIn,
@@ -11,34 +7,20 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    EnumVerificationType,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     IAuthJwtAccessTokenPayloadUser,
     IAuthPassword,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { CountryDomain } from '@modules/country/domains/country.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import { SessionDomain } from '@modules/session/domains/session.domain';
-import type { IRoleActor } from '@modules/role/interfaces/role.interface';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
@@ -61,18 +43,17 @@ import type {
     IUserCheckUsername,
     IUserCreateByAdmin,
     IUserCreateByAdminPrepared,
+    IUserCreateRole,
+    IUserCreateWithWorkspaceInput,
     IUserList,
     IUserOnboardingVerification,
     IUserProfile,
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
@@ -80,46 +61,12 @@ import { Injectable } from '@nestjs/common';
 export class UserDomain {
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly roleDomain: RoleDomain,
-        private readonly countryDomain: CountryDomain,
         private readonly userUtil: UserUtil,
-        private readonly userVerificationDomain: UserVerificationDomain,
-        private readonly helperHashService: HelperHashService,
-        private readonly userOnboardingDomain: UserOnboardingDomain,
-        private readonly deviceDomain: DeviceDomain,
+        private readonly userVerificationUtil: UserVerificationUtil,
+        private readonly userOnboardingUtil: UserOnboardingUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationRecipientDomain: NotificationRecipientDomain,
-        private readonly helperDateService: HelperDateService,
-        private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
-        private readonly sessionDomain: SessionDomain,
-        private readonly userQueue: UserQueue
+        private readonly databaseUtil: DatabaseUtil
     ) {}
-
-    /** Builds the used-and-verified email verification an admin-created account is verified by. */
-    private buildVerifiedVerification(
-        email: string
-    ): IUserOnboardingVerification {
-        const token = this.userVerificationDomain.verificationCreateToken();
-        const reference =
-            this.userVerificationDomain.verificationCreateReference();
-        const hashedToken = this.helperHashService.sha256Hash(token);
-        const expiredAt =
-            this.userVerificationDomain.verificationSetExpiredDate();
-        const verifiedAt = this.helperDateService.create();
-
-        return {
-            reference,
-            token: hashedToken,
-            type: EnumVerificationType.email,
-            to: email,
-            expiredAt,
-            verifiedAt,
-            isUsed: true,
-        };
-    }
 
     async validateUserGuard(
         payload: IAuthJwtAccessTokenPayloadUser,
@@ -185,6 +132,13 @@ export class UserDomain {
 
     async setLastWorkspace(userId: string, workspaceId: string): Promise<void> {
         await this.userRepository.setLastWorkspace(userId, workspaceId);
+    }
+
+    async createManyInTx(
+        tx: IDatabaseTransactionClient,
+        inputs: IUserCreateWithWorkspaceInput[]
+    ): Promise<IUser[]> {
+        return this.userRepository.createManyInTx(tx, inputs);
     }
 
     async setLastWorkspaceInTx(
@@ -280,46 +234,10 @@ export class UserDomain {
     }
 
     async prepareCreateByAdmin(
-        { countryId, email, name, roleId, username }: IUserCreateByAdmin,
+        { countryId, email, name, username }: IUserCreateByAdmin,
         createdBy: string,
-        actor: IRoleActor
+        role: IUserCreateRole
     ): Promise<IUserCreateByAdminPrepared> {
-        const [
-            checkRole,
-            emailExist,
-            checkCountry,
-            checkUsernamePattern,
-            checkUsernameBadWord,
-            usernameExist,
-        ] = await Promise.all([
-            this.roleDomain.getById(roleId),
-            this.userRepository.existsByEmail(email),
-            this.countryDomain.existsById(countryId),
-            this.userUtil.checkUsernamePattern(username),
-            this.userUtil.checkBadWord(username),
-            this.userRepository.existsByUsername(username),
-        ]);
-
-        if (!checkRole) {
-            throw new RoleNotFoundException();
-        }
-
-        this.roleDomain.assertActorOutranks(actor.roleType, checkRole.type);
-
-        if (!checkCountry) {
-            throw new CountryNotFoundException();
-        } else if (emailExist) {
-            throw new UserEmailExistException();
-        }
-
-        if (checkUsernamePattern) {
-            throw new UserUsernameNotAllowedException();
-        } else if (checkUsernameBadWord) {
-            throw new UserUsernameContainBadWordException();
-        } else if (usernameExist) {
-            throw new UserUsernameExistException();
-        }
-
         const userId = this.databaseUtil.createId();
         const passwordString = this.authPasswordUtil.createPasswordRandom();
         const password: IAuthPassword =
@@ -327,14 +245,12 @@ export class UserDomain {
                 temporary: true,
             });
         const workspaceContexts =
-            this.userOnboardingDomain.buildPersonalWorkspaceContexts([
-                username,
-            ]);
+            this.userOnboardingUtil.buildPersonalWorkspaceContexts([username]);
         const workspaceContext = workspaceContexts[0]!;
-        const isVerified = checkRole.type !== EnumRoleType.user;
+        const isVerified = role.type !== EnumRoleType.user;
         let verification: IUserOnboardingVerification | null;
         if (isVerified) {
-            verification = this.buildVerifiedVerification(email);
+            verification = this.userVerificationUtil.createVerified(email);
         } else {
             verification = null;
         }
@@ -346,7 +262,7 @@ export class UserDomain {
                 name,
                 username,
                 countryId,
-                roleId: checkRole.id,
+                roleId: role.id,
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,
@@ -365,139 +281,64 @@ export class UserDomain {
         };
     }
 
-    async notifyWelcomeByAdmin(
-        user: IUserRecipient,
-        passwordString: string,
-        passwordCreated: Date,
-        passwordExpired: Date,
-        createdBy: string
-    ): Promise<void> {
-        const passwordCreatedAt =
-            this.helperDateService.formatToIso(passwordCreated);
-        const passwordExpiredAt =
-            this.helperDateService.formatToIso(passwordExpired);
-        const recipient =
-            this.notificationRecipientDomain.buildNewUserRecipient(
-                user,
-                EnumNotificationKind.welcomeByAdmin
-            );
-        await this.notificationQueue.sendWelcomeByAdmin(
-            recipient,
-            {
-                password: passwordString,
-                passwordCreatedAt,
-                passwordExpiredAt,
-            },
-            createdBy
-        );
+    async existsByEmail(email: string): Promise<boolean> {
+        return this.userRepository.existsByEmail(email);
     }
 
-    async updateStatusByAdmin(
-        userId: string,
-        status: EnumUserStatus,
-        updatedBy: string,
-        actor: IRoleActor
-    ): Promise<void> {
-        if (userId === updatedBy) {
+    assertEmailAvailable(emailExist: boolean): void {
+        if (emailExist) {
+            throw new UserEmailExistException();
+        }
+    }
+
+    assertUsernameAvailable({
+        pattern,
+        badWord,
+        exist,
+    }: IUserCheckUsername): void {
+        if (pattern) {
+            throw new UserUsernameNotAllowedException();
+        } else if (badWord) {
+            throw new UserUsernameContainBadWordException();
+        } else if (exist) {
+            throw new UserUsernameExistException();
+        }
+    }
+
+    assertNotSelf(userId: string, actorId: string): void {
+        if (userId === actorId) {
             throw new UserNotSelfException();
         }
+    }
 
-        // Sequential by design: gate before the work it guards
+    /** Reads a user with its role for an admin write. */
+    async getOneWithRole(userId: string): Promise<IUser> {
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new UserNotFoundException();
         }
 
-        this.roleDomain.assertActorOutranks(actor.roleType, user.role.type);
+        return user;
+    }
 
-        if (user.status === EnumUserStatus.blocked) {
+    assertUnblocked({ status }: IUser): void {
+        if (status === EnumUserStatus.blocked) {
             throw new UserBlockedInvalidException();
         }
+    }
 
-        const action =
-            status === EnumUserStatus.blocked
-                ? EnumActivityLogAction.userBlocked
-                : EnumActivityLogAction.userUpdateStatus;
-        const revokesAccess = status !== EnumUserStatus.active;
-        const now = this.helperDateService.create();
-
-        try {
-            // Sequential by design: write must not run if an earlier step throws
-            const { statusActivityLogs, revokeAllActivityLogs, revoked } =
-                await this.databaseService.withTransaction(async tx => {
-                    const row =
-                        await this.userRepository.updateStatusByAdminInTx(
-                            tx,
-                            userId,
-                            {
-                                status,
-                                passwordAttempt:
-                                    status === EnumUserStatus.active
-                                        ? 0
-                                        : user.passwordAttempt,
-                            }
-                        );
-                    const actorMetadata =
-                        this.userUtil.mapActivityLogActorMetadata(row);
-                    const targetMetadata =
-                        this.userUtil.mapActivityLogTargetMetadata(
-                            row,
-                            updatedBy
-                        );
-                    const prepared = [
-                        this.activityLogDomain.prepare({
-                            action: EnumActivityLogAction.adminUserUpdateStatus,
-                            metadata: actorMetadata,
-                        }),
-                        this.activityLogDomain.prepare({
-                            action,
-                            userId,
-                            createdBy: updatedBy,
-                            metadata: targetMetadata,
-                        }),
-                    ];
-                    let revokeAll: IActivityLogStaged[] = [];
-                    let revokedSessions: ISessionRef[] = [];
-                    if (revokesAccess) {
-                        const sessions =
-                            await this.sessionDomain.revokeActiveByUserInTx(
-                                tx,
-                                userId,
-                                updatedBy,
-                                now
-                            );
-                        revokedSessions = sessions;
-                        revokeAll = this.sessionDomain.prepareRevokeAllByAdmin(
-                            userId,
-                            updatedBy,
-                            sessions.length
-                        );
-                    }
-
-                    return {
-                        statusActivityLogs: prepared,
-                        revokeAllActivityLogs: revokeAll,
-                        revoked: revokedSessions,
-                    };
-                });
-            if (revokesAccess) {
-                await this.sessionDomain.finalizeRevokeAll(
-                    userId,
-                    revoked,
-                    revokeAllActivityLogs
-                );
-            }
-
-            this.activityLogDomain.stagePrepared(statusActivityLogs);
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
+    /** Writes the status; activating a user resets its password attempt counter. */
+    async updateStatusByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        status: EnumUserStatus,
+        passwordAttempt: number | null
+    ): Promise<User> {
+        return this.userRepository.updateStatusByAdminInTx(tx, userId, {
+            status,
+            passwordAttempt:
+                status === EnumUserStatus.active ? 0 : passwordAttempt,
+        });
     }
 
     async checkUsername(username: string): Promise<IUserCheckUsername> {
@@ -526,72 +367,11 @@ export class UserDomain {
         };
     }
 
-    async deleteSelf(userId: string): Promise<void> {
-        try {
-            const revokeAllActivityLogs =
-                this.sessionDomain.prepareRevokeAllSelf(userId);
-            const deleteSelfActivityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userDeleteSelf,
-                }),
-            ];
-            const now = this.helperDateService.create();
-            // Sequential by design: write must not run if an earlier step throws
-            const { deleted, revoked } =
-                await this.databaseService.withTransaction(async tx => {
-                    const deleted = await this.userRepository.deleteSelfInTx(
-                        tx,
-                        userId,
-                        now
-                    );
-                    const sessions =
-                        await this.sessionDomain.revokeActiveByUserInTx(
-                            tx,
-                            userId,
-                            userId,
-                            now
-                        );
-                    await this.deviceDomain.revokeAllByUserInTx(
-                        tx,
-                        userId,
-                        userId,
-                        now
-                    );
-
-                    return { deleted, revoked: sessions };
-                });
-            const sideEffects: Promise<void>[] = [
-                this.sessionDomain.finalizeRevokeAll(
-                    userId,
-                    revoked,
-                    revokeAllActivityLogs
-                ),
-            ];
-            const { photo } = deleted;
-            if (photo !== null) {
-                const isPhotoOwned = this.userUtil.isPhotoProfileKeyOwned(
-                    userId,
-                    photo.key
-                );
-                if (isPhotoOwned) {
-                    const photoDelete = this.userQueue.deletePhoto(
-                        userId,
-                        photo
-                    );
-                    sideEffects.push(photoDelete);
-                }
-            }
-            await Promise.all(sideEffects);
-
-            this.activityLogDomain.stagePrepared(deleteSelfActivityLogs);
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
+    async deleteSelfInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deletedAt: Date
+    ): Promise<User> {
+        return this.userRepository.deleteSelfInTx(tx, userId, deletedAt);
     }
 }

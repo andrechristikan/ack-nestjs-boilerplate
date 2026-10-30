@@ -15,7 +15,7 @@ import { RequestActorStoreKey } from '@common/request/constants/request.constant
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 @Injectable()
-export class DatabaseExtensionUtil {
+export class DatabaseExtensionFactory {
     private readonly modelFields: Map<Prisma.ModelName, Set<string>>;
 
     constructor(

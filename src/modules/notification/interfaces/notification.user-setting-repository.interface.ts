@@ -8,8 +8,7 @@ export interface INotificationUserSettingRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void>;
-    updateUserSettingInTx(
-        tx: IDatabaseTransactionClient,
+    updateUserSetting(
         userId: string,
         { channel, type, isActive }: INotificationUserSettingUpdate
     ): Promise<boolean>;

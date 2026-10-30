@@ -7,11 +7,6 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -22,7 +17,6 @@ import type {
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
 
@@ -30,9 +24,6 @@ import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
 export class TermPolicyAcceptanceDomain {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationRecipientDomain: NotificationRecipientDomain,
-        private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil
@@ -119,52 +110,32 @@ export class TermPolicyAcceptanceDomain {
         }
     }
 
-    async userAccept(user: IUser, type: EnumTermPolicyType): Promise<void> {
+    async userAccept(
+        userId: string,
+        type: EnumTermPolicyType
+    ): Promise<ITermPolicyRef> {
         try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userAcceptTermPolicy,
-                }),
-            ];
-            // Sequential by design: write must not run if an earlier step throws
-            const recipient =
-                await this.notificationRecipientDomain.getRecipient(
-                    user,
-                    EnumNotificationKind.userAcceptTermPolicy
-                );
-            const accepted = await this.databaseService.withTransaction(
-                async tx => {
-                    const [latest] =
-                        await this.termPolicyRepository.findLatestPublishedByTypesInTx(
-                            tx,
-                            [type]
-                        );
-                    if (!latest) {
-                        throw new TermPolicyNotFoundException();
-                    }
-
-                    const acceptedAt = this.helperDateService.create();
-                    await this.termPolicyRepository.acceptInTx(
+            return await this.databaseService.withTransaction(async tx => {
+                const [latest] =
+                    await this.termPolicyRepository.findLatestPublishedByTypesInTx(
                         tx,
-                        user.id,
-                        latest.id,
-                        user.id,
-                        acceptedAt
+                        [type]
                     );
-
-                    return latest;
+                if (!latest) {
+                    throw new TermPolicyNotFoundException();
                 }
-            );
 
-            this.activityLogDomain.stagePrepared(activityLogs);
+                const acceptedAt = this.helperDateService.create();
+                await this.termPolicyRepository.acceptInTx(
+                    tx,
+                    userId,
+                    latest.id,
+                    userId,
+                    acceptedAt
+                );
 
-            await this.notificationQueue.sendUserAcceptTermPolicy(recipient, {
-                termPolicyId: accepted.id,
-                type: accepted.type,
-                version: accepted.version,
+                return latest;
             });
-
-            return;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;

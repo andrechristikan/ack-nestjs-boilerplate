@@ -12,46 +12,30 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import type { HelperHashService } from '@common/helper/services/helper.hash.service';
-import type { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { SentryService } from '@common/sentry/services/sentry.service';
-import { AuthTwoFactorSecretEncryptionPurpose } from '@modules/auth/constants/auth.constant';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import type { AuthCache } from '@modules/auth/caches/auth.cache';
 import type { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
-vi.mock('otplib', () => ({
-    generateSecret: vi.fn(),
-    verifySync: vi.fn(),
-}));
-
 describe('AuthTwoFactorDomain', () => {
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     const authTwoFactorUtil: MockProxy<AuthTwoFactorUtil> =
         mock<AuthTwoFactorUtil>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const authCache: MockProxy<AuthCache> = mock<AuthCache>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
 
-    let generateSecret: typeof import('otplib').generateSecret;
-    let verifySync: typeof import('otplib').verifySync;
     let AuthTwoFactorDomain: typeof import('@modules/auth/domains/auth.two-factor.domain').AuthTwoFactorDomain;
     let AppUnknownException: typeof import('@app/exceptions/app.unknown.exception').AppUnknownException;
     let HelperDecryptFailedException: typeof import('@common/helper/exceptions/helper.decrypt-failed.exception').HelperDecryptFailedException;
-    let HelperEncryptionServiceClass: typeof import('@common/helper/services/helper.encryption.service').HelperEncryptionService;
-    let HelperHashServiceClass: typeof import('@common/helper/services/helper.hash.service').HelperHashService;
-    let HelperStringServiceClass: typeof import('@common/helper/services/helper.string.service').HelperStringService;
     let SentryServiceClass: typeof import('@common/sentry/services/sentry.service').SentryService;
     let AuthTwoFactorUtilClass: typeof import('@modules/auth/utils/auth.two-factor.util').AuthTwoFactorUtil;
+    let AuthCacheClass: typeof import('@modules/auth/caches/auth.cache').AuthCache;
+    let AuthTwoFactorAttemptTemporaryLockException: typeof import('@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception').AuthTwoFactorAttemptTemporaryLockException;
 
     let domain: InstanceType<typeof AuthTwoFactorDomain>;
 
@@ -120,35 +104,23 @@ describe('AuthTwoFactorDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         vi.resetModules();
-        ({ generateSecret, verifySync } = await import('otplib'));
         ({ AuthTwoFactorDomain } =
             await import('@modules/auth/domains/auth.two-factor.domain'));
         ({ AppUnknownException } =
             await import('@app/exceptions/app.unknown.exception'));
         ({ HelperDecryptFailedException } =
             await import('@common/helper/exceptions/helper.decrypt-failed.exception'));
-        ({ HelperEncryptionService: HelperEncryptionServiceClass } =
-            await import('@common/helper/services/helper.encryption.service'));
-        ({ HelperHashService: HelperHashServiceClass } =
-            await import('@common/helper/services/helper.hash.service'));
-        ({ HelperStringService: HelperStringServiceClass } =
-            await import('@common/helper/services/helper.string.service'));
         ({ SentryService: SentryServiceClass } =
             await import('@common/sentry/services/sentry.service'));
         ({ AuthTwoFactorUtil: AuthTwoFactorUtilClass } =
             await import('@modules/auth/utils/auth.two-factor.util'));
+        ({ AuthCache: AuthCacheClass } =
+            await import('@modules/auth/caches/auth.cache'));
+        ({ AuthTwoFactorAttemptTemporaryLockException } =
+            await import('@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception'));
 
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string | number> = {
-                'auth.twoFactor.strategy': 'totp',
-                'auth.twoFactor.algorithm': 'sha1',
-                'auth.twoFactor.digits': 6,
-                'auth.twoFactor.periodInSeconds': 30,
-                'auth.twoFactor.window': 1,
-                'auth.twoFactor.secretLength': 20,
-                'auth.twoFactor.backupCodes.count': 5,
-                'auth.twoFactor.backupCodes.length': 10,
-                'auth.twoFactor.encryption.key': 'encryption-key',
                 'auth.twoFactor.maxAttempt': 5,
             };
             return values[key];
@@ -159,129 +131,149 @@ describe('AuthTwoFactorDomain', () => {
                 AuthTwoFactorDomain,
                 { provide: ConfigService, useValue: configService },
                 {
-                    provide: HelperEncryptionServiceClass,
-                    useValue: helperEncryptionService,
-                },
-                {
-                    provide: HelperStringServiceClass,
-                    useValue: helperStringService,
-                },
-                {
-                    provide: HelperHashServiceClass,
-                    useValue: helperHashService,
-                },
-                {
                     provide: AuthTwoFactorUtilClass,
                     useValue: authTwoFactorUtil,
                 },
                 { provide: SentryServiceClass, useValue: sentryService },
+                { provide: AuthCacheClass, useValue: authCache },
             ],
         }).compile();
 
         domain = module.get(AuthTwoFactorDomain);
     });
 
-    describe('generateSecret', () => {
-        it('generates a secret of the configured length', () => {
-            vi.mocked(generateSecret).mockReturnValue('generated-secret');
-
-            const result = domain.generateSecret();
-
-            expect(result).toBe('generated-secret');
-            expect(generateSecret).toHaveBeenCalledWith({ length: 20 });
-        });
-    });
-
-    describe('verifyCode', () => {
-        it('returns true when the code verifies within the configured window', () => {
-            vi.mocked(verifySync).mockReturnValue({
-                valid: true,
-                delta: 0,
-                epoch: 0,
-                timeStep: 0,
+    describe('createChallenge', () => {
+        it('stores the challenge payload and answers the token', async () => {
+            const payload = {
+                userId: 'user-1',
+                device: {
+                    fingerprint: 'device-1',
+                    name: null,
+                    platform: null,
+                    notificationToken: null,
+                },
+                loginFrom: EnumUserLoginFrom.website,
+                loginWith: EnumUserLoginWith.credential,
+            };
+            authCache.setTwoFactorChallenge.mockResolvedValue({
+                challengeToken: 'token-1',
+                expiresInMs: 1000,
             });
 
-            const result = domain.verifyCode('secret', '123456');
-
-            expect(result).toBe(true);
-            expect(verifySync).toHaveBeenCalledWith({
-                token: '123456',
-                secret: 'secret',
-                algorithm: 'sha1',
-                strategy: 'totp',
-                digits: 6,
-                period: 30,
-                epochTolerance: [30, 0],
+            await expect(domain.createChallenge(payload)).resolves.toEqual({
+                challengeToken: 'token-1',
+                expiresInMs: 1000,
             });
-        });
-
-        it('returns false when the code does not verify', () => {
-            vi.mocked(verifySync).mockReturnValue({ valid: false });
-
-            const result = domain.verifyCode('secret', 'wrong-code');
-
-            expect(result).toBe(false);
-        });
-    });
-
-    describe('generateBackupCodes', () => {
-        it('generates the configured number of codes with their SHA-256 hashes', () => {
-            helperStringService.randomUppercase
-                .mockReturnValueOnce('CODE1')
-                .mockReturnValueOnce('CODE2')
-                .mockReturnValueOnce('CODE3')
-                .mockReturnValueOnce('CODE4')
-                .mockReturnValueOnce('CODE5');
-            helperHashService.sha256Hash.mockImplementation(
-                code => `hash-${code}`
-            );
-
-            const result = domain.generateBackupCodes();
-
-            expect(result).toEqual({
-                codes: ['CODE1', 'CODE2', 'CODE3', 'CODE4', 'CODE5'],
-                hashes: [
-                    'hash-CODE1',
-                    'hash-CODE2',
-                    'hash-CODE3',
-                    'hash-CODE4',
-                    'hash-CODE5',
-                ],
-            });
-            expect(helperStringService.randomUppercase).toHaveBeenCalledTimes(
-                5
-            );
-            expect(helperStringService.randomUppercase).toHaveBeenCalledWith(
-                10
+            expect(authCache.setTwoFactorChallenge).toHaveBeenCalledWith(
+                payload
             );
         });
     });
 
-    describe('verifyBackupCode', () => {
-        it('returns the matched index when a stored hash matches', () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-of-input');
-            helperHashService.sha256Compare.mockImplementation(
-                hash => hash === 'hash-2'
-            );
+    describe('getChallenge', () => {
+        it('reads the challenge of a token', async () => {
+            authCache.getTwoFactorChallenge.mockResolvedValue(null);
 
-            const result = domain.verifyBackupCode(
-                ['hash-1', 'hash-2', 'hash-3'],
-                'input-code'
+            await expect(domain.getChallenge('token-1')).resolves.toBeNull();
+            expect(authCache.getTwoFactorChallenge).toHaveBeenCalledWith(
+                'token-1'
             );
+        });
+    });
 
-            expect(result).toEqual({ isValid: true, index: 1 });
+    describe('deleteChallenge', () => {
+        it('deletes the challenge of a token', async () => {
+            await domain.deleteChallenge('token-1');
+
+            expect(authCache.deleteTwoFactorChallenge).toHaveBeenCalledWith(
+                'token-1'
+            );
+        });
+    });
+
+    describe('clearLock', () => {
+        it('deletes the lock of the user', async () => {
+            await domain.clearLock(baseUser);
+
+            expect(authCache.deleteTwoFactorLock).toHaveBeenCalledWith(
+                baseUser
+            );
+        });
+    });
+
+    describe('assertUnlocked', () => {
+        it('resolves when there is no lock', async () => {
+            authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
+
+            await expect(
+                domain.assertUnlocked(baseUser)
+            ).resolves.toBeUndefined();
         });
 
-        it('returns isValid false and index -1 when no hash matches', () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-of-input');
-            helperHashService.sha256Compare.mockReturnValue(false);
+        it('throws AuthTwoFactorAttemptTemporaryLockException with the remaining seconds rounded up while locked', async () => {
+            authCache.getTwoFactorLockTtlInMs.mockResolvedValue(1500);
 
-            const result = domain.verifyBackupCode(
-                ['hash-1', 'hash-2'],
-                'input-code'
+            const call = domain.assertUnlocked(baseUser);
+
+            await expect(call).rejects.toBeInstanceOf(
+                AuthTwoFactorAttemptTemporaryLockException
             );
+            await expect(call).rejects.toMatchObject({
+                messageProperties: { retryAfterSeconds: 2 },
+            });
+        });
+    });
 
-            expect(result).toEqual({ isValid: false, index: -1 });
+    describe('assertAttemptAllowed', () => {
+        const twoFactorUser: IUser = { ...baseUser, twoFactor };
+
+        it('re-checks the lock a parallel request set when the count is below a multiple of the max', async () => {
+            authCache.getTwoFactorLockTtlInMs.mockResolvedValue(0);
+
+            await expect(
+                domain.assertAttemptAllowed(twoFactorUser, 3)
+            ).resolves.toBeUndefined();
+            expect(authCache.setTwoFactorLock).not.toHaveBeenCalled();
+            expect(authCache.getTwoFactorLockTtlInMs).toHaveBeenCalledWith(
+                twoFactorUser
+            );
+        });
+
+        it('throws AuthTwoFactorAttemptTemporaryLockException when a parallel request set the lock', async () => {
+            authCache.getTwoFactorLockTtlInMs.mockResolvedValue(3000);
+
+            await expect(
+                domain.assertAttemptAllowed(twoFactorUser, 3)
+            ).rejects.toBeInstanceOf(
+                AuthTwoFactorAttemptTemporaryLockException
+            );
+            expect(authCache.setTwoFactorLock).not.toHaveBeenCalled();
+        });
+
+        it('locks with the count and throws on a multiple of the max', async () => {
+            authCache.getTwoFactorLockTtlInMs.mockResolvedValue(30000);
+
+            const call = domain.assertAttemptAllowed(twoFactorUser, 5);
+
+            await expect(call).rejects.toBeInstanceOf(
+                AuthTwoFactorAttemptTemporaryLockException
+            );
+            await expect(call).rejects.toMatchObject({
+                messageProperties: { retryAfterSeconds: 30 },
+            });
+            expect(authCache.setTwoFactorLock).toHaveBeenCalledWith({
+                ...twoFactorUser,
+                twoFactor: { ...twoFactor, attempt: 5 },
+            });
+        });
+
+        it('fails the request when the lock write fails', async () => {
+            const failure = new Error('redis down');
+            authCache.setTwoFactorLock.mockRejectedValue(failure);
+
+            await expect(
+                domain.assertAttemptAllowed(twoFactorUser, 10)
+            ).rejects.toBe(failure);
         });
     });
 
@@ -315,15 +307,8 @@ describe('AuthTwoFactorDomain', () => {
         });
 
         it('verifies a totp code against the decrypted secret', async () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'decrypted-secret'
-            );
-            vi.mocked(verifySync).mockReturnValue({
-                valid: true,
-                delta: 0,
-                epoch: 0,
-                timeStep: 0,
-            });
+            authTwoFactorUtil.decryptSecret.mockReturnValue('decrypted-secret');
+            authTwoFactorUtil.verifyCode.mockReturnValue(true);
 
             const result = await domain.verifyTwoFactor(twoFactor, {
                 method: EnumAuthTwoFactorMethod.code,
@@ -336,11 +321,13 @@ describe('AuthTwoFactorDomain', () => {
                 method: EnumAuthTwoFactorMethod.code,
                 newBackupCodes: null,
             });
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+            expect(authTwoFactorUtil.decryptSecret).toHaveBeenCalledWith(
                 'encrypted-secret',
-                'encryption-key',
-                AuthTwoFactorSecretEncryptionPurpose,
                 'user-1'
+            );
+            expect(authTwoFactorUtil.verifyCode).toHaveBeenCalledWith(
+                'decrypted-secret',
+                '123456'
             );
         });
 
@@ -359,11 +346,14 @@ describe('AuthTwoFactorDomain', () => {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 newBackupCodes: null,
             });
+            expect(authTwoFactorUtil.verifyBackupCode).not.toHaveBeenCalled();
         });
 
         it('answers invalid when the backup code does not match any stored hash', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-of-input');
-            helperHashService.sha256Compare.mockReturnValue(false);
+            authTwoFactorUtil.verifyBackupCode.mockReturnValue({
+                isValid: false,
+                index: -1,
+            });
 
             const result = await domain.verifyTwoFactor(
                 { ...twoFactor, backupCodes: ['hash-1', 'hash-2'] },
@@ -382,10 +372,10 @@ describe('AuthTwoFactorDomain', () => {
         });
 
         it('consumes the matched backup code and returns the remaining codes', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-of-input');
-            helperHashService.sha256Compare.mockImplementation(
-                hash => hash === 'hash-2'
-            );
+            authTwoFactorUtil.verifyBackupCode.mockReturnValue({
+                isValid: true,
+                index: 1,
+            });
 
             const result = await domain.verifyTwoFactor(
                 { ...twoFactor, backupCodes: ['hash-1', 'hash-2', 'hash-3'] },
@@ -401,20 +391,19 @@ describe('AuthTwoFactorDomain', () => {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 newBackupCodes: ['hash-1', 'hash-3'],
             });
+            expect(authTwoFactorUtil.verifyBackupCode).toHaveBeenCalledWith(
+                ['hash-1', 'hash-2', 'hash-3'],
+                'BACKUP1'
+            );
         });
     });
 
     describe('verifySetupCode', () => {
         it('verifies a code against the decrypted pending secret', () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
+            authTwoFactorUtil.decryptSecret.mockReturnValue(
                 'decrypted-pending-secret'
             );
-            vi.mocked(verifySync).mockReturnValue({
-                valid: true,
-                delta: 0,
-                epoch: 0,
-                timeStep: 0,
-            });
+            authTwoFactorUtil.verifyCode.mockReturnValue(true);
 
             const result = domain.verifySetupCode(
                 'encrypted-pending-secret',
@@ -423,21 +412,23 @@ describe('AuthTwoFactorDomain', () => {
             );
 
             expect(result).toBe(true);
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+            expect(authTwoFactorUtil.decryptSecret).toHaveBeenCalledWith(
                 'encrypted-pending-secret',
-                'encryption-key',
-                AuthTwoFactorSecretEncryptionPurpose,
                 'user-1'
+            );
+            expect(authTwoFactorUtil.verifyCode).toHaveBeenCalledWith(
+                'decrypted-pending-secret',
+                '123456'
             );
         });
     });
 
     describe('setupTwoFactor', () => {
         it('generates a secret, encrypts it and builds the otpauth url', async () => {
-            vi.mocked(generateSecret).mockReturnValue('generated-secret');
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'encrypted-secret'
+            authTwoFactorUtil.generateSecret.mockReturnValue(
+                'generated-secret'
             );
+            authTwoFactorUtil.encryptSecret.mockReturnValue('encrypted-secret');
             authTwoFactorUtil.createKeyUri.mockReturnValue(
                 'otpauth://totp/uri'
             );
@@ -452,42 +443,14 @@ describe('AuthTwoFactorDomain', () => {
                 secret: 'generated-secret',
                 encryptedSecret: 'encrypted-secret',
             });
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+            expect(authTwoFactorUtil.encryptSecret).toHaveBeenCalledWith(
                 'generated-secret',
-                'encryption-key',
-                AuthTwoFactorSecretEncryptionPurpose,
                 'user-1'
             );
             expect(authTwoFactorUtil.createKeyUri).toHaveBeenCalledWith(
                 'jane@example.com',
                 'generated-secret'
             );
-        });
-    });
-
-    describe('checkAttempt', () => {
-        it('returns true when the attempt count reached the maximum', () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...twoFactor, attempt: 5 },
-            };
-
-            expect(domain.checkAttempt(user)).toBe(true);
-        });
-
-        it('returns false when the attempt count is below the maximum', () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...twoFactor, attempt: 1 },
-            };
-
-            expect(domain.checkAttempt(user)).toBe(false);
-        });
-
-        it('treats a missing two-factor record as zero attempts', () => {
-            const user = { ...baseUser, twoFactor: null };
-
-            expect(domain.checkAttempt(user)).toBe(false);
         });
     });
 
@@ -512,9 +475,7 @@ describe('AuthTwoFactorDomain', () => {
         });
 
         it('returns the decrypted secret when decryption succeeds', () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'decrypted-secret'
-            );
+            authTwoFactorUtil.decryptSecret.mockReturnValue('decrypted-secret');
 
             const result = domain['readSecret']('encrypted-secret', 'user-1');
 
@@ -525,7 +486,7 @@ describe('AuthTwoFactorDomain', () => {
             const decryptError = new HelperDecryptFailedException(
                 new Error('tampered payload')
             );
-            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+            authTwoFactorUtil.decryptSecret.mockImplementation(() => {
                 throw decryptError;
             });
 
@@ -552,7 +513,7 @@ describe('AuthTwoFactorDomain', () => {
 
         it('wraps an error that is not a decrypt failure in AppUnknownException', () => {
             const otherError = new Error('unexpected');
-            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+            authTwoFactorUtil.decryptSecret.mockImplementation(() => {
                 throw otherError;
             });
 
@@ -566,45 +527,6 @@ describe('AuthTwoFactorDomain', () => {
             expect(thrown).toBeInstanceOf(AppUnknownException);
             expect(thrown).toMatchObject({ rawError: otherError });
             expect(sentryService.captureException).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('encryptSecret', () => {
-        it('encrypts the secret with the configured key and the user id as context', () => {
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'encrypted-secret'
-            );
-
-            const result = domain['encryptSecret']('plain-secret', 'user-1');
-
-            expect(result).toBe('encrypted-secret');
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                'plain-secret',
-                'encryption-key',
-                AuthTwoFactorSecretEncryptionPurpose,
-                'user-1'
-            );
-        });
-    });
-
-    describe('decryptSecret', () => {
-        it('decrypts the secret with the configured key and the user id as context', () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                'plain-secret'
-            );
-
-            const result = domain['decryptSecret'](
-                'encrypted-secret',
-                'user-1'
-            );
-
-            expect(result).toBe('plain-secret');
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'encrypted-secret',
-                'encryption-key',
-                AuthTwoFactorSecretEncryptionPurpose,
-                'user-1'
-            );
         });
     });
 });

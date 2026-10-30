@@ -1,10 +1,22 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 
 describe('ProjectUtil', () => {
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configGet =
+        vi.fn<(key: string) => string | number | RegExp | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+
     let util: ProjectUtil;
 
     const member: WorkspaceMember = {
@@ -21,9 +33,25 @@ describe('ProjectUtil', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => {
+            const values: Record<string, string | number | RegExp> = {
+                'project.slugRegex': /^[0-9a-zA-Z-]+$/,
+                'project.slugPrefix': 'p-',
+                'project.slugMaxLength': 30,
+                'project.slugMaxAttempts': 5,
+            };
+            return values[key];
+        });
 
         const module: TestingModule = await Test.createTestingModule({
-            providers: [ProjectUtil],
+            providers: [
+                ProjectUtil,
+                { provide: ConfigService, useValue: configService },
+                {
+                    provide: HelperStringService,
+                    useValue: helperStringService,
+                },
+            ],
         }).compile();
 
         util = module.get(ProjectUtil);
@@ -55,6 +83,36 @@ describe('ProjectUtil', () => {
             });
 
             expect(result).toBe(false);
+        });
+    });
+
+    describe('drawSlugCandidates', () => {
+        it('draws slugMaxAttempts candidates from the prefix and max length', () => {
+            const candidates = ['p-a', 'p-b', 'p-c', 'p-d', 'p-e'];
+            helperStringService.generateSlugCandidates.mockReturnValue(
+                candidates
+            );
+
+            const result = util.drawSlugCandidates();
+
+            expect(result).toBe(candidates);
+            expect(
+                helperStringService.generateSlugCandidates
+            ).toHaveBeenCalledWith('p-', 30, 5);
+        });
+    });
+
+    describe('isSlugAllowed', () => {
+        it('returns true for a slug within length and matching the pattern', () => {
+            expect(util.isSlugAllowed('p-valid-slug')).toBe(true);
+        });
+
+        it('returns false for a slug over the max length', () => {
+            expect(util.isSlugAllowed('p-'.padEnd(31, 'a'))).toBe(false);
+        });
+
+        it('returns false for a slug failing the pattern', () => {
+            expect(util.isSlugAllowed('invalid slug!')).toBe(false);
         });
     });
 });

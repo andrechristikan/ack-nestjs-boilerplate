@@ -89,6 +89,17 @@ export const UserRecipientSelect = {
 } satisfies Prisma.UserSelect;
 
 /**
+ * Columns a mobile number summary read returns.
+ * @public
+ */
+export const UserMobileNumberSummarySelect = {
+    id: true,
+    number: true,
+    phoneCode: true,
+    isVerified: true,
+} satisfies Prisma.UserMobileNumberSelect;
+
+/**
  * Columns an admin user list read returns; the password hash is never among them.
  * @public
  */

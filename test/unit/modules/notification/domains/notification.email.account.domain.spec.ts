@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -61,6 +62,7 @@ describe('NotificationEmailAccountDomain', () => {
         const module = await Test.createTestingModule({
             providers: [
                 { provide: MessageService, useValue: messageService },
+                NotificationUtil,
                 NotificationEmailAccountDomain,
                 { provide: AwsSESService, useValue: awsSESService },
                 {

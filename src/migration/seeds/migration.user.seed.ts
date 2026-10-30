@@ -13,7 +13,7 @@ import type { IMigrationUserData } from '@migration/interfaces/migration.interfa
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -25,7 +25,6 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    EnumVerificationType,
     Prisma,
 } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
@@ -57,7 +56,7 @@ export class MigrationUserSeed
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly userVerificationDomain: UserVerificationDomain,
+        private readonly userVerificationUtil: UserVerificationUtil,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogUtil: ActivityLogUtil,
@@ -197,9 +196,7 @@ export class MigrationUserSeed
 
                 const password = passwords[index]!;
                 const verification =
-                    this.userVerificationDomain.verificationCreateVerification(
-                        EnumVerificationType.email
-                    );
+                    this.userVerificationUtil.createVerified(email);
 
                 return {
                     user,
@@ -265,8 +262,7 @@ export class MigrationUserSeed
                             passwordExpired,
                             passwordHash,
                         } = row.password;
-                        const { reference, hashedToken, type } =
-                            row.verification;
+                        const { reference, token, type } = row.verification;
 
                         await tx.user.upsert({
                             where: {
@@ -305,7 +301,7 @@ export class MigrationUserSeed
                                         expiredAt: today,
                                         verifiedAt: today,
                                         reference,
-                                        token: hashedToken,
+                                        token,
                                         type,
                                         createdBy: MigrationUserSuperAdminId,
                                         to: row.user.email,

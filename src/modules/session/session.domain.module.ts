@@ -28,6 +28,7 @@ import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic
         BullModule,
         SessionDomain,
         SessionCache,
+        SessionUtil,
         SessionAnalyticDomain,
         SessionQueue,
     ],

@@ -39,11 +39,6 @@ export interface IAnalyticCredentialStuffing {
     failCount: number;
 }
 
-export interface IAnalyticCredentialStuffingGroup {
-    users: Set<string>;
-    failCount: number;
-}
-
 export interface IAnalyticAccountTakeover {
     userId: string;
     indicatorCodes: string[];
@@ -90,4 +85,19 @@ export interface IAnalyticBackupCodeNewDevice {
 export interface IAnalyticApiKeyBurst {
     userId: string;
     count: number;
+}
+
+export interface IAnalyticFraudUserCount {
+    userId: string;
+    count: number;
+}
+
+export interface IAnalyticFraudSignalRows {
+    sessionAfterAdmin: IAnalyticSessionAfterAdmin[];
+    impossibleTravelUserIds: string[];
+    accountTakeover: IAnalyticAccountTakeover[];
+    credentialStuffingUserIds: Set<string>;
+    sharedFingerprint: IAnalyticSharedFingerprint[];
+    massRegistrationUserIds: Set<string>;
+    forgotPasswordAbuse: IAnalyticForgotPasswordAbuse[];
 }

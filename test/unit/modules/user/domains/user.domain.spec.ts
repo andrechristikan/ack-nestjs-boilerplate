@@ -4,7 +4,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -14,42 +13,25 @@ import {
     EnumVerificationType,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { TwoFactor, UserPhoto } from '@generated/prisma-client/client';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import type { TwoFactor } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { CountryDomain } from '@modules/country/domains/country.domain';
-import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { UserQueue } from '@modules/user/queues/user.queue';
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
     IRole,
-    IRoleActor,
     IRoleWithPolicies,
 } from '@modules/role/interfaces/role.interface';
-import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
-import { SessionDomain } from '@modules/session/domains/session.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
-import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
+    IUserCreateWithWorkspaceInput,
     IUserList,
+    IUserOnboardingVerification,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -60,34 +42,19 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
-    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const userVerificationDomain: MockProxy<UserVerificationDomain> =
-        mock<UserVerificationDomain>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
-    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
-        mock<UserOnboardingDomain>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const userVerificationUtil: MockProxy<UserVerificationUtil> =
+        mock<UserVerificationUtil>();
+    const userOnboardingUtil: MockProxy<UserOnboardingUtil> =
+        mock<UserOnboardingUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
-        mock<NotificationRecipientDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
-    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
 
     let domain: UserDomain;
 
@@ -157,62 +124,24 @@ describe('UserDomain', () => {
         twoFactor,
     };
 
-    const photo: UserPhoto = {
-        bucket: 'bucket',
-        key: 'photo-profile/user-cobalt/current.png',
-        cdnUrl: null,
-        completedUrl: 'https://cdn.example.com/current.png',
-        mime: 'image/png',
-        extension: 'png',
-        access: 'public',
-    };
-
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userUpdateStatus,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
-
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        activityLogDomain.prepare.mockReturnValue(activityLog);
-        databaseService.withTransaction.mockImplementation(
-            async fn => fn(tx) as never
-        );
         helperDateService.create.mockReturnValue(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserDomain,
                 { provide: UserRepository, useValue: userRepository },
-                { provide: RoleDomain, useValue: roleDomain },
-                { provide: CountryDomain, useValue: countryDomain },
                 { provide: UserUtil, useValue: userUtil },
                 {
-                    provide: UserVerificationDomain,
-                    useValue: userVerificationDomain,
+                    provide: UserVerificationUtil,
+                    useValue: userVerificationUtil,
                 },
-                { provide: HelperHashService, useValue: helperHashService },
-                {
-                    provide: UserOnboardingDomain,
-                    useValue: userOnboardingDomain,
-                },
-                { provide: DeviceDomain, useValue: deviceDomain },
+                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: NotificationRecipientDomain,
-                    useValue: notificationRecipientDomain,
-                },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: DatabaseService, useValue: databaseService },
-                { provide: SessionDomain, useValue: sessionDomain },
-                { provide: UserQueue, useValue: userQueue },
             ],
         }).compile();
         domain = module.get(UserDomain);
@@ -522,6 +451,21 @@ describe('UserDomain', () => {
         });
     });
 
+    describe('createManyInTx', () => {
+        it('delegates to the repository', async () => {
+            const inputs: IUserCreateWithWorkspaceInput[] = [];
+            userRepository.createManyInTx.mockResolvedValue([baseUser]);
+
+            await expect(domain.createManyInTx(tx, inputs)).resolves.toEqual([
+                baseUser,
+            ]);
+            expect(userRepository.createManyInTx).toHaveBeenCalledWith(
+                tx,
+                inputs
+            );
+        });
+    });
+
     describe('setLastWorkspaceInTx', () => {
         it('delegates to the repository', async () => {
             await domain.setLastWorkspaceInTx(
@@ -700,10 +644,6 @@ describe('UserDomain', () => {
             type: EnumRoleType.user,
             name: 'user',
         };
-        const adminActor: IRoleActor = {
-            roleId: 'role-actor-cobalt',
-            roleType: EnumRoleType.admin,
-        };
         const input = {
             countryId: 'country-cobalt',
             email: 'cobalt@example.com',
@@ -713,12 +653,6 @@ describe('UserDomain', () => {
         };
 
         beforeEach(() => {
-            roleDomain.getById.mockResolvedValue(role1);
-            userRepository.existsByEmail.mockResolvedValue(false);
-            countryDomain.existsById.mockResolvedValue(true);
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
             databaseUtil.createId.mockReturnValue('user-id-cobalt');
             authPasswordUtil.createPasswordRandom.mockReturnValue(
                 'random-password'
@@ -729,69 +663,21 @@ describe('UserDomain', () => {
                 passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
                 passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
             });
-            userOnboardingDomain.buildPersonalWorkspaceContexts.mockReturnValue(
-                [
-                    {
-                        type: EnumUserSignUpWorkspaceContextType.personal,
-                        workspaceId: 'workspace-cobalt',
-                        slugCandidates: ['w-cobalt'],
-                        name: "cobaltReyes's Workspace",
-                    },
-                ]
-            );
-        });
-
-        it('checks the actor outranks the target role before preparing the input', async () => {
-            await domain.prepareCreateByAdmin(
-                input,
-                'admin-cobalt',
-                adminActor
-            );
-
-            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.user
-            );
-        });
-
-        it('throws RoleRankForbiddenException when the actor does not outrank the role', async () => {
-            roleDomain.getById.mockResolvedValue({
-                id: 'role-root-cobalt',
-                type: EnumRoleType.superAdmin,
-                name: 'superadmin',
-            });
-            roleDomain.assertActorOutranks.mockImplementation(() => {
-                throw new RoleRankForbiddenException();
-            });
-
-            await expect(
-                domain.prepareCreateByAdmin(
-                    { ...input, roleId: 'role-root-cobalt' },
-                    'admin-cobalt',
-                    adminActor
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.rankForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.rankForbidden',
-            });
-            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.superAdmin
-            );
-            expect(databaseUtil.createId).not.toHaveBeenCalled();
+            userOnboardingUtil.buildPersonalWorkspaceContexts.mockReturnValue([
+                {
+                    type: EnumUserSignUpWorkspaceContextType.personal,
+                    workspaceId: 'workspace-cobalt',
+                    slugCandidates: ['w-cobalt'],
+                    name: "cobaltReyes's Workspace",
+                },
+            ]);
         });
 
         it('prepares the create input with no verification for a plain user role', async () => {
             const result = await domain.prepareCreateByAdmin(
                 input,
                 'admin-cobalt',
-                adminActor
+                role1
             );
 
             expect(result.input).toMatchObject({
@@ -814,36 +700,14 @@ describe('UserDomain', () => {
             const result = await domain.prepareCreateByAdmin(
                 { ...input, name: null },
                 'admin-cobalt',
-                adminActor
+                role1
             );
 
             expect(result.input.name).toBeNull();
         });
 
         it('prepares the create input with a verified, used verification for an elevated role', async () => {
-            roleDomain.getById.mockResolvedValue({
-                ...role1,
-                type: EnumRoleType.admin,
-            });
-            userVerificationDomain.verificationCreateToken.mockReturnValue(
-                'raw-token'
-            );
-            userVerificationDomain.verificationCreateReference.mockReturnValue(
-                'ref-cobalt'
-            );
-            userVerificationDomain.verificationSetExpiredDate.mockReturnValue(
-                new Date('2026-02-01T00:00:00.000Z')
-            );
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-
-            const result = await domain.prepareCreateByAdmin(
-                input,
-                'admin-cobalt',
-                adminActor
-            );
-
-            expect(result.input.isVerified).toBe(true);
-            expect(result.input.verification).toEqual({
+            const verified: IUserOnboardingVerification = {
                 reference: 'ref-cobalt',
                 token: 'hashed-token',
                 type: EnumVerificationType.email,
@@ -851,426 +715,106 @@ describe('UserDomain', () => {
                 expiredAt: new Date('2026-02-01T00:00:00.000Z'),
                 verifiedAt: now,
                 isUsed: true,
-            });
-        });
+            };
+            userVerificationUtil.createVerified.mockReturnValue(verified);
 
-        it('throws RoleNotFoundException when the role is missing', async () => {
-            roleDomain.getById.mockResolvedValue(null);
-
-            const call = domain.prepareCreateByAdmin(
+            const result = await domain.prepareCreateByAdmin(
                 input,
                 'admin-cobalt',
-                adminActor
+                { ...role1, type: EnumRoleType.admin }
             );
 
-            await expect(call).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                messagePath: 'role.error.notFound',
-            });
-        });
-
-        it('throws CountryNotFoundException when the country is missing', async () => {
-            countryDomain.existsById.mockResolvedValue(false);
-
-            const call = domain.prepareCreateByAdmin(
-                input,
-                'admin-cobalt',
-                adminActor
+            expect(result.input.isVerified).toBe(true);
+            expect(userVerificationUtil.createVerified).toHaveBeenCalledWith(
+                input.email
             );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'country',
-                statusCode: EnumCountryStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumCountryStatusCodeError[
-                        EnumCountryStatusCodeError.notFound
-                    ],
-                messagePath: 'country.error.notFound',
-            });
+            expect(result.input.verification).toBe(verified);
         });
+    });
 
-        it('throws UserEmailExistException when the email is taken', async () => {
+    describe('existsByEmail', () => {
+        it('delegates the existence read to the repository', async () => {
             userRepository.existsByEmail.mockResolvedValue(true);
 
-            const call = domain.prepareCreateByAdmin(
-                input,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.emailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.emailExist],
-                messagePath: 'user.error.emailExist',
-            });
-        });
-
-        it('throws UserUsernameNotAllowedException when the username breaks the pattern', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(true);
-
-            const call = domain.prepareCreateByAdmin(
-                input,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameNotAllowed,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameNotAllowed
-                    ],
-                messagePath: 'user.error.usernameNotAllowed',
-            });
-        });
-
-        it('throws UserUsernameContainBadWordException when the username is profane', async () => {
-            userUtil.checkBadWord.mockResolvedValue(true);
-
-            const call = domain.prepareCreateByAdmin(
-                input,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameContainBadWord
-                    ],
-                messagePath: 'user.error.usernameContainBadWord',
-            });
-        });
-
-        it('throws UserUsernameExistException when the username is taken', async () => {
-            userRepository.existsByUsername.mockResolvedValue(true);
-
-            const call = domain.prepareCreateByAdmin(
-                input,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameExist
-                    ],
-                messagePath: 'user.error.usernameExist',
-            });
-        });
-    });
-
-    describe('notifyWelcomeByAdmin', () => {
-        const recipientUser = {
-            id: 'user-cobalt',
-            email: 'cobalt@example.com',
-            username: 'cobalt',
-        };
-        const recipient: INotificationRecipient = {
-            ...TestRecipient,
-            userId: recipientUser.id,
-        };
-
-        it('formats the password dates and sends the welcome notification', async () => {
-            notificationRecipientDomain.buildNewUserRecipient.mockReturnValue(
-                recipient
-            );
-            const passwordCreated = new Date('2026-01-01T00:00:00.000Z');
-            const passwordExpired = new Date('2026-06-01T00:00:00.000Z');
-            helperDateService.formatToIso.mockImplementation(date =>
-                date.toISOString()
-            );
-
-            await domain.notifyWelcomeByAdmin(
-                recipientUser,
-                'random-password',
-                passwordCreated,
-                passwordExpired,
-                'admin-cobalt'
-            );
-
-            expect(
-                notificationRecipientDomain.buildNewUserRecipient
-            ).toHaveBeenCalledWith(
-                recipientUser,
-                EnumNotificationKind.welcomeByAdmin
-            );
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).not.toHaveBeenCalled();
-            expect(notificationQueue.sendWelcomeByAdmin).toHaveBeenCalledWith(
-                recipient,
-                {
-                    password: 'random-password',
-                    passwordCreatedAt: passwordCreated.toISOString(),
-                    passwordExpiredAt: passwordExpired.toISOString(),
-                },
-                'admin-cobalt'
+            await expect(
+                domain.existsByEmail('cobalt@example.com')
+            ).resolves.toBe(true);
+            expect(userRepository.existsByEmail).toHaveBeenCalledWith(
+                'cobalt@example.com'
             );
         });
     });
 
-    describe('updateStatusByAdmin', () => {
-        const adminActor: IRoleActor = {
-            roleId: 'role-admin-cobalt',
-            roleType: EnumRoleType.admin,
-        };
-
-        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
-            });
-            roleDomain.assertActorOutranks.mockImplementation(() => {
-                throw new RoleRankForbiddenException();
-            });
-
-            const call = domain.updateStatusByAdmin(
-                'user-cobalt',
-                EnumUserStatus.blocked,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-                messagePath: 'role.error.rankForbidden',
-            });
-            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.superAdmin
-            );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-        it('throws UserNotSelfException when the admin targets themselves', async () => {
-            const call = domain.updateStatusByAdmin(
-                'admin-cobalt',
-                EnumUserStatus.blocked,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notSelf,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notSelf],
-                messagePath: 'user.error.notSelf',
-            });
+    describe('assertEmailAvailable', () => {
+        it('passes for a free email', () => {
+            expect(() => domain.assertEmailAvailable(false)).not.toThrow();
         });
 
-        it('throws UserNotFoundException when the target user does not exist', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(null);
-
-            const call = domain.updateStatusByAdmin(
-                'user-cobalt',
-                EnumUserStatus.blocked,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-        });
-
-        it('throws UserBlockedInvalidException when the target user is already blocked', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                status: EnumUserStatus.blocked,
-            });
-
-            const call = domain.updateStatusByAdmin(
-                'user-cobalt',
-                EnumUserStatus.inactive,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.blockedInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.blockedInvalid
-                    ],
-                messagePath: 'user.error.blockedInvalid',
-            });
-        });
-
-        it('blocks the user, revoking sessions and logging the block action', async () => {
-            const user = { ...baseUser, status: EnumUserStatus.active };
-            userRepository.findOneWithRoleById.mockResolvedValue(user);
-            userRepository.updateStatusByAdminInTx.mockResolvedValue(user);
-            sessionDomain.revokeActiveByUserInTx.mockResolvedValue([
-                { id: 'session-one' },
-            ]);
-            sessionDomain.prepareRevokeAllByAdmin.mockReturnValue([
-                activityLog,
-            ]);
-
-            await domain.updateStatusByAdmin(
-                'user-cobalt',
-                EnumUserStatus.blocked,
-                'admin-cobalt',
-                adminActor
-            );
-
-            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                user.role.type
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+        it('throws UserEmailExistException when the email is taken', () => {
+            expect(() => domain.assertEmailAvailable(true)).toThrow(
                 expect.objectContaining({
-                    action: EnumActivityLogAction.userBlocked,
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.emailExist,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.emailExist
+                        ],
+                    messagePath: 'user.error.emailExist',
                 })
             );
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt',
-                'admin-cobalt',
-                now
-            );
-            expect(sessionDomain.prepareRevokeAllByAdmin).toHaveBeenCalledWith(
-                'user-cobalt',
-                'admin-cobalt',
-                1
-            );
-            expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
-                'user-cobalt',
-                [{ id: 'session-one' }],
-                [activityLog]
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-                activityLog,
-            ]);
+        });
+    });
+
+    describe('assertUsernameAvailable', () => {
+        const clear = { badWord: false, exist: false, pattern: false };
+
+        it('passes for an allowed, clean, free username', () => {
+            expect(() => domain.assertUsernameAvailable(clear)).not.toThrow();
         });
 
-        it('deactivates the user, revoking sessions with the update-status action', async () => {
-            const user = {
-                ...baseUser,
-                status: EnumUserStatus.active,
-                passwordAttempt: 3,
-            };
-            userRepository.findOneWithRoleById.mockResolvedValue(user);
-            userRepository.updateStatusByAdminInTx.mockResolvedValue(user);
-            sessionDomain.revokeActiveByUserInTx.mockResolvedValue([]);
-            sessionDomain.prepareRevokeAllByAdmin.mockReturnValue([]);
-
-            await domain.updateStatusByAdmin(
-                'user-cobalt',
-                EnumUserStatus.inactive,
-                'admin-cobalt',
-                adminActor
-            );
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+        it('throws UserUsernameNotAllowedException when the username breaks the pattern', () => {
+            expect(() =>
+                domain.assertUsernameAvailable({
+                    ...clear,
+                    pattern: true,
+                    badWord: true,
+                    exist: true,
+                })
+            ).toThrow(
                 expect.objectContaining({
-                    action: EnumActivityLogAction.userUpdateStatus,
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.usernameNotAllowed,
+                    messagePath: 'user.error.usernameNotAllowed',
                 })
             );
-            expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt',
-                { status: EnumUserStatus.inactive, passwordAttempt: 3 }
-            );
-            expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalled();
         });
 
-        it('reactivates the user without touching sessions', async () => {
-            const user = {
-                ...baseUser,
-                status: EnumUserStatus.inactive,
-                passwordAttempt: 5,
-            };
-            userRepository.findOneWithRoleById.mockResolvedValue(user);
-            userRepository.updateStatusByAdminInTx.mockResolvedValue(user);
-
-            await domain.updateStatusByAdmin(
-                'user-cobalt',
-                EnumUserStatus.active,
-                'admin-cobalt',
-                adminActor
+        it('throws UserUsernameContainBadWordException when the username is profane', () => {
+            expect(() =>
+                domain.assertUsernameAvailable({
+                    ...clear,
+                    badWord: true,
+                    exist: true,
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.usernameContainBadWord,
+                    messagePath: 'user.error.usernameContainBadWord',
+                })
             );
-
-            expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt',
-                { status: EnumUserStatus.active, passwordAttempt: 0 }
-            );
-            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
-            expect(sessionDomain.finalizeRevokeAll).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-                activityLog,
-            ]);
         });
 
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                status: EnumUserStatus.active,
-            });
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.updateStatusByAdmin(
-                'user-cobalt',
-                EnumUserStatus.blocked,
-                'admin-cobalt',
-                adminActor
+        it('throws UserUsernameExistException when the username is taken', () => {
+            expect(() =>
+                domain.assertUsernameAvailable({ ...clear, exist: true })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.usernameExist,
+                    messagePath: 'user.error.usernameExist',
+                })
             );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                status: EnumUserStatus.active,
-            });
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.updateStatusByAdmin(
-                'user-cobalt',
-                EnumUserStatus.blocked,
-                'admin-cobalt',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
         });
     });
 
@@ -1302,181 +846,120 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('deleteSelf', () => {
-        it('deletes the account, revokes sessions and devices, and stages the activity log', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            sessionDomain.revokeActiveByUserInTx.mockResolvedValue([
-                { id: 'session-one' },
-            ]);
+    describe('assertNotSelf', () => {
+        it('passes for a different user', () => {
+            expect(() =>
+                domain.assertNotSelf('user-cobalt', 'admin-cobalt')
+            ).not.toThrow();
+        });
+
+        it('throws UserNotSelfException when the target is the actor', () => {
+            expect(() =>
+                domain.assertNotSelf('user-cobalt', 'user-cobalt')
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.notSelf,
+                    messagePath: 'user.error.notSelf',
+                })
+            );
+        });
+    });
+
+    describe('getOneWithRole', () => {
+        it('returns the user with its role', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+
+            await expect(domain.getOneWithRole('user-cobalt')).resolves.toBe(
+                baseUser
+            );
+        });
+
+        it('throws UserNotFoundException when the user is missing', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
+
+            await expect(
+                domain.getOneWithRole('user-cobalt')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+                messagePath: 'user.error.notFound',
+            });
+        });
+    });
+
+    describe('assertUnblocked', () => {
+        it('passes for a user that is not blocked', () => {
+            expect(() => domain.assertUnblocked(baseUser)).not.toThrow();
+        });
+
+        it('throws UserBlockedInvalidException when the user is blocked', () => {
+            expect(() =>
+                domain.assertUnblocked({
+                    ...baseUser,
+                    status: EnumUserStatus.blocked,
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.blockedInvalid,
+                    messagePath: 'user.error.blockedInvalid',
+                })
+            );
+        });
+    });
+
+    describe('updateStatusByAdminInTx', () => {
+        it('writes the status and resets the attempt counter when the user is activated', async () => {
+            userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
+
+            await expect(
+                domain.updateStatusByAdminInTx(
+                    tx,
+                    'user-cobalt',
+                    EnumUserStatus.active,
+                    4
+                )
+            ).resolves.toBe(baseUser);
+
+            expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt',
+                { status: EnumUserStatus.active, passwordAttempt: 0 }
+            );
+        });
+
+        it('keeps the attempt counter when the user is not activated', async () => {
+            userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
+
+            await domain.updateStatusByAdminInTx(
+                tx,
+                'user-cobalt',
+                EnumUserStatus.inactive,
+                4
+            );
+
+            expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt',
+                { status: EnumUserStatus.inactive, passwordAttempt: 4 }
+            );
+        });
+    });
+
+    describe('deleteSelfInTx', () => {
+        it('soft deletes the user on the given transaction', async () => {
             userRepository.deleteSelfInTx.mockResolvedValue(baseUser);
 
-            await domain.deleteSelf('user-cobalt');
+            await expect(
+                domain.deleteSelfInTx(tx, 'user-cobalt', now)
+            ).resolves.toBe(baseUser);
 
-            expect(sessionDomain.prepareRevokeAllSelf).toHaveBeenCalledWith(
-                'user-cobalt'
-            );
             expect(userRepository.deleteSelfInTx).toHaveBeenCalledWith(
                 tx,
                 'user-cobalt',
                 now
             );
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt',
-                'user-cobalt',
-                now
-            );
-            expect(deviceDomain.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt',
-                'user-cobalt',
-                now
-            );
-            expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
-                'user-cobalt',
-                [{ id: 'session-one' }],
-                [activityLog]
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-        });
-
-        it('does not enqueue a photo delete when the deleted user has no photo', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            userRepository.deleteSelfInTx.mockResolvedValue(baseUser);
-
-            await domain.deleteSelf('user-cobalt');
-
-            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
-        });
-
-        it('enqueues no photo delete when the stored photo key is outside the user photo path', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            userUtil.isPhotoProfileKeyOwned.mockReturnValue(false);
-            userRepository.deleteSelfInTx.mockResolvedValue({
-                ...baseUser,
-                photo: {
-                    ...photo,
-                    key: 'photo-profile/user-other/current.png',
-                },
-            });
-
-            await domain.deleteSelf('user-cobalt');
-
-            expect(userUtil.isPhotoProfileKeyOwned).toHaveBeenCalledWith(
-                'user-cobalt',
-                'photo-profile/user-other/current.png'
-            );
-            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
-        });
-
-        it('enqueues the photo delete after the commit and before the activity rows are staged', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            userUtil.isPhotoProfileKeyOwned.mockReturnValue(true);
-            userRepository.deleteSelfInTx.mockResolvedValue({
-                ...baseUser,
-                photo,
-            });
-            const callOrder: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('commit');
-                return result as never;
-            });
-            userQueue.deletePhoto.mockImplementation(async () => {
-                callOrder.push('deletePhoto');
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            await domain.deleteSelf('user-cobalt');
-
-            expect(userQueue.deletePhoto).toHaveBeenCalledWith(
-                'user-cobalt',
-                photo
-            );
-            expect(callOrder).toEqual([
-                'commit',
-                'deletePhoto',
-                'stagePrepared',
-            ]);
-        });
-
-        it('enqueues no photo delete when the transaction rejects', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            databaseService.withTransaction.mockRejectedValueOnce(
-                new Error('boom')
-            );
-
-            await expect(
-                domain.deleteSelf('user-cobalt')
-            ).rejects.toBeDefined();
-
-            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.deleteSelf('user-cobalt');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.deleteSelf('user-cobalt');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
-        });
-    });
-
-    describe('buildVerifiedVerification', () => {
-        it('builds a used, verified verification for the given email', () => {
-            userVerificationDomain.verificationCreateToken.mockReturnValue(
-                'raw-token'
-            );
-            userVerificationDomain.verificationCreateReference.mockReturnValue(
-                'ref-cobalt'
-            );
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userVerificationDomain.verificationSetExpiredDate.mockReturnValue(
-                new Date('2026-02-01T00:00:00.000Z')
-            );
-
-            const result =
-                domain['buildVerifiedVerification']('cobalt@example.com');
-
-            expect(result).toEqual({
-                reference: 'ref-cobalt',
-                token: 'hashed-token',
-                type: EnumVerificationType.email,
-                to: 'cobalt@example.com',
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
-                verifiedAt: now,
-                isUsed: true,
-            });
         });
     });
 });

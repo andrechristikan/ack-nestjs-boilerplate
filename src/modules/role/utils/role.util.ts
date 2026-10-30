@@ -1,4 +1,6 @@
+import { EnumRoleType } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { RoleRank } from '@modules/role/constants/role.constant';
 import { Injectable } from '@nestjs/common';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 
@@ -11,5 +13,16 @@ export class RoleUtil {
             roleType: role.type,
             timestamp,
         };
+    }
+
+    /** A superAdmin actor outranks every target; any other actor must rank strictly above it. */
+    outranks(
+        actorRoleType: EnumRoleType,
+        targetRoleType: EnumRoleType
+    ): boolean {
+        return (
+            actorRoleType === EnumRoleType.superAdmin ||
+            RoleRank[actorRoleType] > RoleRank[targetRoleType]
+        );
     }
 }

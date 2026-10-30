@@ -1,4 +1,6 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -27,6 +29,9 @@ import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationSecurityDomain', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -97,6 +102,11 @@ describe('NotificationSecurityDomain', () => {
         const module = await Test.createTestingModule({
             providers: [
                 { provide: MessageService, useValue: messageService },
+                { provide: ConfigService, useValue: configService },
+                {
+                    provide: HelperEncryptionService,
+                    useValue: helperEncryptionService,
+                },
                 NotificationSecurityDomain,
                 NotificationUtil,
                 {

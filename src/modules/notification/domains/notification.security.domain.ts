@@ -12,7 +12,6 @@ import type {
     INotificationNewDeviceLoginPayload,
     INotificationRecipientEncryptedPayload,
     INotificationSendPushEncryptedPayload,
-    INotificationStepFailure,
     INotificationStepResult,
     INotificationTemporaryPasswordEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
@@ -46,21 +45,10 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process:
-                            EnumNotificationProcess.temporaryPasswordByAdmin,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.temporaryPasswordByAdmin,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -158,21 +146,9 @@ export class NotificationSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.temporaryPasswordByAdmin'
@@ -193,20 +169,10 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.changePassword,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.changePassword,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -269,21 +235,9 @@ export class NotificationSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.changePassword'
@@ -305,20 +259,10 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.forgotPassword,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.forgotPassword,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -401,21 +345,9 @@ export class NotificationSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.forgotPassword'
@@ -436,20 +368,10 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.resetPassword,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.resetPassword,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -530,21 +452,9 @@ export class NotificationSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.resetPassword'
@@ -566,20 +476,10 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.resetTwoFactorByAdmin,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.resetTwoFactorByAdmin,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -665,21 +565,9 @@ export class NotificationSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.resetTwoFactorByAdmin'
@@ -701,20 +589,10 @@ export class NotificationSecurityDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.newDeviceLogin,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.newDeviceLogin,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -814,21 +692,9 @@ export class NotificationSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.newDeviceLogin'

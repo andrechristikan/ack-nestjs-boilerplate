@@ -1,4 +1,6 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -8,7 +10,7 @@ import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
 import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
 import {
@@ -17,9 +19,7 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationPushCleanupStaleTokensResult,
     INotificationPushCleanupTokenEncryptedPayload,
-    INotificationPushCleanupTokensResult,
     INotificationPushQueuePayload,
     INotificationPushStepResult,
     INotificationSendPushEncryptedPayload,
@@ -29,20 +29,23 @@ import type {
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { MessageService } from '@common/message/services/message.service';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 describe('NotificationPushProcessorService', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
     const notificationPushSecurityDomain: MockProxy<NotificationPushSecurityDomain> =
         mock<NotificationPushSecurityDomain>();
     const notificationPushWorkspaceDomain: MockProxy<NotificationPushWorkspaceDomain> =
         mock<NotificationPushWorkspaceDomain>();
-    const notificationPushMaintenanceDomain: MockProxy<NotificationPushMaintenanceDomain> =
-        mock<NotificationPushMaintenanceDomain>();
     const notificationPushQueue: MockProxy<NotificationPushQueue> =
         mock<NotificationPushQueue>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     let service: NotificationPushProcessorService;
 
     const send: INotificationSendPushEncryptedPayload = {
@@ -92,9 +95,22 @@ describe('NotificationPushProcessorService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
+        vi.mocked(configService.get).mockImplementation((key: string) => {
+            const values: Record<string, number | string> = {
+                'notification.push.staleTokenThresholdInMs': 86_400_000,
+                'app.encryptionSecretKey': 'secret-key',
+            };
+
+            return values[key];
+        });
         const module = await Test.createTestingModule({
             providers: [
                 { provide: MessageService, useValue: messageService },
+                { provide: ConfigService, useValue: configService },
+                {
+                    provide: HelperEncryptionService,
+                    useValue: helperEncryptionService,
+                },
                 NotificationPushProcessorService,
                 NotificationUtil,
                 {
@@ -106,13 +122,10 @@ describe('NotificationPushProcessorService', () => {
                     useValue: notificationPushWorkspaceDomain,
                 },
                 {
-                    provide: NotificationPushMaintenanceDomain,
-                    useValue: notificationPushMaintenanceDomain,
-                },
-                {
                     provide: NotificationPushQueue,
                     useValue: notificationPushQueue,
                 },
+                { provide: DeviceDomain, useValue: deviceDomain },
             ],
         }).compile();
         service = module.get(NotificationPushProcessorService);
@@ -999,50 +1012,70 @@ describe('NotificationPushProcessorService', () => {
     });
 
     describe('processCleanupTokens', () => {
-        it('forwards userId and encryptedFailureTokens to the maintenance domain', async () => {
-            const payload: INotificationPushCleanupTokenEncryptedPayload = {
-                userId: 'user-id',
-                encryptedFailureTokens: ['cipher(token-1)'],
-            };
-            const cleanupResponse: INotificationPushCleanupTokensResult = {
-                message: 'processed',
-                countRequestedTokens: 1,
-                countRemovedTokens: 1,
-            };
-            notificationPushMaintenanceDomain.processCleanupTokens.mockResolvedValue(
-                cleanupResponse
-            );
+        it('decrypts the failure tokens, cleans them up, and reports the requested and removed counts', async () => {
+            stubCipherDecryption(helperEncryptionService);
+            deviceDomain.cleanupNotificationTokens.mockResolvedValue(1);
             const job = buildQueueJob<
                 INotificationPushCleanupTokenEncryptedPayload,
                 IQueueResponse,
                 EnumNotificationPushProcess
-            >(payload);
+            >({
+                userId: 'user-id',
+                encryptedFailureTokens: ['cipher(token-1)', 'cipher(token-2)'],
+            });
 
             const result = await service.processCleanupTokens(job);
 
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                'cipher(token-1)',
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+            expect(deviceDomain.cleanupNotificationTokens).toHaveBeenCalledWith(
+                'user-id',
+                ['token-1', 'token-2']
+            );
+            expect(result).toEqual({
+                message: 'notification.queue.push.cleanupTokens',
+                countRequestedTokens: 2,
+                countRemovedTokens: 1,
+            });
+        });
+
+        it('cleans up nothing when the decryption fails', async () => {
+            const failure = new Error('decrypt');
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                throw failure;
+            });
+            const job = buildQueueJob<
+                INotificationPushCleanupTokenEncryptedPayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >({ userId: 'user-id', encryptedFailureTokens: ['bad'] });
+
+            await expect(service.processCleanupTokens(job)).rejects.toBe(
+                failure
+            );
             expect(
-                notificationPushMaintenanceDomain.processCleanupTokens
-            ).toHaveBeenCalledWith('user-id', ['cipher(token-1)']);
-            expect(result).toBe(cleanupResponse);
+                deviceDomain.cleanupNotificationTokens
+            ).not.toHaveBeenCalled();
         });
     });
 
     describe('processCleanupStaleTokens', () => {
-        it('forwards to the maintenance domain', async () => {
-            const staleResponse: INotificationPushCleanupStaleTokensResult = {
-                message: 'processed',
-                countRemovedTokens: 3,
-            };
-            notificationPushMaintenanceDomain.processCleanupStaleTokens.mockResolvedValue(
-                staleResponse
-            );
+        it('cleans up tokens older than the configured threshold and reports the removed count', async () => {
+            deviceDomain.cleanupStaleNotificationTokens.mockResolvedValue(3);
 
             const result = await service.processCleanupStaleTokens();
 
             expect(
-                notificationPushMaintenanceDomain.processCleanupStaleTokens
-            ).toHaveBeenCalledWith();
-            expect(result).toBe(staleResponse);
+                deviceDomain.cleanupStaleNotificationTokens
+            ).toHaveBeenCalledWith(86_400_000);
+            expect(result).toEqual({
+                message: 'notification.queue.push.cleanupStaleTokens',
+                countRemovedTokens: 3,
+            });
         });
     });
 

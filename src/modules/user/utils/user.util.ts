@@ -1,3 +1,4 @@
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IUserTwoFactorStatus } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -8,8 +9,9 @@ import {
 } from '@generated/prisma-client/client';
 import type { TwoFactor, User } from '@generated/prisma-client/client';
 import { Profanity } from '@2toad/profanity';
+import { Duration } from 'luxon';
 
-/** Username checks, profile photo path, two-factor mapping, and activity-log mapping. */
+/** Username checks, profile photo path, resend window, two-factor mapping, and activity-log mapping. */
 @Injectable()
 export class UserUtil {
     private readonly usernameRegex: RegExp;
@@ -18,7 +20,10 @@ export class UserUtil {
 
     private readonly uploadPhotoProfilePath: string;
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly helperDateService: HelperDateService
+    ) {
         this.usernameRegex =
             this.configService.get<RegExp>('user.usernameRegex')!;
 
@@ -56,8 +61,18 @@ export class UserUtil {
         return this.profanity.exists(str);
     }
 
-    /** Maps a two-factor record to status, deriving the pending-confirmation flag. */
-    mapTwoFactor(twoFactor: TwoFactor): IUserTwoFactorStatus {
+    /** Maps a two-factor record to status, deriving the pending-confirmation flag; a missing record is disabled. */
+    mapTwoFactor(twoFactor: TwoFactor | null): IUserTwoFactorStatus {
+        if (twoFactor === null) {
+            return {
+                isEnabled: false,
+                isPendingConfirmation: false,
+                backupCodesRemaining: 0,
+                confirmedAt: null,
+                lastUsedAt: null,
+            };
+        }
+
         return {
             isEnabled: twoFactor.enabled,
             isPendingConfirmation: !!twoFactor.pendingSecret,
@@ -65,6 +80,25 @@ export class UserUtil {
             confirmedAt: twoFactor.confirmedAt,
             lastUsedAt: twoFactor.lastUsedAt,
         };
+    }
+
+    /** Whole minutes, rounded up, left before a resend is allowed after `lastCreatedAt`; null once the window has passed. */
+    getResendWaitInMinutes(
+        lastCreatedAt: Date,
+        resendInMinutes: number
+    ): number | null {
+        const now = this.helperDateService.create();
+        const canResendAt = this.helperDateService.forward(
+            lastCreatedAt,
+            Duration.fromObject({ minutes: resendInMinutes })
+        );
+        if (now >= canResendAt) {
+            return null;
+        }
+
+        const wait = this.helperDateService.diff(canResendAt, now);
+
+        return Math.ceil(wait.as('minutes'));
     }
 
     checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {

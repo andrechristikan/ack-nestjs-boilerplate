@@ -6,7 +6,6 @@ import type {
     Prisma,
     User,
     Workspace,
-    WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -29,11 +28,6 @@ export interface IWorkspaceInviteInviter {
 
 export interface IWorkspaceInviteInvitee {
     existingUser: User | null;
-    recipient: INotificationRecipient | null;
-}
-
-export interface IWorkspaceInviteNotificationTarget {
-    inviterName: string;
     recipient: INotificationRecipient | null;
 }
 
@@ -85,12 +79,6 @@ export interface IWorkspaceInviteCreateData {
     invitedByUserId: string;
 }
 
-export interface IWorkspaceInvitePreview {
-    workspace: Workspace;
-    invite: WorkspaceInvite;
-    inviter: IWorkspaceInviteInviter | null;
-}
-
 export interface IWorkspaceInvitePreviewSummary {
     workspaceName: string;
     inviterName: string;
@@ -101,11 +89,6 @@ export interface IWorkspaceInvitePreviewSummary {
 export interface IWorkspaceJoinRequestCreate {
     workspaceId: string;
     message: string | null;
-}
-
-export interface IWorkspaceJoinRequestNotificationTarget {
-    requesterName: string;
-    reviewerRecipients: INotificationRecipient[];
 }
 
 export interface IWorkspaceJoinRequestCreateData {

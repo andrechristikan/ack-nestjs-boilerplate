@@ -3,6 +3,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumActivityLogAction,
+    EnumPasswordHistoryType,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -14,12 +16,29 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import {
+    EnumUserCreateMode,
+    EnumUserSignUpWorkspaceContextType,
+} from '@modules/user/enums/user.enum';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { UserImportDomain } from '@modules/user/domains/user.import.domain';
 import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserImportHttpService } from '@modules/user/services/user.import.http.service';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserCreateWithWorkspaceInput,
+} from '@modules/user/interfaces/user.interface';
 
 describe('UserImportHttpService', () => {
     const userImportDomain: MockProxy<UserImportDomain> =
@@ -27,6 +46,16 @@ describe('UserImportHttpService', () => {
     const onboardingDomain: MockProxy<OnboardingDomain> =
         mock<OnboardingDomain>();
     const fileService: MockProxy<FileService> = mock<FileService>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const userOnboardingUtil: MockProxy<UserOnboardingUtil> =
+        mock<UserOnboardingUtil>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -88,6 +117,11 @@ describe('UserImportHttpService', () => {
                 { provide: UserImportDomain, useValue: userImportDomain },
                 { provide: OnboardingDomain, useValue: onboardingDomain },
                 { provide: FileService, useValue: fileService },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
+                { provide: NotificationUtil, useValue: notificationUtil },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -102,7 +136,68 @@ describe('UserImportHttpService', () => {
     });
 
     describe('importByAdmin', () => {
-        it('delegates the rows to OnboardingDomain and returns an empty envelope', async () => {
+        const password: IAuthPassword = {
+            passwordHash: 'hashed',
+            passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+            passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
+            passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
+        };
+        const input: IUserCreateWithWorkspaceInput = {
+            userId: 'user-fable',
+            email: 'fable@example.com',
+            name: 'Fable Sterling',
+            username: 'fable2sterling',
+            countryId: 'country-fable',
+            roleId: 'role-fable',
+            signUpFrom: EnumUserSignUpFrom.admin,
+            signUpWith: EnumUserSignUpWith.credential,
+            isVerified: true,
+            acceptedTermPolicyTypes: [],
+            password,
+            passwordHistoryType: EnumPasswordHistoryType.admin,
+            verification: null,
+            workspaceContext: {
+                type: EnumUserSignUpWorkspaceContextType.personal,
+                workspaceId: 'workspace-fable',
+                slugCandidates: ['w-fable'],
+                name: "fable2sterling's Workspace",
+            },
+            createdBy: 'admin-fable',
+        };
+        const stageInput = {
+            action: EnumActivityLogAction.adminUserImport,
+            metadata: { userCount: 1 },
+        };
+        const activityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.adminUserImport,
+            metadata: { userCount: 1 },
+            userId: null,
+            createdBy: null,
+            workspaceId: null,
+        };
+        const recipient: INotificationRecipient = {
+            ...TestRecipient,
+            userId: 'user-fable',
+        };
+
+        beforeEach(() => {
+            onboardingDomain.importByAdmin.mockResolvedValue({
+                inputs: [input],
+                users: [baseUser],
+                passwordHasheds: [password],
+                passwordStrings: ['random-password'],
+            });
+            userOnboardingUtil.buildActivityStages.mockReturnValue([
+                stageInput,
+            ]);
+            activityLogDomain.prepare.mockReturnValue(activityLog);
+            notificationUtil.mapRecipient.mockReturnValue(recipient);
+            helperDateService.formatToIso
+                .mockReturnValueOnce('2026-01-01T00:00:00.000Z')
+                .mockReturnValueOnce('2026-06-01T00:00:00.000Z');
+        });
+
+        it('delegates the rows to OnboardingDomain, stages the rows, enqueues the bulk welcome, and returns an empty envelope', async () => {
             const rows: UserImportRequestDto[] = [
                 {
                     email: 'fable@example.com' as Lowercase<string>,
@@ -124,6 +219,50 @@ describe('UserImportHttpService', () => {
                 ],
                 'admin-fable'
             );
+            expect(userOnboardingUtil.buildActivityStages).toHaveBeenCalledWith(
+                EnumUserCreateMode.admin,
+                [input],
+                [baseUser],
+                EnumActivityLogAction.adminUserImport
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith(stageInput);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.welcomeByAdmin,
+                [],
+                []
+            );
+            expect(
+                notificationQueue.sendWelcomeByAdminBulk
+            ).toHaveBeenCalledWith(
+                [
+                    {
+                        recipient,
+                        data: {
+                            password: 'random-password',
+                            passwordCreatedAt: '2026-01-01T00:00:00.000Z',
+                            passwordExpiredAt: '2026-06-01T00:00:00.000Z',
+                        },
+                    },
+                ],
+                'admin-fable'
+            );
+        });
+
+        it('stages nothing and enqueues nothing when onboarding throws', async () => {
+            const failure = new Error('import failed');
+            onboardingDomain.importByAdmin.mockRejectedValue(failure);
+
+            await expect(service.importByAdmin([], 'admin-fable')).rejects.toBe(
+                failure
+            );
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendWelcomeByAdminBulk
+            ).not.toHaveBeenCalled();
         });
 
         it('passes a null name to the domain when a row omits it', async () => {

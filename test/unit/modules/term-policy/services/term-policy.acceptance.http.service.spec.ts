@@ -7,6 +7,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumTermPolicyType,
     EnumUserGender,
@@ -14,12 +15,22 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { AccountDomain } from '@modules/account/domains/account.domain';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
-import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyRef,
+    ITermPolicyUserAcceptance,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('TermPolicyAcceptanceHttpService', () => {
     const termPolicyAcceptanceDomain: MockProxy<TermPolicyAcceptanceDomain> =
@@ -28,6 +39,11 @@ describe('TermPolicyAcceptanceHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const accountDomain: MockProxy<AccountDomain> = mock<AccountDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
 
     const cursorParams = { limit: 20, orderBy: [] };
     const cursorPage = {
@@ -107,6 +123,9 @@ describe('TermPolicyAcceptanceHttpService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: AccountDomain, useValue: accountDomain },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
 
@@ -137,18 +156,118 @@ describe('TermPolicyAcceptanceHttpService', () => {
     });
 
     describe('userAccept', () => {
-        it('accepts the given term policy type for the user and returns an empty response', async () => {
-            termPolicyAcceptanceDomain.userAccept.mockResolvedValue(undefined);
+        const recipient: INotificationRecipient = {
+            ...TestRecipient,
+            userId: 'user-1',
+        };
+        const accepted: ITermPolicyRef = {
+            id: 'term-policy-1',
+            type: EnumTermPolicyType.privacy,
+            version: 1,
+        };
+        const preparedActivityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.userAcceptTermPolicy,
+            metadata: {},
+            userId: null,
+            createdBy: null,
+            workspaceId: null,
+        };
+
+        beforeEach(() => {
+            activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
+            accountDomain.getNotificationRecipientOfUser.mockResolvedValue(
+                recipient
+            );
+            notificationQueue.sendUserAcceptTermPolicy.mockResolvedValue();
+        });
+
+        it('reads the recipient, accepts, stages the activity log, then queues the notification', async () => {
+            const calls: string[] = [];
+            accountDomain.getNotificationRecipientOfUser.mockImplementation(
+                async () => {
+                    calls.push('recipient');
+                    return recipient;
+                }
+            );
+            termPolicyAcceptanceDomain.userAccept.mockImplementation(
+                async () => {
+                    calls.push('accept');
+                    return accepted;
+                }
+            );
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                calls.push('stage');
+            });
+            notificationQueue.sendUserAcceptTermPolicy.mockImplementation(
+                async () => {
+                    calls.push('enqueue');
+                }
+            );
 
             const result = await service.userAccept(user, {
                 type: EnumTermPolicyType.privacy,
             });
 
             expect(result).toEqual({});
-            expect(termPolicyAcceptanceDomain.userAccept).toHaveBeenCalledWith(
+            expect(calls).toEqual(['recipient', 'accept', 'stage', 'enqueue']);
+            expect(
+                accountDomain.getNotificationRecipientOfUser
+            ).toHaveBeenCalledWith(
                 user,
+                EnumNotificationKind.userAcceptTermPolicy
+            );
+            expect(termPolicyAcceptanceDomain.userAccept).toHaveBeenCalledWith(
+                'user-1',
                 EnumTermPolicyType.privacy
             );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userAcceptTermPolicy,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                preparedActivityLog,
+            ]);
+            expect(
+                notificationQueue.sendUserAcceptTermPolicy
+            ).toHaveBeenCalledWith(recipient, {
+                termPolicyId: 'term-policy-1',
+                type: EnumTermPolicyType.privacy,
+                version: 1,
+            });
+        });
+
+        it('accepts nothing when the recipient read rejects', async () => {
+            const error = new Error('recipient-unavailable');
+            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+                error
+            );
+
+            const promise = service.userAccept(user, {
+                type: EnumTermPolicyType.privacy,
+            });
+
+            await expect(promise).rejects.toBe(error);
+            expect(
+                termPolicyAcceptanceDomain.userAccept
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendUserAcceptTermPolicy
+            ).not.toHaveBeenCalled();
+        });
+
+        it('stages and queues nothing when the domain rejects', async () => {
+            const error = new Error('already accepted');
+            termPolicyAcceptanceDomain.userAccept.mockRejectedValue(error);
+
+            const promise = service.userAccept(user, {
+                type: EnumTermPolicyType.privacy,
+            });
+
+            await expect(promise).rejects.toBe(error);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendUserAcceptTermPolicy
+            ).not.toHaveBeenCalled();
         });
     });
 });

@@ -1,13 +1,8 @@
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
-import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
-import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -17,69 +12,29 @@ import {
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import type {
-    IAuthToken,
-    IAuthTwoFactorChallengeCache,
-    IAuthTwoFactorVerifyResult,
-} from '@modules/auth/interfaces/auth.interface';
-import { AuthCache } from '@modules/auth/caches/auth.cache';
-import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { SessionDomain } from '@modules/session/domains/session.domain';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
+import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
-import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
-import { UserUtil } from '@modules/user/utils/user.util';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserTwoFactorDomain', () => {
     const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
         mock<UserTwoFactorRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const userLoginDomain: MockProxy<UserLoginDomain> = mock<UserLoginDomain>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const authTwoFactorDomain: MockProxy<AuthTwoFactorDomain> =
-        mock<AuthTwoFactorDomain>();
-    const authCache: MockProxy<AuthCache> = mock<AuthCache>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
-        mock<NotificationRecipientDomain>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-
-    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const authTwoFactorUtil: MockProxy<AuthTwoFactorUtil> =
+        mock<AuthTwoFactorUtil>();
 
     let domain: UserTwoFactorDomain;
 
     const tx = {} as IDatabaseTransactionClient;
-    const now = new Date('2026-03-01T00:00:00.000Z');
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userVerifyTwoFactor,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
 
     const baseTwoFactor: TwoFactor = {
         id: 'two-factor-quartz',
@@ -148,42 +103,8 @@ describe('UserTwoFactorDomain', () => {
         method: EnumAuthTwoFactorMethod.code,
         newBackupCodes: null,
     };
-    const tokens: IAuthToken = {
-        tokenType: 'Bearer',
-        roleType: EnumRoleType.user,
-        expiresIn: 3600,
-        accessToken: 'access-token',
-        refreshToken: 'refresh-token',
-    };
-    const challenge: IAuthTwoFactorChallengeCache = {
-        userId: 'user-quartz',
-        device: {
-            fingerprint: 'device-quartz',
-            name: null,
-            platform: null,
-            notificationToken: null,
-        },
-        loginFrom: EnumUserLoginFrom.website,
-        loginWith: EnumUserLoginWith.credential,
-    };
-
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: baseUser.id,
-    };
-
-    const revokedSessions: ISessionRef[] = [{ id: 'session-one' }];
-
     beforeEach(async () => {
         vi.resetAllMocks();
-        sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedSessions);
-        notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
-
-        activityLogDomain.prepare.mockReturnValue(activityLog);
-        databaseService.withTransaction.mockImplementation(
-            async fn => fn(tx) as never
-        );
-        helperDateService.create.mockReturnValue(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -193,247 +114,99 @@ describe('UserTwoFactorDomain', () => {
                     useValue: userTwoFactorRepository,
                 },
                 { provide: UserRepository, useValue: userRepository },
-                { provide: UserLoginDomain, useValue: userLoginDomain },
-                { provide: UserUtil, useValue: userUtil },
-                { provide: SessionDomain, useValue: sessionDomain },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: DatabaseService, useValue: databaseService },
-                {
-                    provide: AuthTwoFactorDomain,
-                    useValue: authTwoFactorDomain,
-                },
-                { provide: AuthCache, useValue: authCache },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: NotificationRecipientDomain,
-                    useValue: notificationRecipientDomain,
-                },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: RoleDomain, useValue: roleDomain },
+                { provide: AuthTwoFactorUtil, useValue: authTwoFactorUtil },
             ],
         }).compile();
         domain = module.get(UserTwoFactorDomain);
     });
 
-    describe('loginVerifyTwoFactor', () => {
-        it('verifies the challenge and returns fresh tokens', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
+    describe('getOneForLoginVerify', () => {
+        it('returns the active verified user with two-factor ready to verify', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            userLoginDomain.createTokenAndSession.mockResolvedValue(tokens);
 
             await expect(
-                domain.loginVerifyTwoFactor('challenge-token', {
-                    code: '123456',
-                    method: null,
-                    backupCode: null,
-                })
-            ).resolves.toBe(tokens);
-            expect(
-                userLoginDomain.recordTwoFactorVerification
-            ).toHaveBeenCalledWith(expect.any(Object), verifiedResult);
-            expect(authCache.deleteTwoFactorChallenge).toHaveBeenCalledWith(
-                'challenge-token'
+                domain.getOneForLoginVerify('user-quartz')
+            ).resolves.toBe(baseUser);
+            expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
+                'user-quartz'
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
-        it('throws AuthTwoFactorChallengeInvalidException when the challenge is missing', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(null);
-
-            const call = domain.loginVerifyTwoFactor('challenge-token', {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorChallengeInvalid
-                    ],
-                messagePath: 'auth.error.twoFactorChallengeInvalid',
-            });
-        });
-
-        it('throws UserNotFoundException when the challenge user no longer exists', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
+        it('throws UserNotFoundException when the user no longer exists', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(null);
 
-            const call = domain.loginVerifyTwoFactor('challenge-token', {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginVerify('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
                 messagePath: 'user.error.notFound',
             });
         });
 
         it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 status: EnumUserStatus.inactive,
             });
 
-            const call = domain.loginVerifyTwoFactor('challenge-token', {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginVerify('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.inactiveForbidden
-                    ],
                 messagePath: 'user.error.inactive',
             });
         });
 
         it('throws UserEmailNotVerifiedException when the user is not verified', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 isVerified: false,
             });
 
-            const call = domain.loginVerifyTwoFactor('challenge-token', {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginVerify('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailNotVerified,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.emailNotVerified
-                    ],
                 messagePath: 'user.error.emailNotVerified',
             });
         });
 
         it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
             });
 
-            const call = domain.loginVerifyTwoFactor('challenge-token', {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginVerify('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorNotEnabled
-                    ],
                 messagePath: 'auth.error.twoFactorNotEnabled',
             });
         });
 
         it('throws AuthTwoFactorRequiredSetupException when setup is still pending', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, requiredSetup: true },
             });
 
-            const call = domain.loginVerifyTwoFactor('challenge-token', {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginVerify('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorRequiredSetup,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorRequiredSetup
-                    ],
                 messagePath: 'auth.error.twoFactorRequiredSetup',
-            });
-        });
-
-        it('rethrows an AppBaseException raised while finalizing the login', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            const error = new UserNotFoundException();
-            userLoginDomain.recordTwoFactorVerification.mockRejectedValue(
-                error
-            );
-
-            const call = domain.loginVerifyTwoFactor('challenge-token', {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised while finalizing the login', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            const error = new Error('boom');
-            userLoginDomain.recordTwoFactorVerification.mockRejectedValue(
-                error
-            );
-
-            const call = domain.loginVerifyTwoFactor('challenge-token', {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
             });
         });
     });
 
-    describe('loginSetupTwoFactor', () => {
-        const pendingUser = {
+    describe('getOneForLoginSetup', () => {
+        const pendingUser: IUser = {
             ...baseUser,
             twoFactor: {
                 ...baseTwoFactor,
@@ -442,184 +215,85 @@ describe('UserTwoFactorDomain', () => {
             },
         };
 
-        it('confirms the pending authenticator, returns backup codes, and stages the activity log in order', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
+        it('returns the user and its pending secret when setup was required', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(pendingUser);
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
-                codes: ['CODE1', 'CODE2'],
-                hashes: ['hash1', 'hash2'],
-            });
-            const callOrder: string[] = [];
-            userTwoFactorRepository.enableTwoFactor.mockImplementation(
-                async () => {
-                    callOrder.push('enableTwoFactor');
-                    return { ...baseTwoFactor, enabled: true };
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
 
             await expect(
-                domain.loginSetupTwoFactor('challenge-token', '123456')
-            ).resolves.toEqual(['CODE1', 'CODE2']);
-            expect(
-                userLoginDomain.handleTwoFactorSetupValidation
-            ).toHaveBeenCalledWith(pendingUser, 'pending-secret', '123456');
-            expect(
-                userTwoFactorRepository.enableTwoFactor
-            ).toHaveBeenCalledWith(pendingUser.id, 'pending-secret', [
-                'hash1',
-                'hash2',
-            ]);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userEnableTwoFactor,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(callOrder).toEqual(['enableTwoFactor', 'stagePrepared']);
-        });
-
-        it('throws AuthTwoFactorChallengeInvalidException when the challenge is missing', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(null);
-
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorChallengeInvalid
-                    ],
-                messagePath: 'auth.error.twoFactorChallengeInvalid',
+                domain.getOneForLoginSetup('user-quartz')
+            ).resolves.toEqual({
+                user: pendingUser,
+                pendingSecret: 'pending-secret',
             });
         });
 
-        it('throws UserNotFoundException when the challenge user no longer exists', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
+        it('throws UserNotFoundException when the user no longer exists', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(null);
 
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginSetup('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
             });
         });
 
         it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
+                ...pendingUser,
                 status: EnumUserStatus.inactive,
-                twoFactor: { ...baseTwoFactor, requiredSetup: true },
             });
 
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginSetup('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.inactiveForbidden
-                    ],
-                messagePath: 'user.error.inactive',
             });
         });
 
         it('throws UserEmailNotVerifiedException when the user is not verified', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
+                ...pendingUser,
                 isVerified: false,
-                twoFactor: { ...baseTwoFactor, requiredSetup: true },
             });
 
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginSetup('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailNotVerified,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.emailNotVerified
-                    ],
-                messagePath: 'user.error.emailNotVerified',
             });
         });
 
         it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                twoFactor: {
-                    ...baseTwoFactor,
-                    enabled: false,
-                    requiredSetup: true,
-                },
+                ...pendingUser,
+                twoFactor: { ...baseTwoFactor, enabled: false },
             });
 
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginSetup('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorNotEnabled
-                    ],
-                messagePath: 'auth.error.twoFactorNotEnabled',
             });
         });
 
         it('throws AuthTwoFactorNotRequiredSetupException when setup was not required', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, requiredSetup: false },
-            });
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
 
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginSetup('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorNotRequiredSetup,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorNotRequiredSetup
-                    ],
                 messagePath: 'auth.error.twoFactorNotRequiredSetup',
             });
         });
 
         it('throws AuthTwoFactorSetupRequiredException when there is no pending secret', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
+                ...pendingUser,
                 twoFactor: {
                     ...baseTwoFactor,
                     requiredSetup: true,
@@ -627,904 +301,392 @@ describe('UserTwoFactorDomain', () => {
                 },
             });
 
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForLoginSetup('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorSetupRequired
-                    ],
                 messagePath: 'auth.error.twoFactorSetupRequired',
             });
         });
-
-        it('rethrows an AppBaseException raised while enabling two-factor', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
-            userRepository.findOneWithRoleById.mockResolvedValue(pendingUser);
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
-                codes: ['CODE1'],
-                hashes: ['hash1'],
-            });
-            const error = new UserNotFoundException();
-            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(error);
-
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised while enabling two-factor', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
-            userRepository.findOneWithRoleById.mockResolvedValue(pendingUser);
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
-                codes: ['CODE1'],
-                hashes: ['hash1'],
-            });
-            const error = new Error('boom');
-            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(error);
-
-            const call = domain.loginSetupTwoFactor(
-                'challenge-token',
-                '123456'
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
-        });
     });
 
-    describe('getTwoFactorStatus', () => {
-        it('returns the two-factor row on the user', () => {
-            const user = baseUser;
+    describe('incrementAttempt', () => {
+        it('returns the attempt count the repository stored', async () => {
+            userTwoFactorRepository.incrementAttempt.mockResolvedValue(3);
 
-            expect(domain.getTwoFactorStatus(user)).toBe(user.twoFactor);
-        });
-    });
-
-    describe('setupTwoFactor', () => {
-        it('starts a fresh setup and stages the activity log in order when two-factor is not enabled', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-            authTwoFactorDomain.setupTwoFactor.mockResolvedValue({
-                secret: 'secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                encryptedSecret: 'encrypted-secret',
-            });
-            const callOrder: string[] = [];
-            userTwoFactorRepository.setupTwoFactor.mockImplementation(
-                async () => {
-                    callOrder.push('setupTwoFactor');
-                    return { ...baseTwoFactor, enabled: false };
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            const result = await domain.setupTwoFactor(user, null);
-
-            expect(result).toEqual({
-                secret: 'secret',
-                otpauthUrl: 'otpauth://totp/secret',
-            });
-            expect(userTwoFactorRepository.setupTwoFactor).toHaveBeenCalledWith(
-                user.id,
-                'encrypted-secret'
+            await expect(domain.incrementAttempt('user-quartz')).resolves.toBe(
+                3
             );
             expect(
-                userTwoFactorRepository.setupTwoFactorConsumingBackupCode
-            ).not.toHaveBeenCalled();
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userSetupTwoFactor,
-                userId: user.id,
-                createdBy: user.id,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(callOrder).toEqual(['setupTwoFactor', 'stagePrepared']);
+                userTwoFactorRepository.incrementAttempt
+            ).toHaveBeenCalledWith('user-quartz');
         });
+    });
 
-        it('throws AuthTwoFactorBackupCodeRequiredException when enabled and no backup code is given', async () => {
-            const user = baseUser;
+    describe('resetAttempt', () => {
+        it('resets the attempt counter', async () => {
+            await domain.resetAttempt('user-quartz');
 
-            const call = domain.setupTwoFactor(user, null);
-
-            await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorBackupCodeRequired,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorBackupCodeRequired
-                    ],
-                messagePath: 'auth.error.twoFactorBackupCodeRequired',
-            });
+            expect(
+                userTwoFactorRepository.resetTwoFactorAttempt
+            ).toHaveBeenCalledWith('user-quartz');
         });
+    });
 
-        it('consumes the backup code when re-setting up while enabled', async () => {
-            const user = baseUser;
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
+    describe('saveSetup', () => {
+        it('stores the encrypted pending secret', async () => {
+            await domain.saveSetup('user-quartz', 'encrypted-secret');
+
+            expect(userTwoFactorRepository.setupTwoFactor).toHaveBeenCalledWith(
+                'user-quartz',
+                'encrypted-secret'
             );
-            authTwoFactorDomain.setupTwoFactor.mockResolvedValue({
-                secret: 'secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                encryptedSecret: 'encrypted-secret',
-            });
+        });
+    });
+
+    describe('saveSetupConsumingBackupCode', () => {
+        it('stores the pending secret and consumes the verified backup code', async () => {
             userTwoFactorRepository.setupTwoFactorConsumingBackupCode.mockResolvedValue(
                 true
             );
 
-            await domain.setupTwoFactor(user, 'BACKUP1');
+            await domain.saveSetupConsumingBackupCode(
+                baseUser,
+                'encrypted-secret',
+                verifiedResult
+            );
 
-            expect(
-                userLoginDomain.handleTwoFactorValidation
-            ).toHaveBeenCalledWith(user, {
-                method: EnumAuthTwoFactorMethod.backupCodes,
-                code: null,
-                backupCode: 'BACKUP1',
-            });
             expect(
                 userTwoFactorRepository.setupTwoFactorConsumingBackupCode
             ).toHaveBeenCalledWith(
-                user.id,
+                'user-quartz',
                 'encrypted-secret',
                 verifiedResult,
-                user.twoFactor!.backupCodes
+                baseTwoFactor.backupCodes
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
         it('throws AuthTwoFactorInvalidException when the backup code was already consumed', async () => {
-            const user = baseUser;
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            authTwoFactorDomain.setupTwoFactor.mockResolvedValue({
-                secret: 'secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                encryptedSecret: 'encrypted-secret',
-            });
             userTwoFactorRepository.setupTwoFactorConsumingBackupCode.mockResolvedValue(
                 false
             );
 
-            const call = domain.setupTwoFactor(user, 'BACKUP1');
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.saveSetupConsumingBackupCode(
+                    baseUser,
+                    'encrypted-secret',
+                    verifiedResult
+                )
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorInvalid
-                    ],
                 messagePath: 'auth.error.twoFactorInvalid',
             });
         });
 
-        it('rethrows an AppBaseException raised while setting up', async () => {
+        it('falls back to an empty backup-code list when the user carries no two-factor row', async () => {
+            userTwoFactorRepository.setupTwoFactorConsumingBackupCode.mockResolvedValue(
+                true
+            );
+
+            await domain.saveSetupConsumingBackupCode(
+                { ...baseUser, twoFactor: null },
+                'encrypted-secret',
+                verifiedResult
+            );
+
+            expect(
+                userTwoFactorRepository.setupTwoFactorConsumingBackupCode
+            ).toHaveBeenCalledWith(
+                'user-quartz',
+                'encrypted-secret',
+                verifiedResult,
+                []
+            );
+        });
+    });
+
+    describe('getPendingSecret', () => {
+        it('returns the pending secret', () => {
             const user = {
                 ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
+                twoFactor: {
+                    ...baseTwoFactor,
+                    enabled: false,
+                    pendingSecret: 'pending-secret',
+                },
             };
-            const error = new UserNotFoundException();
-            authTwoFactorDomain.setupTwoFactor.mockRejectedValue(error);
 
-            const call = domain.setupTwoFactor(user, null);
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
+            expect(domain.getPendingSecret(user)).toBe('pending-secret');
         });
 
-        it('wraps an unknown error raised while setting up', async () => {
+        it('throws AuthTwoFactorAlreadyEnabledException when already enabled with no pending secret', () => {
+            expect(() => domain.getPendingSecret(baseUser)).toThrow(
+                expect.objectContaining({
+                    module: 'auth',
+                    statusCode: EnumAuthStatusCodeError.twoFactorAlreadyEnabled,
+                    messagePath: 'auth.error.twoFactorAlreadyEnabled',
+                })
+            );
+        });
+
+        it('throws AuthTwoFactorSetupRequiredException when there is no pending secret and it is not enabled', () => {
             const user = {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
             };
-            const error = new Error('boom');
-            authTwoFactorDomain.setupTwoFactor.mockRejectedValue(error);
 
-            const call = domain.setupTwoFactor(user, null);
+            expect(() => domain.getPendingSecret(user)).toThrow(
+                expect.objectContaining({
+                    module: 'auth',
+                    statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
+                    messagePath: 'auth.error.twoFactorSetupRequired',
+                })
+            );
+        });
 
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
+        it('throws AuthTwoFactorSetupRequiredException when the user has no two-factor row', () => {
+            expect(() =>
+                domain.getPendingSecret({ ...baseUser, twoFactor: null })
+            ).toThrow(
+                expect.objectContaining({
+                    statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
+                })
+            );
         });
     });
 
     describe('enableTwoFactor', () => {
-        it('confirms the pending authenticator, returns backup codes, and stages the activity log in order', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: {
-                    ...baseTwoFactor,
-                    enabled: false,
-                    pendingSecret: 'pending-secret',
-                },
-            };
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
+        it('confirms the pending authenticator and returns the plain backup codes', async () => {
+            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
-            const callOrder: string[] = [];
-            userTwoFactorRepository.enableTwoFactor.mockImplementation(
-                async () => {
-                    callOrder.push('enableTwoFactor');
-                    return { ...baseTwoFactor, enabled: true };
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
+            userTwoFactorRepository.enableTwoFactor.mockResolvedValue({
+                ...baseTwoFactor,
+                enabled: true,
             });
 
             await expect(
-                domain.enableTwoFactor(user, '123456')
+                domain.enableTwoFactor('user-quartz', 'pending-secret')
             ).resolves.toEqual(['CODE1']);
             expect(
-                userLoginDomain.handleTwoFactorSetupValidation
-            ).toHaveBeenCalledWith(user, 'pending-secret', '123456');
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userEnableTwoFactor,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(callOrder).toEqual(['enableTwoFactor', 'stagePrepared']);
-        });
-
-        it('throws AuthTwoFactorAlreadyEnabledException when already enabled with no pending secret', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: {
-                    ...baseTwoFactor,
-                    enabled: true,
-                    pendingSecret: null,
-                },
-            };
-
-            const call = domain.enableTwoFactor(user, '123456');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorAlreadyEnabled,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorAlreadyEnabled
-                    ],
-                messagePath: 'auth.error.twoFactorAlreadyEnabled',
-            });
-        });
-
-        it('throws AuthTwoFactorSetupRequiredException when there is no pending secret and it is not enabled', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: {
-                    ...baseTwoFactor,
-                    enabled: false,
-                    pendingSecret: null,
-                },
-            };
-
-            const call = domain.enableTwoFactor(user, '123456');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorSetupRequired
-                    ],
-                messagePath: 'auth.error.twoFactorSetupRequired',
-            });
+                userTwoFactorRepository.enableTwoFactor
+            ).toHaveBeenCalledWith('user-quartz', 'pending-secret', ['hash1']);
         });
 
         it('rethrows an AppBaseException raised while enabling', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: {
-                    ...baseTwoFactor,
-                    enabled: false,
-                    pendingSecret: 'pending-secret',
-                },
-            };
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
-                codes: ['CODE1'],
-                hashes: ['hash1'],
+            const failure = new UserEmailNotVerifiedException();
+            authTwoFactorUtil.generateBackupCodes.mockImplementation(() => {
+                throw failure;
             });
-            const error = new UserNotFoundException();
-            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(error);
 
-            const call = domain.enableTwoFactor(user, '123456');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
+            await expect(
+                domain.enableTwoFactor('user-quartz', 'pending-secret')
+            ).rejects.toBe(failure);
         });
 
         it('wraps an unknown error raised while enabling', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: {
-                    ...baseTwoFactor,
-                    enabled: false,
-                    pendingSecret: 'pending-secret',
-                },
-            };
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
+            const error = new Error('boom');
+            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
-            const error = new Error('boom');
             userTwoFactorRepository.enableTwoFactor.mockRejectedValue(error);
 
-            const call = domain.enableTwoFactor(user, '123456');
+            const call = domain.enableTwoFactor('user-quartz', 'pending');
 
+            await expect(call).rejects.toBeInstanceOf(AppBaseException);
             await expect(call).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
-        });
-    });
-
-    describe('disableTwoFactor', () => {
-        it('disables two-factor and revokes active sessions', async () => {
-            const user = baseUser;
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-
-            await domain.disableTwoFactor(user, {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            expect(
-                userTwoFactorRepository.disableTwoFactorInTx
-            ).toHaveBeenCalledWith(tx, user.id);
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                user.id,
-                user.id,
-                now
-            );
-            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
-                user.id,
-                revokedSessions
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-        });
-
-        it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-
-            const call = domain.disableTwoFactor(user, {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorNotEnabled
-                    ],
-                messagePath: 'auth.error.twoFactorNotEnabled',
-            });
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            const user = baseUser;
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.disableTwoFactor(user, {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            const user = baseUser;
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.disableTwoFactor(user, {
-                code: '123456',
-                method: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
         });
     });
 
     describe('regenerateTwoFactorBackupCodes', () => {
-        it('regenerates fresh backup codes and stages the activity log in order', async () => {
-            const user = baseUser;
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
+        it('replaces the backup codes and returns the plain ones', async () => {
+            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1', 'CODE2'],
                 hashes: ['hash1', 'hash2'],
             });
-            const callOrder: string[] = [];
-            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockImplementation(
-                async () => {
-                    callOrder.push('regenerateTwoFactorBackupCodes');
-                    return baseTwoFactor;
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
 
             await expect(
-                domain.regenerateTwoFactorBackupCodes(user, '123456')
+                domain.regenerateTwoFactorBackupCodes('user-quartz')
             ).resolves.toEqual(['CODE1', 'CODE2']);
             expect(
-                userLoginDomain.handleTwoFactorValidation
-            ).toHaveBeenCalledWith(user, {
-                method: EnumAuthTwoFactorMethod.code,
-                code: '123456',
-                backupCode: null,
-            });
-            expect(
                 userTwoFactorRepository.regenerateTwoFactorBackupCodes
-            ).toHaveBeenCalledWith(user.id, ['hash1', 'hash2']);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(callOrder).toEqual([
-                'regenerateTwoFactorBackupCodes',
-                'stagePrepared',
-            ]);
-        });
-
-        it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-
-            const call = domain.regenerateTwoFactorBackupCodes(user, '123456');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorNotEnabled
-                    ],
-                messagePath: 'auth.error.twoFactorNotEnabled',
-            });
+            ).toHaveBeenCalledWith('user-quartz', ['hash1', 'hash2']);
         });
 
         it('rethrows an AppBaseException raised while regenerating', async () => {
-            const user = baseUser;
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
-                codes: ['CODE1'],
-                hashes: ['hash1'],
+            const failure = new UserEmailNotVerifiedException();
+            authTwoFactorUtil.generateBackupCodes.mockImplementation(() => {
+                throw failure;
             });
-            const error = new UserNotFoundException();
-            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockRejectedValue(
-                error
-            );
 
-            const call = domain.regenerateTwoFactorBackupCodes(user, '123456');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
+            await expect(
+                domain.regenerateTwoFactorBackupCodes('user-quartz')
+            ).rejects.toBe(failure);
         });
 
         it('wraps an unknown error raised while regenerating', async () => {
-            const user = baseUser;
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            authTwoFactorDomain.generateBackupCodes.mockReturnValue({
+            const error = new Error('boom');
+            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
-            const error = new Error('boom');
             userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockRejectedValue(
                 error
             );
 
-            const call = domain.regenerateTwoFactorBackupCodes(user, '123456');
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.regenerateTwoFactorBackupCodes('user-quartz')
+            ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
         });
     });
 
-    describe('resetTwoFactorByAdmin', () => {
-        const adminActor: IRoleActor = {
-            roleId: 'role-admin-quartz',
-            roleType: EnumRoleType.admin,
-        };
+    describe('assertEnabled', () => {
+        it('passes when two-factor is enabled', () => {
+            expect(() => domain.assertEnabled(baseUser)).not.toThrow();
+        });
 
-        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
+        it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', () => {
+            const user = {
                 ...baseUser,
-                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
-            });
-            roleDomain.assertActorOutranks.mockImplementation(() => {
-                throw new RoleRankForbiddenException();
-            });
+                twoFactor: { ...baseTwoFactor, enabled: false },
+            };
 
-            const call = domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
+            expect(() => domain.assertEnabled(user)).toThrow(
+                expect.objectContaining({
+                    module: 'auth',
+                    statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                    messagePath: 'auth.error.twoFactorNotEnabled',
+                })
             );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-                messagePath: 'role.error.rankForbidden',
-            });
-            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.superAdmin
-            );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('checks the actor role type against the target role type before reading the recipient', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
-            );
-
-            const call = domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({ rawError: error });
-            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                baseUser.role.type
+        it('throws AuthTwoFactorNotEnabledException when the user has no two-factor row', () => {
+            expect(() =>
+                domain.assertEnabled({ ...baseUser, twoFactor: null })
+            ).toThrow(
+                expect.objectContaining({
+                    statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                })
             );
         });
-        it('resets two-factor, revokes sessions, stages both activity logs in order, and notifies the user', async () => {
-            const user = baseUser;
-            userRepository.findOneWithRoleById.mockResolvedValue(user);
-            const actorMetadata = { userId: 'user-quartz' };
-            const targetMetadata = { actorUserId: 'admin-quartz' };
-            userUtil.mapActivityLogActorMetadata.mockReturnValue(actorMetadata);
-            userUtil.mapActivityLogTargetMetadata.mockReturnValue(
-                targetMetadata
-            );
-            const actorActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.adminUserResetTwoFactor,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const targetActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userResetTwoFactorByAdmin,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(actorActivityLog)
-                .mockReturnValueOnce(targetActivityLog);
-            const callOrder: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
+    });
 
-                return result as never;
-            });
-            authCache.deleteTwoFactorLock.mockImplementation(async () => {
-                callOrder.push('deleteTwoFactorLock');
-            });
-            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
-                callOrder.push('purgeRevokedLogins');
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-            notificationQueue.sendResetTwoFactorByAdmin.mockImplementation(
-                async () => {
-                    callOrder.push('sendResetTwoFactorByAdmin');
-                }
-            );
+    describe('disableInTx', () => {
+        it('disables two-factor on the given transaction', async () => {
+            await domain.disableInTx(tx, 'user-quartz');
 
-            await domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
-            );
+            expect(
+                userTwoFactorRepository.disableTwoFactorInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz');
+        });
+    });
+
+    describe('resetByAdminInTx', () => {
+        it('resets two-factor on the given transaction', async () => {
+            await domain.resetByAdminInTx(tx, 'user-quartz');
 
             expect(
                 userTwoFactorRepository.resetTwoFactorByAdminInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz');
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
+        });
+    });
+
+    describe('recordVerificationInTx', () => {
+        it('records the verified check on the given transaction', async () => {
+            userTwoFactorRepository.verifyTwoFactorInTx.mockResolvedValue(true);
+
+            await expect(
+                domain.recordVerificationInTx(tx, baseUser, verifiedResult)
+            ).resolves.toBeUndefined();
+            expect(
+                userTwoFactorRepository.verifyTwoFactorInTx
+            ).toHaveBeenCalledWith(
                 tx,
                 'user-quartz',
-                'admin-quartz',
-                now
+                verifiedResult,
+                baseTwoFactor.backupCodes
             );
-            expect(authCache.deleteTwoFactorLock).toHaveBeenCalledWith(user);
-            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
-                'user-quartz',
-                revokedSessions
-            );
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.adminUserResetTwoFactor,
-                metadata: actorMetadata,
-            });
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.userResetTwoFactorByAdmin,
-                userId: 'user-quartz',
-                createdBy: 'admin-quartz',
-                metadata: targetMetadata,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorActivityLog,
-                targetActivityLog,
-            ]);
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.resetTwoFactorByAdmin
-            );
-            expect(
-                notificationQueue.sendResetTwoFactorByAdmin
-            ).toHaveBeenCalledWith(recipient, 'admin-quartz');
-            expect(callOrder).toEqual([
-                'committed',
-                'deleteTwoFactorLock',
-                'purgeRevokedLogins',
-                'sendResetTwoFactorByAdmin',
-                'stagePrepared',
-            ]);
         });
 
-        it('commits nothing and purges nothing when the recipient read rejects', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
+        it('throws AuthTwoFactorInvalidException when the stored codes moved on', async () => {
+            userTwoFactorRepository.verifyTwoFactorInTx.mockResolvedValue(
+                false
             );
 
-            const call = domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({ rawError: error });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(authCache.deleteTwoFactorLock).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('throws UserNotSelfException when the admin targets themselves', async () => {
-            const call = domain.resetTwoFactorByAdmin(
-                'admin-quartz',
-                'admin-quartz',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notSelf,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notSelf],
-                messagePath: 'user.error.notSelf',
-            });
-        });
-
-        it('throws UserNotFoundException when the target user does not exist', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(null);
-
-            const call = domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-        });
-
-        it('throws UserBlockedInvalidException when the target user is blocked', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                status: EnumUserStatus.blocked,
-            });
-
-            const call = domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.blockedInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.blockedInvalid
-                    ],
-                messagePath: 'user.error.blockedInvalid',
-            });
-        });
-
-        it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            });
-
-            const call = domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.recordVerificationInTx(tx, baseUser, verifiedResult)
+            ).rejects.toMatchObject({
                 module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorNotEnabled
-                    ],
-                messagePath: 'auth.error.twoFactorNotEnabled',
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+                messagePath: 'auth.error.twoFactorInvalid',
             });
         });
 
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
+        it('falls back to an empty backup-code list when the user carries no two-factor row', async () => {
+            userTwoFactorRepository.verifyTwoFactorInTx.mockResolvedValue(true);
 
-            const call = domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
+            await domain.recordVerificationInTx(
+                tx,
+                { ...baseUser, twoFactor: null },
+                verifiedResult
             );
 
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-            expect(authCache.deleteTwoFactorLock).not.toHaveBeenCalled();
+            expect(
+                userTwoFactorRepository.verifyTwoFactorInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz', verifiedResult, []);
+        });
+    });
+
+    describe('recordVerification', () => {
+        it('records the verified check', async () => {
+            userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(true);
+
+            await expect(
+                domain.recordVerification(baseUser, verifiedResult)
+            ).resolves.toBeUndefined();
+            expect(
+                userTwoFactorRepository.verifyTwoFactor
+            ).toHaveBeenCalledWith(
+                'user-quartz',
+                verifiedResult,
+                baseTwoFactor.backupCodes
+            );
         });
 
-        it('wraps an unknown error raised inside the transaction', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
+        it('throws AuthTwoFactorInvalidException when the stored codes moved on', async () => {
+            userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(false);
 
-            const call = domain.resetTwoFactorByAdmin(
-                'user-quartz',
-                'admin-quartz',
-                adminActor
+            await expect(
+                domain.recordVerification(baseUser, verifiedResult)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+            });
+        });
+
+        it('falls back to an empty backup-code list when the user carries no two-factor row', async () => {
+            userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(true);
+
+            await domain.recordVerification(
+                { ...baseUser, twoFactor: null },
+                verifiedResult
             );
 
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
+            expect(
+                userTwoFactorRepository.verifyTwoFactor
+            ).toHaveBeenCalledWith('user-quartz', verifiedResult, []);
         });
     });
 

@@ -78,6 +78,22 @@ describe('HelperStringService', () => {
         });
     });
 
+    describe('generateSlugCandidates', () => {
+        it('returns count slugs each starting with the prefix and sized to the max length', () => {
+            const result = service.generateSlugCandidates('ws-', 10, 4);
+
+            expect(result).toHaveLength(4);
+            for (const slug of result) {
+                expect(slug).toHaveLength(10);
+                expect(slug.startsWith('ws-')).toBe(true);
+            }
+        });
+
+        it('returns an empty list for a zero count', () => {
+            expect(service.generateSlugCandidates('ws-', 10, 0)).toEqual([]);
+        });
+    });
+
     describe('censor', () => {
         it('masks all but the last character for a string of 5 or fewer characters', () => {
             expect(service.censor('abcde')).toBe('****e');

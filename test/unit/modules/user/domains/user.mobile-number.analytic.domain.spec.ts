@@ -2,16 +2,15 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobile-number.analytic.domain';
 import { UserMobileNumberAnalyticRepository } from '@modules/user/repositories/user.mobile-number.analytic.repository';
 
 describe('UserMobileNumberAnalyticDomain', () => {
     const userMobileNumberAnalyticRepository: MockProxy<UserMobileNumberAnalyticRepository> =
         mock<UserMobileNumberAnalyticRepository>();
-    const activityLogAnalyticDomain: MockProxy<ActivityLogAnalyticDomain> =
-        mock<ActivityLogAnalyticDomain>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
 
     let domain: UserMobileNumberAnalyticDomain;
 
@@ -29,8 +28,8 @@ describe('UserMobileNumberAnalyticDomain', () => {
                     useValue: userMobileNumberAnalyticRepository,
                 },
                 {
-                    provide: ActivityLogAnalyticDomain,
-                    useValue: activityLogAnalyticDomain,
+                    provide: HelperNumberService,
+                    useValue: helperNumberService,
                 },
             ],
         }).compile();
@@ -38,11 +37,12 @@ describe('UserMobileNumberAnalyticDomain', () => {
     });
 
     describe('getVerificationRate', () => {
-        it('computes the rate when total is not zero', async () => {
+        it('computes the rate from the verified count and the total', async () => {
             userMobileNumberAnalyticRepository.countVerified.mockResolvedValue(
                 3
             );
             userMobileNumberAnalyticRepository.countAll.mockResolvedValue(6);
+            helperNumberService.percent.mockReturnValue(50);
 
             await expect(
                 domain.getVerificationRate(startDate, endDate)
@@ -57,13 +57,15 @@ describe('UserMobileNumberAnalyticDomain', () => {
             expect(
                 userMobileNumberAnalyticRepository.countAll
             ).toHaveBeenCalledWith(startDate, endDate);
+            expect(helperNumberService.percent).toHaveBeenCalledWith(3, 6);
         });
 
-        it('returns a zero rate when total is zero', async () => {
+        it('passes open date bounds to the repository', async () => {
             userMobileNumberAnalyticRepository.countVerified.mockResolvedValue(
                 0
             );
             userMobileNumberAnalyticRepository.countAll.mockResolvedValue(0);
+            helperNumberService.percent.mockReturnValue(0);
 
             await expect(
                 domain.getVerificationRate(null, null)
@@ -72,45 +74,9 @@ describe('UserMobileNumberAnalyticDomain', () => {
                 total: 0,
                 rate: 0,
             });
-        });
-    });
-
-    describe('getChurn', () => {
-        it('combines added, updated and deleted counts', async () => {
-            activityLogAnalyticDomain.getCountByActionsInRange
-                .mockResolvedValueOnce(1)
-                .mockResolvedValueOnce(2)
-                .mockResolvedValueOnce(3);
-
-            await expect(domain.getChurn(startDate, endDate)).resolves.toEqual({
-                added: 1,
-                updated: 2,
-                deleted: 3,
-            });
             expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenNthCalledWith(
-                1,
-                [EnumActivityLogAction.userAddMobileNumber],
-                startDate,
-                endDate
-            );
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenNthCalledWith(
-                2,
-                [EnumActivityLogAction.userUpdateMobileNumber],
-                startDate,
-                endDate
-            );
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenNthCalledWith(
-                3,
-                [EnumActivityLogAction.userDeleteMobileNumber],
-                startDate,
-                endDate
-            );
+                userMobileNumberAnalyticRepository.countAll
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 });

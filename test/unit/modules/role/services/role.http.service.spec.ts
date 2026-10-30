@@ -2,11 +2,14 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -23,7 +26,10 @@ import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.ad
 import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.system-list.request.dto';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type {
     IRoleActor,
@@ -44,6 +50,12 @@ describe('RoleHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const role: Role = {
@@ -100,6 +112,14 @@ describe('RoleHttpService', () => {
         roleId: actorRole.id,
         roleType: EnumRoleType.superAdmin,
     };
+    const metadata = { roleId: role.id };
+    const stagedActivityLog: IActivityLogStaged = {
+        action: EnumActivityLogAction.adminRoleCreate,
+        metadata,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
+    };
     const offsetPagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput> =
         { skip: 0, limit: 20, orderBy: [] };
     const cursorPagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
@@ -109,6 +129,9 @@ describe('RoleHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        helperDateService.create.mockReturnValue(now);
+        roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
+        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
         paginationQueryUtil.offset.mockReturnValue({
             params: offsetPagination,
             storePatch: {},
@@ -130,6 +153,10 @@ describe('RoleHttpService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: HelperDateService, useValue: helperDateService },
+                { provide: RoleUtil, useValue: roleUtil },
             ],
         }).compile();
 
@@ -292,12 +319,14 @@ describe('RoleHttpService', () => {
                 name: 'manager',
                 type: EnumRoleType.admin,
             };
+            databaseUtil.createId.mockReturnValue(role.id);
             roleDomain.createByAdmin.mockResolvedValue(roleWithPolicies);
 
             const result = await service.createByAdmin(body, actorUser);
 
             expect(result).toEqual({ data: roleWithPolicies });
             expect(roleDomain.createByAdmin).toHaveBeenCalledWith(
+                role.id,
                 {
                     name: 'manager',
                     description: null,
@@ -305,6 +334,47 @@ describe('RoleHttpService', () => {
                 },
                 actor
             );
+        });
+
+        it('prepares the create activity log with the drawn id before the write and stages it after', async () => {
+            const body: RoleCreateRequestDto = {
+                name: 'manager',
+                type: EnumRoleType.admin,
+            };
+            databaseUtil.createId.mockReturnValue(role.id);
+            roleDomain.createByAdmin.mockImplementation(async () => {
+                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                    action: EnumActivityLogAction.adminRoleCreate,
+                    metadata,
+                });
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+
+                return roleWithPolicies;
+            });
+
+            await service.createByAdmin(body, actorUser);
+
+            expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                { id: role.id, name: 'manager', type: EnumRoleType.admin },
+                now
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
+        });
+
+        it('stages nothing when the domain throws', async () => {
+            const body: RoleCreateRequestDto = {
+                name: 'manager',
+                type: EnumRoleType.admin,
+            };
+            databaseUtil.createId.mockReturnValue(role.id);
+            roleDomain.createByAdmin.mockRejectedValue(new Error('boom'));
+
+            await expect(
+                service.createByAdmin(body, actorUser)
+            ).rejects.toThrow('boom');
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -328,6 +398,28 @@ describe('RoleHttpService', () => {
                 { description: 'Team lead role', type: EnumRoleType.user },
                 actor
             );
+        });
+
+        it('prepares the update activity log from the updated role and stages it after the write', async () => {
+            const body: RoleUpdateRequestDto = {
+                description: 'Team lead role',
+                type: EnumRoleType.user,
+            };
+            roleDomain.updateByAdmin.mockResolvedValue(roleWithPolicies);
+
+            await service.updateByAdmin(roleWithPolicies.id, body, actorUser);
+
+            expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                roleWithPolicies,
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminRoleUpdate,
+                metadata,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
         });
 
         it('passes a null description through to clear it', async () => {
@@ -361,6 +453,24 @@ describe('RoleHttpService', () => {
                 roleWithPolicies.id,
                 actor
             );
+        });
+
+        it('prepares the delete activity log from the deleted role and stages it after the write', async () => {
+            roleDomain.deleteByAdmin.mockResolvedValue(role);
+
+            await service.deleteByAdmin(roleWithPolicies.id, actorUser);
+
+            expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                role,
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminRoleDelete,
+                metadata,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
         });
     });
 });

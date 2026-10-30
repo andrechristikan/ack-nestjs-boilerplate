@@ -1,19 +1,52 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 
 describe('FeatureFlagUtil', () => {
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+
+    const hashForTenPercent = '0000000a'.padEnd(64, '0');
+    const hashForFiftyPercent = '00000032'.padEnd(64, '0');
+
     let util: FeatureFlagUtil;
 
     beforeEach(async () => {
         vi.resetAllMocks();
 
         const module: TestingModule = await Test.createTestingModule({
-            providers: [FeatureFlagUtil],
+            providers: [
+                FeatureFlagUtil,
+                { provide: HelperHashService, useValue: helperHashService },
+            ],
         }).compile();
 
         util = module.get(FeatureFlagUtil);
+    });
+
+    describe('isInRollout', () => {
+        it('hashes "<key>:<identifier>" and returns true when the bucket is under the rollout', () => {
+            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
+
+            const result = util.isInRollout(50, 'loginWithGoogle', 'user-1');
+
+            expect(result).toBe(true);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'loginWithGoogle:user-1'
+            );
+        });
+
+        it('returns false when the bucket is at or above the rollout', () => {
+            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
+
+            const result = util.isInRollout(50, 'loginWithGoogle', 'user-1');
+
+            expect(result).toBe(false);
+        });
     });
 
     describe('isMetadataValid', () => {

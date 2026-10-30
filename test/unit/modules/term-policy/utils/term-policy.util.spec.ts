@@ -15,7 +15,10 @@ import {
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyAcceptanceAnalytic,
+    ITermPolicyContent,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
 describe('TermPolicyUtil', () => {
@@ -264,6 +267,63 @@ describe('TermPolicyUtil', () => {
             expect(
                 util.getContentByLanguage([], EnumMessageLanguage.en)
             ).toBeNull();
+        });
+    });
+
+    describe('averageAcceptanceMs', () => {
+        it('returns zero count and average when there are no rows', () => {
+            expect(util.averageAcceptanceMs([])).toEqual({
+                count: 0,
+                averageMs: 0,
+            });
+        });
+
+        it('averages the delay from the policy publish time to the acceptance', () => {
+            const rows: ITermPolicyAcceptanceAnalytic[] = [
+                {
+                    id: 'acceptance-1',
+                    userId: 'user-1',
+                    termPolicyId: 'term-policy-1',
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
+                },
+                {
+                    id: 'acceptance-2',
+                    userId: 'user-2',
+                    termPolicyId: 'term-policy-1',
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
+                },
+            ];
+
+            expect(util.averageAcceptanceMs(rows)).toEqual({
+                count: 2,
+                averageMs: 120000,
+            });
+        });
+
+        it('skips an acceptance whose policy has no publish time', () => {
+            const rows: ITermPolicyAcceptanceAnalytic[] = [
+                {
+                    id: 'acceptance-1',
+                    userId: 'user-1',
+                    termPolicyId: 'term-policy-1',
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
+                },
+                {
+                    id: 'acceptance-2',
+                    userId: 'user-2',
+                    termPolicyId: 'term-policy-2',
+                    publishedAt: null,
+                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
+                },
+            ];
+
+            expect(util.averageAcceptanceMs(rows)).toEqual({
+                count: 1,
+                averageMs: 60000,
+            });
         });
     });
 });

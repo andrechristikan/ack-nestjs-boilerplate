@@ -15,24 +15,29 @@ import {
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     Country,
+    ForgotPassword,
     Prisma,
     TwoFactor,
     User,
     UserMobileNumber,
     UserPhoto,
+    Verification,
 } from '@generated/prisma-client/client';
 import type {
     UserAdminListSelect,
     UserAdminNearLockoutSelect,
+    UserMobileNumberSummarySelect,
     UserRecipientSelect,
 } from '@modules/user/constants/user.constant';
 import type {
     IAuthPassword,
     IAuthToken,
-    IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
+import type {
+    IRole,
+    IRoleWithPolicies,
+} from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 
@@ -96,6 +101,11 @@ export interface IUserVerificationEmailCreate {
     link: string;
 }
 
+export interface IUserVerificationEmailTarget {
+    verification: Verification;
+    user: User;
+}
+
 export interface IUserVerificationMobileNumberCreate {
     type: 'mobileNumber';
     expiredAt: Date;
@@ -128,6 +138,13 @@ export interface IUserSignUpWorkspaceInvite {
 
 export type IUserSignUpWorkspaceContext =
     IUserSignUpWorkspacePersonal | IUserSignUpWorkspaceInvite;
+
+export type IUserCreateRole = Pick<IRole, 'id' | 'type'>;
+
+export interface IUserSignUpResolved {
+    roleId: string;
+    workspaceContext: IUserSignUpWorkspaceContext;
+}
 
 export interface IUserOnboardingActivity {
     action: EnumActivityLogAction;
@@ -190,6 +207,11 @@ export interface IUserCheckUsername extends IUserCheckEmail {
     pattern: boolean;
 }
 
+export interface IUserImportUsernameChecks {
+    existing: string[];
+    badWords: boolean[];
+}
+
 export interface IUserCreateByAdmin {
     username: string;
     email: string;
@@ -236,17 +258,20 @@ export interface IUserUpdatePhotoProfile {
     size: number;
 }
 
+export type IUserMobileNumberSummary = Prisma.UserMobileNumberGetPayload<{
+    select: typeof UserMobileNumberSummarySelect;
+}>;
+
 export interface IUserMobileNumberInput {
     number: string;
     phoneCode: string;
     countryId: string;
 }
 
-export interface IUserLoginCredential {
-    email: string;
-    password: string;
-    from: EnumUserLoginFrom;
-    device: IDeviceIdentity;
+export interface IUserCredentialAttempt {
+    user: IUser;
+    hashedPassword: string;
+    isAttemptCounted: boolean;
 }
 
 export interface IUserLoginSocial {
@@ -272,14 +297,18 @@ export interface IUserSignUp {
     inviteToken: string | null;
 }
 
-export interface IUserChangePassword extends IAuthTwoFactorVerify {
-    newPassword: string;
-    oldPassword: string;
+export interface IUserPasswordTemporary {
+    password: IAuthPassword;
+    passwordString: string;
 }
 
-export interface IUserResetPassword extends IAuthTwoFactorVerify {
-    newPassword: string;
-    token: string;
+export interface IUserForgotPassword extends ForgotPassword {
+    user: IUser;
+}
+
+export interface IUserForgotPasswordPrepared {
+    user: User;
+    forgot: IUserForgotPasswordCreate;
 }
 
 export interface IUserTwoFactorStatus {
@@ -288,6 +317,11 @@ export interface IUserTwoFactorStatus {
     backupCodesRemaining: number;
     confirmedAt: Date | null;
     lastUsedAt: Date | null;
+}
+
+export interface IUserTwoFactorLoginSetup {
+    user: IUser;
+    pendingSecret: string;
 }
 
 export interface IUserTwoFactorSetup {

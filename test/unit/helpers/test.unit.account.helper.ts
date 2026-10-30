@@ -1,36 +1,34 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import type { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
 import type {
-    IAuthJwtRefreshTokenPayload,
     IAuthAccessTokenGenerate,
+    IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
-import type { SessionCache } from '@modules/session/caches/session.cache';
 import type { SessionDomain } from '@modules/session/domains/session.domain';
 import type { ISession } from '@modules/session/interfaces/session.interface';
 
-export interface IUserRefreshSessionDoubles {
+export interface IAccountRefreshSessionDoubles {
     authJwtDomain: MockProxy<AuthJwtDomain>;
-    sessionCache: MockProxy<SessionCache>;
     sessionDomain: MockProxy<SessionDomain>;
 }
 
-export interface IUserRefreshSessionFixture {
+export interface IAccountRefreshSessionFixture {
     payload: IAuthJwtRefreshTokenPayload;
     session: ISession | null;
     refreshed: IAuthAccessTokenGenerate;
 }
 
-export function stubUserRefreshSession(
-    doubles: IUserRefreshSessionDoubles,
-    fixture: IUserRefreshSessionFixture
+export function stubAccountRefreshSession(
+    doubles: IAccountRefreshSessionDoubles,
+    fixture: IAccountRefreshSessionFixture
 ): void {
     doubles.authJwtDomain.payloadToken.mockReturnValue(fixture.payload);
     doubles.sessionDomain.findOneActive.mockResolvedValue(fixture.session);
     doubles.authJwtDomain.refreshToken.mockReturnValue(fixture.refreshed);
     doubles.sessionDomain.updateJtiInTx.mockResolvedValue(true);
-    doubles.sessionCache.updateLogin.mockResolvedValue(
+    doubles.sessionDomain.updateLogin.mockResolvedValue(
         EnumSessionCacheUpdate.updated
     );
 }

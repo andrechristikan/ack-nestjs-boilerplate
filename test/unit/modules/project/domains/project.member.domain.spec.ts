@@ -9,7 +9,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    EnumActivityLogAction,
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
     Prisma,
@@ -19,11 +18,6 @@ import type {
     ProjectMember,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type {
-    IActivityLogStaged,
-    IActivityLogStageInput,
-} from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectWorkspaceBypassStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
@@ -36,8 +30,6 @@ describe('ProjectMemberDomain', () => {
     const projectMemberRepository: MockProxy<ProjectMemberRepository> =
         mock<ProjectMemberRepository>();
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     let domain: ProjectMemberDomain;
@@ -98,17 +90,6 @@ describe('ProjectMemberDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogDomain.prepare.mockImplementation(
-            <A extends EnumActivityLogAction>(
-                input: IActivityLogStageInput<A>
-            ): IActivityLogStaged => ({
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-                ...input,
-                metadata: input.metadata ?? {},
-            })
-        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -118,7 +99,6 @@ describe('ProjectMemberDomain', () => {
                     useValue: projectMemberRepository,
                 },
                 { provide: ProjectUtil, useValue: projectUtil },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -414,7 +394,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('assigns the target member and stages both activity logs when the actor differs from the target', async () => {
+        it('assigns the target member and returns the created row', async () => {
             requestStoreService.get.mockReturnValue(true);
             const project = baseProject;
             const actorId = '507f1f77bcf86cd799439033';
@@ -446,57 +426,6 @@ describe('ProjectMemberDomain', () => {
                 EnumProjectMemberRole.member,
                 actorId
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                {
-                    action: EnumActivityLogAction.projectMemberAssigned,
-                    userId: actorId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { targetUserId: targetMember.userId },
-                },
-                {
-                    action: EnumActivityLogAction.projectMemberAssignedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actorId },
-                },
-            ]);
-        });
-
-        it('stages one activity log when the actor assigns themselves', async () => {
-            requestStoreService.get.mockReturnValue(true);
-            const project = baseProject;
-            const actorId = '507f1f77bcf86cd799439033';
-            const targetMember = {
-                ...baseWorkspaceMember,
-                workspaceId: project.workspaceId,
-                userId: actorId,
-            };
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                null
-            );
-            projectMemberRepository.create.mockResolvedValue({
-                ...baseProjectMemberRow,
-                userId: actorId,
-            });
-
-            await domain.assignMember(
-                project,
-                actorId,
-                targetMember,
-                EnumProjectMemberRole.member
-            );
-
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                {
-                    action: EnumActivityLogAction.projectMemberAssigned,
-                    userId: actorId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { targetUserId: actorId },
-                },
-            ]);
         });
     });
 
@@ -507,7 +436,6 @@ describe('ProjectMemberDomain', () => {
 
             const rejection = domain.updateMemberRole(
                 project,
-                '507f1f77bcf86cd799439033',
                 '507f1f77bcf86cd799439021',
                 EnumProjectMemberRole.admin
             );
@@ -536,7 +464,6 @@ describe('ProjectMemberDomain', () => {
 
             const rejection = domain.updateMemberRole(
                 project,
-                '507f1f77bcf86cd799439033',
                 targetMember.id,
                 EnumProjectMemberRole.viewer
             );
@@ -552,9 +479,8 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('updates the role and stages both activity logs when the actor differs from the target', async () => {
+        it('updates the role and returns the member it changed', async () => {
             const project = baseProject;
-            const actorId = '507f1f77bcf86cd799439033';
             const targetMember = {
                 ...baseProjectMember,
                 userId: '507f1f77bcf86cd799439044',
@@ -565,64 +491,17 @@ describe('ProjectMemberDomain', () => {
             );
             requestStoreService.get.mockReturnValue(true);
 
-            await domain.updateMemberRole(
+            const result = await domain.updateMemberRole(
                 project,
-                actorId,
                 targetMember.id,
                 EnumProjectMemberRole.admin
             );
 
+            expect(result).toBe(targetMember);
             expect(projectMemberRepository.updateRole).toHaveBeenCalledWith(
                 targetMember.id,
                 EnumProjectMemberRole.admin
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                {
-                    action: EnumActivityLogAction.projectMemberRoleUpdated,
-                    userId: actorId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { targetUserId: targetMember.userId },
-                },
-                {
-                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actorId },
-                },
-            ]);
-        });
-
-        it('stages one activity log when the actor updates their own role', async () => {
-            const project = baseProject;
-            const actorId = '507f1f77bcf86cd799439033';
-            const targetMember = {
-                ...baseProjectMember,
-                userId: actorId,
-                role: EnumProjectMemberRole.member,
-            };
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                targetMember
-            );
-            requestStoreService.get.mockReturnValue(true);
-
-            await domain.updateMemberRole(
-                project,
-                actorId,
-                targetMember.id,
-                EnumProjectMemberRole.admin
-            );
-
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                {
-                    action: EnumActivityLogAction.projectMemberRoleUpdated,
-                    userId: actorId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { targetUserId: actorId },
-                },
-            ]);
         });
     });
 
@@ -701,7 +580,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('removes the member and stages both activity logs', async () => {
+        it('removes the member and returns the member it removed', async () => {
             const project = baseProject;
             const actorId = '507f1f77bcf86cd799439033';
             const targetMember = {
@@ -714,49 +593,28 @@ describe('ProjectMemberDomain', () => {
             );
             requestStoreService.get.mockReturnValue(true);
 
-            await domain.removeMember(project, actorId, targetMember.id);
+            const result = await domain.removeMember(
+                project,
+                actorId,
+                targetMember.id
+            );
 
+            expect(result).toBe(targetMember);
             expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
                 targetMember.id
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                {
-                    action: EnumActivityLogAction.projectMemberRemoved,
-                    userId: actorId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { targetUserId: targetMember.userId },
-                },
-                {
-                    action: EnumActivityLogAction.projectMemberRemovedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actorId },
-                },
-            ]);
         });
     });
 
     describe('leaveProject', () => {
-        it('removes the member and stages the left activity log', async () => {
-            const project = baseProject;
+        it('removes the member', async () => {
             const member = baseProjectMember;
 
-            await domain.leaveProject(project, member);
+            await domain.leaveProject(member);
 
             expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
                 member.id
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                {
-                    action: EnumActivityLogAction.projectMemberLeft,
-                    userId: member.userId,
-                    createdBy: member.userId,
-                    workspaceId: project.workspaceId,
-                    metadata: {},
-                },
-            ]);
         });
     });
 

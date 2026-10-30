@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -13,72 +12,46 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
-import { CountryDomain } from '@modules/country/domains/country.domain';
-import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
-    IUserLoginOutcome,
+    IUserSignUpResolved,
     IUserSignUpWorkspacePersonal,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserAuthDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userPasswordDomain: MockProxy<UserPasswordDomain> =
         mock<UserPasswordDomain>();
-    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
-    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userVerificationDomain: MockProxy<UserVerificationDomain> =
         mock<UserVerificationDomain>();
-    const userLoginDomain: MockProxy<UserLoginDomain> = mock<UserLoginDomain>();
+    const userVerificationUtil: MockProxy<UserVerificationUtil> =
+        mock<UserVerificationUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
-    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
-        mock<FeatureFlagDomain>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
-        mock<NotificationRecipientDomain>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
     let domain: UserAuthDomain;
 
-    const now = new Date('2026-03-01T00:00:00.000Z');
     const workspaceContext: IUserSignUpWorkspacePersonal = {
         type: EnumUserSignUpWorkspaceContextType.personal,
         workspaceId: 'workspace-halcyon',
         slugCandidates: ['w-halcyon'],
         name: "halcyonVane's Workspace",
+    };
+
+    const resolved: IUserSignUpResolved = {
+        roleId: 'role-halcyon',
+        workspaceContext,
     };
 
     const baseUser: IUser = {
@@ -126,18 +99,6 @@ describe('UserAuthDomain', () => {
         twoFactor: null,
     };
 
-    const outcome: IUserLoginOutcome = {
-        isTwoFactorEnable: false,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        tokens: {
-            tokenType: 'Bearer',
-            roleType: EnumRoleType.user,
-            expiresIn: 3600,
-            accessToken: 'access-token',
-            refreshToken: 'refresh-token',
-        },
-    };
     const device = {
         fingerprint: 'device-halcyon',
         name: null,
@@ -148,9 +109,6 @@ describe('UserAuthDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        configGet.mockImplementation(() => 'user');
-        helperDateService.create.mockReturnValue(now);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserAuthDomain,
@@ -159,82 +117,59 @@ describe('UserAuthDomain', () => {
                     provide: UserPasswordDomain,
                     useValue: userPasswordDomain,
                 },
-                { provide: RoleDomain, useValue: roleDomain },
-                { provide: CountryDomain, useValue: countryDomain },
-                { provide: UserUtil, useValue: userUtil },
                 {
                     provide: UserVerificationDomain,
                     useValue: userVerificationDomain,
                 },
-                { provide: UserLoginDomain, useValue: userLoginDomain },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
-                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: NotificationQueue, useValue: notificationQueue },
                 {
-                    provide: NotificationRecipientDomain,
-                    useValue: notificationRecipientDomain,
+                    provide: UserVerificationUtil,
+                    useValue: userVerificationUtil,
                 },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: ConfigService, useValue: configService },
+                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         domain = module.get(UserAuthDomain);
     });
 
-    describe('assertWorkspaceInvitationAllowed', () => {
-        it('delegates to the login domain', async () => {
-            await domain.assertWorkspaceInvitationAllowed();
-
-            expect(
-                userLoginDomain.assertWorkspaceInvitationAllowed
-            ).toHaveBeenCalled();
-        });
-    });
-
-    describe('loginCredential', () => {
-        it('logs the user in when the credentials are valid', async () => {
-            const user = baseUser;
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
-            userLoginDomain.handleLogin.mockResolvedValue(outcome);
+    describe('incrementCredentialAttempt', () => {
+        it('returns the user with a counted attempt', async () => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
+            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(true);
 
             await expect(
-                domain.loginCredential({
-                    email: user.email,
-                    password: 'plain-password',
-                    from: EnumUserLoginFrom.website,
-                    device,
-                })
-            ).resolves.toBe(outcome);
+                domain.incrementCredentialAttempt(baseUser.email)
+            ).resolves.toEqual({
+                user: baseUser,
+                hashedPassword: 'hashed-password',
+                isAttemptCounted: true,
+            });
             expect(
-                userLoginDomain.incrementPasswordAttempt
-            ).toHaveBeenCalledWith(user.id);
-            expect(
-                userPasswordDomain.resetPasswordAttempt
-            ).toHaveBeenCalledWith(user.id);
-            expect(userLoginDomain.handleLogin).toHaveBeenCalledWith(
-                user,
-                device,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                now
+                userPasswordDomain.incrementPasswordAttempt
+            ).toHaveBeenCalledWith(baseUser.id);
+        });
+
+        it('returns the user with a spent attempt budget', async () => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
+            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
+                false
             );
+
+            await expect(
+                domain.incrementCredentialAttempt(baseUser.email)
+            ).resolves.toEqual({
+                user: baseUser,
+                hashedPassword: 'hashed-password',
+                isAttemptCounted: false,
+            });
         });
 
         it('throws UserNotFoundException when the user does not exist', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
-            const call = domain.loginCredential({
-                email: 'missing@example.com',
-                password: 'plain-password',
-                from: EnumUserLoginFrom.website,
-                device,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.incrementCredentialAttempt('missing@example.com')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
                 statusCodeKey:
@@ -249,14 +184,9 @@ describe('UserAuthDomain', () => {
                 status: EnumUserStatus.inactive,
             });
 
-            const call = domain.loginCredential({
-                email: 'halcyon@example.com',
-                password: 'plain-password',
-                from: EnumUserLoginFrom.website,
-                device,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.incrementCredentialAttempt('halcyon@example.com')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.inactiveForbidden,
                 statusCodeKey:
@@ -265,6 +195,9 @@ describe('UserAuthDomain', () => {
                     ],
                 messagePath: 'user.error.inactive',
             });
+            expect(
+                userPasswordDomain.incrementPasswordAttempt
+            ).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordNotSetException when the user has no password', async () => {
@@ -273,14 +206,9 @@ describe('UserAuthDomain', () => {
                 password: null,
             });
 
-            const call = domain.loginCredential({
-                email: 'halcyon@example.com',
-                password: 'plain-password',
-                from: EnumUserLoginFrom.website,
-                device,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.incrementCredentialAttempt('halcyon@example.com')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotSet,
                 statusCodeKey:
@@ -290,74 +218,79 @@ describe('UserAuthDomain', () => {
                 messagePath: 'user.error.passwordNotSet',
             });
         });
+    });
 
-        it('reaches the max attempt limit and throws UserPasswordAttemptMaxException before comparing the password', async () => {
-            const user = baseUser;
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(false);
-
-            const call = domain.loginCredential({
-                email: user.email,
-                password: 'plain-password',
-                from: EnumUserLoginFrom.website,
-                device,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordAttemptMax
-                    ],
-                messagePath: 'user.error.passwordAttemptMax',
-            });
-            expect(
-                userPasswordDomain.reachMaxPasswordAttempt
-            ).toHaveBeenCalledWith(user.id);
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+    describe('assertAttemptCounted', () => {
+        it('passes when the attempt was counted', () => {
+            expect(() =>
+                domain.assertAttemptCounted({
+                    user: baseUser,
+                    hashedPassword: 'hashed-password',
+                    isAttemptCounted: true,
+                })
+            ).not.toThrow();
         });
 
-        it('records a failed login and throws UserPasswordNotMatchException', async () => {
-            const user = baseUser;
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+        it('throws UserPasswordAttemptMaxException when the attempt budget is spent', () => {
+            expect(() =>
+                domain.assertAttemptCounted({
+                    user: baseUser,
+                    hashedPassword: 'hashed-password',
+                    isAttemptCounted: false,
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.passwordAttemptMax
+                        ],
+                    messagePath: 'user.error.passwordAttemptMax',
+                })
+            );
+        });
+    });
+
+    describe('verifyCredential', () => {
+        const counted = {
+            user: baseUser,
+            hashedPassword: 'hashed-password',
+            isAttemptCounted: true,
+        };
+
+        it('returns true and resets the attempt counter when the credentials are valid', async () => {
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+
+            await expect(
+                domain.verifyCredential(counted, 'plain-password')
+            ).resolves.toBe(true);
+            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+                'plain-password',
+                'hashed-password'
+            );
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).toHaveBeenCalledWith(baseUser.id);
+        });
+
+        it('returns false without resetting the counter on a wrong password', async () => {
             authPasswordUtil.validatePassword.mockResolvedValue(false);
 
-            const call = domain.loginCredential({
-                email: user.email,
-                password: 'wrong-password',
-                from: EnumUserLoginFrom.website,
-                device,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordNotMatch
-                    ],
-                messagePath: 'user.error.passwordNotMatch',
-            });
-            expect(userLoginDomain.recordLoginFailed).toHaveBeenCalledWith(
-                user.id
-            );
+            await expect(
+                domain.verifyCredential(counted, 'wrong-password')
+            ).resolves.toBe(false);
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordExpiredException when the password has expired', async () => {
-            const user = baseUser;
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
             authPasswordUtil.validatePassword.mockResolvedValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
-            const call = domain.loginCredential({
-                email: user.email,
-                password: 'plain-password',
-                from: EnumUserLoginFrom.website,
-                device,
-            });
+            const call = domain.verifyCredential(counted, 'plain-password');
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -368,6 +301,40 @@ describe('UserAuthDomain', () => {
                     ],
                 messagePath: 'user.error.passwordExpired',
             });
+        });
+    });
+
+    describe('assertPasswordMatched', () => {
+        it('passes when the password matched', () => {
+            expect(() => domain.assertPasswordMatched(true)).not.toThrow();
+        });
+
+        it('throws UserPasswordNotMatchException when the password did not match', () => {
+            expect(() => domain.assertPasswordMatched(false)).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                    messagePath: 'user.error.passwordNotMatch',
+                })
+            );
+        });
+    });
+
+    describe('getOneByEmail', () => {
+        it('returns the live user of the email', async () => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
+
+            await expect(domain.getOneByEmail(baseUser.email)).resolves.toBe(
+                baseUser
+            );
+        });
+
+        it('returns null when no live user holds the email', async () => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
+
+            await expect(
+                domain.getOneByEmail('missing@example.com')
+            ).resolves.toBeNull();
         });
     });
 
@@ -384,153 +351,44 @@ describe('UserAuthDomain', () => {
         };
 
         beforeEach(() => {
-            countryDomain.existsById.mockResolvedValue(true);
-        });
-
-        it('returns null when the user already exists', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
-
-            await expect(
-                domain.prepareSocialCreate(
-                    'halcyon@example.com',
-                    EnumUserLoginWith.socialGoogle,
-                    socialInput,
-                    workspaceContext
-                )
-            ).resolves.toBeNull();
-
-            expect(roleDomain.getByName).not.toHaveBeenCalled();
-            expect(userRepository.existsByUsername).not.toHaveBeenCalled();
-            expect(userUtil.checkUsernamePattern).not.toHaveBeenCalled();
-            expect(userUtil.checkBadWord).not.toHaveBeenCalled();
-        });
-
-        it('returns null when sign-up is disabled by the feature flag', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: false,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-
-            await expect(
-                domain.prepareSocialCreate(
-                    'halcyon@example.com',
-                    EnumUserLoginWith.socialGoogle,
-                    socialInput,
-                    workspaceContext
-                )
-            ).resolves.toBeNull();
-        });
-
-        it('returns null when the feature flag metadata is absent', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue(null);
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-
-            await expect(
-                domain.prepareSocialCreate(
-                    'halcyon@example.com',
-                    EnumUserLoginWith.socialApple,
-                    socialInput,
-                    workspaceContext
-                )
-            ).resolves.toBeNull();
-            expect(featureFlagDomain.getMetadataByKey).toHaveBeenCalledWith(
-                'loginWithApple'
-            );
-        });
-
-        it('throws CountryNotFoundException when the country does not exist', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-            roleDomain.getByName.mockResolvedValue({
-                id: 'role-halcyon',
-                type: EnumRoleType.user,
-                name: 'user',
-            });
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
-            countryDomain.existsById.mockResolvedValue(false);
-
-            const call = domain.prepareSocialCreate(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                workspaceContext
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'country',
-                messagePath: 'country.error.notFound',
-            });
-            expect(countryDomain.existsById).toHaveBeenCalledWith(
-                'country-halcyon'
-            );
-        });
-
-        it('prepares a Google social create input', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-            roleDomain.getByName.mockResolvedValue({
-                id: 'role-halcyon',
-                type: EnumRoleType.user,
-                name: 'user',
-            });
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
             databaseUtil.createId.mockReturnValue('user-id-halcyon');
+        });
 
-            const result = await domain.prepareSocialCreate(
+        it('prepares a Google social create input from the resolved ids without re-reading the username', () => {
+            const result = domain.prepareSocialCreate(
                 'halcyon@example.com',
                 EnumUserLoginWith.socialGoogle,
                 socialInput,
-                workspaceContext
+                resolved
             );
 
             expect(result).toMatchObject({
                 userId: 'user-id-halcyon',
                 email: 'halcyon@example.com',
                 username: 'halcyonVane',
+                roleId: 'role-halcyon',
+                countryId: 'country-halcyon',
                 signUpFrom: EnumUserSignUpFrom.mobile,
                 signUpWith: EnumUserSignUpWith.socialGoogle,
                 isVerified: true,
                 password: null,
                 verification: null,
+                workspaceContext,
                 createdBy: 'user-id-halcyon',
                 acceptedTermPolicyTypes: expect.arrayContaining([
                     EnumTermPolicyType.cookies,
                 ]),
             });
             expect(result).not.toHaveProperty('termPolicy');
+            expect(userRepository.existsByUsername).not.toHaveBeenCalled();
         });
 
-        it('prepares an Apple social create input with no optional term policy accepted', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-            roleDomain.getByName.mockResolvedValue({
-                id: 'role-halcyon',
-                type: EnumRoleType.user,
-                name: 'user',
-            });
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
-            databaseUtil.createId.mockReturnValue('user-id-halcyon');
-
-            const result = await domain.prepareSocialCreate(
+        it('prepares an Apple social create input with no optional term policy accepted', () => {
+            const result = domain.prepareSocialCreate(
                 'halcyon@example.com',
                 EnumUserLoginWith.socialApple,
                 { ...socialInput, cookies: false, marketing: false },
-                workspaceContext
+                resolved
             );
 
             expect(result).toMatchObject({
@@ -542,25 +400,12 @@ describe('UserAuthDomain', () => {
             });
         });
 
-        it('defaults name to null and accepts marketing when no name is given', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-            roleDomain.getByName.mockResolvedValue({
-                id: 'role-halcyon',
-                type: EnumRoleType.user,
-                name: 'user',
-            });
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
-            databaseUtil.createId.mockReturnValue('user-id-halcyon');
-            const result = await domain.prepareSocialCreate(
+        it('defaults name to null and accepts marketing when no name is given', () => {
+            const result = domain.prepareSocialCreate(
                 'halcyon@example.com',
                 EnumUserLoginWith.socialGoogle,
                 { ...socialInput, name: null, marketing: true },
-                workspaceContext
+                resolved
             );
 
             expect(result).toMatchObject({
@@ -570,187 +415,23 @@ describe('UserAuthDomain', () => {
                 ]),
             });
         });
-
-        it('throws RoleNotFoundException when the default role is missing', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-            roleDomain.getByName.mockResolvedValue(null);
-
-            const call = domain.prepareSocialCreate(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                workspaceContext
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                messagePath: 'role.error.notFound',
-            });
-        });
-
-        it('throws UserUsernameNotAllowedException when the username breaks the pattern', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-            roleDomain.getByName.mockResolvedValue({
-                id: 'role-halcyon',
-                type: EnumRoleType.user,
-                name: 'user',
-            });
-            userUtil.checkUsernamePattern.mockReturnValue(true);
-            userUtil.checkBadWord.mockResolvedValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
-
-            const call = domain.prepareSocialCreate(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                workspaceContext
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameNotAllowed,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameNotAllowed
-                    ],
-                messagePath: 'user.error.usernameNotAllowed',
-            });
-        });
-
-        it('throws UserUsernameContainBadWordException when the username is profane', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-            roleDomain.getByName.mockResolvedValue({
-                id: 'role-halcyon',
-                type: EnumRoleType.user,
-                name: 'user',
-            });
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(true);
-            userRepository.existsByUsername.mockResolvedValue(false);
-
-            const call = domain.prepareSocialCreate(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                workspaceContext
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameContainBadWord
-                    ],
-                messagePath: 'user.error.usernameContainBadWord',
-            });
-        });
-
-        it('throws UserUsernameExistException when the username is taken', async () => {
-            featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
-            });
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-            roleDomain.getByName.mockResolvedValue({
-                id: 'role-halcyon',
-                type: EnumRoleType.user,
-                name: 'user',
-            });
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
-            userRepository.existsByUsername.mockResolvedValue(true);
-
-            const call = domain.prepareSocialCreate(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                workspaceContext
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameExist
-                    ],
-                messagePath: 'user.error.usernameExist',
-            });
-        });
     });
 
-    describe('loginWithSocial', () => {
-        const socialInput = {
-            username: 'halcyonVane',
-            name: null,
-            inviteToken: null,
-            countryId: 'country-halcyon',
-            from: EnumUserLoginFrom.website,
-            device,
-            cookies: true,
-            marketing: false,
-        };
-
-        it('logs an already verified user in without marking verification again', async () => {
-            const user = { ...baseUser, isVerified: true };
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            userLoginDomain.handleLogin.mockResolvedValue(outcome);
+    describe('getOneForSocialLogin', () => {
+        it('returns the active user of the email', async () => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
 
             await expect(
-                domain.loginWithSocial(
-                    user.email,
-                    EnumUserLoginWith.socialGoogle,
-                    socialInput
-                )
-            ).resolves.toBe(outcome);
-            expect(userVerificationDomain.markVerified).not.toHaveBeenCalled();
-        });
-
-        it('marks the user verified before logging in when not yet verified', async () => {
-            const user = { ...baseUser, isVerified: false };
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-            userLoginDomain.handleLogin.mockResolvedValue(outcome);
-
-            await domain.loginWithSocial(
-                user.email,
-                EnumUserLoginWith.socialGoogle,
-                socialInput
-            );
-
-            expect(userVerificationDomain.markVerified).toHaveBeenCalledWith(
-                user.id
-            );
-            expect(userLoginDomain.handleLogin).toHaveBeenCalledWith(
-                expect.objectContaining({ isVerified: true }),
-                device,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.socialGoogle,
-                now
-            );
+                domain.getOneForSocialLogin(baseUser.email)
+            ).resolves.toBe(baseUser);
         });
 
         it('throws UserNotFoundException when the user does not exist', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
-            const call = domain.loginWithSocial(
-                'missing@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForSocialLogin('missing@example.com')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
                 statusCodeKey:
@@ -765,13 +446,9 @@ describe('UserAuthDomain', () => {
                 status: EnumUserStatus.inactive,
             });
 
-            const call = domain.loginWithSocial(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneForSocialLogin('halcyon@example.com')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.inactiveForbidden,
                 statusCodeKey:
@@ -783,18 +460,52 @@ describe('UserAuthDomain', () => {
         });
     });
 
-    describe('refresh', () => {
-        it('delegates to the login domain', async () => {
-            const user = baseUser;
-            const tokens: IAuthToken = outcome.tokens!;
-            userLoginDomain.refreshSession.mockResolvedValue(tokens);
+    describe('verifyEmailBySocial', () => {
+        it('marks the user verified and returns it verified', async () => {
+            const user = { ...baseUser, isVerified: false };
 
-            await expect(domain.refresh(user, 'refresh-token')).resolves.toBe(
-                tokens
+            await expect(domain.verifyEmailBySocial(user)).resolves.toEqual({
+                ...user,
+                isVerified: true,
+            });
+            expect(userVerificationDomain.markVerified).toHaveBeenCalledWith(
+                user.id
             );
-            expect(userLoginDomain.refreshSession).toHaveBeenCalledWith(
-                user,
-                'refresh-token'
+        });
+    });
+
+    describe('persistLoginVerification', () => {
+        it('creates a fresh email verification and stores it replacing the active one', async () => {
+            const emailVerification = { reference: 'ref' } as never;
+            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
+
+            await expect(
+                domain.persistLoginVerification(baseUser)
+            ).resolves.toBe(emailVerification);
+            expect(
+                userVerificationDomain.persistVerificationEmail
+            ).toHaveBeenCalledWith(
+                baseUser.id,
+                baseUser.email,
+                emailVerification
+            );
+        });
+    });
+
+    describe('assertVerified', () => {
+        it('passes for a verified user', () => {
+            expect(() => domain.assertVerified(baseUser)).not.toThrow();
+        });
+
+        it('throws UserEmailNotVerifiedException for an unverified user', () => {
+            expect(() =>
+                domain.assertVerified({ ...baseUser, isVerified: false })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.emailNotVerified,
+                    messagePath: 'user.error.emailNotVerified',
+                })
             );
         });
     });
@@ -811,11 +522,6 @@ describe('UserAuthDomain', () => {
             cookies: true,
             marketing: true,
         };
-        const role: IRole = {
-            id: 'role-halcyon',
-            type: EnumRoleType.user,
-            name: 'user',
-        };
         const emailVerification: IUserVerificationEmailCreate = {
             type: 'email',
             expiredAt: new Date('2026-03-05T00:00:00.000Z'),
@@ -828,12 +534,6 @@ describe('UserAuthDomain', () => {
         };
 
         beforeEach(() => {
-            roleDomain.getByName.mockResolvedValue(role);
-            userRepository.existsByEmail.mockResolvedValue(false);
-            countryDomain.existsById.mockResolvedValue(true);
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
             databaseUtil.createId.mockReturnValue('user-id-halcyon');
             authPasswordUtil.createPassword.mockResolvedValue({
                 passwordHash: 'hashed',
@@ -841,23 +541,20 @@ describe('UserAuthDomain', () => {
                 passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
                 passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
             });
-            userVerificationDomain.verificationCreateVerification.mockReturnValue(
-                emailVerification
-            );
+            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
         });
 
         it('prepares the sign-up input and the email verification', async () => {
-            const result = await domain.prepareSignUp(
-                signUpInput,
-                workspaceContext
-            );
+            const result = await domain.prepareSignUp(signUpInput, resolved);
 
             expect(result.emailVerification).toBe(emailVerification);
+            expect(userRepository.existsByEmail).not.toHaveBeenCalled();
+            expect(userRepository.existsByUsername).not.toHaveBeenCalled();
             expect(result.input).toMatchObject({
                 userId: 'user-id-halcyon',
                 email: signUpInput.email,
                 username: signUpInput.username,
-                roleId: role.id,
+                roleId: 'role-halcyon',
                 signUpFrom: EnumUserSignUpFrom.website,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
@@ -882,7 +579,7 @@ describe('UserAuthDomain', () => {
                     cookies: false,
                     marketing: false,
                 },
-                workspaceContext
+                resolved
             );
 
             expect(result.input.name).toBeNull();
@@ -891,236 +588,6 @@ describe('UserAuthDomain', () => {
                 EnumTermPolicyType.privacy,
             ]);
             expect(result.input).not.toHaveProperty('termPolicy');
-        });
-
-        it('throws RoleNotFoundException when the default role is missing', async () => {
-            roleDomain.getByName.mockResolvedValue(null);
-
-            const call = domain.prepareSignUp(signUpInput, workspaceContext);
-
-            await expect(call).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                messagePath: 'role.error.notFound',
-            });
-        });
-
-        it('throws CountryNotFoundException when the country is missing', async () => {
-            countryDomain.existsById.mockResolvedValue(false);
-
-            const call = domain.prepareSignUp(signUpInput, workspaceContext);
-
-            await expect(call).rejects.toMatchObject({
-                module: 'country',
-                statusCode: EnumCountryStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumCountryStatusCodeError[
-                        EnumCountryStatusCodeError.notFound
-                    ],
-                messagePath: 'country.error.notFound',
-            });
-        });
-
-        it('throws UserEmailExistException when the email is taken', async () => {
-            userRepository.existsByEmail.mockResolvedValue(true);
-
-            const call = domain.prepareSignUp(signUpInput, workspaceContext);
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.emailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.emailExist],
-                messagePath: 'user.error.emailExist',
-            });
-        });
-
-        it('throws UserUsernameNotAllowedException when the username breaks the pattern', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(true);
-
-            const call = domain.prepareSignUp(signUpInput, workspaceContext);
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameNotAllowed,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameNotAllowed
-                    ],
-                messagePath: 'user.error.usernameNotAllowed',
-            });
-        });
-
-        it('throws UserUsernameContainBadWordException when the username is profane', async () => {
-            userUtil.checkBadWord.mockResolvedValue(true);
-
-            const call = domain.prepareSignUp(signUpInput, workspaceContext);
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameContainBadWord
-                    ],
-                messagePath: 'user.error.usernameContainBadWord',
-            });
-        });
-
-        it('throws UserUsernameExistException when the username is taken', async () => {
-            userRepository.existsByUsername.mockResolvedValue(true);
-
-            const call = domain.prepareSignUp(signUpInput, workspaceContext);
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameExist
-                    ],
-                messagePath: 'user.error.usernameExist',
-            });
-        });
-    });
-
-    describe('notifyWelcome', () => {
-        const recipientUser = {
-            id: 'user-halcyon',
-            email: 'halcyon@example.com',
-            username: 'halcyon',
-        };
-        const recipient: INotificationRecipient = {
-            ...TestRecipient,
-            userId: recipientUser.id,
-        };
-
-        it('sends the welcome notification', async () => {
-            const emailVerification: IUserVerificationEmailCreate = {
-                type: 'email',
-                expiredAt: new Date('2026-03-05T00:00:00.000Z'),
-                expiredInMinutes: 15,
-                resendInMinutes: 5,
-                reference: 'VRF-halcyon',
-                token: 'raw-token',
-                hashedToken: 'hashed-token',
-                link: 'https://example.com/verify?token=raw-token',
-            };
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-05T00:00:00.000Z'
-            );
-            notificationRecipientDomain.buildNewUserRecipient.mockReturnValue(
-                recipient
-            );
-
-            await domain.notifyWelcome(recipientUser, emailVerification);
-
-            expect(
-                notificationRecipientDomain.buildNewUserRecipient
-            ).toHaveBeenCalledWith(recipientUser, EnumNotificationKind.welcome);
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).not.toHaveBeenCalled();
-            expect(notificationQueue.sendWelcome).toHaveBeenCalledWith(
-                recipient,
-                {
-                    expiredAt: '2026-03-05T00:00:00.000Z',
-                    reference: emailVerification.reference,
-                    link: emailVerification.link,
-                    expiredInMinutes: emailVerification.expiredInMinutes,
-                }
-            );
-        });
-    });
-
-    describe('notifyWelcomeSocial', () => {
-        const recipientUser = {
-            id: 'user-bramble',
-            email: 'bramble@example.com',
-            username: 'bramble',
-        };
-        const recipient: INotificationRecipient = {
-            ...TestRecipient,
-            userId: recipientUser.id,
-        };
-
-        it('enqueues the social welcome for the user', async () => {
-            notificationRecipientDomain.buildNewUserRecipient.mockReturnValue(
-                recipient
-            );
-
-            await domain.notifyWelcomeSocial(recipientUser);
-
-            expect(
-                notificationRecipientDomain.buildNewUserRecipient
-            ).toHaveBeenCalledWith(
-                recipientUser,
-                EnumNotificationKind.welcomeSocial
-            );
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).not.toHaveBeenCalled();
-            expect(notificationQueue.sendWelcomeSocial).toHaveBeenCalledWith(
-                recipient
-            );
-        });
-    });
-
-    describe('logout', () => {
-        it('delegates to the login domain', async () => {
-            await domain.logout(
-                'user-halcyon',
-                'session-halcyon',
-                'device-ownership-halcyon'
-            );
-
-            expect(userLoginDomain.logout).toHaveBeenCalledWith(
-                'user-halcyon',
-                'session-halcyon',
-                'device-ownership-halcyon'
-            );
-        });
-
-        it('rethrows an AppBaseException raised while logging out', async () => {
-            const error = new UserNotFoundException();
-            userLoginDomain.logout.mockRejectedValue(error);
-
-            const call = domain.logout(
-                'user-halcyon',
-                'session-halcyon',
-                'device-ownership-halcyon'
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised while logging out', async () => {
-            const error = new Error('boom');
-            userLoginDomain.logout.mockRejectedValue(error);
-
-            const call = domain.logout(
-                'user-halcyon',
-                'session-halcyon',
-                'device-ownership-halcyon'
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
         });
     });
 });

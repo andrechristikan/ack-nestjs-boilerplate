@@ -1,19 +1,53 @@
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { AccountDomain } from '@modules/account/domains/account.domain';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserVerificationHttpService {
     constructor(
-        private readonly userVerificationDomain: UserVerificationDomain
+        private readonly userVerificationDomain: UserVerificationDomain,
+        private readonly userVerificationUtil: UserVerificationUtil,
+        private readonly accountDomain: AccountDomain,
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly notificationQueue: NotificationQueue,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async verifyEmail({
         token,
     }: UserVerifyEmailRequestDto): Promise<IResponseReturn<void>> {
-        await this.userVerificationDomain.verifyEmail(token);
+        const { verification, user } =
+            await this.userVerificationDomain.getOneActiveByEmailToken(token);
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userVerifiedEmail,
+                userId: verification.userId,
+                createdBy: verification.userId,
+            }),
+        ];
+        // Sequential by design: write must not run if an earlier step throws
+        const recipient =
+            await this.accountDomain.getNotificationRecipientOfUser(
+                user,
+                EnumNotificationKind.verifiedEmail
+            );
+        await this.userVerificationDomain.verifyEmail(verification);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
+
+        await this.notificationQueue.sendVerifiedEmail(recipient, {
+            reference: verification.reference,
+        });
 
         return {};
     }
@@ -21,7 +55,40 @@ export class UserVerificationHttpService {
     async sendVerificationEmail({
         email,
     }: UserSendEmailVerificationRequestDto): Promise<IResponseReturn<void>> {
-        await this.userVerificationDomain.sendVerificationEmail(email);
+        const user =
+            await this.userVerificationDomain.getOneForResendByEmail(email);
+
+        const emailVerification = this.userVerificationUtil.createEmail();
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userSendVerificationEmail,
+                userId: user.id,
+                createdBy: user.id,
+            }),
+        ];
+        // Sequential by design: write must not run if an earlier step throws
+        const recipient =
+            await this.accountDomain.getNotificationRecipientOfUser(
+                user,
+                EnumNotificationKind.verificationEmail
+            );
+        await this.userVerificationDomain.persistVerificationEmail(
+            user.id,
+            user.email,
+            emailVerification
+        );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
+
+        const expiredAt = this.helperDateService.formatToIso(
+            emailVerification.expiredAt
+        );
+        await this.notificationQueue.sendVerificationEmail(recipient, {
+            expiredAt,
+            reference: emailVerification.reference,
+            link: emailVerification.link,
+            expiredInMinutes: emailVerification.expiredInMinutes,
+        });
 
         return {};
     }

@@ -13,11 +13,7 @@ import type {
     IFileRandomFilenameOptions,
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { UserPhoto } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
 import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
@@ -43,8 +39,6 @@ export class UserProfileDomain {
 
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly activityLogDomain: ActivityLogDomain,
-        private readonly countryDomain: CountryDomain,
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
@@ -65,15 +59,24 @@ export class UserProfileDomain {
             return;
         }
 
-        const isOwned = this.userUtil.isPhotoProfileKeyOwned(
-            userId,
-            previousPhoto.key
-        );
+        await this.deleteOwnedPhoto(userId, previousPhoto);
+    }
+
+    /** Enqueues the delete of a stored photo that sits under the profile path of the user. */
+    async deleteOwnedPhoto(
+        userId: string,
+        photo: UserPhoto | null
+    ): Promise<void> {
+        if (photo === null) {
+            return;
+        }
+
+        const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, photo.key);
         if (!isOwned) {
             return;
         }
 
-        await this.userQueue.deletePhoto(userId, previousPhoto);
+        await this.userQueue.deletePhoto(userId, photo);
     }
 
     createRandomFilenamePhotoProfileWithPath(
@@ -109,24 +112,11 @@ export class UserProfileDomain {
         userId: string,
         { countryId, ...data }: IUserUpdateProfile
     ): Promise<void> {
-        // Sequential by design: gate before the work it guards
-        const checkCountry = await this.countryDomain.existsById(countryId);
-        if (!checkCountry) {
-            throw new CountryNotFoundException();
-        }
-
         try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userUpdateProfile,
-                }),
-            ];
             await this.userRepository.updateProfile(userId, {
                 countryId,
                 ...data,
             });
-
-            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -201,15 +191,9 @@ export class UserProfileDomain {
                 throw new UserNotFoundException();
             }
 
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userUpdatePhotoProfile,
-                }),
-            ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
             await this.deletePreviousPhoto(userId, user.photo, aws.key);
-            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -263,15 +247,9 @@ export class UserProfileDomain {
                 `Photo profile uploaded to S3 with key: ${key}`
             );
 
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userUpdatePhotoProfile,
-                }),
-            ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
             await this.deletePreviousPhoto(userId, user.photo, aws.key);
-            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -302,14 +280,7 @@ export class UserProfileDomain {
         }
 
         try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userClaimUsername,
-                }),
-            ];
             await this.userRepository.claimUsername(userId, { username });
-
-            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {

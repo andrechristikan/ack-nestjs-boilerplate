@@ -9,7 +9,6 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
@@ -30,12 +29,7 @@ describe('FeatureFlagDomain', () => {
     const featureFlagUtil: MockProxy<FeatureFlagUtil> = mock<FeatureFlagUtil>();
     const featureFlagCache: MockProxy<FeatureFlagCache> =
         mock<FeatureFlagCache>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     let domain: FeatureFlagDomain;
-
-    const hashForTenPercent = '0000000a'.padEnd(64, '0');
-    const hashForFiftyPercent = '00000032'.padEnd(64, '0');
 
     const baseFlag: FeatureFlag = {
         id: '507f1f77bcf86cd799439011',
@@ -62,39 +56,9 @@ describe('FeatureFlagDomain', () => {
                 },
                 { provide: FeatureFlagUtil, useValue: featureFlagUtil },
                 { provide: FeatureFlagCache, useValue: featureFlagCache },
-                { provide: HelperHashService, useValue: helperHashService },
             ],
         }).compile();
         domain = module.get(FeatureFlagDomain);
-    });
-
-    describe('checkRolloutPercentage', () => {
-        it('hashes "<key>:<identifier>" and returns true when the bucket is under the rollout', () => {
-            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
-
-            const result = domain.checkRolloutPercentage(
-                50,
-                'loginWithGoogle',
-                'user-1'
-            );
-
-            expect(result).toBe(true);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'loginWithGoogle:user-1'
-            );
-        });
-
-        it('returns false when the bucket is at or above the rollout', () => {
-            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
-
-            const result = domain.checkRolloutPercentage(
-                50,
-                'loginWithGoogle',
-                'user-1'
-            );
-
-            expect(result).toBe(false);
-        });
     });
 
     describe('getByKey', () => {
@@ -222,7 +186,7 @@ describe('FeatureFlagDomain', () => {
             await expect(
                 domain.validateFeatureFlag('loginWithGoogle', 'user-1', null)
             ).resolves.toBeUndefined();
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
+            expect(featureFlagUtil.isInRollout).not.toHaveBeenCalled();
         });
 
         it('resolves for an authenticated caller whose bucket is under rollout', async () => {
@@ -231,13 +195,15 @@ describe('FeatureFlagDomain', () => {
                 rolloutPercent: 50,
                 targetUserIds: [],
             });
-            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
+            featureFlagUtil.isInRollout.mockReturnValue(true);
 
             await expect(
                 domain.validateFeatureFlag('loginWithGoogle', 'user-1', null)
             ).resolves.toBeUndefined();
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'loginWithGoogle:user-1'
+            expect(featureFlagUtil.isInRollout).toHaveBeenCalledWith(
+                50,
+                'loginWithGoogle',
+                'user-1'
             );
         });
 
@@ -247,7 +213,7 @@ describe('FeatureFlagDomain', () => {
                 rolloutPercent: 10,
                 targetUserIds: [],
             });
-            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
+            featureFlagUtil.isInRollout.mockReturnValue(false);
 
             await expect(
                 domain.validateFeatureFlag('loginWithGoogle', 'user-1', null)
@@ -272,7 +238,7 @@ describe('FeatureFlagDomain', () => {
             await expect(
                 domain.validateFeatureFlag('loginWithGoogle', null, null)
             ).resolves.toBeUndefined();
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
+            expect(featureFlagUtil.isInRollout).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagDisabledException with no user, rollout under 100%, and no anonymous id', async () => {
@@ -300,13 +266,15 @@ describe('FeatureFlagDomain', () => {
                 ...baseFlag,
                 rolloutPercent: 50,
             });
-            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
+            featureFlagUtil.isInRollout.mockReturnValue(true);
 
             await expect(
                 domain.validateFeatureFlag('loginWithGoogle', null, 'anon-1')
             ).resolves.toBeUndefined();
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'loginWithGoogle:anon-1'
+            expect(featureFlagUtil.isInRollout).toHaveBeenCalledWith(
+                50,
+                'loginWithGoogle',
+                'anon-1'
             );
         });
 
@@ -315,7 +283,7 @@ describe('FeatureFlagDomain', () => {
                 ...baseFlag,
                 rolloutPercent: 10,
             });
-            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
+            featureFlagUtil.isInRollout.mockReturnValue(false);
 
             await expect(
                 domain.validateFeatureFlag('loginWithGoogle', null, 'anon-1')
@@ -678,16 +646,16 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('assertRollout', () => {
-        it('resolves with no throw when checkRolloutPercentage is true', () => {
-            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
+        it('resolves with no throw when the util puts the identifier in rollout', () => {
+            featureFlagUtil.isInRollout.mockReturnValue(true);
 
             expect(() =>
                 domain['assertRollout'](50, 'loginWithGoogle', 'user-1')
             ).not.toThrow();
         });
 
-        it('throws FeatureFlagDisabledException when checkRolloutPercentage is false', () => {
-            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
+        it('throws FeatureFlagDisabledException when the util keeps the identifier out of rollout', () => {
+            featureFlagUtil.isInRollout.mockReturnValue(false);
 
             let captured: unknown;
             try {

@@ -1,6 +1,5 @@
 import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.exceed-max-data-export.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
     IPaginationIn,
@@ -11,13 +10,6 @@ import {
     EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { CountryDomain } from '@modules/country/domains/country.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RoleDomain } from '@modules/role/domains/role.domain';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
@@ -26,88 +18,81 @@ import { UserImportUsernameExistException } from '@modules/user/exceptions/user.
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import type {
     IUser,
+    IUserCreateRole,
     IUserCreateWithWorkspaceInput,
     IUserImport,
     IUserImportPrepared,
+    IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserImportDomain {
-    private readonly userRoleName: string;
-    private readonly userCountryName: string;
     private readonly maxDataExport: number;
 
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly roleDomain: RoleDomain,
-        private readonly countryDomain: CountryDomain,
         private readonly userUtil: UserUtil,
-        private readonly userOnboardingDomain: UserOnboardingDomain,
+        private readonly userOnboardingUtil: UserOnboardingUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationRecipientDomain: NotificationRecipientDomain,
-        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.userRoleName =
-            this.configService.get<string>('user.default.role')!;
-        this.userCountryName = this.configService.get<string>(
-            'user.default.country'
-        )!;
         this.maxDataExport =
             this.configService.get<number>('user.maxDataExport')!;
     }
 
-    async prepareImportByAdmin(
-        data: IUserImport[],
-        createdBy: string
-    ): Promise<IUserImportPrepared> {
-        const emails = data.map(item => item.email);
-        const usernames = data.map(item => item.username);
+    async getExistingEmails(emails: string[]): Promise<string[]> {
+        const existingUsers = await this.userRepository.findByEmails(emails);
 
-        const [
-            checkRole,
-            countryId,
-            existingUsersByEmail,
-            existingUsersByUsername,
-            badWordChecks,
-        ] = await Promise.all([
-            this.roleDomain.getByName(this.userRoleName),
-            this.countryDomain.getIdByAlpha2Code(this.userCountryName),
-            this.userRepository.findByEmails(emails),
+        return existingUsers.map(user => user.email);
+    }
+
+    assertEmailsAvailable(existingEmails: string[]): void {
+        if (existingEmails.length > 0) {
+            throw new UserImportEmailExistException(existingEmails.join(', '));
+        }
+    }
+
+    async getUsernameChecks(
+        usernames: string[]
+    ): Promise<IUserImportUsernameChecks> {
+        const [existingUsers, badWords] = await Promise.all([
             this.userRepository.findByUsernames(usernames),
             Promise.all(
                 usernames.map(username => this.userUtil.checkBadWord(username))
             ),
         ]);
 
+        return {
+            existing: existingUsers.map(user => user.username),
+            badWords,
+        };
+    }
+
+    async prepareImportByAdmin(
+        data: IUserImport[],
+        createdBy: string,
+        role: IUserCreateRole,
+        countryId: string,
+        { existing, badWords }: IUserImportUsernameChecks
+    ): Promise<IUserImportPrepared> {
+        const usernames = data.map(item => item.username);
         const duplicateUsernames = usernames.filter(
             (username, index) => usernames.indexOf(username) !== index
         );
 
-        if (existingUsersByEmail.length > 0) {
-            throw new UserImportEmailExistException(
-                existingUsersByEmail.map(user => user.email).join(', ')
-            );
-        } else if (!checkRole) {
-            throw new RoleNotFoundException();
-        } else if (countryId === null) {
-            throw new CountryNotFoundException();
-        } else if (existingUsersByUsername.length > 0) {
-            throw new UserImportUsernameExistException(
-                existingUsersByUsername.map(user => user.username).join(', ')
-            );
+        if (existing.length > 0) {
+            throw new UserImportUsernameExistException(existing.join(', '));
         } else if (duplicateUsernames.length > 0) {
             throw new UserImportUsernameExistException(
                 [...new Set(duplicateUsernames)].join(', ')
             );
-        } else if (badWordChecks.some(containsBadWord => containsBadWord)) {
+        } else if (badWords.some(containsBadWord => containsBadWord)) {
             throw new UserUsernameContainBadWordException();
         }
 
@@ -124,8 +109,8 @@ export class UserImportDomain {
             )
         );
         const workspaceContexts =
-            this.userOnboardingDomain.buildPersonalWorkspaceContexts(usernames);
-        const isVerified = checkRole.type !== EnumRoleType.user;
+            this.userOnboardingUtil.buildPersonalWorkspaceContexts(usernames);
+        const isVerified = role.type !== EnumRoleType.user;
         const inputs: IUserCreateWithWorkspaceInput[] = data.map(
             ({ email, name }, index) => ({
                 userId: userIds[index]!,
@@ -133,7 +118,7 @@ export class UserImportDomain {
                 name,
                 username: usernames[index]!,
                 countryId,
-                roleId: checkRole.id,
+                roleId: role.id,
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,
@@ -151,38 +136,6 @@ export class UserImportDomain {
         );
 
         return { inputs, passwordHasheds, passwordStrings: passwords };
-    }
-
-    async notifyImported(
-        users: IUser[],
-        passwordHasheds: IUserImportPrepared['passwordHasheds'],
-        passwordStrings: IUserImportPrepared['passwordStrings'],
-        createdBy: string
-    ): Promise<void> {
-        const items = users.map((newUser, index) => {
-            const passwordCreatedAt = this.helperDateService.formatToIso(
-                passwordHasheds[index]!.passwordCreated
-            );
-            const passwordExpiredAt = this.helperDateService.formatToIso(
-                passwordHasheds[index]!.passwordExpired
-            );
-            const recipient =
-                this.notificationRecipientDomain.buildNewUserRecipient(
-                    newUser,
-                    EnumNotificationKind.welcomeByAdmin
-                );
-
-            return {
-                recipient,
-                data: {
-                    password: passwordStrings[index]!,
-                    passwordCreatedAt,
-                    passwordExpiredAt,
-                },
-            };
-        });
-
-        await this.notificationQueue.sendWelcomeByAdminBulk(items, createdBy);
     }
 
     async exportByAdmin(

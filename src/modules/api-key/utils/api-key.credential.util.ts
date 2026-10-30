@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import type { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
+import type {
+    IApiKeyGenerateCredential,
+    IApiKeyHeader,
+} from '@modules/api-key/interfaces/api-key.interface';
 
 /** Mints and verifies the API key credential pair. */
 @Injectable()
@@ -21,8 +24,8 @@ export class ApiKeyCredentialUtil {
     /**
      * Builds a public key prefixed with the current environment for traceability.
      */
-    createKey(key?: string): string {
-        if (key) {
+    createKey(key: string | null): string {
+        if (key !== null && key !== '') {
             return `${this.env}_${key}`;
         }
 
@@ -44,13 +47,30 @@ export class ApiKeyCredentialUtil {
     /**
      * Generates a fresh key/secret pair plus the hash to persist.
      */
-    generateCredential(key?: string): IApiKeyGenerateCredential {
-        const generatedKey = this.createKey();
-        key = key ?? generatedKey;
+    generateCredential(): IApiKeyGenerateCredential {
+        const key = this.createKey(null);
         const secret = this.createSecret();
         const hash: string = this.createHash(key, secret);
 
         return { key, secret, hash };
+    }
+
+    /**
+     * Splits a `key:secret` header into its two halves; null when it is not exactly two non-blank parts.
+     */
+    parseHeader(header: string): IApiKeyHeader | null {
+        const [key, secret, ...rest] = header.split(':');
+        if (
+            key === undefined ||
+            secret === undefined ||
+            rest.length > 0 ||
+            key.trim() === '' ||
+            secret.trim() === ''
+        ) {
+            return null;
+        }
+
+        return { key, secret };
     }
 
     /**

@@ -3,6 +3,7 @@ export type {
     IAnalyticOptionalDateRange,
     IAnalyticCountBucket,
     IAnalyticBucketsResult,
+    IAnalyticSortedPage,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
     IAnalyticBlockedUsers,
@@ -17,6 +18,7 @@ export type {
     IAnalyticSessionDeviceRatio,
     IAnalyticApiKeyLifecycle,
     IAnalyticApiKeyActiveExpired,
+    IAnalyticTermPolicyAcceptanceCounts,
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
     IAnalyticProjectCreation,
@@ -40,6 +42,7 @@ export type {
     IAnalyticNearLockout,
     IAnalyticDeviceProliferation,
     IAnalyticLoginTimeAnomaly,
+    IAnalyticIpGroup,
 } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 
 export type {
@@ -48,7 +51,6 @@ export type {
     IAnalyticFraudRiskScore,
     IAnalyticFraudSignalUsers,
     IAnalyticCredentialStuffing,
-    IAnalyticCredentialStuffingGroup,
     IAnalyticAccountTakeover,
     IAnalyticMassRegistration,
     IAnalyticPasswordResetEnumeration,
@@ -58,4 +60,6 @@ export type {
     IAnalyticRefreshSpike,
     IAnalyticBackupCodeNewDevice,
     IAnalyticApiKeyBurst,
+    IAnalyticFraudSignalRows,
+    IAnalyticFraudUserCount,
 } from '@modules/analytic/interfaces/analytic.fraud.interface';

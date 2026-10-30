@@ -5,18 +5,8 @@ import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type {
-    IRole,
-    IRoleActor,
-} from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
-import {
-    EnumActivityLogAction,
-    EnumRoleType,
-} from '@generated/prisma-client/client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
@@ -24,34 +14,8 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 export class PolicyDomain {
     constructor(
         private readonly policyAbilityFactory: PolicyAbilityFactory,
-        private readonly policyRepository: PolicyRepository,
-        private readonly roleDomain: RoleDomain,
-        private readonly activityLogDomain: ActivityLogDomain
+        private readonly policyRepository: PolicyRepository
     ) {}
-
-    private async validateRoleExists(roleId: string): Promise<void> {
-        const roleExists = await this.roleDomain.existsById(roleId);
-        if (!roleExists) {
-            throw new RoleNotFoundException();
-        }
-
-        return;
-    }
-
-    private async getRoleForAdminWrite(
-        roleId: string,
-        actor: IRoleActor
-    ): Promise<IRole> {
-        const role = await this.roleDomain.getById(roleId);
-        if (!role) {
-            throw new RoleNotFoundException();
-        }
-
-        this.roleDomain.assertNotSelf(actor.roleId, role.id);
-        this.roleDomain.assertActorOutranks(actor.roleType, role.type);
-
-        return role;
-    }
 
     validatePolicyGuard(
         user: IUser,
@@ -77,20 +41,13 @@ export class PolicyDomain {
     }
 
     async getManyByRole(roleId: string): Promise<Policy[]> {
-        // Sequential by design: gate before the work it guards
-        await this.validateRoleExists(roleId);
-
         return this.policyRepository.findManyByRoleId(roleId);
     }
 
     async createByAdmin(
         roleId: string,
-        data: PolicyRequestDto,
-        actor: IRoleActor
+        data: PolicyRequestDto
     ): Promise<Policy> {
-        // Sequential by design: gate before the work it guards
-        await this.getRoleForAdminWrite(roleId, actor);
-
         const exist = await this.policyRepository.existsByRoleIdAndSubject(
             roleId,
             data.subject
@@ -99,27 +56,14 @@ export class PolicyDomain {
             throw new PolicyExistException();
         }
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.adminPolicyCreate,
-            }),
-        ];
-        const created = await this.policyRepository.create(roleId, data);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return created;
+        return this.policyRepository.create(roleId, data);
     }
 
     async updateByAdmin(
         roleId: string,
         id: string,
-        data: PolicyUpdateRequestDto,
-        actor: IRoleActor
+        data: PolicyUpdateRequestDto
     ): Promise<Policy> {
-        // Sequential by design: gate before the work it guards
-        await this.getRoleForAdminWrite(roleId, actor);
-
         const policyExists = await this.policyRepository.existsByRoleIdAndId(
             roleId,
             id
@@ -128,26 +72,10 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.adminPolicyUpdate,
-            }),
-        ];
-        const updated = await this.policyRepository.update(id, data);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return updated;
+        return this.policyRepository.update(id, data);
     }
 
-    async deleteByAdmin(
-        roleId: string,
-        id: string,
-        actor: IRoleActor
-    ): Promise<Policy> {
-        // Sequential by design: gate before the work it guards
-        await this.getRoleForAdminWrite(roleId, actor);
-
+    async deleteByAdmin(roleId: string, id: string): Promise<Policy> {
         const policyExists = await this.policyRepository.existsByRoleIdAndId(
             roleId,
             id
@@ -156,15 +84,6 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.adminPolicyDelete,
-            }),
-        ];
-        const deleted = await this.policyRepository.delete(id);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return deleted;
+        return this.policyRepository.delete(id);
     }
 }

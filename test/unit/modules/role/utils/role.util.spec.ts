@@ -36,4 +36,30 @@ describe('RoleUtil', () => {
             });
         });
     });
+
+    describe('outranks', () => {
+        it.each([
+            [EnumRoleType.superAdmin, EnumRoleType.superAdmin],
+            [EnumRoleType.superAdmin, EnumRoleType.admin],
+            [EnumRoleType.superAdmin, EnumRoleType.user],
+            [EnumRoleType.admin, EnumRoleType.user],
+        ])(
+            'returns true for a %s actor on a %s target',
+            (actorType, targetType) => {
+                expect(util.outranks(actorType, targetType)).toBe(true);
+            }
+        );
+
+        it.each([
+            [EnumRoleType.admin, EnumRoleType.superAdmin],
+            [EnumRoleType.admin, EnumRoleType.admin],
+            [EnumRoleType.user, EnumRoleType.user],
+            [EnumRoleType.user, EnumRoleType.admin],
+        ])(
+            'returns false for a %s actor on a %s target',
+            (actorType, targetType) => {
+                expect(util.outranks(actorType, targetType)).toBe(false);
+            }
+        );
+    });
 });

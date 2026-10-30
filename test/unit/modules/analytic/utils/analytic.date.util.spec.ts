@@ -3,7 +3,10 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
+import { Duration } from 'luxon';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 
 describe('AnalyticDateUtil', () => {
@@ -13,6 +16,8 @@ describe('AnalyticDateUtil', () => {
     });
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -37,6 +42,7 @@ describe('AnalyticDateUtil', () => {
                 AnalyticDateUtil,
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
@@ -101,6 +107,45 @@ describe('AnalyticDateUtil', () => {
                     workspaceId: 'workspace-1',
                     start: startDate.toISOString(),
                     end: endDate.toISOString(),
+                }
+            );
+        });
+    });
+
+    describe('windowRange', () => {
+        it('returns the window ending now and starting windowMs earlier', () => {
+            const now = new Date('2026-03-01T00:00:00.000Z');
+            const earlier = new Date('2026-02-28T23:59:00.000Z');
+            helperDateService.create.mockReturnValue(now);
+            helperDateService.backward.mockReturnValue(earlier);
+
+            const result = util.windowRange(60000);
+
+            expect(result).toEqual({ startDate: earlier, endDate: now });
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                Duration.fromMillis(60000)
+            );
+        });
+    });
+
+    describe('pagedMetricToken', () => {
+        it('fills the paged metric pattern with the one-based page and the page size', () => {
+            helperStringService.fillPattern.mockReturnValue('paged-token');
+
+            const result = util.pagedMetricToken(
+                EnumAnalyticDashboardMetric.workspacesMembership,
+                20,
+                10
+            );
+
+            expect(result).toBe('paged-token');
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{metric}:page={page}:perPage={perPage}',
+                {
+                    metric: EnumAnalyticDashboardMetric.workspacesMembership,
+                    page: '3',
+                    perPage: '10',
                 }
             );
         });

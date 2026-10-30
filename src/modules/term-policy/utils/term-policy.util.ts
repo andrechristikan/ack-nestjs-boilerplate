@@ -4,9 +4,11 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IAnalyticTermPolicyTimeToAccept } from '@modules/analytic/interfaces/analytic.interface';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type {
+    ITermPolicyAcceptanceAnalytic,
     ITermPolicyActivityLogSubject,
     ITermPolicyContent,
 } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -116,5 +118,22 @@ export class TermPolicyUtil {
         language: EnumMessageLanguage
     ): ITermPolicyContent | null {
         return contents.find(c => c.language === language) ?? null;
+    }
+
+    averageAcceptanceMs(
+        rows: ITermPolicyAcceptanceAnalytic[]
+    ): IAnalyticTermPolicyTimeToAccept {
+        const deltas = rows.flatMap(row =>
+            row.publishedAt === null
+                ? []
+                : [row.acceptedAt.getTime() - row.publishedAt.getTime()]
+        );
+        if (deltas.length === 0) {
+            return { count: 0, averageMs: 0 };
+        }
+
+        const averageMs = deltas.reduce((s, d) => s + d, 0) / deltas.length;
+
+        return { count: deltas.length, averageMs };
     }
 }

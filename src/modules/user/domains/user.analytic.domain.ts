@@ -1,3 +1,4 @@
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
@@ -22,7 +23,8 @@ import {
 @Injectable()
 export class UserAnalyticDomain {
     constructor(
-        private readonly userAnalyticRepository: UserAnalyticRepository
+        private readonly userAnalyticRepository: UserAnalyticRepository,
+        private readonly helperNumberService: HelperNumberService
     ) {}
 
     getCountRegistrations(startDate: Date, endDate: Date): Promise<number> {
@@ -40,11 +42,8 @@ export class UserAnalyticDomain {
             this.userAnalyticRepository.countDeletedInRange(startDate, endDate),
             this.userAnalyticRepository.countRegisteredUntil(endDate),
         ]);
-        return {
-            count: deleted,
-            total,
-            rate: total === 0 ? 0 : (deleted / total) * 100,
-        };
+        const rate = this.helperNumberService.percent(deleted, total);
+        return { count: deleted, total, rate };
     }
 
     getCountByStatus(status: EnumUserStatus): Promise<number> {
@@ -98,11 +97,8 @@ export class UserAnalyticDomain {
             this.userAnalyticRepository.countVerifiedEmail(startDate, endDate),
             this.userAnalyticRepository.countSignedUp(startDate, endDate),
         ]);
-        return {
-            count: verified,
-            total,
-            rate: total === 0 ? 0 : (verified / total) * 100,
-        };
+        const rate = this.helperNumberService.percent(verified, total);
+        return { count: verified, total, rate };
     }
 
     getCountPasswordExpired(now: Date): Promise<number> {

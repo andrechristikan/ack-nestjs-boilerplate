@@ -2,17 +2,12 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumProjectMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
 import type {
     Project,
     ProjectMember,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectWorkspaceBypassStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
@@ -30,7 +25,6 @@ export class ProjectMemberDomain {
     constructor(
         private readonly projectMemberRepository: ProjectMemberRepository,
         private readonly projectUtil: ProjectUtil,
-        private readonly activityLogDomain: ActivityLogDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -144,44 +138,19 @@ export class ProjectMemberDomain {
             throw new ProjectMemberAlreadyAssignedException();
         }
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectMemberAssigned,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-                metadata: { targetUserId: targetMember.userId },
-            }),
-        ];
-        if (targetMember.userId !== actorId) {
-            const assignedByAdminActivityLog = this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectMemberAssignedByAdmin,
-                userId: targetMember.userId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-                metadata: { actorUserId: actorId },
-            });
-            activityLogs.push(assignedByAdminActivityLog);
-        }
-
-        const member = await this.projectMemberRepository.create(
+        return this.projectMemberRepository.create(
             project.id,
             targetMember.userId,
             role,
             actorId
         );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return member;
     }
 
     async updateMemberRole(
         project: Project,
-        actorId: string,
         targetMemberId: string,
         newRole: EnumProjectMemberRole
-    ): Promise<void> {
+    ): Promise<ProjectMember> {
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
                 targetMemberId,
@@ -198,37 +167,16 @@ export class ProjectMemberDomain {
             newRole
         );
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectMemberRoleUpdated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-                metadata: { targetUserId: targetMember.userId },
-            }),
-        ];
-        if (targetMember.userId !== actorId) {
-            const roleUpdatedByAdminActivityLog =
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actorId },
-                });
-            activityLogs.push(roleUpdatedByAdminActivityLog);
-        }
-
         await this.projectMemberRepository.updateRole(targetMember.id, newRole);
 
-        this.activityLogDomain.stagePrepared(activityLogs);
+        return targetMember;
     }
 
     async removeMember(
         project: Project,
         actorId: string,
         targetMemberId: string
-    ): Promise<void> {
+    ): Promise<ProjectMember> {
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
                 targetMemberId,
@@ -248,40 +196,12 @@ export class ProjectMemberDomain {
             targetMember.role
         );
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectMemberRemoved,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-                metadata: { targetUserId: targetMember.userId },
-            }),
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectMemberRemovedByAdmin,
-                userId: targetMember.userId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-                metadata: { actorUserId: actorId },
-            }),
-        ];
-
         await this.projectMemberRepository.removeMember(targetMember.id);
 
-        this.activityLogDomain.stagePrepared(activityLogs);
+        return targetMember;
     }
 
-    async leaveProject(project: Project, member: ProjectMember): Promise<void> {
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectMemberLeft,
-                userId: member.userId,
-                createdBy: member.userId,
-                workspaceId: project.workspaceId,
-            }),
-        ];
-
+    async leaveProject(member: ProjectMember): Promise<void> {
         await this.projectMemberRepository.removeMember(member.id);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 }

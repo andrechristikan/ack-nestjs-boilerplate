@@ -1,3 +1,4 @@
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -6,15 +7,16 @@ import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains
 import { TermPolicyAnalyticDomain } from '@modules/term-policy/domains/term-policy.analytic.domain';
 import { TermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/repositories/term-policy.acceptance.analytic.repository';
 import type { ITermPolicyAcceptanceAnalytic } from '@modules/term-policy/interfaces/term-policy.interface';
-import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
+import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
 describe('TermPolicyAcceptanceAnalyticDomain', () => {
     const termPolicyAcceptanceAnalyticRepository: MockProxy<TermPolicyAcceptanceAnalyticRepository> =
         mock<TermPolicyAcceptanceAnalyticRepository>();
     const termPolicyAnalyticDomain: MockProxy<TermPolicyAnalyticDomain> =
         mock<TermPolicyAnalyticDomain>();
-    const userAnalyticDomain: MockProxy<UserAnalyticDomain> =
-        mock<UserAnalyticDomain>();
+    const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
 
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-02-01T00:00:00.000Z');
@@ -36,24 +38,53 @@ describe('TermPolicyAcceptanceAnalyticDomain', () => {
                     useValue: termPolicyAnalyticDomain,
                 },
                 {
-                    provide: UserAnalyticDomain,
-                    useValue: userAnalyticDomain,
+                    provide: TermPolicyUtil,
+                    useValue: termPolicyUtil,
                 },
+                { provide: HelperNumberService, useValue: helperNumberService },
             ],
         }).compile();
 
         domain = module.get(TermPolicyAcceptanceAnalyticDomain);
     });
 
-    describe('getAcceptanceRate', () => {
-        it('computes the rate against active users times published policies', async () => {
+    describe('getAcceptanceCounts', () => {
+        it('reads the acceptances in range together with the published count', async () => {
             termPolicyAcceptanceAnalyticRepository.countAcceptances.mockResolvedValue(
                 40
             );
-            userAnalyticDomain.getCountActive.mockResolvedValue(20);
             termPolicyAnalyticDomain.getCountPublished.mockResolvedValue(2);
 
-            const result = await domain.getAcceptanceRate(startDate, endDate);
+            const result = await domain.getAcceptanceCounts(startDate, endDate);
+
+            expect(result).toEqual({ acceptances: 40, published: 2 });
+            expect(
+                termPolicyAcceptanceAnalyticRepository.countAcceptances
+            ).toHaveBeenCalledWith(startDate, endDate);
+        });
+
+        it('passes open date bounds through', async () => {
+            termPolicyAcceptanceAnalyticRepository.countAcceptances.mockResolvedValue(
+                0
+            );
+            termPolicyAnalyticDomain.getCountPublished.mockResolvedValue(2);
+
+            await domain.getAcceptanceCounts(null, null);
+
+            expect(
+                termPolicyAcceptanceAnalyticRepository.countAcceptances
+            ).toHaveBeenCalledWith(null, null);
+        });
+    });
+
+    describe('mapAcceptanceRate', () => {
+        it('computes the rate against active users times published policies', () => {
+            helperNumberService.percent.mockReturnValue(100);
+
+            const result = domain.mapAcceptanceRate(
+                { acceptances: 40, published: 2 },
+                20
+            );
 
             expect(result).toEqual({
                 acceptances: 40,
@@ -61,19 +92,16 @@ describe('TermPolicyAcceptanceAnalyticDomain', () => {
                 published: 2,
                 rate: 100,
             });
-            expect(
-                termPolicyAcceptanceAnalyticRepository.countAcceptances
-            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(helperNumberService.percent).toHaveBeenCalledWith(40, 40);
         });
 
-        it('returns a zero rate when expected acceptances is zero', async () => {
-            termPolicyAcceptanceAnalyticRepository.countAcceptances.mockResolvedValue(
+        it('passes a zero user count through', () => {
+            helperNumberService.percent.mockReturnValue(0);
+
+            const result = domain.mapAcceptanceRate(
+                { acceptances: 0, published: 2 },
                 0
             );
-            userAnalyticDomain.getCountActive.mockResolvedValue(0);
-            termPolicyAnalyticDomain.getCountPublished.mockResolvedValue(2);
-
-            const result = await domain.getAcceptanceRate(null, null);
 
             expect(result).toEqual({
                 acceptances: 0,
@@ -81,21 +109,12 @@ describe('TermPolicyAcceptanceAnalyticDomain', () => {
                 published: 2,
                 rate: 0,
             });
+            expect(helperNumberService.percent).toHaveBeenCalledWith(0, 0);
         });
     });
 
     describe('getTimeToAccept', () => {
-        it('returns zero count and average when no acceptances are found', async () => {
-            termPolicyAcceptanceAnalyticRepository.findAcceptances.mockResolvedValue(
-                []
-            );
-
-            const result = await domain.getTimeToAccept(startDate, endDate);
-
-            expect(result).toEqual({ count: 0, averageMs: 0 });
-        });
-
-        it('averages the delay from the policy publish time to the acceptance', async () => {
+        it('maps the repository rows through the util average', async () => {
             const rows: ITermPolicyAcceptanceAnalytic[] = [
                 {
                     id: 'acceptance-1',
@@ -104,47 +123,24 @@ describe('TermPolicyAcceptanceAnalyticDomain', () => {
                     publishedAt: new Date('2026-01-01T00:00:00.000Z'),
                     acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
                 },
-                {
-                    id: 'acceptance-2',
-                    userId: 'user-2',
-                    termPolicyId: 'term-policy-1',
-                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
-                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
-                },
             ];
             termPolicyAcceptanceAnalyticRepository.findAcceptances.mockResolvedValue(
                 rows
             );
-
-            const result = await domain.getTimeToAccept(startDate, endDate);
-
-            expect(result).toEqual({ count: 2, averageMs: 120000 });
-        });
-
-        it('skips an acceptance whose policy has no publish time', async () => {
-            const rows: ITermPolicyAcceptanceAnalytic[] = [
-                {
-                    id: 'acceptance-1',
-                    userId: 'user-1',
-                    termPolicyId: 'term-policy-1',
-                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
-                    acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
-                },
-                {
-                    id: 'acceptance-2',
-                    userId: 'user-2',
-                    termPolicyId: 'term-policy-2',
-                    publishedAt: null,
-                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
-                },
-            ];
-            termPolicyAcceptanceAnalyticRepository.findAcceptances.mockResolvedValue(
-                rows
-            );
+            termPolicyUtil.averageAcceptanceMs.mockReturnValue({
+                count: 1,
+                averageMs: 60000,
+            });
 
             const result = await domain.getTimeToAccept(startDate, endDate);
 
             expect(result).toEqual({ count: 1, averageMs: 60000 });
+            expect(
+                termPolicyAcceptanceAnalyticRepository.findAcceptances
+            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(termPolicyUtil.averageAcceptanceMs).toHaveBeenCalledWith(
+                rows
+            );
         });
     });
 });

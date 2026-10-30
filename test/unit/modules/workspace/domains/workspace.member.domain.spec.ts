@@ -12,17 +12,12 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type {
     Prisma,
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
@@ -35,14 +30,14 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 
 describe('WorkspaceMemberDomain', () => {
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
         mock<WorkspaceMemberRepository>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
+    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let domain: WorkspaceMemberDomain;
 
@@ -58,20 +53,12 @@ describe('WorkspaceMemberDomain', () => {
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.workspaceMemberLeft,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
-
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
         workspaceMemberRepository.updateRole.mockResolvedValue(true);
         workspaceMemberRepository.removeMember.mockResolvedValue(true);
         workspaceMemberRepository.transferOwnership.mockResolvedValue(true);
+        workspaceUtil.isPeerActionAllowed.mockReturnValue(true);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -81,7 +68,7 @@ describe('WorkspaceMemberDomain', () => {
                     useValue: workspaceMemberRepository,
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
@@ -126,43 +113,30 @@ describe('WorkspaceMemberDomain', () => {
             ).toHaveBeenCalledWith('workspace-1', 'user-1');
         });
     });
-
     describe('validateWorkspaceRoleGuard', () => {
-        it('returns the member unchecked when the role is owner', () => {
-            const owner = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.owner,
-            };
-
-            const result = domain.validateWorkspaceRoleGuard(owner, [
-                EnumWorkspaceMemberRole.admin,
-            ]);
-
-            expect(result).toBe(owner);
-        });
-
-        it('returns the member when its role is allowed', () => {
+        it('returns the member when the util reports the role as allowed', () => {
             const admin = {
                 ...baseMember,
                 role: EnumWorkspaceMemberRole.admin,
             };
+            workspaceUtil.hasRole.mockReturnValue(true);
 
             const result = domain.validateWorkspaceRoleGuard(admin, [
                 EnumWorkspaceMemberRole.admin,
             ]);
 
             expect(result).toBe(admin);
+            expect(workspaceUtil.hasRole).toHaveBeenCalledWith(admin, [
+                EnumWorkspaceMemberRole.admin,
+            ]);
         });
 
-        it('throws WorkspaceRoleForbiddenException when the role is not allowed', () => {
-            const member = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.member,
-            };
+        it('throws WorkspaceRoleForbiddenException when the util reports the role as not allowed', () => {
+            workspaceUtil.hasRole.mockReturnValue(false);
 
             let thrown: unknown;
             try {
-                domain.validateWorkspaceRoleGuard(member, [
+                domain.validateWorkspaceRoleGuard(baseMember, [
                     EnumWorkspaceMemberRole.admin,
                 ]);
             } catch (error) {
@@ -225,11 +199,26 @@ describe('WorkspaceMemberDomain', () => {
             );
         });
     });
+    describe('getReviewerUserIds', () => {
+        it('returns the user ids of the workspace reviewers', async () => {
+            workspaceMemberRepository.findReviewersByWorkspace.mockResolvedValue(
+                [{ userId: 'user-1' }, { userId: 'user-2' }]
+            );
+
+            const result = await domain.getReviewerUserIds('workspace-1');
+
+            expect(result).toEqual(['user-1', 'user-2']);
+            expect(
+                workspaceMemberRepository.findReviewersByWorkspace
+            ).toHaveBeenCalledWith('workspace-1');
+        });
+    });
 
     describe('transferOwnership', () => {
-        it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
-            const actor = { ...baseMember, userId: 'user-1' };
+        const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
+        const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
 
+        it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
             await expect(
                 domain.transferOwnership('workspace-1', actor, 'user-1')
             ).rejects.toMatchObject({
@@ -245,7 +234,6 @@ describe('WorkspaceMemberDomain', () => {
         });
 
         it('throws WorkspaceMemberNotFoundException when the target is not a member', async () => {
-            const actor = { ...baseMember, userId: 'user-1' };
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 null
             );
@@ -256,66 +244,29 @@ describe('WorkspaceMemberDomain', () => {
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberNotFound
-                    ],
                 messagePath: 'workspace.error.memberNotFound',
-            });
-        });
-
-        it('transfers ownership and stages both actor and target activity logs', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
-            );
-            const transferredActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceOwnershipTransferred,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const transferredByOwnerActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(transferredActivityLog)
-                .mockReturnValueOnce(transferredByOwnerActivityLog);
-
-            await domain.transferOwnership('workspace-1', actor, 'user-2');
-
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.workspaceOwnershipTransferred,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { targetUserId: 'user-2' },
-            });
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
-                userId: 'user-2',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
             });
             expect(
                 workspaceMemberRepository.transferOwnership
-            ).toHaveBeenCalledWith('workspace-1', 'member-1', 'member-2');
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                transferredActivityLog,
-                transferredByOwnerActivityLog,
-            ]);
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException and stages nothing when a guarded row no longer matches', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+        it('swaps the ownership between the two member rows', async () => {
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+
+            await domain.transferOwnership('workspace-1', actor, 'user-2');
+
+            expect(
+                workspaceMemberRepository.findOneByWorkspaceAndUser
+            ).toHaveBeenCalledWith('workspace-1', 'user-2');
+            expect(
+                workspaceMemberRepository.transferOwnership
+            ).toHaveBeenCalledWith('workspace-1', 'member-1', 'member-2');
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException when a guarded row no longer matches', async () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
@@ -335,12 +286,9 @@ describe('WorkspaceMemberDomain', () => {
                     ],
                 messagePath: 'workspace.error.memberPeerForbidden',
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict in the ownership swap to WorkspaceMemberPeerForbiddenException', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
@@ -358,12 +306,9 @@ describe('WorkspaceMemberDomain', () => {
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps any other transaction error in AppUnknownException', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
@@ -375,7 +320,6 @@ describe('WorkspaceMemberDomain', () => {
             await expect(
                 domain.transferOwnership('workspace-1', actor, 'user-2')
             ).rejects.toBeInstanceOf(AppUnknownException);
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -410,55 +354,41 @@ describe('WorkspaceMemberDomain', () => {
                 role: EnumWorkspaceMemberRole.owner,
             };
             workspaceMemberRepository.countOwners.mockResolvedValue(2);
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceMemberLeft,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             await domain.leaveWorkspace('workspace-1', owner);
 
+            expect(workspaceMemberRepository.countOwners).toHaveBeenCalledWith(
+                'workspace-1'
+            );
             expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
-                owner.id,
+                'member-1',
                 EnumWorkspaceMemberRole.owner
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
 
-        it('lets a non-owner leave without checking owner count', async () => {
-            const member = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.member,
-            };
-
-            await domain.leaveWorkspace('workspace-1', member);
+        it('lets a non-owner leave without checking the owner count', async () => {
+            await domain.leaveWorkspace('workspace-1', baseMember);
 
             expect(
                 workspaceMemberRepository.countOwners
             ).not.toHaveBeenCalled();
             expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
-                member.id,
+                'member-1',
                 EnumWorkspaceMemberRole.member
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
 
-        it('throws WorkspaceMemberNotFoundException and stages nothing when the guarded delete matches no row', async () => {
+        it('throws WorkspaceMemberNotFoundException when the guarded delete matches no row', async () => {
             workspaceMemberRepository.removeMember.mockResolvedValue(false);
 
             await expect(
                 domain.leaveWorkspace('workspace-1', baseMember)
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+                messagePath: 'workspace.error.memberNotFound',
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -516,8 +446,20 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('updateMemberRole', () => {
+        const actor = {
+            ...baseMember,
+            id: 'member-1',
+            userId: 'user-1',
+            role: EnumWorkspaceMemberRole.admin,
+        };
+        const target = {
+            ...baseMember,
+            id: 'member-2',
+            userId: 'user-2',
+            role: EnumWorkspaceMemberRole.member,
+        };
+
         it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
-            const actor = { ...baseMember, userId: 'user-1' };
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 null
             );
@@ -533,57 +475,36 @@ describe('WorkspaceMemberDomain', () => {
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberNotFound
-                    ],
                 messagePath: 'workspace.error.memberNotFound',
             });
+            expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the actor targets itself', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                actor
-            );
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
+                ...target,
+                userId: 'user-1',
+            });
 
             await expect(
                 domain.updateMemberRole(
                     'workspace-1',
                     actor,
-                    'member-1',
+                    'member-2',
                     EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'workspace.error.memberPeerForbidden',
             });
-            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+            expect(workspaceUtil.isPeerActionAllowed).not.toHaveBeenCalled();
             expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException via assertPeerActionAllowed when the target is the owner', async () => {
-            const actor = {
-                ...baseMember,
-                userId: 'user-1',
-                role: EnumWorkspaceMemberRole.admin,
-            };
-            const target = {
-                ...baseMember,
-                id: 'member-2',
-                userId: 'user-2',
-                role: EnumWorkspaceMemberRole.owner,
-            };
+        it('throws WorkspaceMemberPeerForbiddenException when the util forbids the peer action', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
+            workspaceUtil.isPeerActionAllowed.mockReturnValue(false);
 
             await expect(
                 domain.updateMemberRole(
@@ -596,68 +517,39 @@ describe('WorkspaceMemberDomain', () => {
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberPeerForbidden
-                    ],
                 messagePath: 'workspace.error.memberPeerForbidden',
             });
+            expect(workspaceUtil.isPeerActionAllowed).toHaveBeenCalledWith(
+                EnumWorkspaceMemberRole.admin,
+                EnumWorkspaceMemberRole.member
+            );
             expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
-        it('updates the role and stages the by-admin activity log when the target differs from the actor', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+        it('updates the role guarded by the role read and returns the target member', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
-            const actorActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceMemberRoleUpdated,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const byAdminActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(actorActivityLog)
-                .mockReturnValueOnce(byAdminActivityLog);
 
-            await domain.updateMemberRole(
+            const result = await domain.updateMemberRole(
                 'workspace-1',
                 actor,
                 'member-2',
                 EnumWorkspaceMemberRole.admin
             );
 
+            expect(result).toBe(target);
+            expect(
+                workspaceMemberRepository.findByIdAndWorkspace
+            ).toHaveBeenCalledWith('member-2', 'workspace-1');
             expect(workspaceMemberRepository.updateRole).toHaveBeenCalledWith(
                 'member-2',
                 EnumWorkspaceMemberRole.member,
                 EnumWorkspaceMemberRole.admin
             );
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(2);
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
-                userId: 'user-2',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorActivityLog,
-                byAdminActivityLog,
-            ]);
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException and stages nothing when the target role changed since it was read', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+        it('throws WorkspaceMemberPeerForbiddenException when the target role changed since it was read', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
@@ -673,13 +565,24 @@ describe('WorkspaceMemberDomain', () => {
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
     describe('removeMember', () => {
+        const actor = {
+            ...baseMember,
+            id: 'member-1',
+            userId: 'user-1',
+            role: EnumWorkspaceMemberRole.admin,
+        };
+        const target = {
+            ...baseMember,
+            id: 'member-2',
+            userId: 'user-2',
+            role: EnumWorkspaceMemberRole.member,
+        };
+
         it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
-            const actor = { ...baseMember, userId: 'user-1' };
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 null
             );
@@ -690,50 +593,34 @@ describe('WorkspaceMemberDomain', () => {
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberNotFound
-                    ],
                 messagePath: 'workspace.error.memberNotFound',
             });
+            expect(
+                workspaceMemberRepository.removeMember
+            ).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the target is the actor itself', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                actor
-            );
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
+                ...target,
+                userId: 'user-1',
+            });
 
             await expect(
-                domain.removeMember('workspace-1', actor, 'member-1')
+                domain.removeMember('workspace-1', actor, 'member-2')
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'workspace.error.memberPeerForbidden',
             });
+            expect(
+                workspaceMemberRepository.removeMember
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException via assertPeerActionAllowed for a peer admin', async () => {
-            const actor = {
-                ...baseMember,
-                id: 'member-1',
-                userId: 'user-1',
-                role: EnumWorkspaceMemberRole.admin,
-            };
-            const target = {
-                ...baseMember,
-                id: 'member-2',
-                userId: 'user-2',
-                role: EnumWorkspaceMemberRole.admin,
-            };
+        it('throws WorkspaceMemberPeerForbiddenException when the util forbids the peer action', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
+            workspaceUtil.isPeerActionAllowed.mockReturnValue(false);
 
             await expect(
                 domain.removeMember('workspace-1', actor, 'member-2')
@@ -741,10 +628,6 @@ describe('WorkspaceMemberDomain', () => {
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberPeerForbidden
-                    ],
                 messagePath: 'workspace.error.memberPeerForbidden',
             });
             expect(
@@ -752,87 +635,25 @@ describe('WorkspaceMemberDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('removes the target member and stages the by-admin activity log in order', async () => {
-            const actor = {
-                ...baseMember,
-                id: 'member-1',
-                userId: 'user-1',
-                role: EnumWorkspaceMemberRole.admin,
-            };
-            const target = {
-                ...baseMember,
-                id: 'member-2',
-                userId: 'user-2',
-                role: EnumWorkspaceMemberRole.member,
-            };
+        it('removes the target member and returns it', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
-            const removedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceMemberRemoved,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const removedByAdminActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(removedActivityLog)
-                .mockReturnValueOnce(removedByAdminActivityLog);
-            const callOrder: string[] = [];
-            workspaceMemberRepository.removeMember.mockImplementation(
-                async () => {
-                    callOrder.push('removeMember');
 
-                    return true;
-                }
+            const result = await domain.removeMember(
+                'workspace-1',
+                actor,
+                'member-2'
             );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
 
-            await domain.removeMember('workspace-1', actor, 'member-2');
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(2);
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.workspaceMemberRemoved,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { targetUserId: 'user-2' },
-            });
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
-                userId: 'user-2',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
+            expect(result).toBe(target);
             expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
                 'member-2',
                 EnumWorkspaceMemberRole.member
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                removedActivityLog,
-                removedByAdminActivityLog,
-            ]);
-            expect(callOrder).toEqual(['removeMember', 'stagePrepared']);
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException and stages nothing when the target role changed since it was read', async () => {
-            const actor = {
-                ...baseMember,
-                id: 'member-1',
-                userId: 'user-1',
-                role: EnumWorkspaceMemberRole.admin,
-            };
-            const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+        it('throws WorkspaceMemberPeerForbiddenException when the target role changed since it was read', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
@@ -843,7 +664,6 @@ describe('WorkspaceMemberDomain', () => {
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -918,94 +738,6 @@ describe('WorkspaceMemberDomain', () => {
             expect(
                 workspaceMemberRepository.findWithPaginationOffset
             ).toHaveBeenCalledWith('workspace-1', pagination, null);
-        });
-    });
-
-    describe('assertPeerActionAllowed', () => {
-        it('throws WorkspaceMemberPeerForbiddenException when the target is the owner', () => {
-            const actor = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.admin,
-            };
-            const target = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.owner,
-            };
-
-            let thrown: unknown;
-            try {
-                domain['assertPeerActionAllowed'](actor, target);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'workspace.error.memberPeerForbidden',
-            });
-        });
-
-        it('throws WorkspaceMemberPeerForbiddenException when an admin acts on another admin', () => {
-            const actor = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.admin,
-            };
-            const target = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.admin,
-            };
-
-            let thrown: unknown;
-            try {
-                domain['assertPeerActionAllowed'](actor, target);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'workspace.error.memberPeerForbidden',
-            });
-        });
-
-        it('does not throw when an admin acts on a member', () => {
-            const actor = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.admin,
-            };
-            const target = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.member,
-            };
-
-            expect(() =>
-                domain['assertPeerActionAllowed'](actor, target)
-            ).not.toThrow();
-        });
-
-        it('does not throw when the owner acts on an admin', () => {
-            const actor = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.owner,
-            };
-            const target = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.admin,
-            };
-
-            expect(() =>
-                domain['assertPeerActionAllowed'](actor, target)
-            ).not.toThrow();
         });
     });
 });

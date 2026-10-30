@@ -1,3 +1,7 @@
+import { AccountDomainModule } from '@modules/account/account.domain.module';
+import { MembershipDomainModule } from '@modules/membership/membership.domain.module';
+import { ProjectDomainModule } from '@modules/project/project.domain.module';
+import { UserDomainModule } from '@modules/user/user.domain.module';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
 import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/workspace.join-request.http.service';
@@ -19,6 +23,12 @@ import { Module } from '@nestjs/common';
         WorkspaceInviteHttpService,
         WorkspaceJoinRequestHttpService,
     ],
-    imports: [WorkspaceDomainModule],
+    imports: [
+        AccountDomainModule,
+        MembershipDomainModule,
+        ProjectDomainModule,
+        UserDomainModule,
+        WorkspaceDomainModule,
+    ],
 })
 export class WorkspaceHttpModule {}

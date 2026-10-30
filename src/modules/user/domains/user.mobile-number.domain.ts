@@ -1,15 +1,13 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import type {
     IUserMobileNumber,
     IUserMobileNumberInput,
+    IUserMobileNumberSummary,
 } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -21,45 +19,41 @@ export class UserMobileNumberDomain {
     constructor(
         private readonly userMobileNumberRepository: UserMobileNumberRepository,
         private readonly userDomain: UserDomain,
-        private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly countryDomain: CountryDomain,
         private readonly userUtil: UserUtil
     ) {}
 
-    private async checkPhoneCode(
-        countryId: string,
-        phoneCode: string
+    async existsMobileNumber(
+        userId: string,
+        input: IUserMobileNumberInput,
+        excludeId: string | null
     ): Promise<boolean> {
-        const country = await this.countryDomain.getOne(countryId);
-
-        return this.userUtil.checkMobileNumber(country.phoneCode, phoneCode);
+        return this.userMobileNumberRepository.existsMobileNumber(
+            userId,
+            input,
+            excludeId
+        );
     }
 
     async addMobileNumber(
         userId: string,
-        { number, countryId, phoneCode }: IUserMobileNumberInput
+        { number, countryId, phoneCode }: IUserMobileNumberInput,
+        countryPhoneCodes: string[],
+        isDuplicate: boolean
     ): Promise<IUserMobileNumber> {
-        const [checkValidMobileNumber, checkExist] = await Promise.all([
-            this.checkPhoneCode(countryId, phoneCode),
-            this.userMobileNumberRepository.existsMobileNumber(userId, {
-                number,
-                countryId,
-                phoneCode,
-            }),
-        ]);
+        const checkValidMobileNumber = this.userUtil.checkMobileNumber(
+            countryPhoneCodes,
+            phoneCode
+        );
         if (!checkValidMobileNumber) {
             throw new UserMobileNumberInvalidException();
-        } else if (checkExist) {
+        }
+
+        if (isDuplicate) {
             throw new UserMobileNumberExistException();
         }
 
         try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userAddMobileNumber,
-                }),
-            ];
             const row = await this.databaseService.withTransaction(async tx => {
                 const mobileNumber =
                     await this.userMobileNumberRepository.addInTx(tx, userId, {
@@ -72,8 +66,6 @@ export class UserMobileNumberDomain {
                 return mobileNumber;
             });
 
-            this.activityLogDomain.stagePrepared(activityLogs);
-
             return row;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -84,35 +76,35 @@ export class UserMobileNumberDomain {
         }
     }
 
-    async updateMobileNumber(
+    async getOneMobileNumber(
         userId: string,
-        mobileNumberId: string,
-        { number, countryId, phoneCode }: IUserMobileNumberInput
-    ): Promise<IUserMobileNumber> {
-        // Sequential by design: gate before the work it guards
-        const checkMobileNumberExist =
+        mobileNumberId: string
+    ): Promise<IUserMobileNumberSummary> {
+        const mobileNumber =
             await this.userMobileNumberRepository.findOneMobileNumber(
                 userId,
                 mobileNumberId
             );
-        if (!checkMobileNumberExist) {
+        if (!mobileNumber) {
             throw new UserMobileNumberNotFoundException();
         }
 
-        const [country, checkExist] = await Promise.all([
-            this.countryDomain.getOne(countryId),
-            this.userMobileNumberRepository.existsMobileNumber(
-                userId,
-                { number, countryId, phoneCode },
-                mobileNumberId
-            ),
-        ]);
-        if (checkExist) {
+        return mobileNumber;
+    }
+
+    async updateMobileNumber(
+        userId: string,
+        current: IUserMobileNumberSummary,
+        { number, countryId, phoneCode }: IUserMobileNumberInput,
+        countryPhoneCodes: string[],
+        isDuplicate: boolean
+    ): Promise<IUserMobileNumber> {
+        if (isDuplicate) {
             throw new UserMobileNumberExistException();
         }
 
         const checkValidMobileNumber = this.userUtil.checkMobileNumber(
-            country.phoneCode,
+            countryPhoneCodes,
             phoneCode
         );
         if (!checkValidMobileNumber) {
@@ -120,22 +112,16 @@ export class UserMobileNumberDomain {
         }
 
         const isVerified =
-            checkMobileNumberExist.number === number &&
-            checkMobileNumberExist.phoneCode === phoneCode
-                ? checkMobileNumberExist.isVerified
+            current.number === number && current.phoneCode === phoneCode
+                ? current.isVerified
                 : false;
 
         try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userUpdateMobileNumber,
-                }),
-            ];
             const row = await this.databaseService.withTransaction(async tx => {
                 const mobileNumber =
                     await this.userMobileNumberRepository.updateInTx(
                         tx,
-                        checkMobileNumberExist.id,
+                        current.id,
                         {
                             number,
                             countryId,
@@ -147,8 +133,6 @@ export class UserMobileNumberDomain {
 
                 return mobileNumber;
             });
-
-            this.activityLogDomain.stagePrepared(activityLogs);
 
             return row;
         } catch (err: unknown) {
@@ -165,21 +149,9 @@ export class UserMobileNumberDomain {
         mobileNumberId: string
     ): Promise<IUserMobileNumber> {
         // Sequential by design: gate before the work it guards
-        const checkExist =
-            await this.userMobileNumberRepository.findOneMobileNumber(
-                userId,
-                mobileNumberId
-            );
-        if (!checkExist) {
-            throw new UserMobileNumberNotFoundException();
-        }
+        await this.getOneMobileNumber(userId, mobileNumberId);
 
         try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userDeleteMobileNumber,
-                }),
-            ];
             const row = await this.databaseService.withTransaction(async tx => {
                 const mobileNumber =
                     await this.userMobileNumberRepository.deleteInTx(
@@ -190,8 +162,6 @@ export class UserMobileNumberDomain {
 
                 return mobileNumber;
             });
-
-            this.activityLogDomain.stagePrepared(activityLogs);
 
             return row;
         } catch (err: unknown) {

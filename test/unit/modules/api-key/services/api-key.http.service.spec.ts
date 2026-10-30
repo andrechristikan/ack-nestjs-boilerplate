@@ -2,11 +2,17 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumApiKeyType, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumApiKeyType,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import type {
     IPaginationOffsetReturn,
@@ -20,6 +26,8 @@ import {
 import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import type { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyHttpService } from '@modules/api-key/services/api-key.http.service';
@@ -32,6 +40,11 @@ describe('ApiKeyHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const apiKey: ApiKey = {
@@ -48,6 +61,14 @@ describe('ApiKeyHttpService', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
+    const metadata = { apiKeyId: apiKey.id };
+    const stagedActivityLog: IActivityLogStaged = {
+        action: EnumActivityLogAction.adminApiKeyCreate,
+        metadata,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
+    };
     const pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput> = {
         skip: 0,
         limit: 20,
@@ -58,6 +79,9 @@ describe('ApiKeyHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        helperDateService.create.mockReturnValue(now);
+        apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
+        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
         paginationQueryUtil.offset.mockReturnValue({
             params: pagination,
             storePatch: {},
@@ -76,6 +100,9 @@ describe('ApiKeyHttpService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
@@ -198,11 +225,12 @@ describe('ApiKeyHttpService', () => {
             });
             const created = { ...apiKey, secret: 'plain-secret' };
             apiKeyUtil.mapCreate.mockReturnValue(created);
+            databaseUtil.createId.mockReturnValue(apiKey.id);
 
             const result = await service.createByAdmin(body);
 
             expect(result).toEqual({ data: created });
-            expect(apiKeyDomain.createByAdmin).toHaveBeenCalledWith({
+            expect(apiKeyDomain.createByAdmin).toHaveBeenCalledWith(apiKey.id, {
                 name: 'Acme Api Key',
                 type: EnumApiKeyType.default,
                 startAt: null,
@@ -212,6 +240,53 @@ describe('ApiKeyHttpService', () => {
                 apiKey,
                 'plain-secret'
             );
+        });
+
+        it('prepares the create activity log with the drawn id before the write and stages it after', async () => {
+            const body: ApiKeyCreateRequestDto = {
+                name: 'Acme Api Key',
+                type: EnumApiKeyType.default,
+            };
+            databaseUtil.createId.mockReturnValue(apiKey.id);
+            apiKeyDomain.createByAdmin.mockImplementation(async () => {
+                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                    action: EnumActivityLogAction.adminApiKeyCreate,
+                    metadata,
+                });
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+
+                return { apiKey, secret: 'plain-secret' };
+            });
+            apiKeyUtil.mapCreate.mockReturnValue({
+                ...apiKey,
+                secret: 'plain-secret',
+            });
+
+            await service.createByAdmin(body);
+
+            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                {
+                    id: apiKey.id,
+                    name: 'Acme Api Key',
+                    type: EnumApiKeyType.default,
+                },
+                now
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
+        });
+
+        it('stages nothing when the domain throws', async () => {
+            const body: ApiKeyCreateRequestDto = {
+                name: 'Acme Api Key',
+                type: EnumApiKeyType.default,
+            };
+            databaseUtil.createId.mockReturnValue(apiKey.id);
+            apiKeyDomain.createByAdmin.mockRejectedValue(new Error('boom'));
+
+            await expect(service.createByAdmin(body)).rejects.toThrow('boom');
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -230,6 +305,25 @@ describe('ApiKeyHttpService', () => {
                 false
             );
         });
+
+        it('prepares the status activity log from the updated key and stages it after the write', async () => {
+            const updated: ApiKey = { ...apiKey, isActive: false };
+            apiKeyDomain.updateStatusByAdmin.mockResolvedValue(updated);
+
+            await service.updateStatusByAdmin(apiKey.id, { isActive: false });
+
+            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                updated,
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminApiKeyUpdateStatus,
+                metadata,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
+        });
     });
 
     describe('updateByAdmin', () => {
@@ -246,6 +340,25 @@ describe('ApiKeyHttpService', () => {
                 apiKey.id,
                 'New Name'
             );
+        });
+
+        it('prepares the update activity log from the renamed key and stages it after the write', async () => {
+            const updated: ApiKey = { ...apiKey, name: 'New Name' };
+            apiKeyDomain.updateByAdmin.mockResolvedValue(updated);
+
+            await service.updateByAdmin(apiKey.id, { name: 'New Name' });
+
+            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                updated,
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminApiKeyUpdate,
+                metadata,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
         });
     });
 
@@ -265,6 +378,27 @@ describe('ApiKeyHttpService', () => {
                 startAt,
                 endAt
             );
+        });
+
+        it('prepares the date activity log from the updated key and stages it after the write', async () => {
+            const startAt = new Date('2026-02-01T00:00:00.000Z');
+            const endAt = new Date('2026-03-01T00:00:00.000Z');
+            const updated: ApiKey = { ...apiKey, startAt, endAt };
+            apiKeyDomain.updateDatesByAdmin.mockResolvedValue(updated);
+
+            await service.updateDatesByAdmin(apiKey.id, { startAt, endAt });
+
+            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                updated,
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminApiKeyUpdateDate,
+                metadata,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
         });
     });
 
@@ -286,6 +420,31 @@ describe('ApiKeyHttpService', () => {
                 'new-secret'
             );
         });
+
+        it('prepares the reset activity log from the reset key and stages it after the write', async () => {
+            apiKeyDomain.resetByAdmin.mockResolvedValue({
+                apiKey,
+                secret: 'new-secret',
+            });
+            apiKeyUtil.mapCreate.mockReturnValue({
+                ...apiKey,
+                secret: 'new-secret',
+            });
+
+            await service.resetByAdmin(apiKey.id);
+
+            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                apiKey,
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminApiKeyReset,
+                metadata,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
+        });
     });
 
     describe('deleteByAdmin', () => {
@@ -296,6 +455,24 @@ describe('ApiKeyHttpService', () => {
 
             expect(result).toEqual({ data: apiKey });
             expect(apiKeyDomain.deleteByAdmin).toHaveBeenCalledWith(apiKey.id);
+        });
+
+        it('prepares the delete activity log from the deleted key and stages it after the write', async () => {
+            apiKeyDomain.deleteByAdmin.mockResolvedValue(apiKey);
+
+            await service.deleteByAdmin(apiKey.id);
+
+            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                apiKey,
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminApiKeyDelete,
+                metadata,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
         });
     });
 });

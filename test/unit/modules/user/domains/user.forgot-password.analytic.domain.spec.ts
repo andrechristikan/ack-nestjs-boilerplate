@@ -2,12 +2,15 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { UserForgotPasswordAnalyticDomain } from '@modules/user/domains/user.forgot-password.analytic.domain';
 import { UserForgotPasswordAnalyticRepository } from '@modules/user/repositories/user.forgot-password.analytic.repository';
 
 describe('UserForgotPasswordAnalyticDomain', () => {
     const userForgotPasswordAnalyticRepository: MockProxy<UserForgotPasswordAnalyticRepository> =
         mock<UserForgotPasswordAnalyticRepository>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
 
     let domain: UserForgotPasswordAnalyticDomain;
 
@@ -24,6 +27,7 @@ describe('UserForgotPasswordAnalyticDomain', () => {
                     provide: UserForgotPasswordAnalyticRepository,
                     useValue: userForgotPasswordAnalyticRepository,
                 },
+                { provide: HelperNumberService, useValue: helperNumberService },
             ],
         }).compile();
         domain = module.get(UserForgotPasswordAnalyticDomain);
@@ -35,6 +39,7 @@ describe('UserForgotPasswordAnalyticDomain', () => {
                 10
             );
             userForgotPasswordAnalyticRepository.countUsed.mockResolvedValue(4);
+            helperNumberService.percent.mockReturnValue(40);
 
             await expect(
                 domain.getConversion(startDate, endDate)
@@ -49,13 +54,15 @@ describe('UserForgotPasswordAnalyticDomain', () => {
             expect(
                 userForgotPasswordAnalyticRepository.countUsed
             ).toHaveBeenCalledWith(startDate, endDate);
+            expect(helperNumberService.percent).toHaveBeenCalledWith(4, 10);
         });
 
-        it('returns a zero rate when created is zero', async () => {
+        it('returns the rate the number service gives when created is zero', async () => {
             userForgotPasswordAnalyticRepository.countCreated.mockResolvedValue(
                 0
             );
             userForgotPasswordAnalyticRepository.countUsed.mockResolvedValue(0);
+            helperNumberService.percent.mockReturnValue(0);
 
             await expect(
                 domain.getConversion(startDate, endDate)

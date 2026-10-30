@@ -1,3 +1,5 @@
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -5,8 +7,13 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import type { ITermPolicyActivityLogSubject } from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import {
     TermPolicyDefaultAvailableOrderBy,
     TermPolicyDefaultStatus,
@@ -23,8 +30,29 @@ export class TermPolicyHttpService {
     constructor(
         private readonly termPolicyDomain: TermPolicyDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly termPolicyUtil: TermPolicyUtil,
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly notificationQueue: NotificationQueue,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService
     ) {}
+
+    private prepareActivityLog(
+        action: EnumActivityLogAction,
+        termPolicy: ITermPolicyActivityLogSubject,
+        timestamp: Date
+    ): IActivityLogStaged {
+        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+            termPolicy,
+            timestamp
+        );
+
+        return this.activityLogDomain.prepare({
+            action,
+            metadata,
+        });
+    }
 
     async getListByAdmin(
         query: TermPolicyAdminListRequestDto
@@ -96,7 +124,21 @@ export class TermPolicyHttpService {
     async createByAdmin(
         body: TermPolicyCreateRequestDto
     ): Promise<IResponseReturn<TermPolicy>> {
-        const created = await this.termPolicyDomain.createByAdmin(body);
+        const termPolicyId = this.databaseUtil.createId();
+        const timestamp = this.helperDateService.create();
+        const activityLogs = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminTermPolicyCreate,
+                { id: termPolicyId, type: body.type, version: body.version },
+                timestamp
+            ),
+        ];
+
+        const created = await this.termPolicyDomain.createByAdmin(
+            termPolicyId,
+            body
+        );
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: created };
     }
@@ -105,6 +147,15 @@ export class TermPolicyHttpService {
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
         const deleted = await this.termPolicyDomain.deleteByAdmin(termPolicyId);
+        const timestamp = this.helperDateService.create();
+        const activityLogs = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminTermPolicyDelete,
+                deleted,
+                timestamp
+            ),
+        ];
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: deleted };
     }
@@ -113,7 +164,30 @@ export class TermPolicyHttpService {
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyDomain.publishByAdmin(termPolicyId, updatedBy);
+        const published =
+            await this.termPolicyDomain.publishByAdmin(termPolicyId);
+        const activityLogs = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminTermPolicyPublish,
+                published,
+                published.updatedAt
+            ),
+        ];
+        this.activityLogDomain.stagePrepared(activityLogs);
+
+        const recipientCutoffAt = this.helperDateService.formatToIso(
+            published.publishedAt!
+        );
+        await this.notificationQueue.sendPublishTermPolicy(
+            {
+                termPolicyId: published.id,
+                type: published.type,
+                version: published.version,
+                recipientCutoffAt,
+                resendNonce: null,
+            },
+            updatedBy
+        );
 
         return {};
     }
@@ -122,7 +196,31 @@ export class TermPolicyHttpService {
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyDomain.resendEmailByAdmin(termPolicyId, updatedBy);
+        const termPolicy =
+            await this.termPolicyDomain.getPublishedByAdmin(termPolicyId);
+        const timestamp = this.helperDateService.create();
+        const activityLogs = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminTermPolicyResendEmail,
+                termPolicy,
+                timestamp
+            ),
+        ];
+
+        const recipientCutoffAt = this.helperDateService.formatToIso(
+            termPolicy.publishedAt!
+        );
+        await this.notificationQueue.sendResendPublishTermPolicy(
+            {
+                termPolicyId: termPolicy.id,
+                type: termPolicy.type,
+                version: termPolicy.version,
+                recipientCutoffAt,
+            },
+            updatedBy
+        );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

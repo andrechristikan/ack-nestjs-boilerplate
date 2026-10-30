@@ -1,15 +1,9 @@
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
-import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
-import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
-    EnumPasswordHistoryType,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -17,102 +11,45 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type {
-    ForgotPassword,
-    PasswordHistory,
-    TwoFactor,
-} from '@generated/prisma-client/client';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import type { TwoFactor } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
-import { SessionDomain } from '@modules/session/domains/session.domain';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserForgotPassword,
+    IUserForgotPasswordCreate,
+} from '@modules/user/interfaces/user.interface';
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
+import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { Duration } from 'luxon';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserPasswordDomain', () => {
     const userPasswordRepository: MockProxy<UserPasswordRepository> =
         mock<UserPasswordRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const passwordHistoryDomain: MockProxy<PasswordHistoryDomain> =
-        mock<PasswordHistoryDomain>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userPasswordUtil: MockProxy<UserPasswordUtil> =
+        mock<UserPasswordUtil>();
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
-    const userLoginDomain: MockProxy<UserLoginDomain> = mock<UserLoginDomain>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
-        mock<NotificationRecipientDomain>();
-    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
-        mock<FeatureFlagDomain>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
+    const configGet = vi.fn<(key: string) => boolean | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
 
-    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
-
     let domain: UserPasswordDomain;
 
     const tx = {} as IDatabaseTransactionClient;
-    const now = new Date('2026-03-01T00:00:00.000Z');
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userChangePassword,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
-
-    const configValues: Record<string, string | number> = {
-        'home.url': 'https://example.com',
-        'forgotPassword.reference.prefix': 'FGT',
-        'forgotPassword.reference.length': 8,
-        'forgotPassword.expiredInMs': 15 * 60 * 1000,
-        'forgotPassword.tokenLength': 32,
-        'forgotPassword.resendInMs': 5 * 60 * 1000,
-        'forgotPassword.linkPattern': '{homeUrl}/reset?token={token}',
-    };
+    const usedAt = new Date('2026-03-01T00:00:00.000Z');
 
     const baseTwoFactor: TwoFactor = {
         id: 'two-factor-hollow',
@@ -176,49 +113,34 @@ describe('UserPasswordDomain', () => {
         twoFactor: baseTwoFactor,
     };
 
-    const password = {
+    const password: IAuthPassword = {
         passwordHash: 'hashed',
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
 
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: baseUser.id,
+    const forgot: IUserForgotPasswordCreate = {
+        reference: 'FGT-hollow',
+        expiredAt: new Date('2026-03-05T00:00:00.000Z'),
+        token: 'raw-token',
+        hashedToken: 'hashed-token',
+        expiredInMinutes: 15,
+        resendInMinutes: 5,
+        link: 'https://example.com/reset?token=raw-token',
     };
-
-    const createdPasswordHistory: PasswordHistory = {
-        id: 'history-created',
-        userId: baseUser.id,
-        password: 'hashed-new',
-        type: EnumPasswordHistoryType.profile,
-        expiredAt: new Date('2026-04-01T00:00:00.000Z'),
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-    };
-
-    const revokedSessions: ISessionRef[] = [{ id: 'session-one' }];
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedSessions);
-        notificationRecipientDomain.getRecipient.mockResolvedValue(recipient);
-        passwordHistoryDomain.createInTx.mockResolvedValue(
-            createdPasswordHistory
-        );
+        configGet.mockImplementation(key => {
+            const values: Record<string, boolean | number> = {
+                'forgotPassword.resendInMs': 5 * 60 * 1000,
+                'auth.password.attempt': true,
+                'auth.password.maxAttempt': 5,
+            };
 
-        userPasswordRepository.markUsedInTx.mockResolvedValue(true);
-        configGet.mockImplementation(key => configValues[key]);
-        activityLogDomain.prepare.mockReturnValue(activityLog);
-        databaseService.withTransaction.mockImplementation(
-            async fn => fn(tx) as never
-        );
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(
-            (date, duration: Duration) =>
-                new Date(date.getTime() + duration.as('milliseconds'))
-        );
+            return values[key];
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -228,1474 +150,311 @@ describe('UserPasswordDomain', () => {
                     useValue: userPasswordRepository,
                 },
                 { provide: UserRepository, useValue: userRepository },
-                {
-                    provide: PasswordHistoryDomain,
-                    useValue: passwordHistoryDomain,
-                },
                 { provide: UserUtil, useValue: userUtil },
+                { provide: UserPasswordUtil, useValue: userPasswordUtil },
                 { provide: HelperHashService, useValue: helperHashService },
-                { provide: UserLoginDomain, useValue: userLoginDomain },
                 { provide: UserDomain, useValue: userDomain },
-                { provide: SessionDomain, useValue: sessionDomain },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: DatabaseService, useValue: databaseService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: NotificationRecipientDomain,
-                    useValue: notificationRecipientDomain,
-                },
-                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: RoleDomain, useValue: roleDomain },
                 { provide: ConfigService, useValue: configService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
-                { provide: DeviceDomain, useValue: deviceDomain },
             ],
         }).compile();
         domain = module.get(UserPasswordDomain);
     });
 
-    describe('forgotPasswordCreateReference', () => {
-        it('builds a prefixed random reference', () => {
-            helperStringService.random.mockReturnValue('random-ref');
-
-            expect(domain.forgotPasswordCreateReference()).toBe(
-                'FGT-random-ref'
-            );
-        });
-    });
-
-    describe('forgotPasswordCreateToken', () => {
-        it('builds a random token of the configured length', () => {
-            helperStringService.random.mockReturnValue('random-token');
-
-            expect(domain.forgotPasswordCreateToken()).toBe('random-token');
-            expect(helperStringService.random).toHaveBeenCalledWith(32);
-        });
-    });
-
-    describe('forgotPasswordSetExpiredDate', () => {
-        it('forwards now by the configured expiry', () => {
-            expect(domain.forgotPasswordSetExpiredDate()).toEqual(
-                new Date(now.getTime() + 15 * 60 * 1000)
-            );
-        });
-    });
-
-    describe('forgotPasswordCreate', () => {
-        it('builds the full forgot-password payload', () => {
-            helperStringService.random.mockReturnValue('random-token');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(
-                'https://example.com/reset?token=random-token'
-            );
-
-            const result = domain.forgotPasswordCreate();
-
-            expect(result).toEqual({
-                reference: 'FGT-random-token',
-                expiredAt: new Date(now.getTime() + 15 * 60 * 1000),
-                token: 'random-token',
-                hashedToken: 'hashed-token',
-                expiredInMinutes: 15,
-                resendInMinutes: 5,
-                link: 'https://example.com/reset?token=random-token',
-            });
-        });
-    });
-
     describe('resetPasswordAttempt', () => {
         it('delegates to the user domain', async () => {
-            const user = baseUser;
-            userDomain.resetPasswordAttempt.mockResolvedValue(user);
+            userDomain.resetPasswordAttempt.mockResolvedValue(baseUser);
 
-            await expect(domain.resetPasswordAttempt(user.id)).resolves.toBe(
-                user
-            );
-            expect(userDomain.resetPasswordAttempt).toHaveBeenCalledWith(
-                user.id
-            );
-        });
-    });
-
-    describe('reachMaxPasswordAttempt', () => {
-        it('deactivates the account and revokes sessions and devices', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            userDomain.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
-                true
-            );
-
-            await domain.reachMaxPasswordAttempt('user-hollow');
-
-            expect(
-                userDomain.deactivateForMaxPasswordAttemptInTx
-            ).toHaveBeenCalledWith(tx, 'user-hollow');
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-hollow',
-                'user-hollow',
-                now
-            );
-            expect(deviceDomain.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-hollow',
-                'user-hollow',
-                now
-            );
-            expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
-                'user-hollow',
-                revokedSessions,
-                [activityLog]
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-        });
-
-        it('throws UserPasswordAttemptMaxException with no revoke, purge or activity when the account was already deactivated', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            userDomain.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
-                false
-            );
-
-            const call = domain.reachMaxPasswordAttempt('user-hollow');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                messagePath: 'user.error.passwordAttemptMax',
-            });
-            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
-            expect(deviceDomain.revokeAllByUserInTx).not.toHaveBeenCalled();
-            expect(sessionDomain.finalizeRevokeAll).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('maps a write conflict from the lockout transaction to UserPasswordAttemptMaxException', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            const conflict = new Error('write-conflict');
-            databaseService.withTransaction.mockRejectedValueOnce(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            const call = domain.reachMaxPasswordAttempt('user-hollow');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                messagePath: 'user.error.passwordAttemptMax',
-            });
-            expect(sessionDomain.finalizeRevokeAll).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.reachMaxPasswordAttempt('user-hollow');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.reachMaxPasswordAttempt('user-hollow');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
-        });
-    });
-
-    describe('updatePasswordByAdmin', () => {
-        const adminActor: IRoleActor = {
-            roleId: 'role-admin-hollow',
-            roleType: EnumRoleType.admin,
-        };
-
-        it('throws RoleRankForbiddenException when the actor does not outrank the target role', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
-            });
-            roleDomain.assertActorOutranks.mockImplementation(() => {
-                throw new RoleRankForbiddenException();
-            });
-
-            const call = domain.updatePasswordByAdmin(
-                'user-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-                messagePath: 'role.error.rankForbidden',
-            });
-            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.superAdmin
-            );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('checks the actor role type against the target role type before reading the recipient', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
-            );
-
-            const call = domain.updatePasswordByAdmin(
-                'user-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({ rawError: error });
-            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                baseUser.role.type
-            );
-        });
-        it('sets a temporary password, revokes sessions, stages both activity logs in order, and notifies the user', async () => {
-            const user = baseUser;
-            userRepository.findOneWithRoleById.mockResolvedValue(user);
-            authPasswordUtil.createPasswordRandom.mockReturnValue(
-                'random-password'
-            );
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            userDomain.updatePasswordInTx.mockResolvedValue(user);
-            helperDateService.formatToIso.mockImplementation(date =>
-                date.toISOString()
-            );
-            const actorMetadata = { userId: 'user-hollow' };
-            const targetMetadata = { actorUserId: 'admin-hollow' };
-            userUtil.mapActivityLogActorMetadata.mockReturnValue(actorMetadata);
-            userUtil.mapActivityLogTargetMetadata.mockReturnValue(
-                targetMetadata
-            );
-            const actorActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.adminUserUpdatePassword,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const targetActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(actorActivityLog)
-                .mockReturnValueOnce(targetActivityLog);
-            const callOrder: string[] = [];
-            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
-                callOrder.push('purgeRevokedLogins');
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-            notificationQueue.sendTemporaryPasswordByAdmin.mockImplementation(
-                async () => {
-                    callOrder.push('sendTemporaryPasswordByAdmin');
-                }
-            );
-
-            await domain.updatePasswordByAdmin(
-                'user-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
-                tx,
-                'user-hollow',
-                password,
-                'admin-hollow'
-            );
-            expect(passwordHistoryDomain.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-hollow',
-                password.passwordHash,
-                EnumPasswordHistoryType.admin,
-                password.passwordPeriodExpired,
-                password.passwordCreated,
-                'admin-hollow'
-            );
-            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
-                'user-hollow',
-                revokedSessions
-            );
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.adminUserUpdatePassword,
-                metadata: actorMetadata,
-            });
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
-                userId: 'user-hollow',
-                createdBy: 'admin-hollow',
-                metadata: targetMetadata,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorActivityLog,
-                targetActivityLog,
-            ]);
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.temporaryPasswordByAdmin
-            );
-            expect(
-                notificationQueue.sendTemporaryPasswordByAdmin
-            ).toHaveBeenCalledWith(
-                recipient,
-                {
-                    password: 'random-password',
-                    passwordCreatedAt: password.passwordCreated.toISOString(),
-                    passwordExpiredAt: password.passwordExpired.toISOString(),
-                },
-                'admin-hollow',
-                'history-created'
-            );
-            expect(callOrder).toEqual([
-                'purgeRevokedLogins',
-                'sendTemporaryPasswordByAdmin',
-                'stagePrepared',
-            ]);
-        });
-
-        it('commits nothing and purges nothing when the recipient read rejects', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            authPasswordUtil.createPasswordRandom.mockReturnValue(
-                'random-password'
-            );
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
-            );
-
-            const call = domain.updatePasswordByAdmin(
-                'user-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({ rawError: error });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('throws UserNotSelfException when the admin targets themselves', async () => {
-            const call = domain.updatePasswordByAdmin(
-                'admin-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notSelf,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notSelf],
-                messagePath: 'user.error.notSelf',
-            });
-        });
-
-        it('throws UserNotFoundException when the target user does not exist', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(null);
-
-            const call = domain.updatePasswordByAdmin(
-                'user-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-        });
-
-        it('throws UserBlockedInvalidException when the target user is blocked', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
-                status: EnumUserStatus.blocked,
-            });
-
-            const call = domain.updatePasswordByAdmin(
-                'user-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.blockedInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.blockedInvalid
-                    ],
-                messagePath: 'user.error.blockedInvalid',
-            });
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            authPasswordUtil.createPasswordRandom.mockReturnValue(
-                'random-password'
-            );
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.updatePasswordByAdmin(
-                'user-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            authPasswordUtil.createPasswordRandom.mockReturnValue(
-                'random-password'
-            );
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.updatePasswordByAdmin(
-                'user-hollow',
-                'admin-hollow',
-                adminActor
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
-        });
-    });
-
-    describe('changePassword', () => {
-        const verifiedResult: IAuthTwoFactorVerifyResult = {
-            isValid: true,
-            method: EnumAuthTwoFactorMethod.code,
-            newBackupCodes: null,
-        };
-        const history: PasswordHistory = {
-            id: 'history-hollow',
-            userId: 'user-hollow',
-            password: 'hashed-old',
-            type: EnumPasswordHistoryType.profile,
-            expiredAt: new Date('2026-04-01T00:00:00.000Z'),
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-        };
-
-        it('changes the password, commits, purges, and stages the activity log in order when no two-factor is enabled', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const callOrder: string[] = [];
-            sessionDomain.revokeActiveByUserInTx.mockImplementation(
-                async () => {
-                    callOrder.push('revokeActiveByUserInTx');
-                    return revokedSessions;
-                }
-            );
-            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
-                callOrder.push('purgeRevokedLogins');
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-            notificationQueue.sendChangePassword.mockImplementation(
-                async () => {
-                    callOrder.push('sendChangePassword');
-                }
-            );
-
-            await domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'old-password',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
+            await expect(
+                domain.resetPasswordAttempt('user-hollow')
+            ).resolves.toBe(baseUser);
 
             expect(userDomain.resetPasswordAttempt).toHaveBeenCalledWith(
-                user.id
+                'user-hollow'
             );
-            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
-                tx,
-                user.id,
+        });
+    });
+
+    describe('createTemporaryPassword', () => {
+        it('draws a random password and hashes it as a temporary one', async () => {
+            authPasswordUtil.createPasswordRandom.mockReturnValue(
+                'random-password'
+            );
+            authPasswordUtil.createPassword.mockResolvedValue(password);
+
+            await expect(domain.createTemporaryPassword()).resolves.toEqual({
                 password,
-                user.id
+                passwordString: 'random-password',
+            });
+
+            expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
+                'random-password',
+                { temporary: true }
             );
-            expect(passwordHistoryDomain.createInTx).toHaveBeenCalledWith(
-                tx,
-                user.id,
-                password.passwordHash,
-                EnumPasswordHistoryType.profile,
-                password.passwordPeriodExpired,
-                password.passwordCreated,
-                user.id
-            );
+        });
+    });
+
+    describe('incrementPasswordAttempt', () => {
+        it('returns true when the repository counts the attempt within the max', async () => {
+            userRepository.incrementPasswordAttempt.mockResolvedValue(3);
+
+            await expect(
+                domain.incrementPasswordAttempt('user-hollow')
+            ).resolves.toBe(true);
             expect(
-                userLoginDomain.recordTwoFactorVerificationInTx
+                userRepository.incrementPasswordAttempt
+            ).toHaveBeenCalledWith('user-hollow', 5);
+        });
+
+        it('returns false when the repository refuses the attempt at the max', async () => {
+            userRepository.incrementPasswordAttempt.mockResolvedValue(null);
+
+            await expect(
+                domain.incrementPasswordAttempt('user-hollow')
+            ).resolves.toBe(false);
+        });
+
+        it('returns true without counting when attempt tracking is off', async () => {
+            configGet.mockImplementation(key =>
+                key === 'auth.password.attempt' ? false : 5
+            );
+            const module: TestingModule = await Test.createTestingModule({
+                providers: [
+                    UserPasswordDomain,
+                    {
+                        provide: UserPasswordRepository,
+                        useValue: userPasswordRepository,
+                    },
+                    { provide: UserRepository, useValue: userRepository },
+                    { provide: UserUtil, useValue: userUtil },
+                    { provide: UserPasswordUtil, useValue: userPasswordUtil },
+                    { provide: HelperHashService, useValue: helperHashService },
+                    { provide: UserDomain, useValue: userDomain },
+                    { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                    { provide: ConfigService, useValue: configService },
+                ],
+            }).compile();
+            const untracked = module.get(UserPasswordDomain);
+
+            await expect(
+                untracked.incrementPasswordAttempt('user-hollow')
+            ).resolves.toBe(true);
+            expect(
+                userRepository.incrementPasswordAttempt
             ).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
-                user.id,
-                revokedSessions
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userChangePassword,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(user, EnumNotificationKind.changePassword);
-            expect(notificationQueue.sendChangePassword).toHaveBeenCalledWith(
-                recipient,
-                'history-created'
-            );
-            expect(callOrder).toEqual([
-                'revokeActiveByUserInTx',
-                'purgeRevokedLogins',
-                'sendChangePassword',
-                'stagePrepared',
-            ]);
         });
+    });
 
-        it('commits nothing and purges nothing when the recipient read rejects', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+    describe('verifyOldPassword', () => {
+        it('counts the attempt and compares, leaving the counter to the caller', async () => {
+            userRepository.incrementPasswordAttempt.mockResolvedValue(1);
             authPasswordUtil.validatePassword.mockResolvedValue(true);
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
+
+            await domain.verifyOldPassword(
+                'user-hollow',
+                'hashed-password',
+                'old-password'
             );
-
-            const call = domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'old-password',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({ rawError: error });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('verifies two-factor, records it in the same transaction, and stages both activity logs when enabled', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: true },
-            };
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            const changePasswordActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userChangePassword,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const verifyTwoFactorActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userVerifyTwoFactor,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(changePasswordActivityLog)
-                .mockReturnValueOnce(verifyTwoFactorActivityLog);
-
-            await domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'old-password',
-                code: '123456',
-                method: EnumAuthTwoFactorMethod.code,
-                backupCode: null,
-            });
 
             expect(
-                userLoginDomain.recordTwoFactorVerificationInTx
-            ).toHaveBeenCalledWith(tx, user, verifiedResult);
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.userVerifyTwoFactor,
-                userId: user.id,
-                createdBy: user.id,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                changePasswordActivityLog,
-                verifyTwoFactorActivityLog,
-            ]);
-        });
-
-        it('skips the old-password checks when the account has no password set', async () => {
-            const user = {
-                ...baseUser,
-                password: null,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-
-            await domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'old-password',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
+                userRepository.incrementPasswordAttempt
+            ).toHaveBeenCalledWith('user-hollow', 5);
             expect(
-                userLoginDomain.incrementPasswordAttempt
-            ).not.toHaveBeenCalled();
-            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
-                tx,
-                user.id,
-                password,
-                user.id
+                userRepository.incrementPasswordAttempt
+            ).toHaveBeenCalledBefore(authPasswordUtil.validatePassword);
+            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+                'old-password',
+                'hashed-password'
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
+            expect(userDomain.resetPasswordAttempt).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordAttemptMaxException without comparing when the attempt budget is spent', async () => {
-            const user = baseUser;
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(false);
+            userRepository.incrementPasswordAttempt.mockResolvedValue(null);
 
-            const call = domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'old-password',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.verifyOldPassword(
+                    'user-hollow',
+                    'hashed-password',
+                    'old-password'
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordAttemptMax
-                    ],
                 messagePath: 'user.error.passwordAttemptMax',
             });
             expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
         });
 
-        it('counts the attempt before comparing and throws UserPasswordNotMatchException on a wrong old password', async () => {
-            const user = baseUser;
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
+        it('throws UserPasswordNotMatchException on a wrong old password', async () => {
+            userRepository.incrementPasswordAttempt.mockResolvedValue(1);
             authPasswordUtil.validatePassword.mockResolvedValue(false);
 
-            const call = domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'wrong-password',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.verifyOldPassword(
+                    'user-hollow',
+                    'hashed-password',
+                    'wrong-password'
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordNotMatch
-                    ],
                 messagePath: 'user.error.passwordNotMatch',
             });
-            expect(
-                userLoginDomain.incrementPasswordAttempt
-            ).toHaveBeenCalledWith(user.id);
-            expect(
-                userLoginDomain.incrementPasswordAttempt
-            ).toHaveBeenCalledBefore(authPasswordUtil.validatePassword);
-        });
-
-        it('throws UserPasswordMustNewException when the password was used recently', async () => {
-            const user = baseUser;
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([history]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(history);
-            authPasswordUtil.getPasswordPeriodInDays.mockReturnValue(90);
-
-            const call = domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'old-password',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordMustNew,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordMustNew
-                    ],
-                messagePath: 'user.error.passwordMustNew',
-                messageProperties: { period: 90 },
-            });
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'old-password',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            const user = {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            };
-            userLoginDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.changePassword(user, {
-                newPassword: 'new-password',
-                oldPassword: 'old-password',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
+            expect(userDomain.resetPasswordAttempt).not.toHaveBeenCalled();
         });
     });
 
-    describe('forgotPassword', () => {
-        const forgotPassword: ForgotPassword = {
-            id: 'forgot-hollow',
-            userId: 'user-hollow',
-            to: 'hollow@example.com',
-            token: 'hashed-token',
-            expiredAt: new Date('2026-03-05T00:00:00.000Z'),
-            resetAt: null,
-            isUsed: false,
-            reference: 'FGT-hollow',
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-        };
+    describe('prepareForgotPassword', () => {
+        const lastForgot = {
+            createdAt: new Date('2026-03-01T00:00:00.000Z'),
+        } as Awaited<
+            ReturnType<UserPasswordRepository['findOneLatestByForgotPassword']>
+        >;
 
-        it('creates the reset request, stages the activity log in order, when there is no previous one', async () => {
+        it('returns the active user and a fresh reset payload when there is no previous request', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 null
             );
-            helperStringService.random.mockReturnValue('random-token');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(
-                'https://example.com/reset?token=random-token'
-            );
+            userPasswordUtil.createForgot.mockReturnValue(forgot);
 
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userForgotPassword,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-            const callOrder: string[] = [];
-            userPasswordRepository.createReplacingUnused.mockImplementation(
-                async () => {
-                    callOrder.push('createReplacingUnused');
-                    return forgotPassword;
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-            notificationQueue.sendForgotPassword.mockImplementation(
-                async () => {
-                    callOrder.push('sendForgotPassword');
-                }
-            );
+            await expect(
+                domain.prepareForgotPassword('hollow@example.com')
+            ).resolves.toEqual({ user: baseUser, forgot });
 
-            await domain.forgotPassword('hollow@example.com');
-
-            expect(
-                userPasswordRepository.createReplacingUnused
-            ).toHaveBeenCalledWith(
-                'user-hollow',
-                'hollow@example.com',
-                expect.objectContaining({ reference: 'FGT-random-token' })
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userForgotPassword,
-                userId: 'user-hollow',
-                createdBy: 'user-hollow',
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.forgotPassword
-            );
-            expect(notificationQueue.sendForgotPassword).toHaveBeenCalledWith(
-                recipient,
-                expect.objectContaining({ reference: 'FGT-random-token' })
-            );
-            expect(callOrder).toEqual([
-                'createReplacingUnused',
-                'stagePrepared',
-                'sendForgotPassword',
-            ]);
+            expect(userUtil.getResendWaitInMinutes).not.toHaveBeenCalled();
         });
 
-        it('commits nothing and stages nothing when the recipient read rejects', async () => {
+        it('returns the payload when the previous request is past its resend window', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
-                null
+                lastForgot
             );
-            helperStringService.random.mockReturnValue('random-token');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(
-                'https://example.com/reset?token=random-token'
+            userUtil.getResendWaitInMinutes.mockReturnValue(null);
+            userPasswordUtil.createForgot.mockReturnValue(forgot);
+
+            await expect(
+                domain.prepareForgotPassword('hollow@example.com')
+            ).resolves.toEqual({ user: baseUser, forgot });
+
+            expect(userUtil.getResendWaitInMinutes).toHaveBeenCalledWith(
+                lastForgot!.createdAt,
+                5
             );
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
-            );
-
-            const call = domain.forgotPassword('hollow@example.com');
-
-            await expect(call).rejects.toMatchObject({ rawError: error });
-            expect(
-                userPasswordRepository.createReplacingUnused
-            ).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-            expect(notificationQueue.sendForgotPassword).not.toHaveBeenCalled();
-        });
-
-        it('sends again when the previous request is past its resend window', async () => {
-            userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
-            userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
-                {
-                    ...forgotPassword,
-                    createdAt: new Date(now.getTime() - 60 * 60 * 1000),
-                }
-            );
-            helperStringService.random.mockReturnValue('random-token');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(
-                'https://example.com/reset?token=random-token'
-            );
-
-            await domain.forgotPassword('hollow@example.com');
-
-            expect(
-                userPasswordRepository.createReplacingUnused
-            ).toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
         it('throws UserNotFoundException when the user is missing', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(null);
 
-            const call = domain.forgotPassword('missing@example.com');
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.prepareForgotPassword('hollow@example.com')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
                 messagePath: 'user.error.notFound',
             });
         });
 
-        it('throws UserForgotPasswordRequestLimitExceededException when resent too soon', async () => {
+        it('throws UserForgotPasswordRequestLimitExceededException with the minutes left when resent too soon', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
-                {
-                    ...forgotPassword,
-                    createdAt: new Date(now.getTime() - 50_000),
-                }
+                lastForgot
             );
-            helperDateService.diff.mockImplementation((from, to) =>
-                Duration.fromMillis(from.getTime() - to.getTime())
-            );
+            userUtil.getResendWaitInMinutes.mockReturnValue(4);
 
-            const call = domain.forgotPassword('hollow@example.com');
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.prepareForgotPassword('hollow@example.com')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode:
                     EnumUserStatusCodeError.forgotPasswordRequestLimitExceeded,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError
-                            .forgotPasswordRequestLimitExceeded
-                    ],
                 messagePath: 'user.error.forgotPasswordRequestLimitExceeded',
-                messageProperties: { minutes: 5 },
+                messageProperties: { minutes: 4 },
             });
-        });
-
-        it('rethrows an AppBaseException raised while creating the request', async () => {
-            userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
-            userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
-                null
-            );
-            helperStringService.random.mockReturnValue('random-token');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(
-                'https://example.com/reset?token=random-token'
-            );
-
-            const error = new UserNotFoundException();
-            userPasswordRepository.createReplacingUnused.mockRejectedValue(
-                error
-            );
-
-            const call = domain.forgotPassword('hollow@example.com');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised while creating the request', async () => {
-            userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
-            userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
-                null
-            );
-            helperStringService.random.mockReturnValue('random-token');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(
-                'https://example.com/reset?token=random-token'
-            );
-
-            const error = new Error('boom');
-            userPasswordRepository.createReplacingUnused.mockRejectedValue(
-                error
-            );
-
-            const call = domain.forgotPassword('hollow@example.com');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
+            expect(userPasswordUtil.createForgot).not.toHaveBeenCalled();
         });
     });
 
-    describe('resetPassword', () => {
-        const resetRecord = {
+    describe('createForgotPassword', () => {
+        it('replaces the unused requests with the new one', async () => {
+            await domain.createForgotPassword(
+                'user-hollow',
+                'hollow@example.com',
+                forgot
+            );
+
+            expect(
+                userPasswordRepository.createReplacingUnused
+            ).toHaveBeenCalledWith('user-hollow', 'hollow@example.com', forgot);
+        });
+    });
+
+    describe('getOneActiveReset', () => {
+        const reset = {
             id: 'forgot-hollow',
             userId: 'user-hollow',
-            to: 'hollow@example.com',
-            token: 'hashed-token',
-            expiredAt: new Date('2026-03-05T00:00:00.000Z'),
-            resetAt: null,
-            isUsed: false,
-            reference: 'FGT-hollow',
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            user: {
-                ...baseUser,
-                twoFactor: { ...baseTwoFactor, enabled: false },
-            },
-        };
-        const verifiedResult: IAuthTwoFactorVerifyResult = {
-            isValid: true,
-            method: EnumAuthTwoFactorMethod.code,
-            newBackupCodes: null,
-        };
+            user: baseUser,
+        } as IUserForgotPassword;
 
-        it('resets the password, commits, purges, and stages the activity log in order when two-factor is disabled', async () => {
+        it('hashes the token and returns the active request', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
-                resetRecord
+                reset
             );
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userResetPassword,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-            const callOrder: string[] = [];
-            userPasswordRepository.markUsedInTx.mockImplementation(async () => {
-                callOrder.push('markUsedInTx');
-                return true;
-            });
-            sessionDomain.purgeRevokedLogins.mockImplementation(async () => {
-                callOrder.push('purgeRevokedLogins');
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-            notificationQueue.sendResetPassword.mockImplementation(async () => {
-                callOrder.push('sendResetPassword');
-            });
 
-            await domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
+            await expect(domain.getOneActiveReset('raw-token')).resolves.toBe(
+                reset
+            );
 
-            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
-                tx,
-                resetRecord.userId,
-                password,
-                resetRecord.userId
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'raw-token'
             );
-            expect(userPasswordRepository.markUsedInTx).toHaveBeenCalledWith(
-                tx,
-                resetRecord.id,
-                password.passwordCreated
-            );
-            expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
-                resetRecord.userId,
-                revokedSessions
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userResetPassword,
-                userId: resetRecord.userId,
-                createdBy: resetRecord.userId,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
             expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                resetRecord.user,
-                EnumNotificationKind.resetPassword
-            );
-            expect(notificationQueue.sendResetPassword).toHaveBeenCalledWith(
-                recipient,
-                'forgot-hollow'
-            );
-            expect(callOrder).toEqual([
-                'markUsedInTx',
-                'purgeRevokedLogins',
-                'sendResetPassword',
-                'stagePrepared',
-            ]);
+                userPasswordRepository.findOneActiveByForgotPasswordToken
+            ).toHaveBeenCalledWith('hashed-token');
         });
 
-        it('commits nothing and purges nothing when the recipient read rejects', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
-                resetRecord
-            );
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
-            );
-
-            const call = domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({ rawError: error });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('verifies two-factor, records it in the same transaction, and stages both activity logs when enabled', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
-                {
-                    ...resetRecord,
-                    user: {
-                        ...baseUser,
-                        twoFactor: { ...baseTwoFactor, enabled: true },
-                    },
-                }
-            );
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
-                verifiedResult
-            );
-            const resetPasswordActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userResetPassword,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const verifyTwoFactorActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userVerifyTwoFactor,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(resetPasswordActivityLog)
-                .mockReturnValueOnce(verifyTwoFactorActivityLog);
-
-            await domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                code: '123456',
-                method: EnumAuthTwoFactorMethod.code,
-                backupCode: null,
-            });
-
-            expect(
-                userLoginDomain.recordTwoFactorVerificationInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                expect.objectContaining({ id: resetRecord.userId }),
-                verifiedResult
-            );
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.userVerifyTwoFactor,
-                userId: resetRecord.userId,
-                createdBy: resetRecord.userId,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                resetPasswordActivityLog,
-                verifyTwoFactorActivityLog,
-            ]);
-        });
-
-        it('throws UserTokenInvalidException and commits nothing after the guard when the token was already used', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
-                resetRecord
-            );
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            userPasswordRepository.markUsedInTx.mockResolvedValue(false);
-
-            const call = domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.tokenInvalid
-                    ],
-                messagePath: 'user.error.verificationTokenInvalid',
-            });
-            expect(userPasswordRepository.markUsedInTx).toHaveBeenCalledWith(
-                tx,
-                resetRecord.id,
-                password.passwordCreated
-            );
-            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
-            expect(notificationQueue.sendResetPassword).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('maps a write conflict to UserTokenInvalidException', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
-                resetRecord
-            );
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const conflict = new Error('write-conflict');
-            userPasswordRepository.markUsedInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            const call = domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-            });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
-        });
-
-        it('throws UserNotFoundException when the token is unknown', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+        it('throws UserNotFoundException when no active request matches', async () => {
             userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 null
             );
 
-            const call = domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                domain.getOneActiveReset('raw-token')
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
                 messagePath: 'user.error.notFound',
-            });
-        });
-
-        it('throws UserPasswordMustNewException when the password was used recently', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
-                resetRecord
-            );
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            const history: PasswordHistory = {
-                id: 'history-hollow',
-                userId: 'user-hollow',
-                password: 'hashed-old',
-                type: EnumPasswordHistoryType.forgot,
-                expiredAt: new Date('2026-04-01T00:00:00.000Z'),
-                createdAt: new Date('2026-01-01T00:00:00.000Z'),
-                createdBy: null,
-            };
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(history);
-            authPasswordUtil.getPasswordPeriodInDays.mockReturnValue(90);
-
-            const call = domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordMustNew,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordMustNew
-                    ],
-                messagePath: 'user.error.passwordMustNew',
-                messageProperties: { period: 90 },
-            });
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
-                resetRecord
-            );
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
-                resetRecord
-            );
-            passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = domain.resetPassword({
-                newPassword: 'new-password',
-                token: 'raw-token',
-                method: null,
-                code: null,
-                backupCode: null,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
             });
         });
     });
 
-    describe('assertForgotPasswordAllowed', () => {
-        it('delegates to the feature-flag domain', async () => {
-            await domain['assertForgotPasswordAllowed']();
+    describe('markResetUsedInTx', () => {
+        it('marks the request used on the given transaction', async () => {
+            userPasswordRepository.markUsedInTx.mockResolvedValue(true);
 
-            expect(
-                featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('changePassword', 'forgotAllowed');
+            await expect(
+                domain.markResetUsedInTx(tx, 'forgot-hollow', usedAt)
+            ).resolves.toBeUndefined();
+
+            expect(userPasswordRepository.markUsedInTx).toHaveBeenCalledWith(
+                tx,
+                'forgot-hollow',
+                usedAt
+            );
+        });
+
+        it('throws UserTokenInvalidException when the request was already used', async () => {
+            userPasswordRepository.markUsedInTx.mockResolvedValue(false);
+
+            await expect(
+                domain.markResetUsedInTx(tx, 'forgot-hollow', usedAt)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                messagePath: 'user.error.verificationTokenInvalid',
+            });
         });
     });
 });

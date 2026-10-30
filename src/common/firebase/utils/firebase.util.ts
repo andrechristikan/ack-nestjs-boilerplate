@@ -1,5 +1,6 @@
-import { createPrivateKey } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { FirebasePrivateKeyPemMarker } from '@common/firebase/constants/firebase.constant';
 
 /**
@@ -7,6 +8,10 @@ import { FirebasePrivateKeyPemMarker } from '@common/firebase/constants/firebase
  */
 @Injectable()
 export class FirebaseUtil {
+    constructor(
+        private readonly helperEncryptionService: HelperEncryptionService
+    ) {}
+
     normalizePrivateKey(rawKey: string | null): string | null {
         const unescaped = (rawKey ?? '').replace(/\\n/g, '\n');
 
@@ -19,11 +24,10 @@ export class FirebaseUtil {
         }
 
         try {
-            return createPrivateKey({
-                key: Buffer.from(unescaped, 'base64'),
-                format: 'der',
-                type: 'pkcs8',
-            }).export({ type: 'pkcs8', format: 'pem' }) as string;
+            return this.helperEncryptionService.derBase64ToPem(
+                unescaped,
+                EnumHelperPemLabel.privateKey
+            );
         } catch {
             return null;
         }

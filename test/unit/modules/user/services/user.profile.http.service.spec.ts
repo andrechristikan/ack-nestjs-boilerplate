@@ -8,10 +8,15 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumActivityLogAction,
 } from '@generated/prisma-client/client';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type { IFile } from '@common/file/interfaces/file.interface';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { CountryDomain } from '@modules/country/domains/country.domain';
+import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
 import { UserProfileHttpService } from '@modules/user/services/user.profile.http.service';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
@@ -24,7 +29,19 @@ describe('UserProfileHttpService', () => {
     const userProfileDomain: MockProxy<UserProfileDomain> =
         mock<UserProfileDomain>();
 
+    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+
     let service: UserProfileHttpService;
+
+    const activityLog: IActivityLogStaged = {
+        action: EnumActivityLogAction.userUpdateProfile,
+        metadata: {},
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
+    };
 
     const profile: IUserProfile = {
         id: 'user-sable',
@@ -87,11 +104,14 @@ describe('UserProfileHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        activityLogDomain.prepare.mockReturnValue(activityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserProfileHttpService,
                 { provide: UserProfileDomain, useValue: userProfileDomain },
+                { provide: CountryDomain, useValue: countryDomain },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
         service = module.get(UserProfileHttpService);
@@ -117,6 +137,7 @@ describe('UserProfileHttpService', () => {
 
             await service.updateProfile('user-sable', dto);
 
+            expect(countryDomain.getOne).toHaveBeenCalledWith(dto.countryId);
             expect(userProfileDomain.updateProfile).toHaveBeenCalledWith(
                 'user-sable',
                 {
@@ -125,6 +146,30 @@ describe('UserProfileHttpService', () => {
                     name: dto.name,
                 }
             );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userUpdateProfile,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
+        });
+
+        it('writes and stages nothing when the country is missing', async () => {
+            const dto: UserUpdateProfileRequestDto = {
+                name: 'Sable Grove Jr.',
+                countryId: 'country-missing',
+                gender: EnumUserGender.male,
+            };
+            countryDomain.getOne.mockRejectedValue(
+                new CountryNotFoundException()
+            );
+
+            await expect(
+                service.updateProfile('user-sable', dto)
+            ).rejects.toBeInstanceOf(CountryNotFoundException);
+
+            expect(userProfileDomain.updateProfile).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('passes a null name through to clear it', async () => {
@@ -189,6 +234,27 @@ describe('UserProfileHttpService', () => {
                 'user-sable',
                 { key: dto.key, size: dto.size }
             );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userUpdatePhotoProfile,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
+        });
+
+        it('stages nothing when the domain write rejects', async () => {
+            userProfileDomain.updatePhotoProfile.mockRejectedValue(
+                new Error('boom')
+            );
+
+            await expect(
+                service.updatePhotoProfile('user-sable', {
+                    key: 'photo-profile/user-sable/random.png',
+                    size: 2048,
+                })
+            ).rejects.toThrow('boom');
+
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -206,6 +272,12 @@ describe('UserProfileHttpService', () => {
                 'user-sable',
                 file
             );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userUpdatePhotoProfile,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
         });
     });
 
@@ -221,6 +293,12 @@ describe('UserProfileHttpService', () => {
                 'user-sable',
                 dto.username
             );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userClaimUsername,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
         });
     });
 });

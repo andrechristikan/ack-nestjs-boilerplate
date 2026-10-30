@@ -1,3 +1,4 @@
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationAcceptTermPolicyPayload,
@@ -8,6 +9,8 @@ import type {
     INotificationQueuePayload,
     INotificationStepResult,
     INotificationTemporaryPasswordEncryptedPayload,
+    INotificationTermPolicyPage,
+    INotificationTermPolicyUser,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -23,6 +26,7 @@ import { NotificationSecurityDomain } from '@modules/notification/domains/notifi
 import { NotificationTermPolicyDomain } from '@modules/notification/domains/notification.term-policy.domain';
 import { NotificationWorkspaceDomain } from '@modules/notification/domains/notification.workspace.domain';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { Job } from 'bullmq';
@@ -36,6 +40,8 @@ export class NotificationProcessorService {
         private readonly notificationSecurityDomain: NotificationSecurityDomain,
         private readonly notificationTermPolicyDomain: NotificationTermPolicyDomain,
         private readonly notificationWorkspaceDomain: NotificationWorkspaceDomain,
+        private readonly userDomain: UserDomain,
+        private readonly helperDateService: HelperDateService,
         private readonly notificationUtil: NotificationUtil,
         private readonly messageService: MessageService
     ) {}
@@ -60,6 +66,39 @@ export class NotificationProcessorService {
         }
 
         return this.notificationUtil.toStepResponse(result);
+    }
+
+    private async sendPendingTermPolicyBatches(
+        proceedBy: string,
+        data: INotificationPublishTermPolicyPayload,
+        page: INotificationTermPolicyPage,
+        createdBefore: Date,
+        index: number
+    ): Promise<number> {
+        if (page.pendingBatchIds.length === 0) {
+            return 0;
+        }
+
+        const pending = await this.notificationTermPolicyDomain.getPending(
+            data.termPolicyId,
+            page
+        );
+        let offPageUsers: INotificationTermPolicyUser[] = [];
+        if (pending.offPageUserIds.length > 0) {
+            offPageUsers = await this.userDomain.getManyActiveRecipientsByIds(
+                pending.offPageUserIds,
+                createdBefore
+            );
+        }
+
+        return this.notificationTermPolicyDomain.sendPendingBatches(
+            proceedBy,
+            data,
+            page,
+            pending,
+            offPageUsers,
+            index
+        );
     }
 
     async processWelcomeByAdmin(
@@ -314,10 +353,66 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationTermPolicyDomain.processPublishTermPolicy(
-            proceedBy,
-            data
+        const createdBefore = this.helperDateService.createFromIso(
+            data.recipientCutoffAt
         );
+        const batchSize = this.notificationTermPolicyDomain.emailBatchSize;
+        let cursor: string | null = null;
+        let index = 0;
+        let candidateCounts = 0;
+        let createdCounts = 0;
+        let hasNextPage = true;
+
+        while (hasNextPage) {
+            // Sequential by design: bounded chunks, the chunks in turn
+            const pageUsers =
+                await this.userDomain.getListActiveRecipientCursor(
+                    cursor,
+                    batchSize,
+                    createdBefore
+                );
+            const lastUserId = pageUsers.at(-1)?.id ?? null;
+            if (lastUserId === null) {
+                break;
+            }
+
+            const page = await this.notificationTermPolicyDomain.getPage(
+                data.termPolicyId,
+                pageUsers
+            );
+            const [pendingBatches, freshBatches] = await Promise.all([
+                this.sendPendingTermPolicyBatches(
+                    proceedBy,
+                    data,
+                    page,
+                    createdBefore,
+                    index
+                ),
+                this.notificationTermPolicyDomain.sendFreshBatch(
+                    proceedBy,
+                    data,
+                    page.freshUsers,
+                    index + page.pendingBatchIds.length
+                ),
+            ]);
+
+            index += pendingBatches + freshBatches;
+            candidateCounts += pageUsers.length;
+            createdCounts += page.freshUsers.length;
+            cursor = lastUserId;
+            hasNextPage = pageUsers.length === batchSize;
+        }
+
+        const message = this.messageService.setMessage(
+            'notification.queue.publishTermPolicy'
+        );
+
+        return {
+            message,
+            candidateCounts,
+            createdCounts,
+            batches: index,
+        };
     }
 
     async processUserAcceptTermPolicy(

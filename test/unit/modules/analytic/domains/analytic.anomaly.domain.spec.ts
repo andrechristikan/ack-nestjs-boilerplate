@@ -1,3 +1,4 @@
+import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumPaginationOrderDirectionType,
@@ -20,12 +21,12 @@ import {
 } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
-import { AnalyticGeoUtil } from '@modules/analytic/utils/analytic.geo.util';
+import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
-import { UserLoginAnalyticDomain } from '@modules/user/domains/user.login.analytic.domain';
+import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { createAnalyticAnomalyDomain } from '@test/unit/helpers/test.unit.analytic.helper';
 import type { IAnalyticAnomalyDomainDoubles } from '@test/unit/helpers/test.unit.analytic.helper';
 
@@ -33,7 +34,8 @@ describe('AnalyticAnomalyDomain', () => {
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
-    const analyticGeoUtil: MockProxy<AnalyticGeoUtil> = mock<AnalyticGeoUtil>();
+    const analyticAnomalyUtil: MockProxy<AnalyticAnomalyUtil> =
+        mock<AnalyticAnomalyUtil>();
     const analyticSortUtil: MockProxy<AnalyticSortUtil> =
         mock<AnalyticSortUtil>();
     const paginationService: MockProxy<PaginationService> =
@@ -48,8 +50,8 @@ describe('AnalyticAnomalyDomain', () => {
         mock<SessionAnalyticDomain>();
     const userAnalyticDomain: MockProxy<UserAnalyticDomain> =
         mock<UserAnalyticDomain>();
-    const userLoginAnalyticDomain: MockProxy<UserLoginAnalyticDomain> =
-        mock<UserLoginAnalyticDomain>();
+    const activityLogAnalyticDomain: MockProxy<ActivityLogAnalyticDomain> =
+        mock<ActivityLogAnalyticDomain>();
     const deviceAnalyticDomain: MockProxy<DeviceAnalyticDomain> =
         mock<DeviceAnalyticDomain>();
 
@@ -98,14 +100,14 @@ describe('AnalyticAnomalyDomain', () => {
     const doubles: IAnalyticAnomalyDomainDoubles = {
         analyticCache,
         analyticDateUtil,
-        analyticGeoUtil,
+        analyticAnomalyUtil,
         analyticSortUtil,
         paginationService,
         configService,
         helperDateService,
         sessionAnalyticDomain,
         userAnalyticDomain,
-        userLoginAnalyticDomain,
+        activityLogAnalyticDomain,
         deviceAnalyticDomain,
     };
 
@@ -127,9 +129,16 @@ describe('AnalyticAnomalyDomain', () => {
         });
         analyticCache.getAnomalySummary.mockResolvedValue(null);
         analyticDateUtil.windowToken.mockReturnValue('window-token');
+        analyticDateUtil.windowRange.mockReturnValue({
+            startDate,
+            endDate: now,
+        });
         helperDateService.create.mockReturnValue(now);
         helperDateService.backward.mockReturnValue(startDate);
-        analyticSortUtil.sortRows.mockImplementation(rows => rows);
+        analyticAnomalyUtil.findImpossibleTravel.mockReturnValue([]);
+        analyticAnomalyUtil.groupByIp.mockReturnValue(new Map());
+        analyticAnomalyUtil.findLoginTimeAnomalies.mockReturnValue([]);
+        analyticSortUtil.sortPage.mockReturnValue({ data: [], total: 0 });
         paginationService.offsetPage.mockReturnValue(offsetPage);
 
         domain = await createAnalyticAnomalyDomain(doubles);
@@ -183,9 +192,9 @@ describe('AnalyticAnomalyDomain', () => {
             );
 
             expect(result).toEqual(offsetPage);
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
                 [],
-                [],
+                pagination,
                 AnalyticImpossibleTravelAvailableOrderBy
             );
             expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
@@ -194,7 +203,7 @@ describe('AnalyticAnomalyDomain', () => {
             });
         });
 
-        it('slices the sorted rows and counts them', async () => {
+        it('pages the sorted slice and total the sort util returns', async () => {
             sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue([]);
             const sorted = [
                 {
@@ -212,7 +221,10 @@ describe('AnalyticAnomalyDomain', () => {
                     deltaMs: 2000,
                 },
             ];
-            analyticSortUtil.sortRows.mockReturnValue(sorted);
+            analyticSortUtil.sortPage.mockReturnValue({
+                data: [sorted[1]!],
+                total: 2,
+            });
 
             await domain.impossibleTravelList(startDate, endDate, {
                 skip: 1,
@@ -220,9 +232,13 @@ describe('AnalyticAnomalyDomain', () => {
                 orderBy,
             });
 
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
                 [],
-                orderBy,
+                {
+                    skip: 1,
+                    limit: 1,
+                    orderBy,
+                },
                 AnalyticImpossibleTravelAvailableOrderBy
             );
             expect(paginationService.offsetPage).toHaveBeenCalledWith(
@@ -242,24 +258,28 @@ describe('AnalyticAnomalyDomain', () => {
 
             expect(result).toEqual(cached);
             expect(
-                userLoginAnalyticDomain.getLoginActivityLogs
+                activityLogAnalyticDomain.getManyByActionsInRange
             ).not.toHaveBeenCalled();
         });
 
         it('uses the configured window when windowMs is omitted', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
 
             const result = await domain.loginSpikeIpSummary(null);
 
             expect(result.window).toBe('3600000');
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                Duration.fromMillis(3600000)
-            );
+            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
+            expect(
+                activityLogAnalyticDomain.getManyByActionsInRange
+            ).toHaveBeenCalledWith(UserLoginAnalyticActions, startDate, now);
         });
 
         it('uses the supplied windowMs when present', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
 
             const result = await domain.loginSpikeIpSummary(600000);
 
@@ -274,14 +294,16 @@ describe('AnalyticAnomalyDomain', () => {
 
     describe('loginSpikeIpList', () => {
         it('pages spike rows for the configured window', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
 
             const result = await domain.loginSpikeIpList(null, pagination);
 
             expect(result).toEqual(offsetPage);
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
                 [],
-                [],
+                pagination,
                 AnalyticLoginSpikeIpAvailableOrderBy
             );
             expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
@@ -290,13 +312,18 @@ describe('AnalyticAnomalyDomain', () => {
             });
         });
 
-        it('slices the sorted rows and counts them', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+        it('pages the sorted slice and total the sort util returns', async () => {
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
             const sorted = [
                 { ipAddress: '10.0.0.1', uniqueUsers: 4, attempts: 9 },
                 { ipAddress: '10.0.0.2', uniqueUsers: 2, attempts: 5 },
             ];
-            analyticSortUtil.sortRows.mockReturnValue(sorted);
+            analyticSortUtil.sortPage.mockReturnValue({
+                data: [sorted[1]!],
+                total: 2,
+            });
 
             await domain.loginSpikeIpList(null, {
                 skip: 1,
@@ -304,9 +331,13 @@ describe('AnalyticAnomalyDomain', () => {
                 orderBy,
             });
 
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
                 [],
-                orderBy,
+                {
+                    skip: 1,
+                    limit: 1,
+                    orderBy,
+                },
                 AnalyticLoginSpikeIpAvailableOrderBy
             );
             expect(paginationService.offsetPage).toHaveBeenCalledWith(
@@ -436,6 +467,10 @@ describe('AnalyticAnomalyDomain', () => {
                 stdDev: 0.5,
                 rows,
             });
+            analyticSortUtil.sortPage.mockReturnValue({
+                data: [rows[1]!],
+                total: 2,
+            });
 
             const result = await domain.deviceProliferationList({
                 skip: 1,
@@ -444,9 +479,13 @@ describe('AnalyticAnomalyDomain', () => {
             });
 
             expect(result).toEqual(offsetPage);
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
                 rows,
-                [],
+                {
+                    skip: 1,
+                    limit: 1,
+                    orderBy: [],
+                },
                 AnalyticDeviceProliferationAvailableOrderBy
             );
             expect(paginationService.offsetPage).toHaveBeenCalledWith(
@@ -456,7 +495,7 @@ describe('AnalyticAnomalyDomain', () => {
             );
         });
 
-        it('slices the sorted rows and counts them', async () => {
+        it('pages the sorted slice and total the sort util returns', async () => {
             const rows = [
                 { userId: 'user-1', deviceCount: 8, zScore: 3.1 },
                 { userId: 'user-2', deviceCount: 9, zScore: 3.4 },
@@ -467,8 +506,10 @@ describe('AnalyticAnomalyDomain', () => {
                 stdDev: 0.5,
                 rows,
             });
-            const sorted = [rows[1]!, rows[0]!];
-            analyticSortUtil.sortRows.mockReturnValue(sorted);
+            analyticSortUtil.sortPage.mockReturnValue({
+                data: [rows[1]!],
+                total: 2,
+            });
 
             await domain.deviceProliferationList({
                 skip: 0,
@@ -476,9 +517,13 @@ describe('AnalyticAnomalyDomain', () => {
                 orderBy,
             });
 
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
                 rows,
-                orderBy,
+                {
+                    skip: 0,
+                    limit: 1,
+                    orderBy,
+                },
                 AnalyticDeviceProliferationAvailableOrderBy
             );
             expect(paginationService.offsetPage).toHaveBeenCalledWith(
@@ -500,7 +545,9 @@ describe('AnalyticAnomalyDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
 
             const result = await domain.loginTimeSummary(startDate, endDate);
 
@@ -515,7 +562,9 @@ describe('AnalyticAnomalyDomain', () => {
 
     describe('loginTimeList', () => {
         it('pages login-time anomalies through PaginationService.offsetPage', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
 
             const result = await domain.loginTimeList(
                 startDate,
@@ -524,9 +573,9 @@ describe('AnalyticAnomalyDomain', () => {
             );
 
             expect(result).toEqual(offsetPage);
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
                 [],
-                [],
+                pagination,
                 AnalyticLoginTimeAnomalyAvailableOrderBy
             );
             expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
@@ -535,8 +584,10 @@ describe('AnalyticAnomalyDomain', () => {
             });
         });
 
-        it('slices the sorted rows and counts them', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+        it('pages the sorted slice and total the sort util returns', async () => {
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
             const sorted = [
                 {
                     userId: 'user-1',
@@ -549,7 +600,10 @@ describe('AnalyticAnomalyDomain', () => {
                     historicalFrequencyPercent: 1,
                 },
             ];
-            analyticSortUtil.sortRows.mockReturnValue(sorted);
+            analyticSortUtil.sortPage.mockReturnValue({
+                data: [sorted[1]!],
+                total: 2,
+            });
 
             await domain.loginTimeList(startDate, endDate, {
                 skip: 1,
@@ -557,9 +611,13 @@ describe('AnalyticAnomalyDomain', () => {
                 orderBy,
             });
 
-            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
                 [],
-                orderBy,
+                {
+                    skip: 1,
+                    limit: 1,
+                    orderBy,
+                },
                 AnalyticLoginTimeAnomalyAvailableOrderBy
             );
             expect(paginationService.offsetPage).toHaveBeenCalledWith(
@@ -570,35 +628,9 @@ describe('AnalyticAnomalyDomain', () => {
         });
     });
 
-    describe('windowToken', () => {
-        it('stringifies a truthy windowMs', () => {
-            expect(domain['windowToken'](null, null, 3600000)).toBe('3600000');
-            expect(analyticDateUtil.windowToken).not.toHaveBeenCalled();
-        });
-
-        it('falls back to the date-util window token when windowMs is absent', () => {
-            expect(domain['windowToken'](startDate, endDate, null)).toBe(
-                'window-token'
-            );
-            expect(analyticDateUtil.windowToken).toHaveBeenCalledWith(
-                startDate,
-                endDate
-            );
-        });
-
-        it('passes null into the date util when dates are null', () => {
-            domain['windowToken'](null, null, null);
-
-            expect(analyticDateUtil.windowToken).toHaveBeenCalledWith(
-                null,
-                null
-            );
-        });
-    });
-
     describe('getImpossibleTravelUserIds', () => {
         it('returns the distinct users with an impossible-travel pair', async () => {
-            sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue([
+            const sessions = [
                 {
                     id: 'session-1',
                     userId: 'user-1',
@@ -607,24 +639,26 @@ describe('AnalyticAnomalyDomain', () => {
                     geoLocation: nyc,
                     userAgent: emptyAgent,
                 },
+            ];
+            sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue(
+                sessions
+            );
+            analyticAnomalyUtil.findImpossibleTravel.mockReturnValue([
                 {
-                    id: 'session-2',
                     userId: 'user-1',
-                    ipAddress: null,
-                    createdAt: new Date('2026-01-01T00:10:00.000Z'),
-                    geoLocation: london,
-                    userAgent: emptyAgent,
+                    fromSessionId: 'session-1',
+                    toSessionId: 'session-2',
+                    distanceKm: 800,
+                    deltaMs: 1000,
                 },
                 {
-                    id: 'session-3',
                     userId: 'user-1',
-                    ipAddress: null,
-                    createdAt: new Date('2026-01-01T00:20:00.000Z'),
-                    geoLocation: nyc,
-                    userAgent: emptyAgent,
+                    fromSessionId: 'session-2',
+                    toSessionId: 'session-3',
+                    distanceKm: 900,
+                    deltaMs: 2000,
                 },
             ]);
-            analyticGeoUtil.distanceKm.mockReturnValue(800);
 
             const result = await domain.getImpossibleTravelUserIds(
                 startDate,
@@ -635,6 +669,9 @@ describe('AnalyticAnomalyDomain', () => {
             expect(
                 sessionAnalyticDomain.getActiveWithGeoInRange
             ).toHaveBeenCalledWith(startDate, endDate, now);
+            expect(
+                analyticAnomalyUtil.findImpossibleTravel
+            ).toHaveBeenCalledWith(sessions, 500, 3600000);
         });
     });
 
@@ -649,8 +686,8 @@ describe('AnalyticAnomalyDomain', () => {
             ).toHaveBeenCalledWith(null, null, now);
         });
 
-        it('flags consecutive sessions that travel too far too fast', async () => {
-            sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue([
+        it('returns the pairs the anomaly util flags with the configured limits', async () => {
+            const sessions = [
                 {
                     id: 'session-1',
                     userId: 'user-1',
@@ -667,15 +704,8 @@ describe('AnalyticAnomalyDomain', () => {
                     geoLocation: london,
                     userAgent: emptyAgent,
                 },
-            ]);
-            analyticGeoUtil.distanceKm.mockReturnValue(800);
-
-            const result = await domain['computeImpossibleTravel'](
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual([
+            ];
+            const flagged = [
                 {
                     userId: 'user-1',
                     fromSessionId: 'session-1',
@@ -683,100 +713,27 @@ describe('AnalyticAnomalyDomain', () => {
                     distanceKm: 800,
                     deltaMs: 600000,
                 },
-            ]);
-        });
-
-        it('skips a pair when either session has no geo, distance is short, or delta is slow', async () => {
-            sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue([
-                {
-                    id: 'solo',
-                    userId: 'user-solo',
-                    ipAddress: null,
-                    createdAt: startDate,
-                    geoLocation: nyc,
-                    userAgent: emptyAgent,
-                },
-                {
-                    id: 'a1',
-                    userId: 'user-a',
-                    ipAddress: null,
-                    createdAt: startDate,
-                    geoLocation: null,
-                    userAgent: emptyAgent,
-                },
-                {
-                    id: 'a2',
-                    userId: 'user-a',
-                    ipAddress: null,
-                    createdAt: new Date('2026-01-01T00:10:00.000Z'),
-                    geoLocation: london,
-                    userAgent: emptyAgent,
-                },
-                {
-                    id: 'b1',
-                    userId: 'user-b',
-                    ipAddress: null,
-                    createdAt: startDate,
-                    geoLocation: nyc,
-                    userAgent: emptyAgent,
-                },
-                {
-                    id: 'b2',
-                    userId: 'user-b',
-                    ipAddress: null,
-                    createdAt: new Date('2026-01-01T00:10:00.000Z'),
-                    geoLocation: null,
-                    userAgent: emptyAgent,
-                },
-                {
-                    id: 'c1',
-                    userId: 'user-c',
-                    ipAddress: null,
-                    createdAt: startDate,
-                    geoLocation: nyc,
-                    userAgent: emptyAgent,
-                },
-                {
-                    id: 'c2',
-                    userId: 'user-c',
-                    ipAddress: null,
-                    createdAt: new Date('2026-01-01T00:10:00.000Z'),
-                    geoLocation: london,
-                    userAgent: emptyAgent,
-                },
-                {
-                    id: 'd1',
-                    userId: 'user-d',
-                    ipAddress: null,
-                    createdAt: startDate,
-                    geoLocation: nyc,
-                    userAgent: emptyAgent,
-                },
-                {
-                    id: 'd2',
-                    userId: 'user-d',
-                    ipAddress: null,
-                    createdAt: new Date('2026-01-02T00:00:00.000Z'),
-                    geoLocation: london,
-                    userAgent: emptyAgent,
-                },
-            ]);
-            analyticGeoUtil.distanceKm
-                .mockReturnValueOnce(100)
-                .mockReturnValueOnce(800);
+            ];
+            sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue(
+                sessions
+            );
+            analyticAnomalyUtil.findImpossibleTravel.mockReturnValue(flagged);
 
             const result = await domain['computeImpossibleTravel'](
                 startDate,
                 endDate
             );
 
-            expect(result).toEqual([]);
+            expect(result).toBe(flagged);
+            expect(
+                analyticAnomalyUtil.findImpossibleTravel
+            ).toHaveBeenCalledWith(sessions, 500, 3600000);
         });
     });
 
     describe('computeLoginSpikeIp', () => {
-        it('groups unique users per ip, treats a missing ip as unknown, and sorts by unique users', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([
+        it('keeps ips at or above the unique-account minimum, sorted by unique users', async () => {
+            const logs = [
                 {
                     id: 'e1',
                     userId: 'user-1',
@@ -786,52 +743,17 @@ describe('AnalyticAnomalyDomain', () => {
                     workspaceId: null,
                     userAgent: null,
                 },
-                {
-                    id: 'e2',
-                    userId: 'user-2',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e3',
-                    userId: 'user-3',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: null,
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e4',
-                    userId: 'user-4',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: null,
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e5',
-                    userId: 'user-5',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: null,
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e6',
-                    userId: 'user-6',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.2',
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-            ]);
+            ];
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                logs
+            );
+            analyticAnomalyUtil.groupByIp.mockReturnValue(
+                new Map([
+                    ['10.0.0.1', { users: new Set(['a', 'b']), count: 2 }],
+                    ['unknown', { users: new Set(['a', 'b', 'c']), count: 3 }],
+                    ['10.0.0.2', { users: new Set(['a']), count: 1 }],
+                ])
+            );
 
             const result = await domain['computeLoginSpikeIp'](3600000);
 
@@ -839,6 +761,8 @@ describe('AnalyticAnomalyDomain', () => {
                 { ipAddress: 'unknown', uniqueUsers: 3, attempts: 3 },
                 { ipAddress: '10.0.0.1', uniqueUsers: 2, attempts: 2 },
             ]);
+            expect(analyticAnomalyUtil.groupByIp).toHaveBeenCalledWith(logs);
+            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
         });
     });
 
@@ -846,7 +770,9 @@ describe('AnalyticAnomalyDomain', () => {
         it('uses now and a 30-day lookback when dates are omitted', async () => {
             const defaultStart = new Date('2026-01-30T00:00:00.000Z');
             helperDateService.backward.mockReturnValue(defaultStart);
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
 
             await domain['computeLoginTimeAnomalies'](null, null);
 
@@ -855,146 +781,52 @@ describe('AnalyticAnomalyDomain', () => {
                 Duration.fromObject({ days: 30 })
             );
             expect(
-                userLoginAnalyticDomain.getLoginActivityLogs
-            ).toHaveBeenCalledWith(defaultStart, now);
+                activityLogAnalyticDomain.getManyByActionsInRange
+            ).toHaveBeenCalledWith(UserLoginAnalyticActions, defaultStart, now);
         });
 
-        it('skips users with fewer than five logins and flags a rare last hour', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([
+        it('returns the anomalies the anomaly util finds at the configured threshold', async () => {
+            const logs = [
                 {
                     id: 'e0',
                     userId: 'user-1',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e1',
-                    userId: 'user-1',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e2',
-                    userId: 'user-1',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e3',
-                    userId: 'user-1',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e4',
-                    userId: 'user-1',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e5',
-                    userId: 'user-1',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T03:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-            ]);
-
-            const result = await domain['computeLoginTimeAnomalies'](
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual([
-                {
-                    userId: 'user-1',
-                    lastHour: 3,
-                    historicalFrequencyPercent: (1 / 6) * 100,
-                },
-            ]);
-        });
-
-        it('does not flag a last hour at or above the frequency threshold', async () => {
-            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([
-                {
-                    id: 'keep-0',
-                    userId: 'user-keep',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'keep-1',
-                    userId: 'user-keep',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'keep-2',
-                    userId: 'user-keep',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'keep-3',
-                    userId: 'user-keep',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'keep-4',
-                    userId: 'user-keep',
-                    action: EnumActivityLogAction.userLoginCredential,
-                    ipAddress: '10.0.0.1',
-                    createdAt: new Date('2026-01-01T08:00:00.000Z'),
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'short',
-                    userId: 'user-short',
                     action: EnumActivityLogAction.userLoginCredential,
                     ipAddress: '10.0.0.1',
                     createdAt: startDate,
                     workspaceId: null,
                     userAgent: null,
                 },
-            ]);
+            ];
+            const anomalies = [
+                {
+                    userId: 'user-1',
+                    lastHour: 3,
+                    historicalFrequencyPercent: 5,
+                },
+            ];
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                logs
+            );
+            analyticAnomalyUtil.findLoginTimeAnomalies.mockReturnValue(
+                anomalies
+            );
 
             const result = await domain['computeLoginTimeAnomalies'](
                 startDate,
                 endDate
             );
 
-            expect(result).toEqual([]);
+            expect(result).toBe(anomalies);
+            expect(
+                activityLogAnalyticDomain.getManyByActionsInRange
+            ).toHaveBeenCalledWith(
+                UserLoginAnalyticActions,
+                startDate,
+                endDate
+            );
+            expect(
+                analyticAnomalyUtil.findLoginTimeAnomalies
+            ).toHaveBeenCalledWith(logs, 20);
         });
     });
 });

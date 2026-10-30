@@ -5,12 +5,13 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
@@ -22,7 +23,8 @@ export class ProjectMemberHttpService {
         private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
     async getMembersList(
@@ -55,12 +57,34 @@ export class ProjectMemberHttpService {
                 project.workspaceId,
                 userId
             );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberAssigned,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+                metadata: { targetUserId: userId },
+            }),
+        ];
+        if (userId !== actorId) {
+            const assignedByAdminActivityLog = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberAssignedByAdmin,
+                userId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+                metadata: { actorUserId: actorId },
+            });
+            activityLogs.push(assignedByAdminActivityLog);
+        }
+
         const member = await this.projectMemberDomain.assignMember(
             project,
             actorId,
             targetMember,
             role
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: member };
     }
@@ -71,12 +95,33 @@ export class ProjectMemberHttpService {
         targetMemberId: string,
         { role }: ProjectMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.projectMemberDomain.updateMemberRole(
+        const targetMember = await this.projectMemberDomain.updateMemberRole(
             project,
-            actorId,
             targetMemberId,
             role
         );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberRoleUpdated,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+                metadata: { targetUserId: targetMember.userId },
+            }),
+        ];
+        if (targetMember.userId !== actorId) {
+            const roleUpdatedByAdminActivityLog =
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
+                    userId: targetMember.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                });
+            activityLogs.push(roleUpdatedByAdminActivityLog);
+        }
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -86,11 +131,29 @@ export class ProjectMemberHttpService {
         actorId: string,
         targetMemberId: string
     ): Promise<IResponseReturn<void>> {
-        await this.projectMemberDomain.removeMember(
+        const targetMember = await this.projectMemberDomain.removeMember(
             project,
             actorId,
             targetMemberId
         );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberRemoved,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+                metadata: { targetUserId: targetMember.userId },
+            }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberRemovedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+                metadata: { actorUserId: actorId },
+            }),
+        ];
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -99,7 +162,18 @@ export class ProjectMemberHttpService {
         project: Project,
         member: ProjectMember
     ): Promise<IResponseReturn<void>> {
-        await this.projectMemberDomain.leaveProject(project, member);
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberLeft,
+                userId: member.userId,
+                createdBy: member.userId,
+                workspaceId: project.workspaceId,
+            }),
+        ];
+
+        await this.projectMemberDomain.leaveProject(member);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

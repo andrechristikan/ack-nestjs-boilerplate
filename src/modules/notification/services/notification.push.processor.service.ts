@@ -1,3 +1,4 @@
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
@@ -10,12 +11,12 @@ import type {
     INotificationWorkspaceJoinRejectedPayload,
     INotificationWorkspaceJoinRequestPushPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
 import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { OnModuleInit } from '@nestjs/common';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { Job } from 'bullmq';
@@ -27,10 +28,11 @@ export class NotificationPushProcessorService implements OnModuleInit {
     constructor(
         private readonly notificationPushSecurityDomain: NotificationPushSecurityDomain,
         private readonly notificationPushWorkspaceDomain: NotificationPushWorkspaceDomain,
-        private readonly notificationPushMaintenanceDomain: NotificationPushMaintenanceDomain,
         private readonly notificationPushQueue: NotificationPushQueue,
+        private readonly deviceDomain: DeviceDomain,
         private readonly notificationUtil: NotificationUtil,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly configService: ConfigService
     ) {}
 
     private async recordSteps<T>(
@@ -296,15 +298,36 @@ export class NotificationPushProcessorService implements OnModuleInit {
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushMaintenanceDomain.processCleanupTokens(
+        const failureTokens = this.notificationUtil.decryptFailureTokens(
             userId,
             encryptedFailureTokens
+        );
+        const countRemovedTokens =
+            await this.deviceDomain.cleanupNotificationTokens(
+                userId,
+                failureTokens
+            );
+
+        return this.notificationUtil.toCleanupTokensResult(
+            failureTokens.length,
+            countRemovedTokens
         );
     }
 
     async processCleanupStaleTokens(): Promise<IQueueResponse> {
-        return this.notificationPushMaintenanceDomain.processCleanupStaleTokens();
+        const thresholdInMs = this.configService.get<number>(
+            'notification.push.staleTokenThresholdInMs'
+        )!;
+        const countRemovedTokens =
+            await this.deviceDomain.cleanupStaleNotificationTokens(
+                thresholdInMs
+            );
+
+        return this.notificationUtil.toCleanupStaleTokensResult(
+            countRemovedTokens
+        );
     }
+
     processUnknown(process: string): never {
         const message = this.messageService.setMessage(
             'notification.queue.push.error.unknownProcess',

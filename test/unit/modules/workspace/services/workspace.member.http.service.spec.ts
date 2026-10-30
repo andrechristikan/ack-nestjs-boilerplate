@@ -11,9 +11,17 @@ import type {
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumWorkspaceMemberRole,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
+import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
+import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
@@ -29,6 +37,8 @@ import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspac
 describe('WorkspaceMemberHttpService', () => {
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
         mock<WorkspaceMemberDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -46,6 +56,14 @@ describe('WorkspaceMemberHttpService', () => {
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
+    const stagedActivityLog: IActivityLogStaged = {
+        action: EnumActivityLogAction.workspaceMemberLeft,
+        metadata: {},
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
+    };
+
     const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput> =
         { limit: 20, orderBy: [] };
     const offsetPagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput> =
@@ -55,6 +73,7 @@ describe('WorkspaceMemberHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -71,6 +90,7 @@ describe('WorkspaceMemberHttpService', () => {
                     provide: WorkspaceMemberDomain,
                     useValue: workspaceMemberDomain,
                 },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -83,27 +103,117 @@ describe('WorkspaceMemberHttpService', () => {
     });
 
     describe('transferOwnership', () => {
-        it('transfers ownership to the target user', async () => {
+        it('prepares both ownership rows, transfers, and stages them after the transfer', async () => {
             const body: WorkspaceTransferOwnershipRequestDto = {
                 targetUserId: 'user-2',
             };
+            const callOrder: string[] = [];
+            activityLogDomain.prepare.mockImplementation(() => {
+                callOrder.push('prepare');
 
-            await service.transferOwnership('workspace-1', member, body);
+                return stagedActivityLog;
+            });
+            workspaceMemberDomain.transferOwnership.mockImplementation(
+                async () => {
+                    callOrder.push('transfer');
+                }
+            );
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stage');
+            });
 
+            const result = await service.transferOwnership(
+                'workspace-1',
+                member,
+                body
+            );
+
+            expect(result).toEqual({});
             expect(
                 workspaceMemberDomain.transferOwnership
             ).toHaveBeenCalledWith('workspace-1', member, 'user-2');
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
+                action: EnumActivityLogAction.workspaceOwnershipTransferred,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: { targetUserId: 'user-2' },
+            });
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
+                action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
+                userId: 'user-2',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: { actorUserId: 'user-1' },
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+                stagedActivityLog,
+            ]);
+            expect(callOrder).toEqual([
+                'prepare',
+                'prepare',
+                'transfer',
+                'stage',
+            ]);
+        });
+
+        it('stages nothing when the transfer rejects', async () => {
+            workspaceMemberDomain.transferOwnership.mockRejectedValue(
+                new WorkspaceSelfTransferException()
+            );
+
+            await expect(
+                service.transferOwnership('workspace-1', member, {
+                    targetUserId: 'user-1',
+                })
+            ).rejects.toBeInstanceOf(WorkspaceSelfTransferException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
     describe('leaveWorkspace', () => {
-        it('removes the member from the workspace', async () => {
-            await service.leaveWorkspace('workspace-1', member);
+        it('prepares the left row, removes the member, and stages it after', async () => {
+            const callOrder: string[] = [];
+            activityLogDomain.prepare.mockImplementation(() => {
+                callOrder.push('prepare');
 
+                return stagedActivityLog;
+            });
+            workspaceMemberDomain.leaveWorkspace.mockImplementation(
+                async () => {
+                    callOrder.push('leave');
+                }
+            );
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stage');
+            });
+
+            const result = await service.leaveWorkspace('workspace-1', member);
+
+            expect(result).toEqual({});
             expect(workspaceMemberDomain.leaveWorkspace).toHaveBeenCalledWith(
                 'workspace-1',
                 member
             );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.workspaceMemberLeft,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+            });
+            expect(callOrder).toEqual(['prepare', 'leave', 'stage']);
+        });
+
+        it('stages nothing when leaving rejects', async () => {
+            workspaceMemberDomain.leaveWorkspace.mockRejectedValue(
+                new WorkspaceLastOwnerException()
+            );
+
+            await expect(
+                service.leaveWorkspace('workspace-1', member)
+            ).rejects.toBeInstanceOf(WorkspaceLastOwnerException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -164,36 +274,119 @@ describe('WorkspaceMemberHttpService', () => {
     });
 
     describe('updateMemberRole', () => {
-        it('updates the member role', async () => {
+        const target: WorkspaceMember = {
+            ...member,
+            id: 'member-2',
+            userId: 'user-2',
+            role: EnumWorkspaceMemberRole.member,
+        };
+
+        it('updates the role then stages the actor row and the target row from the returned target', async () => {
             const body: WorkspaceMemberUpdateRoleRequestDto = {
                 role: EnumWorkspaceMemberRole.admin,
             };
+            workspaceMemberDomain.updateMemberRole.mockResolvedValue(target);
 
-            await service.updateMemberRole(
+            const result = await service.updateMemberRole(
                 'workspace-1',
                 member,
                 'member-2',
                 body
             );
 
+            expect(result).toEqual({});
             expect(workspaceMemberDomain.updateMemberRole).toHaveBeenCalledWith(
                 'workspace-1',
                 member,
                 'member-2',
                 EnumWorkspaceMemberRole.admin
             );
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
+                action: EnumActivityLogAction.workspaceMemberRoleUpdated,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: { targetUserId: 'user-2' },
+            });
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
+                action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
+                userId: 'user-2',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: { actorUserId: 'user-1' },
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+                stagedActivityLog,
+            ]);
+        });
+
+        it('stages nothing when the update rejects', async () => {
+            workspaceMemberDomain.updateMemberRole.mockRejectedValue(
+                new WorkspaceMemberNotFoundException()
+            );
+
+            await expect(
+                service.updateMemberRole('workspace-1', member, 'member-2', {
+                    role: EnumWorkspaceMemberRole.admin,
+                })
+            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
+            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
     describe('removeMember', () => {
-        it('removes the target member', async () => {
-            await service.removeMember('workspace-1', member, 'member-2');
+        it('removes the member then stages the actor row and the target row from the returned target', async () => {
+            const target: WorkspaceMember = {
+                ...member,
+                id: 'member-2',
+                userId: 'user-2',
+                role: EnumWorkspaceMemberRole.member,
+            };
+            workspaceMemberDomain.removeMember.mockResolvedValue(target);
 
+            const result = await service.removeMember(
+                'workspace-1',
+                member,
+                'member-2'
+            );
+
+            expect(result).toEqual({});
             expect(workspaceMemberDomain.removeMember).toHaveBeenCalledWith(
                 'workspace-1',
                 member,
                 'member-2'
             );
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
+                action: EnumActivityLogAction.workspaceMemberRemoved,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: { targetUserId: 'user-2' },
+            });
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
+                action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
+                userId: 'user-2',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: { actorUserId: 'user-1' },
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+                stagedActivityLog,
+            ]);
+        });
+
+        it('stages nothing when the removal rejects', async () => {
+            workspaceMemberDomain.removeMember.mockRejectedValue(
+                new WorkspaceMemberNotFoundException()
+            );
+
+            await expect(
+                service.removeMember('workspace-1', member, 'member-2')
+            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 

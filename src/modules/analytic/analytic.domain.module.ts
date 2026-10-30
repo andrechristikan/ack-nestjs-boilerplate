@@ -4,8 +4,10 @@ import { AnalyticDashboardDomain } from '@modules/analytic/domains/analytic.dash
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
 import { AnalyticWorkspaceUserDomain } from '@modules/analytic/domains/analytic.workspace-user.domain';
+import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
+import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
-import { AnalyticGeoUtil } from '@modules/analytic/utils/analytic.geo.util';
+import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { ActivityLogDomainModule } from '@modules/activity-log/activity-log.domain.module';
 import { ApiKeyDomainModule } from '@modules/api-key/api-key.domain.module';
@@ -23,7 +25,9 @@ import { Module } from '@nestjs/common';
     providers: [
         AnalyticCache,
         AnalyticDateUtil,
-        AnalyticGeoUtil,
+        AnalyticAnomalyUtil,
+        AnalyticFraudUtil,
+        AnalyticBucketUtil,
         AnalyticSortUtil,
         AnalyticDateDomain,
         AnalyticDashboardDomain,
@@ -33,7 +37,6 @@ import { Module } from '@nestjs/common';
     ],
     exports: [
         AnalyticCache,
-        AnalyticGeoUtil,
         AnalyticDateDomain,
         AnalyticDashboardDomain,
         AnalyticAnomalyDomain,

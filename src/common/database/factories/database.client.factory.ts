@@ -4,14 +4,16 @@ import type {
     IDatabaseClient,
     IDatabaseClientOptions,
 } from '@common/database/interfaces/database.client.interface';
-import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
+import { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
 
 @Injectable()
 export class DatabaseClientFactory extends PrismaClient<
     IDatabaseClientOptions,
     'query' | 'error' | 'warn' | 'info'
 > {
-    constructor(private readonly databaseExtensionUtil: DatabaseExtensionUtil) {
+    constructor(
+        private readonly databaseExtensionFactory: DatabaseExtensionFactory
+    ) {
         super({
             log: [
                 { emit: 'event', level: 'query' },
@@ -25,7 +27,7 @@ export class DatabaseClientFactory extends PrismaClient<
 
     /** Applies the audit extension to this connection. */
     create(): IDatabaseClient {
-        const extension = this.databaseExtensionUtil.build();
+        const extension = this.databaseExtensionFactory.build();
 
         return this.$extends(extension);
     }

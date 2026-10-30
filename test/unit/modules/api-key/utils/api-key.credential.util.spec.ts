@@ -44,10 +44,10 @@ describe('ApiKeyCredentialUtil', () => {
             expect(helperStringService.random).not.toHaveBeenCalled();
         });
 
-        it('prefixes a random value with the current environment when no key is given', () => {
+        it('prefixes a random value with the current environment when the key is null', () => {
             helperStringService.random.mockReturnValue('random-key');
 
-            const result = util.createKey();
+            const result = util.createKey(null);
 
             expect(result).toBe('local_random-key');
             expect(helperStringService.random).toHaveBeenCalledWith(25);
@@ -79,7 +79,7 @@ describe('ApiKeyCredentialUtil', () => {
     });
 
     describe('generateCredential', () => {
-        it('generates a key, secret, and hash when no key is given', () => {
+        it('generates a key, secret, and hash', () => {
             helperStringService.random
                 .mockReturnValueOnce('random-key')
                 .mockReturnValueOnce('random-secret');
@@ -96,18 +96,24 @@ describe('ApiKeyCredentialUtil', () => {
                 'local_random-key:random-secret'
             );
         });
+    });
 
-        it('uses the given key when one is passed', () => {
-            helperStringService.random.mockReturnValue('random-secret');
-            helperHashService.sha256Hash.mockReturnValue('hashed-value');
-
-            const result = util.generateCredential('given-key');
-
-            expect(result).toEqual({
-                key: 'given-key',
-                secret: 'random-secret',
-                hash: 'hashed-value',
+    describe('parseHeader', () => {
+        it('returns the key and secret of a key:secret header', () => {
+            expect(util.parseHeader('local_abc123:secret-1')).toEqual({
+                key: 'local_abc123',
+                secret: 'secret-1',
             });
+        });
+
+        it.each([
+            ['no separator', 'local_abc123'],
+            ['two separators', 'local_abc123:secret:extra'],
+            ['a blank key', ' :secret'],
+            ['a blank secret', 'local_abc123: '],
+            ['an empty secret', 'local_abc123:'],
+        ])('returns null for a header with %s', (_label, header) => {
+            expect(util.parseHeader(header)).toBeNull();
         });
     });
 

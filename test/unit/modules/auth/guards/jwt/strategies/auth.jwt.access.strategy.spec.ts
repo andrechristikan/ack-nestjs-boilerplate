@@ -5,6 +5,8 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { SessionDomain } from '@modules/session/domains/session.domain';
+import type { ISessionCache } from '@modules/session/interfaces/session.interface';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import {
@@ -14,6 +16,7 @@ import {
 
 describe('AuthJwtAccessStrategy', () => {
     const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
     const configGet = vi.fn<(key: string) => string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -38,6 +41,7 @@ describe('AuthJwtAccessStrategy', () => {
             providers: [
                 AuthJwtAccessStrategy,
                 { provide: AuthDomain, useValue: authDomain },
+                { provide: SessionDomain, useValue: sessionDomain },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -76,26 +80,78 @@ describe('AuthJwtAccessStrategy', () => {
     });
 
     describe('validate', () => {
-        it('delegates session and payload checks to AuthDomain', async () => {
-            const payload: IAuthJwtAccessTokenPayload = {
-                loginAt: new Date('2026-01-01T00:00:00.000Z'),
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.credential,
-                email: 'jane@example.com',
-                username: 'jane',
-                userId: 'user-1',
-                sessionId: 'session-1',
-                deviceOwnershipId: 'device-1',
-                roleId: 'role-1',
-            };
-            authDomain.validateJwtAccessStrategy.mockResolvedValue(payload);
+        const payload: IAuthJwtAccessTokenPayload = {
+            loginAt: new Date('2026-01-01T00:00:00.000Z'),
+            loginFrom: EnumUserLoginFrom.website,
+            loginWith: EnumUserLoginWith.credential,
+            email: 'jane@example.com',
+            username: 'jane',
+            userId: 'user-1',
+            sessionId: 'session-1',
+            deviceOwnershipId: 'device-1',
+            roleId: 'role-1',
+        };
+        const identified = { ...payload, sub: 'user-1', jti: 'jti-value' };
+        const login: ISessionCache = {
+            userId: 'user-1',
+            sessionId: 'session-1',
+            jti: 'jti-value',
+        };
+
+        it('checks the payload, reads the login through SessionDomain, then checks the session', async () => {
+            authDomain.validateJwtAccessStrategy.mockReturnValue(identified);
+            sessionDomain.getLogin.mockResolvedValue(login);
+            authDomain.validateJwtAccessSession.mockReturnValue(identified);
 
             const result = await strategy.validate(payload);
 
-            expect(result).toBe(payload);
+            expect(result).toBe(identified);
             expect(authDomain.validateJwtAccessStrategy).toHaveBeenCalledWith(
                 payload
             );
+            expect(sessionDomain.getLogin).toHaveBeenCalledWith(
+                'user-1',
+                'session-1'
+            );
+            expect(authDomain.validateJwtAccessSession).toHaveBeenCalledWith(
+                identified,
+                'jti-value'
+            );
+            expect(authDomain.validateJwtAccessStrategy).toHaveBeenCalledBefore(
+                sessionDomain.getLogin
+            );
+        });
+
+        it('hands a missing login to the session check', async () => {
+            authDomain.validateJwtAccessStrategy.mockReturnValue(identified);
+            sessionDomain.getLogin.mockResolvedValue(null);
+            authDomain.validateJwtAccessSession.mockReturnValue(identified);
+
+            await strategy.validate(payload);
+
+            expect(authDomain.validateJwtAccessSession).toHaveBeenCalledWith(
+                identified,
+                null
+            );
+        });
+
+        it('does not read the login when the payload check throws', async () => {
+            const failure = new Error('invalid payload');
+            authDomain.validateJwtAccessStrategy.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(strategy.validate(payload)).rejects.toBe(failure);
+            expect(sessionDomain.getLogin).not.toHaveBeenCalled();
+        });
+
+        it('propagates a login read failure instead of revoking the session', async () => {
+            const failure = new Error('redis down');
+            authDomain.validateJwtAccessStrategy.mockReturnValue(identified);
+            sessionDomain.getLogin.mockRejectedValue(failure);
+
+            await expect(strategy.validate(payload)).rejects.toBe(failure);
+            expect(authDomain.validateJwtAccessSession).not.toHaveBeenCalled();
         });
     });
 });

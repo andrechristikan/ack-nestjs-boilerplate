@@ -79,3 +79,8 @@ export interface IAnalyticLoginTimeAnomaly {
     lastHour: number;
     historicalFrequencyPercent: number;
 }
+
+export interface IAnalyticIpGroup {
+    users: Set<string>;
+    count: number;
+}

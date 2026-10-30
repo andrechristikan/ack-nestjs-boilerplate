@@ -1,20 +1,11 @@
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumRoleType,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Policy, Role } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { RoleRank } from '@modules/role/constants/role.constant';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -39,24 +30,8 @@ import { Injectable } from '@nestjs/common';
 export class RoleDomain {
     constructor(
         private readonly roleRepository: RoleRepository,
-        private readonly roleUtil: RoleUtil,
-        private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly roleUtil: RoleUtil
     ) {}
-
-    private prepareActivityLog(
-        action: EnumActivityLogAction,
-        role: IRole,
-        timestamp: Date
-    ): IActivityLogStaged {
-        const metadata = this.roleUtil.mapActivityLogMetadata(role, timestamp);
-
-        return this.activityLogDomain.prepare({
-            action,
-            metadata,
-        });
-    }
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
@@ -78,8 +53,25 @@ export class RoleDomain {
         );
     }
 
-    async existsById(roleId: string): Promise<boolean> {
-        return this.roleRepository.existsById(roleId);
+    async assertExistsById(roleId: string): Promise<void> {
+        const roleExists = await this.roleRepository.existsById(roleId);
+        if (!roleExists) {
+            throw new RoleNotFoundException();
+        }
+    }
+
+    /** Gates a write on a role: it exists, the actor does not hold it, and the actor outranks it. */
+    async assertWritableByActor(
+        roleId: string,
+        actor: IRoleActor
+    ): Promise<void> {
+        const role = await this.roleRepository.findOneById(roleId);
+        if (!role) {
+            throw new RoleNotFoundException();
+        }
+
+        this.assertNotSelf(actor.roleId, role.id);
+        this.assertActorOutranks(actor.roleType, role.type);
     }
 
     async getById(roleId: string): Promise<IRole | null> {
@@ -112,10 +104,8 @@ export class RoleDomain {
         actorRoleType: EnumRoleType,
         targetRoleType: EnumRoleType
     ): void {
-        if (
-            actorRoleType !== EnumRoleType.superAdmin &&
-            RoleRank[actorRoleType] <= RoleRank[targetRoleType]
-        ) {
+        const outranks = this.roleUtil.outranks(actorRoleType, targetRoleType);
+        if (!outranks) {
             throw new RoleRankForbiddenException();
         }
     }
@@ -127,6 +117,7 @@ export class RoleDomain {
     }
 
     async createByAdmin(
+        roleId: string,
         data: IRoleCreate,
         actor: IRoleActor
     ): Promise<IRoleWithPolicies> {
@@ -138,20 +129,7 @@ export class RoleDomain {
             throw new RoleExistException();
         }
 
-        const roleId = this.databaseUtil.createId();
-        const timestamp = this.helperDateService.create();
-        const activityLogs = [
-            this.prepareActivityLog(
-                EnumActivityLogAction.adminRoleCreate,
-                { id: roleId, name: data.name, type: data.type },
-                timestamp
-            ),
-        ];
-        const created = await this.roleRepository.create(roleId, data);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return created;
+        return this.roleRepository.create(roleId, data);
     }
 
     async updateByAdmin(
@@ -160,28 +138,10 @@ export class RoleDomain {
         actor: IRoleActor
     ): Promise<IRoleWithPolicies> {
         // Sequential by design: gate before the work it guards
-        const role = await this.roleRepository.findOneById(id);
-        if (!role) {
-            throw new RoleNotFoundException();
-        }
-
-        this.assertNotSelf(actor.roleId, role.id);
-        this.assertActorOutranks(actor.roleType, role.type);
+        await this.assertWritableByActor(id, actor);
         this.assertActorOutranks(actor.roleType, data.type);
 
-        const timestamp = this.helperDateService.create();
-        const activityLogs = [
-            this.prepareActivityLog(
-                EnumActivityLogAction.adminRoleUpdate,
-                { id: role.id, name: role.name, type: data.type },
-                timestamp
-            ),
-        ];
-        const updated = await this.roleRepository.update(id, data);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return updated;
+        return this.roleRepository.update(id, data);
     }
 
     async deleteByAdmin(id: string, actor: IRoleActor): Promise<Role> {
@@ -201,19 +161,7 @@ export class RoleDomain {
             throw new RoleUsedException();
         }
 
-        const timestamp = this.helperDateService.create();
-        const activityLogs = [
-            this.prepareActivityLog(
-                EnumActivityLogAction.adminRoleDelete,
-                role,
-                timestamp
-            ),
-        ];
-        const deleted = await this.roleRepository.delete(id);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return deleted;
+        return this.roleRepository.delete(id);
     }
 
     async validateRoleGuard(

@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -11,15 +10,11 @@ import type {
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
-    EnumActivityLogAction,
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type {
@@ -34,17 +29,8 @@ describe('ProjectDomain', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const configGet =
-        vi.fn<(key: string) => string | number | RegExp | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     let domain: ProjectDomain;
 
     const baseProject: Project = {
@@ -73,39 +59,15 @@ describe('ProjectDomain', () => {
         updatedBy: null,
     };
 
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.projectCreated,
-        metadata: {},
-        userId: '507f1f77bcf86cd799439015',
-        createdBy: '507f1f77bcf86cd799439015',
-        workspaceId: '507f1f77bcf86cd799439012',
-    };
-
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | number | RegExp> = {
-                'project.slugRegex': /^[0-9a-zA-Z-]+$/,
-                'project.slugPrefix': 'p-',
-                'project.slugMaxLength': 30,
-                'project.slugMaxAttempts': 5,
-            };
-            return values[key];
-        });
-        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectDomain,
                 { provide: ProjectRepository, useValue: projectRepository },
                 { provide: ProjectUtil, useValue: projectUtil },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         domain = module.get(ProjectDomain);
@@ -262,9 +224,10 @@ describe('ProjectDomain', () => {
     });
 
     describe('createProject', () => {
-        it('prepares the created activity log, draws slug candidates, creates, and stages the activity log', async () => {
+        it('draws slug candidates from the util and creates the project with them', async () => {
             const project = baseProject;
-            helperStringService.generateSlug.mockReturnValue('p-abc123');
+            const slugCandidates = ['p-abc123', 'p-def456'];
+            projectUtil.drawSlugCandidates.mockReturnValue(slugCandidates);
             projectRepository.create.mockResolvedValue(project);
             const create: IProjectCreate = {
                 name: 'Website Revamp',
@@ -273,43 +236,20 @@ describe('ProjectDomain', () => {
 
             const result = await domain.createProject(
                 '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439015',
                 create
             );
 
             expect(result).toBe(project);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.projectCreated,
-                userId: '507f1f77bcf86cd799439015',
-                createdBy: '507f1f77bcf86cd799439015',
-                workspaceId: '507f1f77bcf86cd799439012',
-            });
-            expect(helperStringService.generateSlug).toHaveBeenCalledTimes(5);
-            expect(helperStringService.generateSlug).toHaveBeenCalledWith(
-                'p-',
-                30
-            );
             expect(projectRepository.create).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
                 create,
-                ['p-abc123', 'p-abc123', 'p-abc123', 'p-abc123', 'p-abc123']
+                slugCandidates
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
-        });
-    });
-
-    describe('getProject', () => {
-        it('returns the given project unchanged', () => {
-            const project = baseProject;
-
-            expect(domain.getProject(project)).toBe(project);
         });
     });
 
     describe('updateProject', () => {
-        it('prepares the updated activity log, updates the details, and stages the activity log', async () => {
+        it('updates the details and returns the row', async () => {
             const project = baseProject;
             const updated = { ...baseProject, name: 'New Name' };
             projectRepository.updateDetails.mockResolvedValue(updated);
@@ -318,39 +258,23 @@ describe('ProjectDomain', () => {
                 description: null,
             };
 
-            const result = await domain.updateProject(
-                project,
-                '507f1f77bcf86cd799439015',
-                update
-            );
+            const result = await domain.updateProject(project, update);
 
             expect(result).toBe(updated);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.projectUpdated,
-                userId: '507f1f77bcf86cd799439015',
-                createdBy: '507f1f77bcf86cd799439015',
-                workspaceId: project.workspaceId,
-            });
             expect(projectRepository.updateDetails).toHaveBeenCalledWith(
                 project.id,
                 update
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
     });
 
     describe('updateProjectSlug', () => {
-        it('throws ProjectSlugInvalidException when the slug exceeds the max length', async () => {
+        it('throws ProjectSlugInvalidException when the util refuses the slug', async () => {
             const project = baseProject;
+            projectUtil.isSlugAllowed.mockReturnValue(false);
 
             await expect(
-                domain.updateProjectSlug(
-                    project,
-                    '507f1f77bcf86cd799439015',
-                    'p-'.padEnd(31, 'a')
-                )
+                domain.updateProjectSlug(project, 'invalid slug!')
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugInvalid,
@@ -360,38 +284,21 @@ describe('ProjectDomain', () => {
                     ],
                 messagePath: 'project.error.slugInvalid',
             });
-        });
-
-        it('throws ProjectSlugInvalidException when the slug fails the allowed pattern', async () => {
-            const project = baseProject;
-
-            const rejection = domain.updateProjectSlug(
-                project,
-                '507f1f77bcf86cd799439015',
+            expect(projectUtil.isSlugAllowed).toHaveBeenCalledWith(
                 'invalid slug!'
             );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.slugInvalid,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.slugInvalid
-                    ],
-                messagePath: 'project.error.slugInvalid',
-            });
+            expect(
+                projectRepository.existsBySlugInWorkspace
+            ).not.toHaveBeenCalled();
         });
 
         it('throws ProjectSlugAlreadyExistsException when the slug is taken in the workspace', async () => {
             const project = baseProject;
+            projectUtil.isSlugAllowed.mockReturnValue(true);
             projectRepository.existsBySlugInWorkspace.mockResolvedValue(true);
 
             await expect(
-                domain.updateProjectSlug(
-                    project,
-                    '507f1f77bcf86cd799439015',
-                    'p-taken'
-                )
+                domain.updateProjectSlug(project, 'p-taken')
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
@@ -406,15 +313,15 @@ describe('ProjectDomain', () => {
             ).toHaveBeenCalledWith(project.workspaceId, 'p-taken', project.id);
         });
 
-        it('updates the slug, prepares the activity log, and stages it when the slug is free', async () => {
+        it('updates the slug when it is allowed and free', async () => {
             const project = baseProject;
             const updated = { ...baseProject, slug: 'p-new-slug' };
+            projectUtil.isSlugAllowed.mockReturnValue(true);
             projectRepository.existsBySlugInWorkspace.mockResolvedValue(false);
             projectRepository.updateSlug.mockResolvedValue(updated);
 
             const result = await domain.updateProjectSlug(
                 project,
-                '507f1f77bcf86cd799439015',
                 'p-new-slug'
             );
 
@@ -423,39 +330,21 @@ describe('ProjectDomain', () => {
                 project.id,
                 'p-new-slug'
             );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.projectUpdated,
-                userId: '507f1f77bcf86cd799439015',
-                createdBy: '507f1f77bcf86cd799439015',
-                workspaceId: project.workspaceId,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
     });
 
     describe('softDeleteProject', () => {
-        it('prepares the deleted activity log, soft-deletes at the current date, and stages the activity log', async () => {
+        it('soft-deletes the project at the current date', async () => {
             const project = baseProject;
             const deletedAt = new Date('2026-02-01T00:00:00.000Z');
             helperDateService.create.mockReturnValue(deletedAt);
 
-            await domain.softDeleteProject(project, '507f1f77bcf86cd799439015');
+            await domain.softDeleteProject(project);
 
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.projectDeleted,
-                userId: '507f1f77bcf86cd799439015',
-                createdBy: '507f1f77bcf86cd799439015',
-                workspaceId: project.workspaceId,
-            });
             expect(projectRepository.softDelete).toHaveBeenCalledWith(
                 project.id,
                 deletedAt
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
     });
 
@@ -540,67 +429,6 @@ describe('ProjectDomain', () => {
             );
 
             expect(result).toBe(project);
-        });
-    });
-
-    describe('drawSlugCandidates', () => {
-        it('draws slugMaxAttempts slug candidates from the prefix and max length', () => {
-            helperStringService.generateSlug.mockReturnValue('p-generated');
-
-            const result = domain['drawSlugCandidates']();
-
-            expect(result).toEqual(new Array(5).fill('p-generated'));
-            expect(helperStringService.generateSlug).toHaveBeenCalledTimes(5);
-            expect(helperStringService.generateSlug).toHaveBeenCalledWith(
-                'p-',
-                30
-            );
-        });
-    });
-
-    describe('assertSlugAllowed', () => {
-        it('does not throw for a slug within length and matching the pattern', () => {
-            expect(() =>
-                domain['assertSlugAllowed']('p-valid-slug')
-            ).not.toThrow();
-        });
-
-        it('throws ProjectSlugInvalidException for a slug over the max length', () => {
-            let thrown: unknown;
-            try {
-                domain['assertSlugAllowed']('p-'.padEnd(31, 'a'));
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.slugInvalid,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.slugInvalid
-                    ],
-                messagePath: 'project.error.slugInvalid',
-            });
-        });
-
-        it('throws ProjectSlugInvalidException for a slug failing the pattern', () => {
-            let thrown: unknown;
-            try {
-                domain['assertSlugAllowed']('invalid slug!');
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.slugInvalid,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.slugInvalid
-                    ],
-                messagePath: 'project.error.slugInvalid',
-            });
         });
     });
 });

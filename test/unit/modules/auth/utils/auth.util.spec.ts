@@ -10,6 +10,9 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
+import { Duration } from 'luxon';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
@@ -18,6 +21,10 @@ import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.
 describe('AuthUtil', () => {
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     let util: AuthUtil;
 
     beforeEach(async () => {
@@ -29,6 +36,8 @@ describe('AuthUtil', () => {
                     provide: HelperStringService,
                     useValue: helperStringService,
                 },
+                { provide: HelperHashService, useValue: helperHashService },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         util = module.get(AuthUtil);
@@ -129,6 +138,128 @@ describe('AuthUtil', () => {
 
             expect(result).toBe('random-jti-value');
             expect(helperStringService.random).toHaveBeenCalledWith(32);
+        });
+    });
+
+    describe('isTokenPayloadValid', () => {
+        const payload = {
+            userId: 'user-1',
+            sessionId: 'session-1',
+            jti: 'jti-value',
+            sub: 'user-1',
+        } as IAuthJwtAccessTokenPayload;
+
+        it('accepts a payload carrying sub, sessionId and jti strings', () => {
+            expect(util.isTokenPayloadValid(payload)).toBe(true);
+        });
+
+        it('rejects a payload without sub', () => {
+            expect(util.isTokenPayloadValid({ ...payload, sub: '' })).toBe(
+                false
+            );
+        });
+
+        it('rejects a payload whose sub is not a string', () => {
+            expect(
+                util.isTokenPayloadValid({
+                    ...payload,
+                    sub: 42 as unknown as string,
+                })
+            ).toBe(false);
+        });
+
+        it('rejects a payload without sessionId', () => {
+            expect(
+                util.isTokenPayloadValid({ ...payload, sessionId: '' })
+            ).toBe(false);
+        });
+
+        it('rejects a payload without jti', () => {
+            const { jti: _jti, ...withoutJti } = payload;
+
+            expect(util.isTokenPayloadValid(withoutJti)).toBe(false);
+        });
+
+        it('rejects a payload whose jti is not a string', () => {
+            expect(
+                util.isTokenPayloadValid({
+                    ...payload,
+                    jti: 1 as unknown as string,
+                })
+            ).toBe(false);
+        });
+    });
+
+    describe('isJtiMatch', () => {
+        it('compares the SHA-256 hashes of the session jti and the token jti', () => {
+            helperHashService.sha256Hash.mockImplementation(
+                value => `hash-${value}`
+            );
+            helperHashService.sha256Compare.mockReturnValue(true);
+
+            const result = util.isJtiMatch('session-jti', 'token-jti');
+
+            expect(result).toBe(true);
+            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
+                'hash-session-jti',
+                'hash-token-jti'
+            );
+        });
+
+        it('returns false when the hashes differ', () => {
+            helperHashService.sha256Hash.mockReturnValue('hash');
+            helperHashService.sha256Compare.mockReturnValue(false);
+
+            expect(util.isJtiMatch('session-jti', 'token-jti')).toBe(false);
+        });
+    });
+
+    describe('remainingSeconds', () => {
+        it('returns the whole seconds between now and the expiry', () => {
+            const today = new Date('2026-01-02T00:00:00.000Z');
+            const expiredAt = new Date('2026-01-08T00:00:00.000Z');
+            helperDateService.create.mockReturnValue(today);
+            helperDateService.createFromTimestamp.mockReturnValue(expiredAt);
+            helperDateService.diff.mockReturnValue(
+                Duration.fromObject({ seconds: 518400 })
+            );
+
+            const result = util.remainingSeconds(
+                Math.floor(expiredAt.getTime() / 1000)
+            );
+
+            expect(result).toBe(518400);
+            expect(helperDateService.createFromTimestamp).toHaveBeenCalledWith(
+                expiredAt.getTime()
+            );
+            expect(helperDateService.diff).toHaveBeenCalledWith(
+                expiredAt,
+                today
+            );
+        });
+
+        it('falls back to milliseconds when the duration carries no whole seconds', () => {
+            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.createFromTimestamp.mockReturnValue(new Date());
+            helperDateService.diff.mockReturnValue(
+                Duration.fromObject({ milliseconds: 2500 })
+            );
+
+            expect(util.remainingSeconds(1)).toBe(2);
+        });
+
+        it('treats a missing expiry as the epoch', () => {
+            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.createFromTimestamp.mockReturnValue(new Date());
+            helperDateService.diff.mockReturnValue(
+                Duration.fromObject({ milliseconds: 0 })
+            );
+
+            util.remainingSeconds(null);
+
+            expect(helperDateService.createFromTimestamp).toHaveBeenCalledWith(
+                0
+            );
         });
     });
 

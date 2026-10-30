@@ -134,4 +134,59 @@ describe('DeviceUtil', () => {
             });
         });
     });
+
+    describe('findProliferationOutliers', () => {
+        it('returns a zero result when no user carries a device', () => {
+            const result = util.findProliferationOutliers([], 2);
+
+            expect(result).toEqual({
+                count: 0,
+                avg: 0,
+                stdDev: 0,
+                rows: [],
+            });
+        });
+
+        it('flags and sorts users whose device count crosses the z-score threshold, highest first', () => {
+            const result = util.findProliferationOutliers(
+                [
+                    { userId: 'user-1', count: 1 },
+                    { userId: 'user-2', count: 1 },
+                    { userId: 'user-3', count: 10 },
+                    { userId: 'user-4', count: 8 },
+                ],
+                0.5
+            );
+
+            expect(result.count).toBe(2);
+            expect(result.avg).toBe(5);
+            expect(result.rows).toEqual([
+                {
+                    userId: 'user-3',
+                    deviceCount: 10,
+                    zScore: expect.any(Number),
+                },
+                {
+                    userId: 'user-4',
+                    deviceCount: 8,
+                    zScore: expect.any(Number),
+                },
+            ]);
+        });
+
+        it('scores every user zero when every user carries the same device count', () => {
+            const result = util.findProliferationOutliers(
+                [
+                    { userId: 'user-1', count: 2 },
+                    { userId: 'user-2', count: 2 },
+                ],
+                -1
+            );
+
+            expect(result.rows).toEqual([
+                { userId: 'user-1', deviceCount: 2, zScore: 0 },
+                { userId: 'user-2', deviceCount: 2, zScore: 0 },
+            ]);
+        });
+    });
 });

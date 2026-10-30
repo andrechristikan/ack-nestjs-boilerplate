@@ -8,14 +8,13 @@ import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import type {
     IAuthJwtAccessTokenPayload,
+    IAuthJwtPayloadIdentified,
     IAuthJwtRefreshTokenPayload,
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
-import { SessionCache } from '@modules/session/caches/session.cache';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Injectable } from '@nestjs/common';
 import type { TokenPayload } from 'google-auth-library';
 
@@ -23,40 +22,32 @@ import type { TokenPayload } from 'google-auth-library';
 export class AuthDomain {
     constructor(
         private readonly authSocialDomain: AuthSocialDomain,
-        private readonly authUtil: AuthUtil,
-        private readonly sessionCache: SessionCache,
-        private readonly helperHashService: HelperHashService
+        private readonly authUtil: AuthUtil
     ) {}
 
-    private isSessionJtiMatch(sessionJti: string, jti: string): boolean {
-        const sessionJtiHash = this.helperHashService.sha256Hash(sessionJti);
-        const jtiHash = this.helperHashService.sha256Hash(jti);
-
-        return this.helperHashService.sha256Compare(sessionJtiHash, jtiHash);
-    }
-
-    async validateJwtAccessStrategy(
+    /** Rejects an access token payload missing its `sub`, `sessionId`, or `jti`. */
+    validateJwtAccessStrategy(
         payload: IAuthJwtAccessTokenPayload
-    ): Promise<IAuthJwtAccessTokenPayload> {
-        const { sub, sessionId, jti } = payload;
-
-        if (
-            !sub ||
-            !sessionId ||
-            typeof sub !== 'string' ||
-            !jti ||
-            typeof jti !== 'string'
-        ) {
+    ): IAuthJwtPayloadIdentified<IAuthJwtAccessTokenPayload> {
+        const isValid = this.authUtil.isTokenPayloadValid(payload);
+        if (!isValid) {
             throw new AuthJwtAccessTokenInvalidException();
         }
 
-        const isValidSession = await this.sessionCache.getLogin(sub, sessionId);
-        if (!isValidSession) {
+        return payload;
+    }
+
+    /** Rejects a token whose session has no stored jti (no login) or whose jti is not the one stored for the session. */
+    validateJwtAccessSession(
+        payload: IAuthJwtPayloadIdentified<IAuthJwtAccessTokenPayload>,
+        sessionJti: string | null
+    ): IAuthJwtAccessTokenPayload {
+        if (sessionJti === null) {
             throw new SessionRevokedException();
         }
 
-        const isJtiMatch = this.isSessionJtiMatch(isValidSession.jti, jti);
-        if (!isJtiMatch) {
+        const isMatch = this.authUtil.isJtiMatch(sessionJti, payload.jti);
+        if (!isMatch) {
             throw new SessionRevokedException();
         }
 
@@ -92,14 +83,8 @@ export class AuthDomain {
     async validateJwtRefreshStrategy(
         payload: IAuthJwtRefreshTokenPayload
     ): Promise<IAuthJwtRefreshTokenPayload> {
-        const { sub, sessionId, jti } = payload;
-        if (
-            !sub ||
-            !sessionId ||
-            typeof sub !== 'string' ||
-            !jti ||
-            typeof jti !== 'string'
-        ) {
+        const isValid = this.authUtil.isTokenPayloadValid(payload);
+        if (!isValid) {
             throw new AuthJwtRefreshTokenInvalidException();
         }
 

@@ -1,6 +1,5 @@
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -10,18 +9,17 @@ import type {
     INotificationAcceptTermPolicyPayload,
     INotificationCreateEntry,
     INotificationPublishTermPolicyPayload,
-    INotificationPublishTermPolicyResult,
     INotificationRecipientEncryptedPayload,
     INotificationStepResult,
     INotificationTermPolicyBatchRecipient,
+    INotificationTermPolicyPage,
+    INotificationTermPolicyPending,
     INotificationTermPolicyRecipientCreate,
-    INotificationTermPolicyRecipientState,
+    INotificationTermPolicyUser,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { UserDomain } from '@modules/user/domains/user.domain';
-import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from '@common/message/services/message.service';
@@ -29,13 +27,11 @@ import { MessageService } from '@common/message/services/message.service';
 /** Writes and fans out the term-policy publication and acceptance notifications. */
 @Injectable()
 export class NotificationTermPolicyDomain {
-    private readonly emailBatchSize: number;
+    readonly emailBatchSize: number;
 
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly userDomain: UserDomain,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationUtil: NotificationUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue,
@@ -45,93 +41,13 @@ export class NotificationTermPolicyDomain {
             this.configService.get<number>('email.batchSize')!;
     }
 
-    private listPendingBatchIds(
-        pageUsers: IUserRecipient[],
-        pageMarkers: INotificationTermPolicyRecipientState[]
-    ): string[] {
-        const batchIdByUserId = new Map(
-            pageMarkers
-                .filter(
-                    marker =>
-                        marker.sentAt === null && marker.claimedAt === null
-                )
-                .map(marker => [marker.userId, marker.batchId])
-        );
-
-        return [
-            ...new Set(
-                pageUsers.flatMap(({ id }) => batchIdByUserId.get(id) ?? [])
-            ),
-        ];
-    }
-
-    private async enqueuePendingBatches(
-        proceedBy: string,
-        data: INotificationPublishTermPolicyPayload,
-        pageUsers: IUserRecipient[],
-        batchIds: string[],
-        index: number,
-        createdBefore: Date
-    ): Promise<void> {
-        const markers =
-            await this.notificationRepository.findTermPolicyRecipientsSendableByBatchIds(
-                data.termPolicyId,
-                batchIds
-            );
-        const pageUserIds = new Set(pageUsers.map(({ id }) => id));
-        const offPageUserIds = markers
-            .map(({ userId }) => userId)
-            .filter(userId => !pageUserIds.has(userId));
-        const offPageUsers: IUserRecipient[] = [];
-        if (offPageUserIds.length > 0) {
-            const found = await this.userDomain.getManyActiveRecipientsByIds(
-                offPageUserIds,
-                createdBefore
-            );
-            offPageUsers.push(...found);
-        }
-        const userById = new Map(
-            [...pageUsers, ...offPageUsers].map(user => [user.id, user])
-        );
-        const recipientsByBatchId = new Map<
-            string,
-            INotificationTermPolicyBatchRecipient[]
-        >();
-
-        for (const { userId, notificationId, batchId } of markers) {
-            const user = userById.get(userId);
-            if (user) {
-                const recipients = recipientsByBatchId.get(batchId) ?? [];
-                recipients.push({
-                    userId,
-                    notificationId,
-                    email: user.email,
-                    username: user.username,
-                });
-                recipientsByBatchId.set(batchId, recipients);
-            }
-        }
-
-        await Promise.all(
-            batchIds.map((batchId, i) =>
-                this.notificationEmailQueue.sendPublishTermPolicyBatch(
-                    data,
-                    batchId,
-                    proceedBy,
-                    index + i,
-                    recipientsByBatchId.get(batchId) ?? []
-                )
-            )
-        );
-    }
-
     private async createAndEnqueueTermPolicyBatch(
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload,
-        batchId: string,
-        users: IUserRecipient[],
+        users: INotificationTermPolicyUser[],
         index: number
     ): Promise<void> {
+        const batchId = this.databaseUtil.createId();
         const { pendingChannels, deliveredChannels } =
             NotificationKindContract.publishTermPolicy;
         const channels = [...pendingChannels, ...deliveredChannels];
@@ -175,99 +91,111 @@ export class NotificationTermPolicyDomain {
         );
     }
 
-    async processPublishTermPolicy(
-        proceedBy: string,
-        data: INotificationPublishTermPolicyPayload
-    ): Promise<INotificationPublishTermPolicyResult> {
-        const createdBefore = this.helperDateService.createFromIso(
-            data.recipientCutoffAt
+    async getPage(
+        termPolicyId: string,
+        users: INotificationTermPolicyUser[]
+    ): Promise<INotificationTermPolicyPage> {
+        const markers =
+            await this.notificationRepository.findTermPolicyRecipients(
+                termPolicyId,
+                users.map(({ id }) => id)
+            );
+        const markedUserIds = new Set(markers.map(m => m.userId));
+        const freshUsers = users.filter(({ id }) => !markedUserIds.has(id));
+        const pendingBatchIds = this.notificationUtil.listPendingBatchIds(
+            users,
+            markers
         );
-        let cursor: string | null = null;
-        let index = 0;
-        let candidateCounts = 0;
-        let createdCounts = 0;
-        let hasNextPage = true;
+        return { users, freshUsers, pendingBatchIds };
+    }
 
-        while (hasNextPage) {
-            // Sequential by design: bounded chunks, the chunks in turn
-            const pageUsers =
-                await this.userDomain.getListActiveRecipientCursor(
-                    cursor,
-                    this.emailBatchSize,
-                    createdBefore
-                );
-            const lastUserId = pageUsers.at(-1)?.id ?? null;
-            if (lastUserId === null) {
-                break;
-            }
-
-            const markers =
-                await this.notificationRepository.findTermPolicyRecipients(
-                    data.termPolicyId,
-                    pageUsers.map(({ id }) => id)
-                );
-            const markedUserIds = new Set(markers.map(m => m.userId));
-            const freshUsers = pageUsers.filter(
-                ({ id }) => !markedUserIds.has(id)
-            );
-            const pendingBatchIds = this.listPendingBatchIds(
-                pageUsers,
-                markers
-            );
-            const newBatchId = this.databaseUtil.createId();
-            const batchIds =
-                freshUsers.length > 0
-                    ? [...pendingBatchIds, newBatchId]
-                    : pendingBatchIds;
-
-            const work = [
-                ...(pendingBatchIds.length > 0
-                    ? [
-                          this.enqueuePendingBatches(
-                              proceedBy,
-                              data,
-                              pageUsers,
-                              pendingBatchIds,
-                              index,
-                              createdBefore
-                          ),
-                      ]
-                    : []),
-                ...(freshUsers.length > 0
-                    ? [
-                          this.createAndEnqueueTermPolicyBatch(
-                              proceedBy,
-                              data,
-                              newBatchId,
-                              freshUsers,
-                              index + pendingBatchIds.length
-                          ),
-                      ]
-                    : []),
-            ];
-
-            if (work.length > 0) {
-                await Promise.all(work);
-
-                index += batchIds.length;
-            }
-
-            candidateCounts += pageUsers.length;
-            createdCounts += freshUsers.length;
-            cursor = lastUserId;
-            hasNextPage = pageUsers.length === this.emailBatchSize;
+    /** Reads the unsent rows of the pending batches and names the users they hold off the page. */
+    async getPending(
+        termPolicyId: string,
+        { users, pendingBatchIds }: INotificationTermPolicyPage
+    ): Promise<INotificationTermPolicyPending> {
+        if (pendingBatchIds.length === 0) {
+            return { sendableMarkers: [], offPageUserIds: [] };
         }
 
-        const message = this.messageService.setMessage(
-            'notification.queue.publishTermPolicy'
+        const sendableMarkers =
+            await this.notificationRepository.findTermPolicyRecipientsSendableByBatchIds(
+                termPolicyId,
+                pendingBatchIds
+            );
+        const pageUserIds = new Set(users.map(({ id }) => id));
+        const offPageUserIds = sendableMarkers
+            .map(({ userId }) => userId)
+            .filter(userId => !pageUserIds.has(userId));
+
+        return { sendableMarkers, offPageUserIds };
+    }
+
+    /** Re-adds each pending batch of one page from its stored markers, and returns how many it enqueued. */
+    async sendPendingBatches(
+        proceedBy: string,
+        data: INotificationPublishTermPolicyPayload,
+        { users, pendingBatchIds }: INotificationTermPolicyPage,
+        { sendableMarkers }: INotificationTermPolicyPending,
+        offPageUsers: INotificationTermPolicyUser[],
+        index: number
+    ): Promise<number> {
+        const userById = new Map(
+            [...users, ...offPageUsers].map(user => [user.id, user])
+        );
+        const recipientsByBatchId = new Map<
+            string,
+            INotificationTermPolicyBatchRecipient[]
+        >();
+
+        for (const { userId, notificationId, batchId } of sendableMarkers) {
+            const user = userById.get(userId);
+            if (user) {
+                const recipients = recipientsByBatchId.get(batchId) ?? [];
+                recipients.push({
+                    userId,
+                    notificationId,
+                    email: user.email,
+                    username: user.username,
+                });
+                recipientsByBatchId.set(batchId, recipients);
+            }
+        }
+
+        await Promise.all(
+            pendingBatchIds.map((batchId, i) =>
+                this.notificationEmailQueue.sendPublishTermPolicyBatch(
+                    data,
+                    batchId,
+                    proceedBy,
+                    index + i,
+                    recipientsByBatchId.get(batchId) ?? []
+                )
+            )
         );
 
-        return {
-            message,
-            candidateCounts,
-            createdCounts,
-            batches: index,
-        };
+        return pendingBatchIds.length;
+    }
+
+    /** Creates the rows of the fresh users and enqueues their new batch, and returns how many batches it enqueued. */
+    async sendFreshBatch(
+        proceedBy: string,
+        data: INotificationPublishTermPolicyPayload,
+        freshUsers: INotificationTermPolicyUser[],
+        index: number
+    ): Promise<number> {
+        if (freshUsers.length === 0) {
+            return 0;
+        }
+
+        await this.createAndEnqueueTermPolicyBatch(
+            proceedBy,
+            data,
+            freshUsers,
+            index
+        );
+
+        return 1;
     }
 
     async processUserAcceptTermPolicy(
@@ -279,20 +207,10 @@ export class NotificationTermPolicyDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.userAcceptTermPolicy,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.userAcceptTermPolicy,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {

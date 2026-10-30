@@ -40,6 +40,13 @@ describe('ApiKeyUtil', () => {
         });
     });
 
+    describe('isActive', () => {
+        it('returns the active flag of the api key', () => {
+            expect(util.isActive({ ...apiKey, isActive: true })).toBe(true);
+            expect(util.isActive({ ...apiKey, isActive: false })).toBe(false);
+        });
+    });
+
     describe('isExpired', () => {
         const currentDate = new Date('2026-01-15T00:00:00.000Z');
 
@@ -89,13 +96,6 @@ describe('ApiKeyUtil', () => {
 
         it('returns false when startAt is absent', () => {
             expect(util.isNotYetActive(null, currentDate)).toBe(false);
-        });
-    });
-
-    describe('isActive', () => {
-        it('returns the isActive flag', () => {
-            expect(util.isActive({ isActive: true })).toBe(true);
-            expect(util.isActive({ isActive: false })).toBe(false);
         });
     });
 

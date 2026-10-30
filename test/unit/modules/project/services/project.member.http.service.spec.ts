@@ -8,6 +8,7 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
@@ -21,6 +22,11 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type {
+    IActivityLogStaged,
+    IActivityLogStageInput,
+} from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberHttpService } from '@modules/project/services/project.member.http.service';
@@ -36,6 +42,8 @@ describe('ProjectMemberHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
 
     const pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput> =
         {
@@ -86,6 +94,17 @@ describe('ProjectMemberHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        activityLogDomain.prepare.mockImplementation(
+            <A extends EnumActivityLogAction>(
+                input: IActivityLogStageInput<A>
+            ): IActivityLogStaged => ({
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
+                ...input,
+                metadata: input.metadata ?? {},
+            })
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -106,6 +125,7 @@ describe('ProjectMemberHttpService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
 
@@ -209,6 +229,85 @@ describe('ProjectMemberHttpService', () => {
                 body.role
             );
         });
+
+        it('prepares both assigned activity logs before the write and stages them after when the actor differs from the target', async () => {
+            const body: ProjectMemberAssignRequestDto = {
+                userId: '507f1f77bcf86cd799439022',
+                role: EnumProjectMemberRole.member,
+            };
+            const actorId = '507f1f77bcf86cd799439033';
+            workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
+                null
+            );
+            projectMemberDomain.assignMember.mockImplementation(async () => {
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+
+                return projectMemberRow;
+            });
+
+            await service.assignMember(project, actorId, body);
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                {
+                    action: EnumActivityLogAction.projectMemberAssigned,
+                    userId: actorId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { targetUserId: body.userId },
+                },
+                {
+                    action: EnumActivityLogAction.projectMemberAssignedByAdmin,
+                    userId: body.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                },
+            ]);
+        });
+
+        it('prepares one assigned activity log when the actor assigns themselves', async () => {
+            const actorId = '507f1f77bcf86cd799439033';
+            const body: ProjectMemberAssignRequestDto = {
+                userId: actorId,
+                role: EnumProjectMemberRole.member,
+            };
+            workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
+                null
+            );
+            projectMemberDomain.assignMember.mockResolvedValue(
+                projectMemberRow
+            );
+
+            await service.assignMember(project, actorId, body);
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                {
+                    action: EnumActivityLogAction.projectMemberAssigned,
+                    userId: actorId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { targetUserId: actorId },
+                },
+            ]);
+        });
+
+        it('stages nothing when the domain throws', async () => {
+            const body: ProjectMemberAssignRequestDto = {
+                userId: '507f1f77bcf86cd799439022',
+                role: EnumProjectMemberRole.member,
+            };
+            workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
+                null
+            );
+            projectMemberDomain.assignMember.mockRejectedValue(
+                new Error('boom')
+            );
+
+            await expect(
+                service.assignMember(project, '507f1f77bcf86cd799439033', body)
+            ).rejects.toThrow('boom');
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
     });
 
     describe('updateMemberRole', () => {
@@ -216,6 +315,9 @@ describe('ProjectMemberHttpService', () => {
             const body: ProjectMemberUpdateRoleRequestDto = {
                 role: EnumProjectMemberRole.admin,
             };
+            projectMemberDomain.updateMemberRole.mockResolvedValue(
+                projectMemberRow
+            );
 
             await service.updateMemberRole(
                 project,
@@ -226,15 +328,78 @@ describe('ProjectMemberHttpService', () => {
 
             expect(projectMemberDomain.updateMemberRole).toHaveBeenCalledWith(
                 project,
-                '507f1f77bcf86cd799439033',
                 '507f1f77bcf86cd799439021',
                 body.role
             );
+        });
+
+        it('stages both role-updated activity logs from the changed member when the actor differs from it', async () => {
+            const actorId = '507f1f77bcf86cd799439033';
+            const body: ProjectMemberUpdateRoleRequestDto = {
+                role: EnumProjectMemberRole.admin,
+            };
+            projectMemberDomain.updateMemberRole.mockResolvedValue(
+                projectMemberRow
+            );
+
+            await service.updateMemberRole(
+                project,
+                actorId,
+                projectMemberRow.id,
+                body
+            );
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                {
+                    action: EnumActivityLogAction.projectMemberRoleUpdated,
+                    userId: actorId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { targetUserId: projectMemberRow.userId },
+                },
+                {
+                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
+                    userId: projectMemberRow.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                },
+            ]);
+        });
+
+        it('stages one role-updated activity log when the actor updates their own role', async () => {
+            const body: ProjectMemberUpdateRoleRequestDto = {
+                role: EnumProjectMemberRole.admin,
+            };
+            projectMemberDomain.updateMemberRole.mockResolvedValue(
+                projectMemberRow
+            );
+
+            await service.updateMemberRole(
+                project,
+                projectMemberRow.userId,
+                projectMemberRow.id,
+                body
+            );
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                {
+                    action: EnumActivityLogAction.projectMemberRoleUpdated,
+                    userId: projectMemberRow.userId,
+                    createdBy: projectMemberRow.userId,
+                    workspaceId: project.workspaceId,
+                    metadata: { targetUserId: projectMemberRow.userId },
+                },
+            ]);
         });
     });
 
     describe('removeMember', () => {
         it('delegates the removal to the domain', async () => {
+            projectMemberDomain.removeMember.mockResolvedValue(
+                projectMemberRow
+            );
+
             await service.removeMember(
                 project,
                 '507f1f77bcf86cd799439033',
@@ -247,28 +412,71 @@ describe('ProjectMemberHttpService', () => {
                 '507f1f77bcf86cd799439021'
             );
         });
+
+        it('stages both removed activity logs from the removed member', async () => {
+            const actorId = '507f1f77bcf86cd799439033';
+            projectMemberDomain.removeMember.mockResolvedValue(
+                projectMemberRow
+            );
+
+            await service.removeMember(project, actorId, projectMemberRow.id);
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                {
+                    action: EnumActivityLogAction.projectMemberRemoved,
+                    userId: actorId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { targetUserId: projectMemberRow.userId },
+                },
+                {
+                    action: EnumActivityLogAction.projectMemberRemovedByAdmin,
+                    userId: projectMemberRow.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                },
+            ]);
+        });
     });
 
     describe('leaveProject', () => {
-        it('delegates leaving the project to the domain', async () => {
-            const member: ProjectMember = {
-                id: '507f1f77bcf86cd799439021',
-                projectId: project.id,
-                userId: '507f1f77bcf86cd799439022',
-                role: EnumProjectMemberRole.member,
-                joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-                createdAt: new Date('2026-01-01T00:00:00.000Z'),
-                createdBy: null,
-                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-                updatedBy: null,
-            };
+        const member: ProjectMember = {
+            id: '507f1f77bcf86cd799439021',
+            projectId: project.id,
+            userId: '507f1f77bcf86cd799439022',
+            role: EnumProjectMemberRole.member,
+            joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+        };
 
+        it('delegates leaving the project to the domain', async () => {
             await service.leaveProject(project, member);
 
             expect(projectMemberDomain.leaveProject).toHaveBeenCalledWith(
-                project,
                 member
             );
+        });
+
+        it('prepares the left activity log before the write and stages it after', async () => {
+            projectMemberDomain.leaveProject.mockImplementation(async () => {
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            });
+
+            await service.leaveProject(project, member);
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                {
+                    action: EnumActivityLogAction.projectMemberLeft,
+                    userId: member.userId,
+                    createdBy: member.userId,
+                    workspaceId: project.workspaceId,
+                    metadata: {},
+                },
+            ]);
         });
     });
 });

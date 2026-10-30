@@ -8,11 +8,12 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Notification } from '@generated/prisma-client/client';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { Injectable } from '@nestjs/common';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
@@ -23,7 +24,8 @@ export class NotificationHttpService {
         private readonly notificationDomain: NotificationDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
     private toMessageProperties(
@@ -158,7 +160,18 @@ export class NotificationHttpService {
         userId: string,
         data: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userUpdateNotificationSetting,
+                metadata: {
+                    channel: data.channel,
+                    type: data.type,
+                    isActive: data.isActive,
+                },
+            }),
+        ];
         await this.notificationDomain.updateUserSetting(userId, data);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

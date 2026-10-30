@@ -4,38 +4,14 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { NotificationDomain } from '@modules/notification/domains/notification.domain';
-import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
-import { ProjectDomain } from '@modules/project/domains/project.domain';
-import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
-import {
-    EnumUserCreateMode,
-    EnumUserSignUpWorkspaceContextType,
-} from '@modules/user/enums/user.enum';
-import type {
-    IUser,
-    IUserCreateWithWorkspaceInput,
-    IUserOnboardingAdminAction,
-} from '@modules/user/interfaces/user.interface';
-import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
-import { UserDomain } from '@modules/user/domains/user.domain';
-import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
-import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
@@ -46,151 +22,27 @@ import type {
     IWorkspaceOwnedUser,
     IWorkspaceUpdate,
 } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
-import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
-import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceDomain {
     private readonly maxWorkspacesPerUser: number;
-    private readonly slugRegex: RegExp;
-    private readonly slugPrefix: string;
-    private readonly slugMaxLength: number;
-    private readonly slugMaxAttempts: number;
 
     constructor(
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
-        private readonly workspaceInviteRepository: WorkspaceInviteRepository,
-        private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
-        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
-        private readonly workspaceInviteDomain: WorkspaceInviteDomain,
-        private readonly projectDomain: ProjectDomain,
-        private readonly userDomain: UserDomain,
-        private readonly userOnboardingDomain: UserOnboardingDomain,
-        private readonly userOnboardingUtil: UserOnboardingUtil,
-        private readonly userVerificationDomain: UserVerificationDomain,
-        private readonly userTwoFactorDomain: UserTwoFactorDomain,
-        private readonly passwordHistoryDomain: PasswordHistoryDomain,
-        private readonly notificationDomain: NotificationDomain,
-        private readonly termPolicyAcceptanceDomain: TermPolicyAcceptanceDomain,
-        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
-        private readonly configService: ConfigService,
-        private readonly featureFlagDomain: FeatureFlagDomain
+        private readonly configService: ConfigService
     ) {
         this.maxWorkspacesPerUser = this.configService.get<number>(
             'workspace.maxWorkspacesPerUser'
         )!;
-        this.slugRegex = this.configService.get<RegExp>('workspace.slugRegex')!;
-        this.slugPrefix = this.configService.get<string>(
-            'workspace.slugPrefix'
-        )!;
-        this.slugMaxLength = this.configService.get<number>(
-            'workspace.slugMaxLength'
-        )!;
-        this.slugMaxAttempts = this.configService.get<number>(
-            'workspace.slugMaxAttempts'
-        )!;
-    }
-
-    private drawSlugCandidates(): string[] {
-        return Array.from({ length: this.slugMaxAttempts }, () =>
-            this.helperStringService.generateSlug(
-                this.slugPrefix,
-                this.slugMaxLength
-            )
-        );
-    }
-
-    private assertSlugAllowed(slug: string): void {
-        const isSlugPatternValid = this.slugRegex.test(slug);
-        if (slug.length > this.slugMaxLength || !isSlugPatternValid) {
-            throw new WorkspaceSlugInvalidException();
-        }
-    }
-
-    private async assertJoinRequestAllowed(): Promise<void> {
-        await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'joinRequestAllowed'
-        );
-    }
-
-    private buildOwnedUsers(
-        inputs: IUserCreateWithWorkspaceInput[],
-        slugAttempt: number
-    ): IWorkspaceOwnedUser[] {
-        return inputs.flatMap(input => {
-            if (
-                input.workspaceContext.type !==
-                EnumUserSignUpWorkspaceContextType.personal
-            ) {
-                return [];
-            }
-
-            return [
-                {
-                    userId: input.userId,
-                    workspaceId: input.workspaceContext.workspaceId,
-                    name: input.workspaceContext.name,
-                    slug: input.workspaceContext.slugCandidates[slugAttempt]!,
-                },
-            ];
-        });
-    }
-
-    private prepareOnboardingActivities(
-        inputs: IUserCreateWithWorkspaceInput[],
-        users: IUser[],
-        mode: EnumUserCreateMode,
-        adminPayloadAction?: IUserOnboardingAdminAction
-    ): IActivityLogStaged[] {
-        const activityLogs: IActivityLogStaged[] = [];
-        if (adminPayloadAction) {
-            const adminPayloadMetadata =
-                this.userOnboardingDomain.buildAdminPayloadMetadata(
-                    adminPayloadAction,
-                    users
-                );
-            const adminPayloadActivityLog = this.activityLogDomain.prepare({
-                action: adminPayloadAction,
-                metadata: adminPayloadMetadata,
-            });
-            activityLogs.push(adminPayloadActivityLog);
-        }
-
-        for (const [index, input] of inputs.entries()) {
-            const onboardingActivities =
-                this.userOnboardingDomain.buildOnboardingActivities(
-                    mode,
-                    input,
-                    users[index]!
-                );
-
-            for (const activity of onboardingActivities) {
-                const activityLog = this.activityLogDomain.prepare({
-                    action: activity.action,
-                    userId: activity.userId,
-                    createdBy: activity.createdBy,
-                    ...(activity.workspaceId !== null && {
-                        workspaceId: activity.workspaceId,
-                    }),
-                    metadata: activity.metadata,
-                });
-                activityLogs.push(activityLog);
-            }
-        }
-
-        return activityLogs;
     }
 
     async validateWorkspaceGuard(
@@ -273,147 +125,6 @@ export class WorkspaceDomain {
         }
     }
 
-    async commitOnboarding(
-        inputs: IUserCreateWithWorkspaceInput[],
-        mode: EnumUserCreateMode,
-        timeoutInMs: number,
-        adminPayloadAction?: IUserOnboardingAdminAction
-    ): Promise<IUser[]> {
-        const slugAttemptCount = inputs.reduce((min, input) => {
-            if (
-                input.workspaceContext.type !==
-                EnumUserSignUpWorkspaceContextType.personal
-            ) {
-                return min;
-            }
-
-            return Math.min(min, input.workspaceContext.slugCandidates.length);
-        }, Number.POSITIVE_INFINITY);
-        const attempts = Number.isFinite(slugAttemptCount)
-            ? slugAttemptCount
-            : 1;
-
-        for (let attempt = 0; attempt < attempts; attempt++) {
-            try {
-                const onboarded = await this.databaseService.withTransaction(
-                    async tx => {
-                        if (
-                            mode === EnumUserCreateMode.signUp ||
-                            mode === EnumUserCreateMode.social
-                        ) {
-                            // Sequential by design: gate before the work it guards
-                            await this.termPolicyAcceptanceDomain.assertRequiredPublishedInTx(
-                                tx,
-                                UserTermPolicyContract.requiredTypes
-                            );
-                        }
-
-                        const users =
-                            await this.userOnboardingDomain.createManyInTx(
-                                tx,
-                                inputs
-                            );
-                        const rows: IUser[] = [];
-
-                        for (const [index, input] of inputs.entries()) {
-                            if (input.password && input.passwordHistoryType) {
-                                await this.passwordHistoryDomain.createInTx(
-                                    tx,
-                                    input.userId,
-                                    input.password.passwordHash,
-                                    input.passwordHistoryType,
-                                    input.password.passwordPeriodExpired,
-                                    input.password.passwordCreated,
-                                    input.createdBy
-                                );
-                            }
-
-                            await this.notificationDomain.createDefaultsInTx(
-                                tx,
-                                input.userId
-                            );
-
-                            if (input.verification) {
-                                await this.userVerificationDomain.createFromOnboardingInTx(
-                                    tx,
-                                    input.userId,
-                                    input.verification,
-                                    input.createdBy
-                                );
-                            }
-
-                            const twoFactor =
-                                await this.userTwoFactorDomain.createDisabledInTx(
-                                    tx,
-                                    input.userId,
-                                    input.createdBy
-                                );
-                            rows.push({ ...users[index]!, twoFactor });
-                        }
-
-                        const ownedUsers = this.buildOwnedUsers(
-                            inputs,
-                            attempt
-                        );
-                        await this.createOwnedForUsersInTx(tx, ownedUsers);
-
-                        for (const input of inputs) {
-                            if (
-                                input.workspaceContext.type ===
-                                EnumUserSignUpWorkspaceContextType.invite
-                            ) {
-                                await this.workspaceInviteDomain.acceptOnSignUpInTx(
-                                    tx,
-                                    input.userId,
-                                    input.workspaceContext
-                                );
-                            }
-
-                            await this.termPolicyAcceptanceDomain.acceptPublishedInTx(
-                                tx,
-                                input.userId,
-                                input.acceptedTermPolicyTypes,
-                                input.createdBy
-                            );
-                        }
-
-                        const activityLogs = this.prepareOnboardingActivities(
-                            inputs,
-                            rows,
-                            mode,
-                            adminPayloadAction
-                        );
-
-                        return { rows, activityLogs };
-                    },
-                    { timeout: timeoutInMs }
-                );
-
-                this.activityLogDomain.stagePrepared(onboarded.activityLogs);
-
-                return onboarded.rows;
-            } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (isSlugCollision) {
-                    continue;
-                }
-
-                const mapped =
-                    this.userOnboardingUtil.mapCreateCollision(error);
-                if (mapped instanceof AppBaseException) {
-                    throw mapped;
-                }
-
-                throw new AppUnknownException(mapped);
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
-    }
-
     async createWorkspace(
         userId: string,
         create: IWorkspaceCreate
@@ -425,22 +136,13 @@ export class WorkspaceDomain {
             throw new WorkspaceCapReachedException();
         }
 
-        const slugCandidates = this.drawSlugCandidates();
+        const slugCandidates = this.workspaceUtil.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
             const workspaceId = this.databaseUtil.createId();
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.workspaceCreated,
-                    userId: userId,
-                    createdBy: userId,
-                    workspaceId: workspaceId,
-                }),
-            ];
 
-            let workspace: Workspace;
             try {
-                workspace = await this.databaseService.withTransaction(tx =>
+                return await this.databaseService.withTransaction(tx =>
                     this.createInTx(tx, userId, create, slug, workspaceId)
                 );
             } catch (error: unknown) {
@@ -455,76 +157,34 @@ export class WorkspaceDomain {
 
                     throw new AppUnknownException(error);
                 }
-
-                continue;
             }
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return workspace;
         }
 
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    getCurrentWorkspace(workspace: Workspace): Workspace {
-        return workspace;
-    }
-
     async updateWorkspace(
         workspaceId: string,
-        actorId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceUpdated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: workspaceId,
-            }),
-        ];
-
-        const row = await this.workspaceRepository.updateDetails(
-            workspaceId,
-            update
-        );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return row;
+        return this.workspaceRepository.updateDetails(workspaceId, update);
     }
 
     async updateWorkspaceIsPublic(
         workspaceId: string,
-        actorId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceVisibilityUpdated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: workspaceId,
-            }),
-        ];
-
-        const row = await this.workspaceRepository.updateIsPublic(
-            workspaceId,
-            isPublic
-        );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return row;
+        return this.workspaceRepository.updateIsPublic(workspaceId, isPublic);
     }
 
     async updateWorkspaceSlug(
         workspaceId: string,
-        actorId: string,
         slug: string
     ): Promise<Workspace> {
-        this.assertSlugAllowed(slug);
+        const isSlugAllowed = this.workspaceUtil.isSlugAllowed(slug);
+        if (!isSlugAllowed) {
+            throw new WorkspaceSlugInvalidException();
+        }
 
         // Sequential by design: gate before the work it guards
         const slugTaken = await this.workspaceRepository.existsBySlug(
@@ -535,84 +195,19 @@ export class WorkspaceDomain {
             throw new WorkspaceSlugAlreadyExistsException();
         }
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceUpdated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: workspaceId,
-            }),
-        ];
-
-        const row = await this.workspaceRepository.updateSlug(
-            workspaceId,
-            slug
-        );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return row;
+        return this.workspaceRepository.updateSlug(workspaceId, slug);
     }
 
-    async switchWorkspace(userId: string, workspaceId: string): Promise<void> {
-        // Sequential by design: gate before the work it guards
-        await this.validateWorkspaceGuard(workspaceId);
-        await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
-            workspaceId,
-            userId
-        );
-
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceSwitched,
-                userId: userId,
-                createdBy: userId,
-                workspaceId: workspaceId,
-            }),
-        ];
-
-        await this.userDomain.setLastWorkspace(userId, workspaceId);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-    }
-
-    async softDeleteWorkspace(
+    async softDeleteInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string
+        deletedAt: Date
     ): Promise<void> {
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceDeleted,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: workspaceId,
-            }),
-        ];
-        const deletedAt = this.helperDateService.create();
-
-        await this.databaseService.withTransaction(async tx => {
-            await this.workspaceRepository.softDeleteInTx(
-                tx,
-                workspaceId,
-                deletedAt
-            );
-            await this.projectDomain.softDeleteByWorkspaceInTx(
-                tx,
-                workspaceId,
-                deletedAt,
-                actorId
-            );
-            await this.workspaceInviteRepository.expirePendingByWorkspaceInTx(
-                tx,
-                workspaceId
-            );
-            await this.workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx(
-                tx,
-                workspaceId
-            );
-        });
-
-        this.activityLogDomain.stagePrepared(activityLogs);
+        await this.workspaceRepository.softDeleteInTx(
+            tx,
+            workspaceId,
+            deletedAt
+        );
     }
 
     async getListOffsetByAdmin(
@@ -637,9 +232,6 @@ export class WorkspaceDomain {
 
     /** Resolves a public workspace by slug. A workspace that exists but is not public reports the same `notFound` as one that does not exist, so a slug cannot be probed. */
     async previewWorkspace(slug: string): Promise<Workspace> {
-        // Sequential by design: gate before the work it guards
-        await this.assertJoinRequestAllowed();
-
         const workspace =
             await this.workspaceRepository.findActivePublicBySlug(slug);
         if (!workspace) {

@@ -11,44 +11,29 @@ import {
 } from '@generated/prisma-client/client';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { CountryDomain } from '@modules/country/domains/country.domain';
-import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { UserImportDomain } from '@modules/user/domains/user.import.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserImportUsernameChecks,
+} from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('UserImportDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
-    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
-        mock<UserOnboardingDomain>();
+    const userOnboardingUtil: MockProxy<UserOnboardingUtil> =
+        mock<UserOnboardingUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
-        mock<NotificationRecipientDomain>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -130,21 +115,10 @@ describe('UserImportDomain', () => {
             providers: [
                 UserImportDomain,
                 { provide: UserRepository, useValue: userRepository },
-                { provide: RoleDomain, useValue: roleDomain },
-                { provide: CountryDomain, useValue: countryDomain },
                 { provide: UserUtil, useValue: userUtil },
-                {
-                    provide: UserOnboardingDomain,
-                    useValue: userOnboardingDomain,
-                },
+                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: NotificationRecipientDomain,
-                    useValue: notificationRecipientDomain,
-                },
-                { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -165,14 +139,12 @@ describe('UserImportDomain', () => {
             },
         ];
 
+        const clearChecks: IUserImportUsernameChecks = {
+            existing: [],
+            badWords: [false, false],
+        };
+
         beforeEach(() => {
-            roleDomain.getByName.mockResolvedValue(role);
-            countryDomain.getIdByAlpha2Code.mockResolvedValue(
-                'country-thistle'
-            );
-            userRepository.findByEmails.mockResolvedValue([]);
-            userRepository.findByUsernames.mockResolvedValue([]);
-            userUtil.checkBadWord.mockResolvedValue(false);
             databaseUtil.createId
                 .mockReturnValueOnce('user-id-one')
                 .mockReturnValueOnce('user-id-two');
@@ -180,28 +152,29 @@ describe('UserImportDomain', () => {
                 .mockReturnValueOnce('password-one')
                 .mockReturnValueOnce('password-two');
             authPasswordUtil.createPassword.mockResolvedValue(password);
-            userOnboardingDomain.buildPersonalWorkspaceContexts.mockReturnValue(
-                [
-                    {
-                        type: EnumUserSignUpWorkspaceContextType.personal,
-                        workspaceId: 'workspace-one',
-                        slugCandidates: ['w-one'],
-                        name: "thistleRowe's Workspace",
-                    },
-                    {
-                        type: EnumUserSignUpWorkspaceContextType.personal,
-                        workspaceId: 'workspace-two',
-                        slugCandidates: ['w-two'],
-                        name: "marigoldFinch's Workspace",
-                    },
-                ]
-            );
+            userOnboardingUtil.buildPersonalWorkspaceContexts.mockReturnValue([
+                {
+                    type: EnumUserSignUpWorkspaceContextType.personal,
+                    workspaceId: 'workspace-one',
+                    slugCandidates: ['w-one'],
+                    name: "thistleRowe's Workspace",
+                },
+                {
+                    type: EnumUserSignUpWorkspaceContextType.personal,
+                    workspaceId: 'workspace-two',
+                    slugCandidates: ['w-two'],
+                    name: "marigoldFinch's Workspace",
+                },
+            ]);
         });
 
         it('builds the import inputs for every row', async () => {
             const result = await domain.prepareImportByAdmin(
                 rows,
-                'admin-thistle'
+                'admin-thistle',
+                role,
+                'country-thistle',
+                clearChecks
             );
 
             expect(result.inputs).toHaveLength(2);
@@ -226,75 +199,26 @@ describe('UserImportDomain', () => {
         });
 
         it('marks accounts verified when the default role is not plain user', async () => {
-            roleDomain.getByName.mockResolvedValue({
-                ...role,
-                type: EnumRoleType.admin,
-            });
-
             const result = await domain.prepareImportByAdmin(
                 rows,
-                'admin-thistle'
+                'admin-thistle',
+                { ...role, type: EnumRoleType.admin },
+                'country-thistle',
+                clearChecks
             );
 
             expect(result.inputs[0]!.isVerified).toBe(true);
         });
 
-        it('throws UserImportEmailExistException when an email already exists', async () => {
-            userRepository.findByEmails.mockResolvedValue([
-                { ...baseUser, email: 'thistle@example.com' },
-            ]);
-
-            await expect(
-                domain.prepareImportByAdmin(rows, 'admin-thistle')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.importEmailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.importEmailExist
-                    ],
-                messagePath: 'user.error.importEmailExist',
-                messageProperties: { emails: 'thistle@example.com' },
-            });
-        });
-
-        it('throws RoleNotFoundException when the default role is missing', async () => {
-            roleDomain.getByName.mockResolvedValue(null);
-
-            const call = domain.prepareImportByAdmin(rows, 'admin-thistle');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                messagePath: 'role.error.notFound',
-            });
-        });
-
-        it('throws CountryNotFoundException when the default country is missing', async () => {
-            countryDomain.getIdByAlpha2Code.mockResolvedValue(null);
-
-            const call = domain.prepareImportByAdmin(rows, 'admin-thistle');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'country',
-                statusCode: EnumCountryStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumCountryStatusCodeError[
-                        EnumCountryStatusCodeError.notFound
-                    ],
-                messagePath: 'country.error.notFound',
-            });
-        });
-
         it('throws UserImportUsernameExistException when a username already exists', async () => {
-            userRepository.findByUsernames.mockResolvedValue([
-                { ...baseUser, username: 'thistleRowe' },
-            ]);
-
             await expect(
-                domain.prepareImportByAdmin(rows, 'admin-thistle')
+                domain.prepareImportByAdmin(
+                    rows,
+                    'admin-thistle',
+                    role,
+                    'country-thistle',
+                    { ...clearChecks, existing: ['thistleRowe'] }
+                )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importUsernameExist,
@@ -323,7 +247,10 @@ describe('UserImportDomain', () => {
 
             const call = domain.prepareImportByAdmin(
                 duplicateRows,
-                'admin-thistle'
+                'admin-thistle',
+                role,
+                'country-thistle',
+                clearChecks
             );
 
             await expect(call).rejects.toMatchObject({
@@ -339,9 +266,13 @@ describe('UserImportDomain', () => {
         });
 
         it('throws UserUsernameContainBadWordException when a username is profane', async () => {
-            userUtil.checkBadWord.mockResolvedValueOnce(true);
-
-            const call = domain.prepareImportByAdmin(rows, 'admin-thistle');
+            const call = domain.prepareImportByAdmin(
+                rows,
+                'admin-thistle',
+                role,
+                'country-thistle',
+                { ...clearChecks, badWords: [true, false] }
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -355,83 +286,72 @@ describe('UserImportDomain', () => {
         });
     });
 
-    describe('notifyImported', () => {
-        it('sends the welcome notification for every imported user', async () => {
-            const users = [
-                { ...baseUser, id: 'user-id-one' },
-                { ...baseUser, id: 'user-id-two', username: 'marigoldFinch' },
-            ];
-            const passwordHasheds: IAuthPassword[] = [password, password];
-            const passwordStrings = ['password-one', 'password-two'];
-            const recipientOne: INotificationRecipient = {
-                ...TestRecipient,
-                userId: 'user-id-one',
-            };
-            const recipientTwo: INotificationRecipient = {
-                ...TestRecipient,
-                userId: 'user-id-two',
-            };
-            helperDateService.formatToIso.mockImplementation(date =>
-                date.toISOString()
-            );
-            notificationRecipientDomain.buildNewUserRecipient
-                .mockReturnValueOnce(recipientOne)
-                .mockReturnValueOnce(recipientTwo);
+    describe('getExistingEmails', () => {
+        it('answers the listed emails that already exist', async () => {
+            userRepository.findByEmails.mockResolvedValue([
+                { ...baseUser, email: 'thistle@example.com' },
+            ]);
 
-            await domain.notifyImported(
-                users,
-                passwordHasheds,
-                passwordStrings,
-                'admin-thistle'
-            );
+            await expect(
+                domain.getExistingEmails([
+                    'thistle@example.com',
+                    'marigold@example.com',
+                ])
+            ).resolves.toEqual(['thistle@example.com']);
+            expect(userRepository.findByEmails).toHaveBeenCalledWith([
+                'thistle@example.com',
+                'marigold@example.com',
+            ]);
+        });
+    });
 
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).not.toHaveBeenCalled();
-            expect(
-                notificationRecipientDomain.buildNewUserRecipient
-            ).toHaveBeenNthCalledWith(
-                1,
-                users[0],
-                EnumNotificationKind.welcomeByAdmin
-            );
-            expect(
-                notificationRecipientDomain.buildNewUserRecipient
-            ).toHaveBeenNthCalledWith(
-                2,
-                users[1],
-                EnumNotificationKind.welcomeByAdmin
-            );
-            expect(
-                notificationQueue.sendWelcomeByAdminBulk
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                notificationQueue.sendWelcomeByAdminBulk
-            ).toHaveBeenCalledWith(
-                [
-                    {
-                        recipient: recipientOne,
-                        data: {
-                            password: 'password-one',
-                            passwordCreatedAt:
-                                password.passwordCreated.toISOString(),
-                            passwordExpiredAt:
-                                password.passwordExpired.toISOString(),
-                        },
+    describe('assertEmailsAvailable', () => {
+        it('passes when no listed email exists', () => {
+            expect(() => domain.assertEmailsAvailable([])).not.toThrow();
+        });
+
+        it('throws UserImportEmailExistException naming every existing email', () => {
+            expect(() =>
+                domain.assertEmailsAvailable([
+                    'thistle@example.com',
+                    'marigold@example.com',
+                ])
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.importEmailExist,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.importEmailExist
+                        ],
+                    messagePath: 'user.error.importEmailExist',
+                    messageProperties: {
+                        emails: 'thistle@example.com, marigold@example.com',
                     },
-                    {
-                        recipient: recipientTwo,
-                        data: {
-                            password: 'password-two',
-                            passwordCreatedAt:
-                                password.passwordCreated.toISOString(),
-                            passwordExpiredAt:
-                                password.passwordExpired.toISOString(),
-                        },
-                    },
-                ],
-                'admin-thistle'
+                })
             );
+        });
+    });
+
+    describe('getUsernameChecks', () => {
+        it('reads the existing usernames and the bad-word check of every username', async () => {
+            userRepository.findByUsernames.mockResolvedValue([
+                { ...baseUser, username: 'thistleRowe' },
+            ]);
+            userUtil.checkBadWord
+                .mockResolvedValueOnce(false)
+                .mockResolvedValueOnce(true);
+
+            await expect(
+                domain.getUsernameChecks(['thistleRowe', 'marigoldFinch'])
+            ).resolves.toEqual({
+                existing: ['thistleRowe'],
+                badWords: [false, true],
+            });
+            expect(userRepository.findByUsernames).toHaveBeenCalledWith([
+                'thistleRowe',
+                'marigoldFinch',
+            ]);
         });
     });
 

@@ -83,26 +83,6 @@ describe('LoggerUtil', () => {
         });
     });
 
-    describe('maskUrl', () => {
-        it('masks the pathname of a parseable absolute url', () => {
-            const result = util.maskUrl(
-                'https://host.com/api/user/507f1f77bcf86cd799439011'
-            );
-
-            expect(result).toBe(
-                `https://host.com/api/user/${LoggerRedactedValue}`
-            );
-        });
-
-        it('falls back to a manual split for a url that fails to parse', () => {
-            const result = util.maskUrl(
-                '/api/user/507f1f77bcf86cd799439011?x=1#f'
-            );
-
-            expect(result).toBe(`/api/user/${LoggerRedactedValue}`);
-        });
-    });
-
     describe('serializeRequest', () => {
         it('shapes the request with a masked referer when present', () => {
             const request = {
@@ -376,6 +356,26 @@ describe('LoggerUtil', () => {
             );
 
             expect(result).toEqual({ msg: 'padded text' });
+        });
+    });
+
+    describe('maskUrl', () => {
+        it('masks the pathname of a parseable absolute url', () => {
+            const result = util['maskUrl'](
+                'https://host.com/api/user/507f1f77bcf86cd799439011'
+            );
+
+            expect(result).toBe(
+                `https://host.com/api/user/${LoggerRedactedValue}`
+            );
+        });
+
+        it('falls back to a manual split for a url that fails to parse', () => {
+            const result = util['maskUrl'](
+                '/api/user/507f1f77bcf86cd799439011?x=1#f'
+            );
+
+            expect(result).toBe(`/api/user/${LoggerRedactedValue}`);
         });
     });
 

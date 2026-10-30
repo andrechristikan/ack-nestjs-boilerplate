@@ -27,6 +27,24 @@ describe('HelperNumberService', () => {
         });
     });
 
+    describe('percent', () => {
+        it('returns the part as a percentage of the total', () => {
+            expect(service.percent(1, 4)).toBe(25);
+        });
+
+        it('returns an unrounded value', () => {
+            expect(service.percent(1, 3)).toBeCloseTo(33.3333333, 5);
+        });
+
+        it('returns 0 when the total is 0', () => {
+            expect(service.percent(5, 0)).toBe(0);
+        });
+
+        it('returns 0 when the part is 0', () => {
+            expect(service.percent(0, 5)).toBe(0);
+        });
+    });
+
     describe('randomDigits', () => {
         it('generates a string of the requested length with a non-zero first digit', () => {
             const result = service.randomDigits(4);

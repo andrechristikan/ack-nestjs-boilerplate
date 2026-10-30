@@ -10,12 +10,10 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -26,6 +24,7 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -33,7 +32,7 @@ export class WorkspaceMemberDomain {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -41,14 +40,11 @@ export class WorkspaceMemberDomain {
         actorMember: WorkspaceMember,
         targetMember: WorkspaceMember
     ): void {
-        if (targetMember.role === EnumWorkspaceMemberRole.owner) {
-            throw new WorkspaceMemberPeerForbiddenException();
-        }
-
-        if (
-            actorMember.role === EnumWorkspaceMemberRole.admin &&
-            targetMember.role === EnumWorkspaceMemberRole.admin
-        ) {
+        const isAllowed = this.workspaceUtil.isPeerActionAllowed(
+            actorMember.role,
+            targetMember.role
+        );
+        if (!isAllowed) {
             throw new WorkspaceMemberPeerForbiddenException();
         }
     }
@@ -103,11 +99,8 @@ export class WorkspaceMemberDomain {
         member: WorkspaceMember,
         allowedRoles: EnumWorkspaceMemberRole[]
     ): WorkspaceMember {
-        if (member.role === EnumWorkspaceMemberRole.owner) {
-            return member;
-        }
-
-        if (!allowedRoles.includes(member.role)) {
+        const hasRole = this.workspaceUtil.hasRole(member, allowedRoles);
+        if (!hasRole) {
             throw new WorkspaceRoleForbiddenException();
         }
 
@@ -140,6 +133,15 @@ export class WorkspaceMemberDomain {
         );
     }
 
+    async getReviewerUserIds(workspaceId: string): Promise<string[]> {
+        const reviewers =
+            await this.workspaceMemberRepository.findReviewersByWorkspace(
+                workspaceId
+            );
+
+        return reviewers.map(reviewer => reviewer.userId);
+    }
+
     async transferOwnership(
         workspaceId: string,
         actorMember: WorkspaceMember,
@@ -158,32 +160,11 @@ export class WorkspaceMemberDomain {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceOwnershipTransferred,
-                userId: actorMember.userId,
-                createdBy: actorMember.userId,
-                workspaceId: workspaceId,
-                metadata: { targetUserId: targetMember.userId },
-            }),
-        ];
-        const workspaceOwnershipTransferredByOwnerActivityLog =
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
-                userId: targetMember.userId,
-                createdBy: actorMember.userId,
-                workspaceId: workspaceId,
-                metadata: { actorUserId: actorMember.userId },
-            });
-        activityLogs.push(workspaceOwnershipTransferredByOwnerActivityLog);
-
         await this.transferOwnershipGuarded(
             workspaceId,
             actorMember.id,
             targetMember.id
         );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async leaveWorkspace(
@@ -199,15 +180,6 @@ export class WorkspaceMemberDomain {
             }
         }
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceMemberLeft,
-                userId: member.userId,
-                createdBy: member.userId,
-                workspaceId: workspaceId,
-            }),
-        ];
-
         const removed = await this.workspaceMemberRepository.removeMember(
             member.id,
             member.role
@@ -215,8 +187,6 @@ export class WorkspaceMemberDomain {
         if (!removed) {
             throw new WorkspaceMemberNotFoundException();
         }
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async getMembersList(
@@ -236,7 +206,7 @@ export class WorkspaceMemberDomain {
         actorMember: WorkspaceMember,
         targetMemberId: string,
         newRole: EnumWorkspaceMemberRole
-    ): Promise<void> {
+    ): Promise<WorkspaceMember> {
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
                 targetMemberId,
@@ -251,23 +221,6 @@ export class WorkspaceMemberDomain {
         }
 
         this.assertPeerActionAllowed(actorMember, targetMember);
-
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceMemberRoleUpdated,
-                userId: actorMember.userId,
-                createdBy: actorMember.userId,
-                workspaceId: workspaceId,
-                metadata: { targetUserId: targetMember.userId },
-            }),
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
-                userId: targetMember.userId,
-                createdBy: actorMember.userId,
-                workspaceId: workspaceId,
-                metadata: { actorUserId: actorMember.userId },
-            }),
-        ];
 
         const updated = await this.workspaceMemberRepository.updateRole(
             targetMember.id,
@@ -278,14 +231,14 @@ export class WorkspaceMemberDomain {
             throw new WorkspaceMemberPeerForbiddenException();
         }
 
-        this.activityLogDomain.stagePrepared(activityLogs);
+        return targetMember;
     }
 
     async removeMember(
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string
-    ): Promise<void> {
+    ): Promise<WorkspaceMember> {
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
                 targetMemberId,
@@ -301,23 +254,6 @@ export class WorkspaceMemberDomain {
 
         this.assertPeerActionAllowed(actorMember, targetMember);
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceMemberRemoved,
-                userId: actorMember.userId,
-                createdBy: actorMember.userId,
-                workspaceId: workspaceId,
-                metadata: { targetUserId: targetMember.userId },
-            }),
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
-                userId: targetMember.userId,
-                createdBy: actorMember.userId,
-                workspaceId: workspaceId,
-                metadata: { actorUserId: actorMember.userId },
-            }),
-        ];
-
         const removed = await this.workspaceMemberRepository.removeMember(
             targetMember.id,
             targetMember.role
@@ -326,7 +262,7 @@ export class WorkspaceMemberDomain {
             throw new WorkspaceMemberPeerForbiddenException();
         }
 
-        this.activityLogDomain.stagePrepared(activityLogs);
+        return targetMember;
     }
 
     async getMembersListByAdmin(

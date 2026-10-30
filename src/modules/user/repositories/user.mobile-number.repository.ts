@@ -4,7 +4,9 @@ import type {
     Country,
     UserMobileNumber,
 } from '@generated/prisma-client/client';
+import { UserMobileNumberSummarySelect } from '@modules/user/constants/user.constant';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { IUserMobileNumberSummary } from '@modules/user/interfaces/user.interface';
 import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -15,30 +17,20 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
     async findOneMobileNumber(
         userId: string,
         mobileNumberId: string
-    ): Promise<{
-        id: string;
-        number: string;
-        phoneCode: string;
-        isVerified: boolean;
-    } | null> {
+    ): Promise<IUserMobileNumberSummary | null> {
         return this.databaseService.client.userMobileNumber.findFirst({
             where: {
                 id: mobileNumberId,
                 userId,
             },
-            select: {
-                id: true,
-                number: true,
-                phoneCode: true,
-                isVerified: true,
-            },
+            select: UserMobileNumberSummarySelect,
         });
     }
 
     async existsMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        excludeId?: string
+        excludeId: string | null
     ): Promise<boolean> {
         const count = await this.databaseService.client.userMobileNumber.count({
             where: {
@@ -46,11 +38,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 countryId,
                 phoneCode,
                 userId,
-                ...(excludeId
-                    ? {
-                          id: { not: excludeId },
-                      }
-                    : {}),
+                ...(excludeId !== null && { id: { not: excludeId } }),
             },
         });
 

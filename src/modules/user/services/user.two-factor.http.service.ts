@@ -1,4 +1,15 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { AccountDomain } from '@modules/account/domains/account.domain';
+import { AccountTwoFactorDomain } from '@modules/account/domains/account.two-factor.domain';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { SessionQueue } from '@modules/session/queues/session.queue';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
 import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
@@ -20,6 +31,14 @@ import { Injectable } from '@nestjs/common';
 export class UserTwoFactorHttpService {
     constructor(
         private readonly userTwoFactorDomain: UserTwoFactorDomain,
+        private readonly userDomain: UserDomain,
+        private readonly accountTwoFactorDomain: AccountTwoFactorDomain,
+        private readonly accountDomain: AccountDomain,
+        private readonly authTwoFactorDomain: AuthTwoFactorDomain,
+        private readonly roleDomain: RoleDomain,
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly sessionQueue: SessionQueue,
+        private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil
     ) {}
 
@@ -31,7 +50,7 @@ export class UserTwoFactorHttpService {
     }: UserLoginVerifyTwoFactorRequestDto): Promise<
         IResponseReturn<IAuthToken>
     > {
-        const tokens = await this.userTwoFactorDomain.loginVerifyTwoFactor(
+        const login = await this.accountTwoFactorDomain.verifyLogin(
             challengeToken,
             {
                 code: code ?? null,
@@ -39,6 +58,35 @@ export class UserTwoFactorHttpService {
                 method,
             }
         );
+        const { user, challenge } = login;
+        const verifyLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userVerifyTwoFactor,
+                userId: user.id,
+                createdBy: user.id,
+            }),
+        ];
+        // Sequential by design: write must not run if an earlier step throws
+        await this.accountTwoFactorDomain.recordLoginVerification(login);
+
+        this.activityLogDomain.stagePrepared(verifyLogs);
+
+        const loginAction = this.userUtil.resolveLoginActivityLogAction(
+            challenge.loginWith
+        );
+        const loginLogs = [
+            this.activityLogDomain.prepare({
+                action: loginAction,
+                userId: user.id,
+                createdBy: user.id,
+            }),
+        ];
+        const tokens = await this.accountTwoFactorDomain.issueLoginTokens(
+            login,
+            challengeToken
+        );
+
+        this.activityLogDomain.stagePrepared(loginLogs);
 
         return { data: tokens };
     }
@@ -49,10 +97,22 @@ export class UserTwoFactorHttpService {
     }: UserLoginSetupTwoFactorRequestDto): Promise<
         IResponseReturn<UserTwoFactorEnableResponseDto>
     > {
-        const backupCodes = await this.userTwoFactorDomain.loginSetupTwoFactor(
-            challengeToken,
-            code
+        const { user, pendingSecret } =
+            await this.accountTwoFactorDomain.verifyLoginSetup(
+                challengeToken,
+                code
+            );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userEnableTwoFactor,
+            }),
+        ];
+        const backupCodes = await this.userTwoFactorDomain.enableTwoFactor(
+            user.id,
+            pendingSecret
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: { backupCodes } };
     }
@@ -60,9 +120,7 @@ export class UserTwoFactorHttpService {
     getTwoFactorStatus(
         user: IUser
     ): IResponseReturn<UserTwoFactorStatusResponseDto> {
-        const twoFactorStatus =
-            this.userTwoFactorDomain.getTwoFactorStatus(user);
-        const twoFactor = this.userUtil.mapTwoFactor(twoFactorStatus);
+        const twoFactor = this.userUtil.mapTwoFactor(user.twoFactor);
 
         return { data: twoFactor };
     }
@@ -71,10 +129,19 @@ export class UserTwoFactorHttpService {
         user: IUser,
         { backupCode }: UserTwoFactorSetupRequestDto
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        const setup = await this.userTwoFactorDomain.setupTwoFactor(
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userSetupTwoFactor,
+                userId: user.id,
+                createdBy: user.id,
+            }),
+        ];
+        const setup = await this.accountTwoFactorDomain.setup(
             user,
             backupCode ?? null
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: setup };
     }
@@ -83,10 +150,25 @@ export class UserTwoFactorHttpService {
         user: IUser,
         { code }: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        const backupCodes = await this.userTwoFactorDomain.enableTwoFactor(
+        const pendingSecret = this.userTwoFactorDomain.getPendingSecret(user);
+        // Sequential by design: gate before the work it guards
+        await this.accountTwoFactorDomain.verifySetupCode(
             user,
+            pendingSecret,
             code
         );
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userEnableTwoFactor,
+            }),
+        ];
+        const backupCodes = await this.userTwoFactorDomain.enableTwoFactor(
+            user.id,
+            pendingSecret
+        );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: { backupCodes } };
     }
@@ -95,11 +177,25 @@ export class UserTwoFactorHttpService {
         user: IUser,
         { code, backupCode, method }: UserTwoFactorDisableRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userTwoFactorDomain.disableTwoFactor(user, {
+        this.userTwoFactorDomain.assertEnabled(user);
+        // Sequential by design: gate before the work it guards
+        await this.accountTwoFactorDomain.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
             method,
         });
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userDisableTwoFactor,
+            }),
+        ];
+        // Sequential by design: write must not run if an earlier step throws
+        const revoked = await this.accountTwoFactorDomain.disable(user.id);
+
+        await this.sessionQueue.purgeLogins(user.id, revoked);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -108,11 +204,25 @@ export class UserTwoFactorHttpService {
         user: IUser,
         { code }: UserTwoFactorRegenerateBackupCodeRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        this.userTwoFactorDomain.assertEnabled(user);
+        // Sequential by design: gate before the work it guards
+        await this.accountTwoFactorDomain.verify(user, {
+            method: EnumAuthTwoFactorMethod.code,
+            code,
+            backupCode: null,
+        });
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+            }),
+        ];
         const backupCodes =
             await this.userTwoFactorDomain.regenerateTwoFactorBackupCodes(
-                user,
-                code
+                user.id
             );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: { backupCodes } };
     }
@@ -121,10 +231,53 @@ export class UserTwoFactorHttpService {
         userId: string,
         user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.userTwoFactorDomain.resetTwoFactorByAdmin(userId, user.id, {
-            roleId: user.roleId,
-            roleType: user.role.type,
-        });
+        this.userDomain.assertNotSelf(userId, user.id);
+
+        // Sequential by design: gate before the work it guards
+        const target = await this.userDomain.getOneWithRole(userId);
+        this.roleDomain.assertActorOutranks(user.role.type, target.role.type);
+        this.userDomain.assertUnblocked(target);
+
+        this.userTwoFactorDomain.assertEnabled(target);
+
+        const actorMetadata = this.userUtil.mapActivityLogActorMetadata(target);
+        const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
+            target,
+            user.id
+        );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.adminUserResetTwoFactor,
+                metadata: actorMetadata,
+            }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userResetTwoFactorByAdmin,
+                userId,
+                createdBy: user.id,
+                metadata: targetMetadata,
+            }),
+        ];
+
+        // Sequential by design: write must not run if an earlier step throws
+        const recipient =
+            await this.accountDomain.getNotificationRecipientOfUser(
+                target,
+                EnumNotificationKind.resetTwoFactorByAdmin
+            );
+        const revoked = await this.accountTwoFactorDomain.resetByAdmin(
+            userId,
+            user.id
+        );
+        await Promise.all([
+            this.authTwoFactorDomain.clearLock(target),
+            this.sessionQueue.purgeLogins(userId, revoked),
+            this.notificationQueue.sendResetTwoFactorByAdmin(
+                recipient,
+                user.id
+            ),
+        ]);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

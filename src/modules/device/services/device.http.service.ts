@@ -1,14 +1,19 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { AccountDeviceDomain } from '@modules/account/domains/account.device.domain';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { DeviceUtil } from '@modules/device/utils/device.util';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -20,6 +25,11 @@ import {
 export class DeviceHttpService {
     constructor(
         private readonly deviceDomain: DeviceDomain,
+        private readonly accountDeviceDomain: AccountDeviceDomain,
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly roleDomain: RoleDomain,
+        private readonly sessionQueue: SessionQueue,
+        private readonly deviceUtil: DeviceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -101,11 +111,19 @@ export class DeviceHttpService {
         deviceOwnershipId: string,
         body: DeviceRefreshRequestDto
     ): Promise<IResponseReturn<void>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userDeviceRefresh,
+            }),
+        ];
+
         await this.deviceDomain.refresh(userId, deviceOwnershipId, {
             name: body.name ?? null,
             platform: body.platform ?? null,
             notificationToken: body.notificationToken ?? null,
         });
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -114,7 +132,25 @@ export class DeviceHttpService {
         userId: string,
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        await this.deviceDomain.remove(userId, deviceOwnershipId);
+        const { deviceOwnership, revokedSessions } =
+            await this.accountDeviceDomain.remove(userId, deviceOwnershipId);
+
+        const metadata = this.deviceUtil.mapActivityLogMetadata(
+            deviceOwnership,
+            revokedSessions.length
+        );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userRemoveDevice,
+                userId,
+                createdBy: userId,
+                metadata,
+            }),
+        ];
+
+        await this.sessionQueue.purgeLogins(userId, revokedSessions);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -124,12 +160,45 @@ export class DeviceHttpService {
         deviceOwnershipId: string,
         user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.deviceDomain.removeByAdmin(
-            userId,
-            deviceOwnershipId,
-            user.id,
-            { roleId: user.roleId, roleType: user.role.type }
+        // Sequential by design: gate before the work it guards
+        const targetRole = await this.roleDomain.getOneByUserId(userId);
+        this.roleDomain.assertActorOutranks(user.role.type, targetRole.type);
+
+        const { deviceOwnership, revokedSessions } =
+            await this.accountDeviceDomain.removeByAdmin(
+                userId,
+                deviceOwnershipId,
+                user.id
+            );
+
+        const actorMetadata = this.deviceUtil.mapActivityLogActorMetadata(
+            deviceOwnership,
+            revokedSessions.length
         );
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.adminDeviceRemove,
+                metadata: actorMetadata,
+            }),
+        ];
+        if (userId !== user.id) {
+            const targetMetadata = this.deviceUtil.mapActivityLogTargetMetadata(
+                deviceOwnership,
+                user.id,
+                revokedSessions.length
+            );
+            const targetActivityLog = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userRemoveDeviceByAdmin,
+                userId,
+                createdBy: user.id,
+                metadata: targetMetadata,
+            });
+            activityLogs.push(targetActivityLog);
+        }
+
+        await this.sessionQueue.purgeLogins(userId, revokedSessions);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

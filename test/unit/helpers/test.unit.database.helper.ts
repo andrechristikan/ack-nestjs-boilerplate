@@ -6,7 +6,7 @@ import { DatabaseClientFactory } from '@common/database/factories/database.clien
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IDatabaseData } from '@common/database/interfaces/database.extension.interface';
-import type { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
+import type { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 export interface IExtensionQueryArgs {
@@ -43,9 +43,9 @@ export interface IExtension {
 // (see the generated Prisma runtime); passing a stub client whose `$extends` returns its
 // argument unwraps `ext` itself, so every query/model hook can be invoked directly.
 export function extractDatabaseExtension(
-    util: DatabaseExtensionUtil
+    factory: DatabaseExtensionFactory
 ): IExtension {
-    const applyExtension = util.build() as unknown as (client: {
+    const applyExtension = factory.build() as unknown as (client: {
         $extends: (ext: unknown) => unknown;
     }) => unknown;
 

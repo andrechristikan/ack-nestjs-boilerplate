@@ -1,3 +1,4 @@
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -19,6 +20,8 @@ import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic
 describe('UserAnalyticDomain', () => {
     const userAnalyticRepository: MockProxy<UserAnalyticRepository> =
         mock<UserAnalyticRepository>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
 
     let domain: UserAnalyticDomain;
 
@@ -36,6 +39,7 @@ describe('UserAnalyticDomain', () => {
                     provide: UserAnalyticRepository,
                     useValue: userAnalyticRepository,
                 },
+                { provide: HelperNumberService, useValue: helperNumberService },
             ],
         }).compile();
         domain = module.get(UserAnalyticDomain);
@@ -55,9 +59,10 @@ describe('UserAnalyticDomain', () => {
     });
 
     describe('getChurnRate', () => {
-        it('computes the rate when total is not zero', async () => {
+        it('computes the rate from the deleted count and the total', async () => {
             userAnalyticRepository.countDeletedInRange.mockResolvedValue(2);
             userAnalyticRepository.countRegisteredUntil.mockResolvedValue(8);
+            helperNumberService.percent.mockReturnValue(25);
 
             await expect(
                 domain.getChurnRate(startDate, endDate)
@@ -66,19 +71,7 @@ describe('UserAnalyticDomain', () => {
                 total: 8,
                 rate: 25,
             });
-        });
-
-        it('returns a zero rate when total is zero', async () => {
-            userAnalyticRepository.countDeletedInRange.mockResolvedValue(0);
-            userAnalyticRepository.countRegisteredUntil.mockResolvedValue(0);
-
-            await expect(
-                domain.getChurnRate(startDate, endDate)
-            ).resolves.toEqual({
-                count: 0,
-                total: 0,
-                rate: 0,
-            });
+            expect(helperNumberService.percent).toHaveBeenCalledWith(2, 8);
         });
     });
 
@@ -154,6 +147,7 @@ describe('UserAnalyticDomain', () => {
         it('computes the rate over users who signed up inside the range', async () => {
             userAnalyticRepository.countVerifiedEmail.mockResolvedValue(6);
             userAnalyticRepository.countSignedUp.mockResolvedValue(12);
+            helperNumberService.percent.mockReturnValue(50);
 
             await expect(
                 domain.getEmailVerificationRate(startDate, endDate)
@@ -169,11 +163,13 @@ describe('UserAnalyticDomain', () => {
                 startDate,
                 endDate
             );
+            expect(helperNumberService.percent).toHaveBeenCalledWith(6, 12);
         });
 
-        it('returns a zero rate when total is zero', async () => {
+        it('passes open date bounds to the repository', async () => {
             userAnalyticRepository.countVerifiedEmail.mockResolvedValue(0);
             userAnalyticRepository.countSignedUp.mockResolvedValue(0);
+            helperNumberService.percent.mockReturnValue(0);
 
             await expect(
                 domain.getEmailVerificationRate(null, null)

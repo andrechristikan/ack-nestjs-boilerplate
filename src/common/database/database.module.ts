@@ -4,7 +4,7 @@ import { DatabaseClientToken } from '@common/database/constants/database.constan
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
+import { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 
 /**
@@ -17,7 +17,7 @@ export class DatabaseModule {
             module: DatabaseModule,
             global: true,
             providers: [
-                DatabaseExtensionUtil,
+                DatabaseExtensionFactory,
                 DatabaseClientFactory,
                 {
                     provide: DatabaseClientToken,
@@ -29,7 +29,7 @@ export class DatabaseModule {
                 DatabaseService,
                 DatabaseUtil,
             ],
-            exports: [DatabaseService, DatabaseUtil, DatabaseExtensionUtil],
+            exports: [DatabaseService, DatabaseUtil, DatabaseExtensionFactory],
             imports: [],
             controllers: [],
         };

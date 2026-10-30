@@ -2,14 +2,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Country } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
@@ -22,10 +18,7 @@ describe('UserMobileNumberDomain', () => {
     const userMobileNumberRepository: MockProxy<UserMobileNumberRepository> =
         mock<UserMobileNumberRepository>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
 
     let domain: UserMobileNumberDomain;
@@ -58,13 +51,6 @@ describe('UserMobileNumberDomain', () => {
         updatedBy: null,
         country,
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userAddMobileNumber,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -72,7 +58,6 @@ describe('UserMobileNumberDomain', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogDomain.prepare.mockReturnValue(activityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -82,31 +67,68 @@ describe('UserMobileNumberDomain', () => {
                     useValue: userMobileNumberRepository,
                 },
                 { provide: UserDomain, useValue: userDomain },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
-                { provide: CountryDomain, useValue: countryDomain },
                 { provide: UserUtil, useValue: userUtil },
             ],
         }).compile();
         domain = module.get(UserMobileNumberDomain);
     });
 
-    describe('addMobileNumber', () => {
-        it('adds the mobile number and stages the activity log', async () => {
-            countryDomain.getOne.mockResolvedValue(country);
-            userUtil.checkMobileNumber.mockReturnValue(true);
+    describe('existsMobileNumber', () => {
+        const input = {
+            number: '5551234',
+            countryId: country.id,
+            phoneCode: '+1',
+        };
+
+        it('checks the number against all rows of the user when no row is excluded', async () => {
+            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
+                true
+            );
+
+            await expect(
+                domain.existsMobileNumber('user-marlin', input, null)
+            ).resolves.toBe(true);
+            expect(
+                userMobileNumberRepository.existsMobileNumber
+            ).toHaveBeenCalledWith('user-marlin', input, null);
+        });
+
+        it('excludes the row being updated', async () => {
             userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
                 false
             );
+
+            await expect(
+                domain.existsMobileNumber('user-marlin', input, 'mobile-1')
+            ).resolves.toBe(false);
+            expect(
+                userMobileNumberRepository.existsMobileNumber
+            ).toHaveBeenCalledWith('user-marlin', input, 'mobile-1');
+        });
+    });
+
+    describe('addMobileNumber', () => {
+        it('adds the mobile number', async () => {
+            userUtil.checkMobileNumber.mockReturnValue(true);
             userMobileNumberRepository.addInTx.mockResolvedValue(mobileNumber);
 
-            const result = await domain.addMobileNumber('user-marlin', {
-                number: '5551234',
-                countryId: country.id,
-                phoneCode: '+1',
-            });
+            const result = await domain.addMobileNumber(
+                'user-marlin',
+                {
+                    number: '5551234',
+                    countryId: country.id,
+                    phoneCode: '+1',
+                },
+                country.phoneCode,
+                false
+            );
 
             expect(result).toBe(mobileNumber);
+            expect(userUtil.checkMobileNumber).toHaveBeenCalledWith(
+                country.phoneCode,
+                '+1'
+            );
             expect(userMobileNumberRepository.addInTx).toHaveBeenCalledWith(
                 tx,
                 'user-marlin',
@@ -120,24 +142,22 @@ describe('UserMobileNumberDomain', () => {
                 tx,
                 'user-marlin'
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
         it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
-            countryDomain.getOne.mockResolvedValue(country);
             userUtil.checkMobileNumber.mockReturnValue(false);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                false
-            );
 
             await expect(
-                domain.addMobileNumber('user-marlin', {
-                    number: '5551234',
-                    countryId: country.id,
-                    phoneCode: '+9',
-                })
+                domain.addMobileNumber(
+                    'user-marlin',
+                    {
+                        number: '5551234',
+                        countryId: country.id,
+                        phoneCode: '+9',
+                    },
+                    country.phoneCode,
+                    false
+                )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
@@ -150,18 +170,19 @@ describe('UserMobileNumberDomain', () => {
         });
 
         it('throws UserMobileNumberExistException when the mobile number already exists', async () => {
-            countryDomain.getOne.mockResolvedValue(country);
             userUtil.checkMobileNumber.mockReturnValue(true);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                true
-            );
 
             await expect(
-                domain.addMobileNumber('user-marlin', {
-                    number: '5551234',
-                    countryId: country.id,
-                    phoneCode: '+1',
-                })
+                domain.addMobileNumber(
+                    'user-marlin',
+                    {
+                        number: '5551234',
+                        countryId: country.id,
+                        phoneCode: '+1',
+                    },
+                    country.phoneCode,
+                    true
+                )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.mobileNumberExist,
@@ -174,19 +195,20 @@ describe('UserMobileNumberDomain', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
-            countryDomain.getOne.mockResolvedValue(country);
             userUtil.checkMobileNumber.mockReturnValue(true);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                false
-            );
             const error = new UserMobileNumberExistException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = domain.addMobileNumber('user-marlin', {
-                number: '5551234',
-                countryId: country.id,
-                phoneCode: '+1',
-            });
+            const call = domain.addMobileNumber(
+                'user-marlin',
+                {
+                    number: '5551234',
+                    countryId: country.id,
+                    phoneCode: '+1',
+                },
+                country.phoneCode,
+                false
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -201,19 +223,20 @@ describe('UserMobileNumberDomain', () => {
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {
-            countryDomain.getOne.mockResolvedValue(country);
             userUtil.checkMobileNumber.mockReturnValue(true);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                false
-            );
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = domain.addMobileNumber('user-marlin', {
-                number: '5551234',
-                countryId: country.id,
-                phoneCode: '+1',
-            });
+            const call = domain.addMobileNumber(
+                'user-marlin',
+                {
+                    number: '5551234',
+                    countryId: country.id,
+                    phoneCode: '+1',
+                },
+                country.phoneCode,
+                false
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',
@@ -226,36 +249,55 @@ describe('UserMobileNumberDomain', () => {
         });
     });
 
-    describe('updateMobileNumber', () => {
-        it('updates the mobile number, stages the activity log in order, keeping verification when number and phone code are unchanged', async () => {
-            const verified = { ...mobileNumber, isVerified: true };
+    describe('getOneMobileNumber', () => {
+        it('returns the mobile number of the user', async () => {
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                verified
+                mobileNumber
             );
-            countryDomain.getOne.mockResolvedValue(country);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                false
+
+            await expect(
+                domain.getOneMobileNumber('user-marlin', mobileNumber.id)
+            ).resolves.toBe(mobileNumber);
+            expect(
+                userMobileNumberRepository.findOneMobileNumber
+            ).toHaveBeenCalledWith('user-marlin', mobileNumber.id);
+        });
+
+        it('throws UserMobileNumberNotFoundException when the mobile number does not exist', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
+                null
             );
-            userUtil.checkMobileNumber.mockReturnValue(true);
-            const callOrder: string[] = [];
-            userMobileNumberRepository.updateInTx.mockImplementation(
-                async () => {
-                    callOrder.push('updateInTx');
-                    return verified;
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
+
+            await expect(
+                domain.getOneMobileNumber('user-marlin', 'missing')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.mobileNumberNotFound
+                    ],
+                messagePath: 'user.error.mobileNumberNotFound',
             });
+        });
+    });
+
+    describe('updateMobileNumber', () => {
+        it('updates the mobile number, keeping verification when number and phone code are unchanged', async () => {
+            const verified = { ...mobileNumber, isVerified: true };
+            userUtil.checkMobileNumber.mockReturnValue(true);
+            userMobileNumberRepository.updateInTx.mockResolvedValue(verified);
 
             const result = await domain.updateMobileNumber(
                 'user-marlin',
-                mobileNumber.id,
+                verified,
                 {
                     number: mobileNumber.number,
                     countryId: country.id,
                     phoneCode: mobileNumber.phoneCode,
-                }
+                },
+                country.phoneCode,
+                false
             );
 
             expect(result).toBe(verified);
@@ -269,34 +311,28 @@ describe('UserMobileNumberDomain', () => {
                 },
                 true
             );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userUpdateMobileNumber,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(callOrder).toEqual(['updateInTx', 'stagePrepared']);
         });
 
         it('resets verification when the number changes', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue({
-                ...mobileNumber,
-                isVerified: true,
-            });
-            countryDomain.getOne.mockResolvedValue(country);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                false
-            );
             userUtil.checkMobileNumber.mockReturnValue(true);
             userMobileNumberRepository.updateInTx.mockResolvedValue(
                 mobileNumber
             );
 
-            await domain.updateMobileNumber('user-marlin', mobileNumber.id, {
-                number: '5559999',
-                countryId: country.id,
-                phoneCode: mobileNumber.phoneCode,
-            });
+            await domain.updateMobileNumber(
+                'user-marlin',
+                {
+                    ...mobileNumber,
+                    isVerified: true,
+                },
+                {
+                    number: '5559999',
+                    countryId: country.id,
+                    phoneCode: mobileNumber.phoneCode,
+                },
+                country.phoneCode,
+                false
+            );
 
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
@@ -308,55 +344,19 @@ describe('UserMobileNumberDomain', () => {
                 },
                 false
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-        });
-
-        it('throws UserMobileNumberNotFoundException when the mobile number does not exist', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                null
-            );
-            countryDomain.getOne.mockResolvedValue(country);
-
-            await expect(
-                domain.updateMobileNumber('user-marlin', 'missing', {
-                    number: '5551234',
-                    countryId: country.id,
-                    phoneCode: '+1',
-                })
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberNotFound
-                    ],
-                messagePath: 'user.error.mobileNumberNotFound',
-            });
-            expect(
-                userMobileNumberRepository.existsMobileNumber
-            ).not.toHaveBeenCalled();
-            expect(countryDomain.getOne).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberExistException when another row already has the number', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
-            countryDomain.getOne.mockResolvedValue(country);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                true
-            );
-
             const call = domain.updateMobileNumber(
                 'user-marlin',
-                mobileNumber.id,
+                mobileNumber,
                 {
                     number: '5559999',
                     countryId: country.id,
                     phoneCode: '+1',
-                }
+                },
+                country.phoneCode,
+                true
             );
 
             await expect(call).rejects.toMatchObject({
@@ -371,23 +371,18 @@ describe('UserMobileNumberDomain', () => {
         });
 
         it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
-            countryDomain.getOne.mockResolvedValue(country);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                false
-            );
             userUtil.checkMobileNumber.mockReturnValue(false);
 
             const call = domain.updateMobileNumber(
                 'user-marlin',
-                mobileNumber.id,
+                mobileNumber,
                 {
                     number: '5559999',
                     countryId: country.id,
                     phoneCode: '+9',
-                }
+                },
+                country.phoneCode,
+                false
             );
 
             await expect(call).rejects.toMatchObject({
@@ -402,25 +397,20 @@ describe('UserMobileNumberDomain', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
-            countryDomain.getOne.mockResolvedValue(country);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                false
-            );
             userUtil.checkMobileNumber.mockReturnValue(true);
             const error = new UserMobileNumberExistException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
             const call = domain.updateMobileNumber(
                 'user-marlin',
-                mobileNumber.id,
+                mobileNumber,
                 {
                     number: mobileNumber.number,
                     countryId: country.id,
                     phoneCode: mobileNumber.phoneCode,
-                }
+                },
+                country.phoneCode,
+                false
             );
 
             await expect(call).rejects.toMatchObject({
@@ -436,25 +426,20 @@ describe('UserMobileNumberDomain', () => {
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
-            countryDomain.getOne.mockResolvedValue(country);
-            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
-                false
-            );
             userUtil.checkMobileNumber.mockReturnValue(true);
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
             const call = domain.updateMobileNumber(
                 'user-marlin',
-                mobileNumber.id,
+                mobileNumber,
                 {
                     number: mobileNumber.number,
                     countryId: country.id,
                     phoneCode: mobileNumber.phoneCode,
-                }
+                },
+                country.phoneCode,
+                false
             );
 
             await expect(call).rejects.toMatchObject({
@@ -469,20 +454,13 @@ describe('UserMobileNumberDomain', () => {
     });
 
     describe('deleteMobileNumber', () => {
-        it('deletes the mobile number and stages the activity log in order', async () => {
+        it('deletes the mobile number', async () => {
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
                 mobileNumber
             );
-            const callOrder: string[] = [];
-            userMobileNumberRepository.deleteInTx.mockImplementation(
-                async () => {
-                    callOrder.push('deleteInTx');
-                    return mobileNumber;
-                }
+            userMobileNumberRepository.deleteInTx.mockResolvedValue(
+                mobileNumber
             );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
 
             const result = await domain.deleteMobileNumber(
                 'user-marlin',
@@ -498,13 +476,6 @@ describe('UserMobileNumberDomain', () => {
                 tx,
                 'user-marlin'
             );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userDeleteMobileNumber,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(callOrder).toEqual(['deleteInTx', 'stagePrepared']);
         });
 
         it('throws UserMobileNumberNotFoundException when the mobile number does not exist', async () => {

@@ -13,6 +13,11 @@ export interface IAnalyticCountBucket {
     count: number;
 }
 
+export interface IAnalyticSortedPage<T> {
+    data: T[];
+    total: number;
+}
+
 export interface IAnalyticBucketsResult {
     buckets: IAnalyticCountBucket[];
 }
@@ -95,6 +100,11 @@ export interface IAnalyticApiKeyLifecycle {
 export interface IAnalyticApiKeyActiveExpired {
     active: number;
     expired: number;
+}
+
+export interface IAnalyticTermPolicyAcceptanceCounts {
+    acceptances: number;
+    published: number;
 }
 
 export interface IAnalyticTermPolicyAcceptanceRate {

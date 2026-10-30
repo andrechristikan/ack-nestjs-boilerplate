@@ -14,12 +14,8 @@ import type {
     IAwsS3Presign,
 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import {
-    EnumActivityLogAction,
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
@@ -41,19 +37,8 @@ describe('TermPolicyContentDomain', () => {
         mock<TermPolicyRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
-    const preparedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminTermPolicyUpdateContent,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
 
     const existingContent: ITermPolicyContent = {
         language: EnumMessageLanguage.en,
@@ -99,14 +84,6 @@ describe('TermPolicyContentDomain', () => {
 
         configGet.mockReturnValue(contentMaxSizeInBytes);
         awsS3Service.isInitialized.mockReturnValue(true);
-        helperDateService.create.mockReturnValue(timestamp);
-        termPolicyUtil.mapActivityLogMetadata.mockReturnValue({
-            termPolicyId: 'term-policy-1',
-            termPolicyType: EnumTermPolicyType.privacy,
-            termPolicyVersion: 1,
-            timestamp,
-        });
-        activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
         termPolicyUtil.toContents.mockReturnValue([existingContent]);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -118,8 +95,6 @@ describe('TermPolicyContentDomain', () => {
                 },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -351,13 +326,13 @@ describe('TermPolicyContentDomain', () => {
             expect(termPolicyRepository.updateContent).not.toHaveBeenCalled();
         });
 
-        it('updates the content and stages the update-content activity log', async () => {
+        it('updates the content and returns the draft term policy', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             const mapped: IAwsS3 = { ...existingContent };
             awsS3Service.mapPresign.mockReturnValue(mapped);
             termPolicyRepository.updateContent.mockResolvedValue(true);
 
-            await domain.updateContentByAdmin('term-policy-1', {
+            const result = await domain.updateContentByAdmin('term-policy-1', {
                 language: EnumMessageLanguage.en,
                 size: 2048,
                 key: 'term-policies/privacy/v1/en-2.hbs',
@@ -375,9 +350,7 @@ describe('TermPolicyContentDomain', () => {
                 [existingContent],
                 { language: EnumMessageLanguage.en, ...mapped }
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedActivityLog,
-            ]);
+            expect(result).toBe(draftTermPolicy);
         });
 
         it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
@@ -395,7 +368,6 @@ describe('TermPolicyContentDomain', () => {
                 constructor: TermPolicyStatusInvalidException,
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
@@ -545,7 +517,7 @@ describe('TermPolicyContentDomain', () => {
             expect(termPolicyRepository.addContent).not.toHaveBeenCalled();
         });
 
-        it('adds the content and stages the add-content activity log', async () => {
+        it('adds the content and returns the draft term policy', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentByLanguage.mockReturnValue(null);
             const mapped: IAwsS3 = {
@@ -555,7 +527,7 @@ describe('TermPolicyContentDomain', () => {
             awsS3Service.mapPresign.mockReturnValue(mapped);
             termPolicyRepository.addContent.mockResolvedValue(true);
 
-            await domain.addContentByAdmin('term-policy-1', {
+            const result = await domain.addContentByAdmin('term-policy-1', {
                 language: EnumMessageLanguage.en,
                 size: 1024,
                 key: 'term-policies/privacy/v1/fr.hbs',
@@ -565,9 +537,7 @@ describe('TermPolicyContentDomain', () => {
                 'term-policy-1',
                 { language: EnumMessageLanguage.en, ...mapped }
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedActivityLog,
-            ]);
+            expect(result).toBe(draftTermPolicy);
         });
 
         it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
@@ -586,7 +556,6 @@ describe('TermPolicyContentDomain', () => {
                 constructor: TermPolicyStatusInvalidException,
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
@@ -706,14 +675,14 @@ describe('TermPolicyContentDomain', () => {
             });
         });
 
-        it('removes the content and stages the remove-content activity log', async () => {
+        it('removes the content and returns the draft term policy', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentByLanguage.mockReturnValue(
                 existingContent
             );
             termPolicyRepository.removeContent.mockResolvedValue(true);
 
-            await domain.removeContentByAdmin(
+            const result = await domain.removeContentByAdmin(
                 'term-policy-1',
                 EnumMessageLanguage.en
             );
@@ -723,9 +692,7 @@ describe('TermPolicyContentDomain', () => {
                 [existingContent],
                 { language: EnumMessageLanguage.en }
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedActivityLog,
-            ]);
+            expect(result).toBe(draftTermPolicy);
         });
 
         it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
@@ -744,7 +711,6 @@ describe('TermPolicyContentDomain', () => {
                 constructor: TermPolicyStatusInvalidException,
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised while removing', async () => {
@@ -911,39 +877,6 @@ describe('TermPolicyContentDomain', () => {
                 existingContent.key,
                 { access: existingContent.access }
             );
-        });
-    });
-
-    describe('prepareActivityLog', () => {
-        it('builds the metadata through the util and prepares the activity log', () => {
-            const result = domain['prepareActivityLog'](
-                EnumActivityLogAction.adminTermPolicyUpdateContent,
-                {
-                    id: 'term-policy-1',
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                },
-                timestamp
-            );
-
-            expect(result).toBe(preparedActivityLog);
-            expect(termPolicyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                {
-                    id: 'term-policy-1',
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                },
-                timestamp
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminTermPolicyUpdateContent,
-                metadata: {
-                    termPolicyId: 'term-policy-1',
-                    termPolicyType: EnumTermPolicyType.privacy,
-                    termPolicyVersion: 1,
-                    timestamp,
-                },
-            });
         });
     });
 

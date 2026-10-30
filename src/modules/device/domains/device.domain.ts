@@ -10,12 +10,10 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { DeviceOwnership } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
@@ -27,9 +25,6 @@ import type {
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import type { IRoleActor } from '@modules/role/interfaces/role.interface';
-import { SessionDomain } from '@modules/session/domains/session.domain';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
@@ -39,12 +34,9 @@ export class DeviceDomain {
     constructor(
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly deviceRepository: DeviceRepository,
-        private readonly sessionDomain: SessionDomain,
         private readonly deviceUtil: DeviceUtil,
-        private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly helperDateService: HelperDateService,
-        private readonly roleDomain: RoleDomain
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async getListOffsetByAdmin(
@@ -174,12 +166,10 @@ export class DeviceDomain {
         );
     }
 
-    async refresh(
+    async assertActive(
         userId: string,
-        deviceOwnershipId: string,
-        data: IDeviceRefresh
+        deviceOwnershipId: string
     ): Promise<void> {
-        // Sequential by design: gate before the work it guards
         const deviceOwnershipExists =
             await this.deviceOwnershipRepository.existsActive(
                 userId,
@@ -188,14 +178,34 @@ export class DeviceDomain {
         if (!deviceOwnershipExists) {
             throw new DeviceNotFoundException();
         }
+    }
+
+    async removeOwnershipInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deviceOwnershipId: string,
+        removedBy: string,
+        now: Date
+    ): Promise<IDeviceOwnership> {
+        return this.deviceOwnershipRepository.removeOwnershipInTx(
+            tx,
+            userId,
+            deviceOwnershipId,
+            removedBy,
+            now
+        );
+    }
+
+    async refresh(
+        userId: string,
+        deviceOwnershipId: string,
+        data: IDeviceRefresh
+    ): Promise<void> {
+        // Sequential by design: gate before the work it guards
+        await this.assertActive(userId, deviceOwnershipId);
         const notificationProvider =
             this.deviceUtil.resolveNotificationProvider(data.platform);
         const now = this.helperDateService.create();
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userDeviceRefresh,
-            }),
-        ];
 
         try {
             await this.databaseService.withTransaction(async tx => {
@@ -222,162 +232,6 @@ export class DeviceDomain {
                     );
                 }
             });
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async remove(userId: string, deviceOwnershipId: string): Promise<void> {
-        // Sequential by design: gate before the work it guards
-        const deviceOwnershipExists =
-            await this.deviceOwnershipRepository.existsActive(
-                userId,
-                deviceOwnershipId
-            );
-        if (!deviceOwnershipExists) {
-            throw new DeviceNotFoundException();
-        }
-        const now = this.helperDateService.create();
-
-        try {
-            const { revokedSessions, activityLogs } =
-                await this.databaseService.withTransaction(async tx => {
-                    const sessions =
-                        await this.sessionDomain.revokeByDeviceOwnershipInTx(
-                            tx,
-                            userId,
-                            deviceOwnershipId,
-                            userId,
-                            now
-                        );
-                    const row =
-                        await this.deviceOwnershipRepository.removeOwnershipInTx(
-                            tx,
-                            userId,
-                            deviceOwnershipId,
-                            userId,
-                            now
-                        );
-                    const metadata = this.deviceUtil.mapActivityLogMetadata(
-                        row,
-                        sessions.length
-                    );
-                    const prepared = [
-                        this.activityLogDomain.prepare({
-                            action: EnumActivityLogAction.userRemoveDevice,
-                            userId,
-                            createdBy: userId,
-                            metadata,
-                        }),
-                    ];
-
-                    return {
-                        revokedSessions: sessions,
-                        activityLogs: prepared,
-                    };
-                });
-            await this.sessionDomain.purgeRevokedLogins(
-                userId,
-                revokedSessions
-            );
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async removeByAdmin(
-        userId: string,
-        deviceOwnershipId: string,
-        removedBy: string,
-        actor: IRoleActor
-    ): Promise<void> {
-        // Sequential by design: gate before the work it guards
-        const targetRole = await this.roleDomain.getOneByUserId(userId);
-        this.roleDomain.assertActorOutranks(actor.roleType, targetRole.type);
-        const deviceOwnershipExists =
-            await this.deviceOwnershipRepository.existsActive(
-                userId,
-                deviceOwnershipId
-            );
-        if (!deviceOwnershipExists) {
-            throw new DeviceNotFoundException();
-        }
-        const now = this.helperDateService.create();
-
-        try {
-            const { revokedSessions, activityLogs } =
-                await this.databaseService.withTransaction(async tx => {
-                    const sessions =
-                        await this.sessionDomain.revokeByDeviceOwnershipInTx(
-                            tx,
-                            userId,
-                            deviceOwnershipId,
-                            removedBy,
-                            now
-                        );
-                    const row =
-                        await this.deviceOwnershipRepository.removeOwnershipInTx(
-                            tx,
-                            userId,
-                            deviceOwnershipId,
-                            removedBy,
-                            now
-                        );
-                    const actorMetadata =
-                        this.deviceUtil.mapActivityLogActorMetadata(
-                            row,
-                            sessions.length
-                        );
-                    const prepared = [
-                        this.activityLogDomain.prepare({
-                            action: EnumActivityLogAction.adminDeviceRemove,
-                            metadata: actorMetadata,
-                        }),
-                    ];
-                    if (userId !== removedBy) {
-                        const targetMetadata =
-                            this.deviceUtil.mapActivityLogTargetMetadata(
-                                row,
-                                removedBy,
-                                sessions.length
-                            );
-                        const removedByAdminActivityLog =
-                            this.activityLogDomain.prepare({
-                                action: EnumActivityLogAction.userRemoveDeviceByAdmin,
-                                userId,
-                                createdBy: removedBy,
-                                metadata: targetMetadata,
-                            });
-                        prepared.push(removedByAdminActivityLog);
-                    }
-
-                    return {
-                        revokedSessions: sessions,
-                        activityLogs: prepared,
-                    };
-                });
-            await this.sessionDomain.purgeRevokedLogins(
-                userId,
-                revokedSessions
-            );
-
-            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {

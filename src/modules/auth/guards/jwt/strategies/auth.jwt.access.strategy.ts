@@ -10,6 +10,7 @@ import {
     AuthJwtAccessGuardKey,
 } from '@modules/auth/constants/auth.constant';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { SessionDomain } from '@modules/session/domains/session.domain';
 
 /** Passport strategy validating access tokens via JWKS, default algorithm ES256. */
 @Injectable()
@@ -19,7 +20,8 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
 ) {
     constructor(
         protected readonly configService: ConfigService,
-        private readonly authDomain: AuthDomain
+        private readonly authDomain: AuthDomain,
+        private readonly sessionDomain: SessionDomain
     ) {
         // jti is not validated here.
         super({
@@ -46,10 +48,19 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         });
     }
 
-    /** Runs after signature verification; delegates session/payload checks to AuthDomain. */
+    /** Runs after signature verification; checks the payload, reads the login through SessionDomain, then checks the session. */
     async validate(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {
-        return this.authDomain.validateJwtAccessStrategy(data);
+        const payload = this.authDomain.validateJwtAccessStrategy(data);
+        const login = await this.sessionDomain.getLogin(
+            payload.sub,
+            payload.sessionId
+        );
+
+        return this.authDomain.validateJwtAccessSession(
+            payload,
+            login?.jti ?? null
+        );
     }
 }

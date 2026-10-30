@@ -5,8 +5,12 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { MembershipWorkspaceDomain } from '@modules/membership/domains/membership.workspace.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableOrderBy,
@@ -20,12 +24,18 @@ import type { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/
 import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceHttpService {
     constructor(
         private readonly workspaceDomain: WorkspaceDomain,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly membershipWorkspaceDomain: MembershipWorkspaceDomain,
+        private readonly userDomain: UserDomain,
+        private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly activityLogDomain: ActivityLogDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -60,13 +70,21 @@ export class WorkspaceHttpService {
             isPublic: isPublic ?? null,
         });
 
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceCreated,
+                userId,
+                createdBy: userId,
+                workspaceId: workspace.id,
+            }),
+        ];
+        this.activityLogDomain.stagePrepared(activityLogs);
+
         return { data: workspace };
     }
 
     getCurrentWorkspace(workspace: Workspace): IResponseReturn<Workspace> {
-        const current = this.workspaceDomain.getCurrentWorkspace(workspace);
-
-        return { data: current };
+        return { data: workspace };
     }
 
     async updateWorkspace(
@@ -74,11 +92,21 @@ export class WorkspaceHttpService {
         actorId: string,
         { name, description }: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceUpdated,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId,
+            }),
+        ];
+
         const workspace = await this.workspaceDomain.updateWorkspace(
             workspaceId,
-            actorId,
             { name, description }
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: workspace };
     }
@@ -88,11 +116,21 @@ export class WorkspaceHttpService {
         actorId: string,
         { isPublic }: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<Workspace>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceVisibilityUpdated,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId,
+            }),
+        ];
+
         const workspace = await this.workspaceDomain.updateWorkspaceIsPublic(
             workspaceId,
-            actorId,
             isPublic
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: workspace };
     }
@@ -102,11 +140,21 @@ export class WorkspaceHttpService {
         actorId: string,
         { slug }: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceUpdated,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId,
+            }),
+        ];
+
         const workspace = await this.workspaceDomain.updateWorkspaceSlug(
             workspaceId,
-            actorId,
             slug
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: workspace };
     }
@@ -115,7 +163,25 @@ export class WorkspaceHttpService {
         userId: string,
         { workspaceId }: WorkspaceSwitchRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceDomain.switchWorkspace(userId, workspaceId);
+        // Sequential by design: gate before the work it guards
+        await this.workspaceDomain.validateWorkspaceGuard(workspaceId);
+        await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
+            workspaceId,
+            userId
+        );
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceSwitched,
+                userId,
+                createdBy: userId,
+                workspaceId,
+            }),
+        ];
+
+        await this.userDomain.setLastWorkspace(userId, workspaceId);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -124,7 +190,18 @@ export class WorkspaceHttpService {
         workspaceId: string,
         actorId: string
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceDomain.softDeleteWorkspace(workspaceId, actorId);
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceDeleted,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId,
+            }),
+        ];
+
+        await this.membershipWorkspaceDomain.softDelete(workspaceId, actorId);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -171,6 +248,11 @@ export class WorkspaceHttpService {
     }
 
     async previewWorkspace(slug: string): Promise<IResponseReturn<Workspace>> {
+        // Sequential by design: gate before the work it guards
+        await this.featureFlagDomain.validateFeatureFlagMetadata(
+            'workspace',
+            'joinRequestAllowed'
+        );
         const workspace = await this.workspaceDomain.previewWorkspace(slug);
 
         return { data: workspace };

@@ -1,15 +1,13 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import { ProjectSlugInvalidException } from '@modules/project/exceptions/project.slug-invalid.exception';
@@ -20,48 +18,14 @@ import type {
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProjectDomain {
-    private readonly slugRegex: RegExp;
-    private readonly slugPrefix: string;
-    private readonly slugMaxLength: number;
-    private readonly slugMaxAttempts: number;
-
     constructor(
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
-        private readonly activityLogDomain: ActivityLogDomain,
-        private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
-        private readonly configService: ConfigService
-    ) {
-        this.slugRegex = this.configService.get<RegExp>('project.slugRegex')!;
-        this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
-        this.slugMaxLength = this.configService.get<number>(
-            'project.slugMaxLength'
-        )!;
-        this.slugMaxAttempts = this.configService.get<number>(
-            'project.slugMaxAttempts'
-        )!;
-    }
-
-    private drawSlugCandidates(): string[] {
-        return Array.from({ length: this.slugMaxAttempts }, () =>
-            this.helperStringService.generateSlug(
-                this.slugPrefix,
-                this.slugMaxLength
-            )
-        );
-    }
-
-    private assertSlugAllowed(slug: string): void {
-        const isSlugPatternValid = this.slugRegex.test(slug);
-        if (slug.length > this.slugMaxLength || !isSlugPatternValid) {
-            throw new ProjectSlugInvalidException();
-        }
-    }
+        private readonly helperDateService: HelperDateService
+    ) {}
 
     async validateProjectGuard(
         workspaceId: string,
@@ -111,64 +75,29 @@ export class ProjectDomain {
 
     async createProject(
         workspaceId: string,
-        actorId: string,
         create: IProjectCreate
     ): Promise<Project> {
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectCreated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: workspaceId,
-            }),
-        ];
+        const slugCandidates = this.projectUtil.drawSlugCandidates();
 
-        const slugCandidates = this.drawSlugCandidates();
-        const project = await this.projectRepository.create(
+        return this.projectRepository.create(
             workspaceId,
             create,
             slugCandidates
         );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return project;
-    }
-
-    getProject(project: Project): Project {
-        return project;
     }
 
     async updateProject(
         project: Project,
-        actorId: string,
         update: IProjectUpdate
     ): Promise<Project> {
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectUpdated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-            }),
-        ];
-
-        const row = await this.projectRepository.updateDetails(
-            project.id,
-            update
-        );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return row;
+        return this.projectRepository.updateDetails(project.id, update);
     }
 
-    async updateProjectSlug(
-        project: Project,
-        actorId: string,
-        slug: string
-    ): Promise<Project> {
-        this.assertSlugAllowed(slug);
+    async updateProjectSlug(project: Project, slug: string): Promise<Project> {
+        const isSlugAllowed = this.projectUtil.isSlugAllowed(slug);
+        if (!isSlugAllowed) {
+            throw new ProjectSlugInvalidException();
+        }
 
         // Sequential by design: gate before the work it guards
         const slugTaken = await this.projectRepository.existsBySlugInWorkspace(
@@ -180,36 +109,13 @@ export class ProjectDomain {
             throw new ProjectSlugAlreadyExistsException();
         }
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectUpdated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-            }),
-        ];
-
-        const row = await this.projectRepository.updateSlug(project.id, slug);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        return row;
+        return this.projectRepository.updateSlug(project.id, slug);
     }
 
-    async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectDeleted,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-            }),
-        ];
+    async softDeleteProject(project: Project): Promise<void> {
         const deletedAt = this.helperDateService.create();
 
         await this.projectRepository.softDelete(project.id, deletedAt);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async softDeleteByWorkspaceInTx(

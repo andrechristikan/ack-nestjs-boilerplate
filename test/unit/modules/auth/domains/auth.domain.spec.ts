@@ -17,9 +17,6 @@ import type {
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
-import { SessionCache } from '@modules/session/caches/session.cache';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import type { ISessionCache } from '@modules/session/interfaces/session.interface';
 import { HttpStatus } from '@nestjs/common';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -33,9 +30,6 @@ describe('AuthDomain', () => {
     const authSocialDomain: MockProxy<AuthSocialDomain> =
         mock<AuthSocialDomain>();
     const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
-    const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     let domain: AuthDomain;
 
     const accessPayload: IAuthJwtAccessTokenPayload = {
@@ -69,20 +63,23 @@ describe('AuthDomain', () => {
                 AuthDomain,
                 { provide: AuthSocialDomain, useValue: authSocialDomain },
                 { provide: AuthUtil, useValue: authUtil },
-                { provide: SessionCache, useValue: sessionCache },
-                { provide: HelperHashService, useValue: helperHashService },
             ],
         }).compile();
         domain = module.get(AuthDomain);
     });
 
     describe('validateJwtAccessStrategy', () => {
-        it('throws AuthJwtAccessTokenInvalidException when sub is missing', async () => {
-            const { sub: _sub, ...invalidPayload } = accessPayload;
+        it('throws AuthJwtAccessTokenInvalidException when the payload fails the shape check', () => {
+            authUtil.isTokenPayloadValid.mockReturnValue(false);
 
-            await expect(
-                domain.validateJwtAccessStrategy(invalidPayload)
-            ).rejects.toMatchObject({
+            let thrown: unknown;
+            try {
+                domain.validateJwtAccessStrategy(accessPayload);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 statusCodeKey:
@@ -91,164 +88,81 @@ describe('AuthDomain', () => {
                     ],
                 messagePath: 'auth.error.accessTokenUnauthorized',
             });
-        });
-
-        it('throws AuthJwtAccessTokenInvalidException when sub is not a string', async () => {
-            const invalidPayload = {
-                ...accessPayload,
-                sub: 42 as unknown as string,
-            };
-
-            await expect(
-                domain.validateJwtAccessStrategy(invalidPayload)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
-                    ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
-            });
-        });
-
-        it('throws AuthJwtAccessTokenInvalidException when sessionId is missing', async () => {
-            const invalidPayload = { ...accessPayload, sessionId: '' };
-
-            await expect(
-                domain.validateJwtAccessStrategy(invalidPayload)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
-                    ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
-            });
-        });
-
-        it('throws AuthJwtAccessTokenInvalidException when jti is missing', async () => {
-            const { jti: _jti, ...invalidPayload } = accessPayload;
-
-            await expect(
-                domain.validateJwtAccessStrategy(invalidPayload)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
-                    ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
-            });
-        });
-
-        it('throws AuthJwtAccessTokenInvalidException when jti is not a string', async () => {
-            const invalidPayload = {
-                ...accessPayload,
-                jti: 1 as unknown as string,
-            };
-
-            await expect(
-                domain.validateJwtAccessStrategy(invalidPayload)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
-                    ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
-            });
-        });
-
-        it('propagates a session cache failure instead of revoking the session', async () => {
-            const failure = new Error(
-                RedisErrorMessages.RedisClientNotConnectedThrown
-            );
-            sessionCache.getLogin.mockRejectedValue(failure);
-
-            await expect(
-                domain.validateJwtAccessStrategy(accessPayload)
-            ).rejects.toBe(failure);
-        });
-
-        it('throws SessionRevokedException when no session is cached', async () => {
-            sessionCache.getLogin.mockResolvedValue(null);
-
-            const rejection = domain.validateJwtAccessStrategy(accessPayload);
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
-            expect(sessionCache.getLogin).toHaveBeenCalledWith(
-                'user-1',
-                'session-1'
+            expect(authUtil.isTokenPayloadValid).toHaveBeenCalledWith(
+                accessPayload
             );
         });
 
-        it('throws SessionRevokedException when the cached jti does not match', async () => {
-            const cached: ISessionCache = {
-                userId: 'user-1',
-                sessionId: 'session-1',
-                jti: 'different-jti',
-            };
-            sessionCache.getLogin.mockResolvedValue(cached);
-            helperHashService.sha256Compare.mockReturnValue(false);
+        it('returns the payload when the shape check passes', () => {
+            authUtil.isTokenPayloadValid.mockReturnValue(true);
 
-            await expect(
-                domain.validateJwtAccessStrategy(accessPayload)
-            ).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
-        });
-
-        it('compares the jti through sha256Compare', async () => {
-            const cached: ISessionCache = {
-                userId: 'user-1',
-                sessionId: 'session-1',
-                jti: 'jti-value',
-            };
-            sessionCache.getLogin.mockResolvedValue(cached);
-            helperHashService.sha256Hash.mockImplementation(
-                value => `hash(${value})`
-            );
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            await domain.validateJwtAccessStrategy(accessPayload);
-
-            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
-                `hash(${cached.jti})`,
-                `hash(${accessPayload.jti})`
-            );
-        });
-
-        it('returns the payload when the session is valid and the jti matches', async () => {
-            const cached: ISessionCache = {
-                userId: 'user-1',
-                sessionId: 'session-1',
-                jti: 'jti-value',
-            };
-            sessionCache.getLogin.mockResolvedValue(cached);
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            const result =
-                await domain.validateJwtAccessStrategy(accessPayload);
+            const result = domain.validateJwtAccessStrategy(accessPayload);
 
             expect(result).toBe(accessPayload);
+        });
+    });
+
+    describe('validateJwtAccessSession', () => {
+        const identified = {
+            ...accessPayload,
+            sub: 'user-1',
+            jti: 'jti-value',
+        };
+
+        it('throws SessionRevokedException when no session jti is stored', () => {
+            let thrown: unknown;
+            try {
+                domain.validateJwtAccessSession(identified, null);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
+                statusCodeKey:
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.revoked
+                    ],
+                messagePath: 'session.error.revoked',
+            });
+            expect(authUtil.isJtiMatch).not.toHaveBeenCalled();
+        });
+
+        it('throws SessionRevokedException when the cached jti does not match', () => {
+            authUtil.isJtiMatch.mockReturnValue(false);
+
+            let thrown: unknown;
+            try {
+                domain.validateJwtAccessSession(identified, 'different-jti');
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
+                statusCodeKey:
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.revoked
+                    ],
+                messagePath: 'session.error.revoked',
+            });
+            expect(authUtil.isJtiMatch).toHaveBeenCalledWith(
+                'different-jti',
+                'jti-value'
+            );
+        });
+
+        it('returns the payload when the stored jti matches', () => {
+            authUtil.isJtiMatch.mockReturnValue(true);
+
+            const result = domain.validateJwtAccessSession(
+                identified,
+                'jti-value'
+            );
+
+            expect(result).toBe(identified);
         });
     });
 
@@ -394,11 +308,11 @@ describe('AuthDomain', () => {
     });
 
     describe('validateJwtRefreshStrategy', () => {
-        it('throws AuthJwtRefreshTokenInvalidException when sub is missing', async () => {
-            const { sub: _sub, ...invalidPayload } = refreshPayload;
+        it('throws AuthJwtRefreshTokenInvalidException when the payload fails the shape check', async () => {
+            authUtil.isTokenPayloadValid.mockReturnValue(false);
 
             await expect(
-                domain.validateJwtRefreshStrategy(invalidPayload)
+                domain.validateJwtRefreshStrategy(refreshPayload)
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
@@ -408,87 +322,18 @@ describe('AuthDomain', () => {
                     ],
                 messagePath: 'auth.error.refreshTokenUnauthorized',
             });
+            expect(authUtil.isTokenPayloadValid).toHaveBeenCalledWith(
+                refreshPayload
+            );
         });
 
-        it('throws AuthJwtRefreshTokenInvalidException when sub is not a string', async () => {
-            const invalidPayload = {
-                ...refreshPayload,
-                sub: 42 as unknown as string,
-            };
-
-            await expect(
-                domain.validateJwtRefreshStrategy(invalidPayload)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
-                    ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
-            });
-        });
-
-        it('throws AuthJwtRefreshTokenInvalidException when sessionId is missing', async () => {
-            const invalidPayload = { ...refreshPayload, sessionId: '' };
-
-            await expect(
-                domain.validateJwtRefreshStrategy(invalidPayload)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
-                    ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
-            });
-        });
-
-        it('throws AuthJwtRefreshTokenInvalidException when jti is missing', async () => {
-            const { jti: _jti, ...invalidPayload } = refreshPayload;
-
-            await expect(
-                domain.validateJwtRefreshStrategy(invalidPayload)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
-                    ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
-            });
-        });
-
-        it('throws AuthJwtRefreshTokenInvalidException when jti is not a string', async () => {
-            const invalidPayload = {
-                ...refreshPayload,
-                jti: 1 as unknown as string,
-            };
-
-            await expect(
-                domain.validateJwtRefreshStrategy(invalidPayload)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
-                    ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
-            });
-        });
-
-        it('returns the payload without reading the login cache', async () => {
-            sessionCache.getLogin.mockResolvedValue(null);
+        it('returns the payload when the shape check passes', async () => {
+            authUtil.isTokenPayloadValid.mockReturnValue(true);
 
             const result =
                 await domain.validateJwtRefreshStrategy(refreshPayload);
 
             expect(result).toBe(refreshPayload);
-            expect(sessionCache.getLogin).not.toHaveBeenCalled();
-            expect(helperHashService.sha256Compare).not.toHaveBeenCalled();
         });
     });
 

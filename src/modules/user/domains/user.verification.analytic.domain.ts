@@ -1,3 +1,4 @@
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import type { IAnalyticVerificationFunnel } from '@modules/analytic/interfaces/analytic.interface';
 import { UserVerificationAnalyticRepository } from '@modules/user/repositories/user.verification.analytic.repository';
 import { Injectable } from '@nestjs/common';
@@ -6,7 +7,8 @@ import { EnumVerificationType } from '@generated/prisma-client/client';
 @Injectable()
 export class UserVerificationAnalyticDomain {
     constructor(
-        private readonly userVerificationAnalyticRepository: UserVerificationAnalyticRepository
+        private readonly userVerificationAnalyticRepository: UserVerificationAnalyticRepository,
+        private readonly helperNumberService: HelperNumberService
     ) {}
 
     async getFunnel(
@@ -22,11 +24,7 @@ export class UserVerificationAnalyticDomain {
         const used = rows.find(r => r.isUsed)?.count ?? 0;
         const unused = rows.find(r => !r.isUsed)?.count ?? 0;
         const total = used + unused;
-        return {
-            used,
-            unused,
-            total,
-            rate: total === 0 ? 0 : (used / total) * 100,
-        };
+        const rate = this.helperNumberService.percent(used, total);
+        return { used, unused, total, rate };
     }
 }

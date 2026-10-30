@@ -154,43 +154,4 @@ describe('ActivityLogUtil', () => {
             });
         });
     });
-
-    describe('buildCreateArgs', () => {
-        it('wraps buildCreateManyUserData into a create-args data payload', () => {
-            const requestLog: IRequestLog = {
-                userAgent: {
-                    ua: null,
-                    browser: null,
-                    cpu: { architecture: null },
-                    device: { type: null, vendor: null, model: null },
-                    engine: { name: null, version: null },
-                    os: { name: null, version: null },
-                },
-                ipAddress: '127.0.0.1',
-                geoLocation: null,
-            };
-            messageService.setMessage.mockReturnValue('Workspace created');
-            databaseUtil.toPlainObject.mockReturnValue(null);
-
-            const result = util.buildCreateArgs(
-                'user-1',
-                'workspace-1',
-                EnumActivityLogAction.workspaceCreated,
-                requestLog
-            );
-
-            expect(result).toEqual({
-                data: {
-                    userId: 'user-1',
-                    workspaceId: 'workspace-1',
-                    action: EnumActivityLogAction.workspaceCreated,
-                    description: 'Workspace created',
-                    ipAddress: '127.0.0.1',
-                    userAgent: null,
-                    geoLocation: null,
-                    createdBy: 'user-1',
-                },
-            });
-        });
-    });
 });

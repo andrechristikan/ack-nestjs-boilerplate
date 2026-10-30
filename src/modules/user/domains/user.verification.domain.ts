@@ -4,17 +4,8 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
-    EnumActivityLogAction,
-    EnumVerificationType,
-} from '@generated/prisma-client/client';
-import type { Verification } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import type { User, Verification } from '@generated/prisma-client/client';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
@@ -23,140 +14,39 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import type {
     IUserOnboardingVerification,
     IUserVerificationCreate,
-    IUserVerificationEmailCreate,
+    IUserVerificationEmailTarget,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Duration } from 'luxon';
 import ms from 'ms';
 
 @Injectable()
 export class UserVerificationDomain {
-    private readonly homeUrl: string;
-
-    private readonly verificationReferencePrefix: string;
-    private readonly verificationReferenceLength: number;
-    private readonly verificationOtpLength: number;
-    private readonly verificationExpiredInMinutes: number;
-    private readonly verificationTokenLength: number;
     private readonly verificationResendInMinutes: number;
-    private readonly verificationLinkPattern: string;
 
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userRepository: UserRepository,
-        private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperHashService: HelperHashService,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationRecipientDomain: NotificationRecipientDomain,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService,
-        private readonly helperNumberService: HelperNumberService
+        private readonly userUtil: UserUtil
     ) {
-        this.homeUrl = this.configService.get<string>('home.url')!;
-
-        this.verificationReferencePrefix = this.configService.get<string>(
-            'verification.reference.prefix'
-        )!;
-        this.verificationReferenceLength = this.configService.get<number>(
-            'verification.reference.length'
-        )!;
-        this.verificationOtpLength = this.configService.get<number>(
-            'verification.otpLength'
-        )!;
-        const verificationExpiredInMs = this.configService.get<number>(
-            'verification.expiredInMs'
-        )!;
-        this.verificationExpiredInMinutes = verificationExpiredInMs / ms('1m');
-        this.verificationTokenLength = this.configService.get<number>(
-            'verification.tokenLength'
-        )!;
         const verificationResendInMs = this.configService.get<number>(
             'verification.resendInMs'
         )!;
         this.verificationResendInMinutes = verificationResendInMs / ms('1m');
-        this.verificationLinkPattern = this.configService.get<string>(
-            'verification.linkPattern'
-        )!;
     }
 
-    verificationCreateReference(): string {
-        const random = this.helperStringService.random(
-            this.verificationReferenceLength
-        );
-
-        return `${this.verificationReferencePrefix}-${random}`;
-    }
-
-    verificationCreateOtp(): string {
-        return this.helperNumberService.randomDigits(
-            this.verificationOtpLength
-        );
-    }
-
-    verificationCreateToken(): string {
-        return this.helperStringService.random(this.verificationTokenLength);
-    }
-
-    verificationSetExpiredDate(): Date {
-        const now = this.helperDateService.create();
-
-        return this.helperDateService.forward(
-            now,
-            Duration.fromObject({ minutes: this.verificationExpiredInMinutes })
-        );
-    }
-
-    /** Builds an OTP verification for mobile numbers or a tokenized link verification for email. */
-    verificationCreateVerification(
-        type: EnumVerificationType
-    ): IUserVerificationCreate {
-        if (type === EnumVerificationType.mobileNumber) {
-            const token = this.verificationCreateOtp();
-            const hashedToken = this.helperHashService.sha256Hash(token);
-            const reference = this.verificationCreateReference();
-            const expiredAt = this.verificationSetExpiredDate();
-
-            return {
-                reference,
-                expiredAt,
-                type: EnumVerificationType.mobileNumber,
-                token,
-                hashedToken,
-                expiredInMinutes: this.verificationExpiredInMinutes,
-                resendInMinutes: this.verificationResendInMinutes,
-            };
-        }
-
-        const token = this.verificationCreateToken();
-        const hashedToken = this.helperHashService.sha256Hash(token);
-        const link = this.helperStringService.fillPattern(
-            this.verificationLinkPattern,
-            { homeUrl: this.homeUrl, token }
-        );
-
-        const reference = this.verificationCreateReference();
-        const expiredAt = this.verificationSetExpiredDate();
-
-        return {
-            reference,
-            expiredAt,
-            type: EnumVerificationType.email,
-            token,
-            hashedToken,
-            expiredInMinutes: this.verificationExpiredInMinutes,
-            link,
-            resendInMinutes: this.verificationResendInMinutes,
-        };
-    }
-
-    async verifyEmail(token: string): Promise<void> {
+    /** Resolves the active email verification of a raw token with its user, whatever the user status. */
+    async getOneActiveByEmailToken(
+        token: string
+    ): Promise<IUserVerificationEmailTarget> {
         const hashedToken = this.helperHashService.sha256Hash(token);
         const verification =
             await this.userVerificationRepository.findOneActiveByVerificationEmailToken(
@@ -171,21 +61,12 @@ export class UserVerificationDomain {
             throw new UserNotFoundException();
         }
 
+        return { verification, user };
+    }
+
+    async verifyEmail(verification: Verification): Promise<void> {
         try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userVerifiedEmail,
-                    userId: verification.userId,
-                    createdBy: verification.userId,
-                }),
-            ];
             const verifiedAt = this.helperDateService.create();
-            // Sequential by design: write must not run if an earlier step throws
-            const recipient =
-                await this.notificationRecipientDomain.getRecipient(
-                    user,
-                    EnumNotificationKind.verifiedEmail
-                );
             await this.databaseService.withTransaction(async tx => {
                 const isMarkedUsed =
                     await this.userVerificationRepository.markUsedInTx(
@@ -203,12 +84,6 @@ export class UserVerificationDomain {
                 );
             });
 
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            await this.notificationQueue.sendVerifiedEmail(recipient, {
-                reference: verification.reference,
-            });
-
             return;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -224,7 +99,8 @@ export class UserVerificationDomain {
         }
     }
 
-    async sendVerificationEmail(email: string): Promise<void> {
+    /** Resolves the active, unverified user of an email whose last verification email is out of its resend window. */
+    async getOneForResendByEmail(email: string): Promise<User> {
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
             throw new UserNotFoundException();
@@ -238,87 +114,24 @@ export class UserVerificationDomain {
                 user.id
             );
         if (lastVerification) {
-            const today = this.helperDateService.create();
-            const canResendAt = this.helperDateService.forward(
+            const waitInMinutes = this.userUtil.getResendWaitInMinutes(
                 lastVerification.createdAt,
-                Duration.fromObject({
-                    minutes: this.verificationResendInMinutes,
-                })
+                this.verificationResendInMinutes
             );
-
-            if (today < canResendAt) {
-                const resendDuration = this.helperDateService.diff(
-                    canResendAt,
-                    today
-                );
-
+            if (waitInMinutes !== null) {
                 throw new UserVerificationEmailResendLimitExceededException(
-                    Math.ceil(resendDuration.as('minutes'))
+                    waitInMinutes
                 );
             }
         }
 
-        try {
-            const emailVerification = this.verificationCreateVerification(
-                EnumVerificationType.email
-            ) as IUserVerificationEmailCreate;
-
-            const today = this.helperDateService.create();
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userSendVerificationEmail,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            // Sequential by design: write must not run if an earlier step throws
-            const recipient =
-                await this.notificationRecipientDomain.getRecipient(
-                    user,
-                    EnumNotificationKind.verificationEmail
-                );
-            await this.userVerificationRepository.createReplacingActive(
-                user.id,
-                user.email,
-                emailVerification,
-                today
-            );
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            const expiredAt = this.helperDateService.formatToIso(
-                emailVerification.expiredAt
-            );
-            await this.notificationQueue.sendVerificationEmail(recipient, {
-                expiredAt,
-                reference: emailVerification.reference,
-                link: emailVerification.link,
-                expiredInMinutes: emailVerification.expiredInMinutes,
-            });
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return user;
     }
 
     async markVerified(userId: string): Promise<void> {
         const verifiedAt = this.helperDateService.create();
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userVerifiedEmail,
-                userId: userId,
-                createdBy: userId,
-            }),
-        ];
 
         await this.userRepository.markVerified(userId, verifiedAt);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async persistVerificationEmail(
@@ -327,13 +140,6 @@ export class UserVerificationDomain {
         verification: IUserVerificationCreate
     ): Promise<void> {
         const today = this.helperDateService.create();
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userSendVerificationEmail,
-                userId: userId,
-                createdBy: userId,
-            }),
-        ];
 
         await this.userVerificationRepository.createReplacingActive(
             userId,
@@ -341,8 +147,6 @@ export class UserVerificationDomain {
             verification,
             today
         );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async createFromOnboardingInTx(

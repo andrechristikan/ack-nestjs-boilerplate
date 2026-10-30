@@ -1,10 +1,8 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { AnalyticDashboardPagedMetricPattern } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticApiKeyActiveExpired,
@@ -28,16 +26,18 @@ import type {
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
+import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { ApiKeyAnalyticDomain } from '@modules/api-key/domains/api-key.analytic.domain';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
+import { PasswordHistoryAnalyticDomain } from '@modules/password-history/domains/password-history.analytic.domain';
 import { ProjectAnalyticDomain } from '@modules/project/domains/project.analytic.domain';
 import { ProjectMemberAnalyticDomain } from '@modules/project/domains/project.member.analytic.domain';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
 import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains/term-policy.acceptance.analytic.domain';
+import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserForgotPasswordAnalyticDomain } from '@modules/user/domains/user.forgot-password.analytic.domain';
-import { UserLoginAnalyticDomain } from '@modules/user/domains/user.login.analytic.domain';
 import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobile-number.analytic.domain';
 import { UserPasswordAnalyticDomain } from '@modules/user/domains/user.password.analytic.domain';
 import { UserTwoFactorAnalyticDomain } from '@modules/user/domains/user.two-factor.analytic.domain';
@@ -49,6 +49,7 @@ import { WorkspaceMemberAnalyticDomain } from '@modules/workspace/domains/worksp
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
+    EnumPasswordHistoryType,
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
@@ -60,16 +61,16 @@ export class AnalyticDashboardDomain {
     constructor(
         private readonly analyticCache: AnalyticCache,
         private readonly analyticDateUtil: AnalyticDateUtil,
+        private readonly analyticBucketUtil: AnalyticBucketUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
         private readonly userAnalyticDomain: UserAnalyticDomain,
-        private readonly userLoginAnalyticDomain: UserLoginAnalyticDomain,
         private readonly userPasswordAnalyticDomain: UserPasswordAnalyticDomain,
         private readonly userForgotPasswordAnalyticDomain: UserForgotPasswordAnalyticDomain,
         private readonly userTwoFactorAnalyticDomain: UserTwoFactorAnalyticDomain,
         private readonly userVerificationAnalyticDomain: UserVerificationAnalyticDomain,
         private readonly userMobileNumberAnalyticDomain: UserMobileNumberAnalyticDomain,
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain,
+        private readonly passwordHistoryAnalyticDomain: PasswordHistoryAnalyticDomain,
         private readonly sessionAnalyticDomain: SessionAnalyticDomain,
         private readonly deviceAnalyticDomain: DeviceAnalyticDomain,
         private readonly apiKeyAnalyticDomain: ApiKeyAnalyticDomain,
@@ -81,18 +82,6 @@ export class AnalyticDashboardDomain {
         private readonly projectAnalyticDomain: ProjectAnalyticDomain,
         private readonly projectMemberAnalyticDomain: ProjectMemberAnalyticDomain
     ) {}
-
-    private pagedMetric(
-        metric: EnumAnalyticDashboardMetric,
-        params: IPaginationQueryOffsetParams<unknown>
-    ): string {
-        const page = Math.floor(params.skip / params.limit) + 1;
-
-        return this.helperStringService.fillPattern(
-            AnalyticDashboardPagedMetricPattern,
-            { metric, page: String(page), perPage: String(params.limit) }
-        );
-    }
 
     private async readCache<T>(
         metric: string,
@@ -218,12 +207,8 @@ export class AnalyticDashboardDomain {
             endDate
         );
 
-        const result = {
-            buckets: rows.map(r => ({
-                key: String(r.key),
-                count: r.count,
-            })),
-        };
+        const buckets = this.analyticBucketUtil.toBuckets(rows, 'key');
+        const result = { buckets };
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -248,12 +233,8 @@ export class AnalyticDashboardDomain {
             endDate
         );
 
-        const result = {
-            buckets: rows.map(r => ({
-                key: String(r.key),
-                count: r.count,
-            })),
-        };
+        const buckets = this.analyticBucketUtil.toBuckets(rows, 'key');
+        const result = { buckets };
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -319,12 +300,8 @@ export class AnalyticDashboardDomain {
 
         const rows = await this.userAnalyticDomain.getGroupByStatus();
 
-        const result = {
-            buckets: rows.map(r => ({
-                key: String(r.key),
-                count: r.count,
-            })),
-        };
+        const buckets = this.analyticBucketUtil.toBuckets(rows, 'key');
+        const result = { buckets };
         await this.writeCache(metric, null, null, result);
 
         return result;
@@ -436,10 +413,25 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const result = await this.userMobileNumberAnalyticDomain.getChurn(
-            startDate,
-            endDate
-        );
+        const [added, updated, deleted] = await Promise.all([
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userAddMobileNumber],
+                startDate,
+                endDate
+            ),
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userUpdateMobileNumber],
+                startDate,
+                endDate
+            ),
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userDeleteMobileNumber],
+                startDate,
+                endDate
+            ),
+        ]);
+
+        const result = { added, updated, deleted };
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -459,10 +451,12 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const count = await this.userLoginAnalyticDomain.getLoginFrequency(
-            startDate,
-            endDate
-        );
+        const count =
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                UserLoginAnalyticActions,
+                startDate,
+                endDate
+            );
 
         const result = { count };
         await this.writeCache(metric, startDate, endDate, result);
@@ -484,17 +478,15 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const rows = await this.userLoginAnalyticDomain.getLoginMethodMix(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const rows =
+            await this.activityLogAnalyticDomain.getGroupByActionInRange(
+                UserLoginAnalyticActions,
+                startDate,
+                endDate
+            );
 
-        const result = {
-            buckets: rows.map(r => ({
-                key: r.action,
-                count: r.count,
-            })),
-        };
+        const buckets = this.analyticBucketUtil.toBuckets(rows, 'action');
+        const result = { buckets };
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -519,12 +511,8 @@ export class AnalyticDashboardDomain {
             endDate
         );
 
-        const result = {
-            buckets: rows.map(r => ({
-                key: r.key,
-                count: r.count,
-            })),
-        };
+        const buckets = this.analyticBucketUtil.toBuckets(rows, 'key');
+        const result = { buckets };
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -544,10 +532,20 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const result = await this.userLoginAnalyticDomain.getLockoutMetrics(
-            startDate,
-            endDate
-        );
+        const [failed, maxAttempt] = await Promise.all([
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userLoginFailed],
+                startDate,
+                endDate
+            ),
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userReachMaxPasswordAttempt],
+                startDate,
+                endDate
+            ),
+        ]);
+
+        const result = { failed, maxAttempt };
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -599,12 +597,8 @@ export class AnalyticDashboardDomain {
         const now = this.helperDateService.create();
         const rows = await this.sessionAnalyticDomain.getCountActiveByUser(now);
 
-        const result = {
-            buckets: rows.map(r => ({
-                key: r.userId,
-                count: r.count,
-            })),
-        };
+        const buckets = this.analyticBucketUtil.toBuckets(rows, 'userId');
+        const result = { buckets };
         await this.writeCache(metric, null, null, result);
 
         return result;
@@ -658,21 +652,9 @@ export class AnalyticDashboardDomain {
                 endDate,
                 now
             );
-        const map = new Map<string, number>();
-        for (const s of sessions) {
-            const key =
-                s.userAgent?.browser?.name ??
-                s.userAgent?.os?.name ??
-                'unknown';
-            map.set(key, (map.get(key) ?? 0) + 1);
-        }
 
-        const result = {
-            buckets: [...map.entries()].map(([key, count]) => ({
-                key,
-                count,
-            })),
-        };
+        const buckets = this.analyticBucketUtil.toBucketsByBrowser(sessions);
+        const result = { buckets };
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -776,8 +758,14 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const result =
-            await this.userPasswordAnalyticDomain.getPasswordExpiryCompliance();
+        const [activeUserCount, expired] = await Promise.all([
+            this.userAnalyticDomain.getCountActive(),
+            this.userPasswordAnalyticDomain.getExpiredCount(),
+        ]);
+        const result = this.userPasswordAnalyticDomain.mapExpiryCompliance(
+            expired,
+            activeUserCount
+        );
         await this.writeCache(metric, null, null, result);
 
         return result;
@@ -798,7 +786,8 @@ export class AnalyticDashboardDomain {
         }
 
         const count =
-            await this.userPasswordAnalyticDomain.getPasswordChangeCount(
+            await this.passwordHistoryAnalyticDomain.getCountByTypeInRange(
+                EnumPasswordHistoryType.profile,
                 startDate,
                 endDate
             );
@@ -848,7 +837,8 @@ export class AnalyticDashboardDomain {
         }
 
         const count =
-            await this.userPasswordAnalyticDomain.getAdminForcePasswordCount(
+            await this.passwordHistoryAnalyticDomain.getCountByTypeInRange(
+                EnumPasswordHistoryType.admin,
                 startDate,
                 endDate
             );
@@ -870,7 +860,14 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const result = await this.userTwoFactorAnalyticDomain.getAdoption();
+        const [activeUserCount, enabled] = await Promise.all([
+            this.userAnalyticDomain.getCountActive(),
+            this.userTwoFactorAnalyticDomain.getEnabledCount(),
+        ]);
+        const result = this.userTwoFactorAnalyticDomain.mapAdoption(
+            enabled,
+            activeUserCount
+        );
         await this.writeCache(metric, null, null, result);
 
         return result;
@@ -890,10 +887,12 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const count = await this.userTwoFactorAnalyticDomain.getAdminResetCount(
-            startDate,
-            endDate
-        );
+        const count =
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userResetTwoFactorByAdmin],
+                startDate,
+                endDate
+            );
 
         const result = { count };
         await this.writeCache(metric, startDate, endDate, result);
@@ -916,7 +915,8 @@ export class AnalyticDashboardDomain {
         }
 
         const count =
-            await this.userTwoFactorAnalyticDomain.getVerifySuccessCount(
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userVerifyTwoFactor],
                 startDate,
                 endDate
             );
@@ -942,7 +942,8 @@ export class AnalyticDashboardDomain {
         }
 
         const count =
-            await this.userTwoFactorAnalyticDomain.getBackupCodeRegenerationCount(
+            await this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
                 startDate,
                 endDate
             );
@@ -1099,12 +1100,8 @@ export class AnalyticDashboardDomain {
 
         const rows = await this.deviceAnalyticDomain.getCountPerUser();
 
-        const result = {
-            buckets: rows.map(r => ({
-                key: r.userId,
-                count: r.count,
-            })),
-        };
+        const buckets = this.analyticBucketUtil.toBuckets(rows, 'userId');
+        const result = { buckets };
         await this.writeCache(metric, null, null, result);
 
         return result;
@@ -1148,10 +1145,34 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const result = await this.apiKeyAnalyticDomain.getLifecycle(
-            startDate,
-            endDate
-        );
+        const [created, reset, updated, deleted] = await Promise.all([
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.adminApiKeyCreate],
+                startDate,
+                endDate
+            ),
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.adminApiKeyReset],
+                startDate,
+                endDate
+            ),
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [
+                    EnumActivityLogAction.adminApiKeyUpdate,
+                    EnumActivityLogAction.adminApiKeyUpdateDate,
+                    EnumActivityLogAction.adminApiKeyUpdateStatus,
+                ],
+                startDate,
+                endDate
+            ),
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
+                [EnumActivityLogAction.adminApiKeyDelete],
+                startDate,
+                endDate
+            ),
+        ]);
+
+        const result = { created, reset, updated, deleted };
         await this.writeCache(metric, startDate, endDate, result);
 
         return result;
@@ -1207,10 +1228,17 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const result =
-            await this.termPolicyAcceptanceAnalyticDomain.getAcceptanceRate(
+        const [activeUserCount, counts] = await Promise.all([
+            this.userAnalyticDomain.getCountActive(),
+            this.termPolicyAcceptanceAnalyticDomain.getAcceptanceCounts(
                 startDate ?? null,
                 endDate ?? null
+            ),
+        ]);
+        const result =
+            this.termPolicyAcceptanceAnalyticDomain.mapAcceptanceRate(
+                counts,
+                activeUserCount
             );
         await this.writeCache(metric, startDate, endDate, result);
 
@@ -1337,9 +1365,10 @@ export class AnalyticDashboardDomain {
     async workspacesMembership(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        const metric = this.pagedMetric(
+        const metric = this.analyticDateUtil.pagedMetricToken(
             EnumAnalyticDashboardMetric.workspacesMembership,
-            params
+            params.skip,
+            params.limit
         );
 
         const cached = await this.readCache<
@@ -1363,9 +1392,10 @@ export class AnalyticDashboardDomain {
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        const metric = this.pagedMetric(
+        const metric = this.analyticDateUtil.pagedMetricToken(
             EnumAnalyticDashboardMetric.workspacesActivity,
-            params
+            params.skip,
+            params.limit
         );
 
         const cached = await this.readCache<
@@ -1412,9 +1442,10 @@ export class AnalyticDashboardDomain {
     async projectsMembership(
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
-        const metric = this.pagedMetric(
+        const metric = this.analyticDateUtil.pagedMetricToken(
             EnumAnalyticDashboardMetric.projectsMembership,
-            params
+            params.skip,
+            params.limit
         );
 
         const cached = await this.readCache<

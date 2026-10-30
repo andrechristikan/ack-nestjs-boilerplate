@@ -1,3 +1,4 @@
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type {
     IFeatureFlagMetadata,
     IFeatureFlagMetadataValue,
@@ -6,6 +7,8 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class FeatureFlagUtil {
+    constructor(private readonly helperHashService: HelperHashService) {}
+
     /** Distinguishes string[] from number[] so an array value cannot silently change element type on update. */
     private metadataValueType(value: IFeatureFlagMetadataValue): string {
         if (Array.isArray(value)) {
@@ -51,5 +54,18 @@ export class FeatureFlagUtil {
         }
 
         return true;
+    }
+
+    /** Deterministic bucketing salted by flag key so each flag buckets a user independently. */
+    isInRollout(
+        rolloutPercent: number,
+        key: string,
+        identifier: string
+    ): boolean {
+        const hash = this.helperHashService.sha256Hash(`${key}:${identifier}`);
+        const num = Number.parseInt(hash.slice(0, 8), 16);
+        const percentage = num % 100;
+
+        return percentage < rolloutPercent;
     }
 }

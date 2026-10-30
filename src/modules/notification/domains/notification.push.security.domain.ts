@@ -1,11 +1,9 @@
 import type { IFirebasePushPayload } from '@common/firebase/interfaces/firebase.interface';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
-import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import {
     EnumNotificationPushProcess,
@@ -24,13 +22,10 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { UnrecoverableError } from 'bullmq';
-import { ConfigService } from '@nestjs/config';
 
 /** Renders and delivers the password, two-factor and new-device login push messages. */
 @Injectable()
 export class NotificationPushSecurityDomain {
-    private readonly encryptionSecretKey: string;
-
     constructor(
         private readonly firebaseService: FirebaseService,
         private readonly notificationRepository: NotificationRepository,
@@ -38,14 +33,8 @@ export class NotificationPushSecurityDomain {
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
         private readonly notificationPushQueue: NotificationPushQueue,
-        private readonly notificationUtil: NotificationUtil,
-        private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly configService: ConfigService
-    ) {
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
-    }
+        private readonly notificationUtil: NotificationUtil
+    ) {}
 
     private throwDeliveryNotFound(process: EnumNotificationPushProcess): never {
         const message = this.messageService.setMessage(
@@ -89,15 +78,6 @@ export class NotificationPushSecurityDomain {
         }
     }
 
-    private decryptToken(encryptedToken: string, userId: string): string {
-        return this.helperEncryptionService.aes256Decrypt(
-            encryptedToken,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
-            userId
-        );
-    }
-
     private async sendMulticastStep(
         userId: string,
         encryptedNotificationTokens: string[],
@@ -108,7 +88,10 @@ export class NotificationPushSecurityDomain {
         const pairs = (
             encryptedPendingTokens ?? encryptedNotificationTokens
         ).map(encrypted => {
-            const token = this.decryptToken(encrypted, userId);
+            const token = this.notificationUtil.decryptPayload(
+                encrypted,
+                userId
+            );
 
             return { encrypted, token };
         });
@@ -246,7 +229,7 @@ export class NotificationPushSecurityDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -270,21 +253,9 @@ export class NotificationPushSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.newDeviceLogin'
@@ -387,7 +358,7 @@ export class NotificationPushSecurityDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -411,21 +382,9 @@ export class NotificationPushSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.resetTwoFactorByAdmin'
@@ -535,7 +494,7 @@ export class NotificationPushSecurityDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -559,21 +518,9 @@ export class NotificationPushSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.temporaryPasswordByAdmin'
@@ -674,7 +621,7 @@ export class NotificationPushSecurityDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -698,21 +645,9 @@ export class NotificationPushSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.resetPassword'
@@ -813,7 +748,7 @@ export class NotificationPushSecurityDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -837,21 +772,9 @@ export class NotificationPushSecurityDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.forgotPassword'

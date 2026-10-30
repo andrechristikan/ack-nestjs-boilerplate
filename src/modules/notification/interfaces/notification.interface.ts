@@ -15,6 +15,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
+import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import type { BulkJobOptions } from 'bullmq';
 import type { NotificationUserSetting } from '@generated/prisma-client/client';
 import type { SendTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
@@ -68,6 +69,19 @@ export interface INotificationTermPolicyRecipientState {
     batchId: string;
     sentAt: Date | null;
     claimedAt: Date | null;
+}
+
+export type INotificationTermPolicyUser = IUserRecipient;
+
+export interface INotificationTermPolicyPage {
+    users: INotificationTermPolicyUser[];
+    freshUsers: INotificationTermPolicyUser[];
+    pendingBatchIds: string[];
+}
+
+export interface INotificationTermPolicyPending {
+    sendableMarkers: INotificationTermPolicyRecipientState[];
+    offPageUserIds: string[];
 }
 
 export interface INotificationTermPolicyRecipientCreate {
@@ -314,6 +328,11 @@ export interface INotificationStepFailure {
     error: string;
 }
 
+export type INotificationStepOutcomes = Pick<
+    INotificationStepResult,
+    'completedSteps' | 'failedSteps'
+>;
+
 export interface INotificationStepResult {
     message: string;
     completedSteps: EnumNotificationStep[];
@@ -364,11 +383,4 @@ export type INotificationPushCleanupTokensResult = {
 export type INotificationPushCleanupStaleTokensResult = {
     message: string;
     countRemovedTokens: number;
-};
-
-export type INotificationPublishTermPolicyResult = {
-    message: string;
-    candidateCounts: number;
-    createdCounts: number;
-    batches: number;
 };

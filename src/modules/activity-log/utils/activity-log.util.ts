@@ -46,26 +46,4 @@ export class ActivityLogUtil {
             createdBy: actorId,
         };
     }
-
-    buildCreateArgs(
-        actorId: string,
-        workspaceId: string,
-        action: EnumActivityLogAction,
-        requestLog: IRequestLog
-    ): Prisma.ActivityLogCreateArgs {
-        const createManyUserData = this.buildCreateManyUserData(
-            actorId,
-            workspaceId,
-            action,
-            requestLog,
-            null
-        );
-
-        return {
-            data: {
-                userId: actorId,
-                ...createManyUserData,
-            },
-        };
-    }
 }

@@ -16,16 +16,16 @@ export class ApiKeyUtil {
         };
     }
 
+    isActive(apiKey: IApiKey): boolean {
+        return apiKey.isActive;
+    }
+
     isExpired(endAt: Date | null, currentDate: Date): boolean {
         return endAt !== null && currentDate > endAt;
     }
 
     isNotYetActive(startAt: Date | null, currentDate: Date): boolean {
         return startAt !== null && currentDate < startAt;
-    }
-
-    isActive(apiKey: { isActive: boolean }): boolean {
-        return apiKey.isActive;
     }
 
     validateType(

@@ -28,4 +28,9 @@ export class HelperNumberService {
 
         return Number.parseFloat((tValue * 100).toFixed(2));
     }
+
+    /** Unrounded part-over-total percentage; 0 when the total is 0. */
+    percent(part: number, total: number): number {
+        return total === 0 ? 0 : (part / total) * 100;
+    }
 }

@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -14,6 +15,27 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
+import { AccountDomain } from '@modules/account/domains/account.domain';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { SessionQueue } from '@modules/session/queues/session.queue';
+import { SessionUtil } from '@modules/session/utils/session.util';
+import type { ISessionRef } from '@modules/session/interfaces/session.interface';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserUtil } from '@modules/user/utils/user.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import {
+    EnumUserCreateMode,
+    EnumUserSignUpWorkspaceContextType,
+} from '@modules/user/enums/user.enum';
+import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserHttpService } from '@modules/user/services/user.http.service';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
@@ -21,7 +43,11 @@ import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/use
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import type { IUser, IUserList } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserCreateWithWorkspaceInput,
+    IUserList,
+} from '@modules/user/interfaces/user.interface';
 import {
     UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
@@ -35,6 +61,23 @@ describe('UserHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const accountDomain: MockProxy<AccountDomain> = mock<AccountDomain>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
+    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
+    const userProfileDomain: MockProxy<UserProfileDomain> =
+        mock<UserProfileDomain>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userOnboardingUtil: MockProxy<UserOnboardingUtil> =
+        mock<UserOnboardingUtil>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
 
     let service: UserHttpService;
 
@@ -99,6 +142,17 @@ describe('UserHttpService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: AccountDomain, useValue: accountDomain },
+                { provide: RoleDomain, useValue: roleDomain },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: SessionQueue, useValue: sessionQueue },
+                { provide: SessionUtil, useValue: sessionUtil },
+                { provide: UserProfileDomain, useValue: userProfileDomain },
+                { provide: UserUtil, useValue: userUtil },
+                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
+                { provide: NotificationUtil, useValue: notificationUtil },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         service = module.get(UserHttpService);
@@ -230,9 +284,67 @@ describe('UserHttpService', () => {
             },
         };
 
-        it('delegates creation to OnboardingDomain and returns the id', async () => {
-            onboardingDomain.createByAdmin.mockResolvedValue('user-cinder');
+        const password: IAuthPassword = {
+            passwordHash: 'hashed',
+            passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+            passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
+            passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
+        };
+        const input: IUserCreateWithWorkspaceInput = {
+            userId: 'user-cinder',
+            email: 'cinder@example.com',
+            name: null,
+            username: 'cinder2wolfe',
+            countryId: 'country-cinder',
+            roleId: 'role-cinder',
+            signUpFrom: EnumUserSignUpFrom.admin,
+            signUpWith: EnumUserSignUpWith.credential,
+            isVerified: false,
+            acceptedTermPolicyTypes: [],
+            password,
+            passwordHistoryType: null,
+            verification: null,
+            workspaceContext: {
+                type: EnumUserSignUpWorkspaceContextType.personal,
+                workspaceId: 'workspace-cinder',
+                slugCandidates: ['w-cinder'],
+                name: "cinder2wolfe's Workspace",
+            },
+            createdBy: 'admin-cinder',
+        };
+        const stageInput = {
+            action: EnumActivityLogAction.adminUserCreate,
+            metadata: {},
+        };
+        const recipient: INotificationRecipient = {
+            ...TestRecipient,
+            userId: 'user-cinder',
+        };
+        const activityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.adminUserCreate,
+            metadata: {},
+            userId: null,
+            createdBy: null,
+            workspaceId: null,
+        };
 
+        beforeEach(() => {
+            onboardingDomain.createByAdmin.mockResolvedValue({
+                inputs: [input],
+                users: [baseUser],
+                passwordString: 'random-password',
+            });
+            userOnboardingUtil.buildActivityStages.mockReturnValue([
+                stageInput,
+            ]);
+            activityLogDomain.prepare.mockReturnValue(activityLog);
+            notificationUtil.mapRecipient.mockReturnValue(recipient);
+            helperDateService.formatToIso
+                .mockReturnValueOnce('2026-01-01T00:00:00.000Z')
+                .mockReturnValueOnce('2026-06-01T00:00:00.000Z');
+        });
+
+        it('delegates creation to OnboardingDomain, stages the rows, enqueues the welcome, and returns the id', async () => {
             const result = await service.createByAdmin(dto, adminUser);
 
             expect(result).toEqual({ data: { id: 'user-cinder' } });
@@ -247,11 +359,49 @@ describe('UserHttpService', () => {
                 'admin-cinder',
                 { roleId: 'role-admin-cinder', roleType: EnumRoleType.admin }
             );
+            expect(userOnboardingUtil.buildActivityStages).toHaveBeenCalledWith(
+                EnumUserCreateMode.admin,
+                [input],
+                [baseUser],
+                EnumActivityLogAction.adminUserCreate
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith(stageInput);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.welcomeByAdmin,
+                [],
+                []
+            );
+            expect(notificationQueue.sendWelcomeByAdmin).toHaveBeenCalledWith(
+                recipient,
+                {
+                    password: 'random-password',
+                    passwordCreatedAt: '2026-01-01T00:00:00.000Z',
+                    passwordExpiredAt: '2026-06-01T00:00:00.000Z',
+                },
+                'admin-cinder'
+            );
+        });
+
+        it('skips the welcome when no password was generated', async () => {
+            onboardingDomain.createByAdmin.mockResolvedValue({
+                inputs: [{ ...input, password: null }],
+                users: [baseUser],
+                passwordString: 'random-password',
+            });
+
+            await service.createByAdmin(dto, adminUser);
+
+            expect(notificationQueue.sendWelcomeByAdmin).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
         });
 
         it('forwards the name when the dto carries one', async () => {
-            onboardingDomain.createByAdmin.mockResolvedValue('user-cinder');
-
             await service.createByAdmin(
                 { ...dto, name: 'Cinder Wolfe' },
                 adminUser
@@ -263,26 +413,190 @@ describe('UserHttpService', () => {
                 { roleId: 'role-admin-cinder', roleType: EnumRoleType.admin }
             );
         });
+
+        it('stages nothing and enqueues nothing when onboarding throws', async () => {
+            const failure = new Error('create failed');
+            onboardingDomain.createByAdmin.mockRejectedValue(failure);
+
+            await expect(service.createByAdmin(dto, adminUser)).rejects.toBe(
+                failure
+            );
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(notificationQueue.sendWelcomeByAdmin).not.toHaveBeenCalled();
+        });
     });
 
     describe('updateStatusByAdmin', () => {
-        it('delegates to the domain and returns an empty response', async () => {
+        const activityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.userUpdateStatus,
+            metadata: {},
+            userId: null,
+            createdBy: null,
+            workspaceId: null,
+        };
+        const revoked: ISessionRef[] = [{ id: 'session-one' }];
+        const row = {
+            ...baseUser,
+            status: EnumUserStatus.inactive,
+        };
+        const admin: IUser = {
+            ...baseUser,
+            id: 'admin-cinder',
+            role: { ...baseUser.role, type: EnumRoleType.admin },
+        };
+
+        beforeEach(() => {
+            activityLogDomain.prepare.mockReturnValue(activityLog);
+            userDomain.getOneWithRole.mockResolvedValue({
+                ...baseUser,
+                passwordAttempt: 3,
+            });
+            userUtil.mapActivityLogActorMetadata.mockReturnValue({
+                targetUserId: 'user-cinder',
+            });
+            userUtil.mapActivityLogTargetMetadata.mockReturnValue({
+                actorUserId: 'admin-cinder',
+            });
+            sessionUtil.mapActivityLogRevokeAllActorMetadata.mockReturnValue({
+                targetUserId: 'user-cinder',
+                sessionCount: 1,
+            });
+            sessionUtil.mapActivityLogRevokeAllTargetMetadata.mockReturnValue({
+                actorUserId: 'admin-cinder',
+                sessionCount: 1,
+            });
+        });
+
+        it('gates the rank, writes, purges, and stages the revoke-all rows before the status rows', async () => {
+            accountDomain.updateStatusByAdmin.mockResolvedValue({
+                user: row,
+                revoked,
+            });
             const dto: UserUpdateStatusRequestDto = {
                 status: EnumUserStatus.blocked,
             };
 
             await expect(
-                service.updateStatusByAdmin('user-cinder', dto, {
-                    ...baseUser,
-                    id: 'admin-cinder',
-                })
+                service.updateStatusByAdmin('user-cinder', dto, admin)
             ).resolves.toEqual({});
-            expect(userDomain.updateStatusByAdmin).toHaveBeenCalledWith(
+
+            expect(userDomain.assertNotSelf).toHaveBeenCalledWith(
                 'user-cinder',
-                dto.status,
-                'admin-cinder',
-                { roleId: baseUser.roleId, roleType: baseUser.role.type }
+                'admin-cinder'
             );
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.user
+            );
+            expect(accountDomain.updateStatusByAdmin).toHaveBeenCalledWith(
+                'user-cinder',
+                EnumUserStatus.blocked,
+                3,
+                'admin-cinder'
+            );
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-cinder',
+                revoked
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminSessionRevokeAll,
+                metadata: { targetUserId: 'user-cinder', sessionCount: 1 },
+            });
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                userId: 'user-cinder',
+                createdBy: 'admin-cinder',
+                metadata: { actorUserId: 'admin-cinder', sessionCount: 1 },
+            });
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminUserUpdateStatus,
+                metadata: { targetUserId: 'user-cinder' },
+            });
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userBlocked,
+                userId: 'user-cinder',
+                createdBy: 'admin-cinder',
+                metadata: { actorUserId: 'admin-cinder' },
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(2);
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(1, [
+                activityLog,
+                activityLog,
+            ]);
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(2, [
+                activityLog,
+                activityLog,
+            ]);
+        });
+
+        it('records the plain status action for a status other than blocked', async () => {
+            accountDomain.updateStatusByAdmin.mockResolvedValue({
+                user: row,
+                revoked,
+            });
+
+            await service.updateStatusByAdmin(
+                'user-cinder',
+                { status: EnumUserStatus.inactive },
+                admin
+            );
+
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: EnumActivityLogAction.userUpdateStatus,
+                })
+            );
+        });
+
+        it('purges an empty list and stages no revoke-all row when no session was open', async () => {
+            accountDomain.updateStatusByAdmin.mockResolvedValue({
+                user: row,
+                revoked: [],
+            });
+
+            await service.updateStatusByAdmin(
+                'user-cinder',
+                { status: EnumUserStatus.inactive },
+                admin
+            );
+
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-cinder',
+                []
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+        });
+
+        it('purges and revokes nothing when the status keeps access', async () => {
+            accountDomain.updateStatusByAdmin.mockResolvedValue({
+                user: row,
+                revoked: null,
+            });
+
+            await service.updateStatusByAdmin(
+                'user-cinder',
+                { status: EnumUserStatus.active },
+                admin
+            );
+
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops at the rank gate before the blocked gate', async () => {
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw new Error('rank');
+            });
+
+            await expect(
+                service.updateStatusByAdmin(
+                    'user-cinder',
+                    { status: EnumUserStatus.blocked },
+                    admin
+                )
+            ).rejects.toThrow('rank');
+            expect(userDomain.assertUnblocked).not.toHaveBeenCalled();
+            expect(accountDomain.updateStatusByAdmin).not.toHaveBeenCalled();
         });
     });
 
@@ -320,10 +634,75 @@ describe('UserHttpService', () => {
     });
 
     describe('deleteSelf', () => {
-        it('delegates to the domain', async () => {
+        const activityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.userDeleteSelf,
+            metadata: {},
+            userId: null,
+            createdBy: null,
+            workspaceId: null,
+        };
+        const revoked: ISessionRef[] = [{ id: 'session-one' }];
+        const photo = {
+            bucket: 'bucket',
+            key: 'photo-profile/user-cinder/current.png',
+            cdnUrl: null,
+            completedUrl: 'https://cdn.example.com/current.png',
+            mime: 'image/png',
+            extension: 'png',
+            access: 'public',
+        } as const;
+
+        beforeEach(() => {
+            activityLogDomain.prepare.mockReturnValue(activityLog);
+        });
+
+        it('deletes, purges the revoked logins, and stages the revoke-all row before the delete row', async () => {
+            accountDomain.deleteSelf.mockResolvedValue({
+                user: { ...baseUser, photo: null },
+                revoked,
+            });
+
+            await expect(service.deleteSelf('user-cinder')).resolves.toEqual(
+                {}
+            );
+
+            expect(accountDomain.deleteSelf).toHaveBeenCalledWith(
+                'user-cinder'
+            );
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-cinder',
+                revoked
+            );
+            expect(userProfileDomain.deleteOwnedPhoto).toHaveBeenCalledWith(
+                'user-cinder',
+                null
+            );
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId: 'user-cinder',
+                createdBy: 'user-cinder',
+            });
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
+                action: EnumActivityLogAction.userDeleteSelf,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+                activityLog,
+            ]);
+        });
+
+        it('hands the stored photo to the profile domain', async () => {
+            accountDomain.deleteSelf.mockResolvedValue({
+                user: { ...baseUser, photo },
+                revoked,
+            });
+
             await service.deleteSelf('user-cinder');
 
-            expect(userDomain.deleteSelf).toHaveBeenCalledWith('user-cinder');
+            expect(userProfileDomain.deleteOwnedPhoto).toHaveBeenCalledWith(
+                'user-cinder',
+                photo
+            );
         });
     });
 });

@@ -10,7 +10,6 @@ import type {
     INotificationCreateEntry,
     INotificationEmailSendEncryptedPayload,
     INotificationRecipientEncryptedPayload,
-    INotificationStepFailure,
     INotificationStepResult,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
@@ -44,20 +43,10 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.welcomeByAdmin,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.welcomeByAdmin,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -122,21 +111,9 @@ export class NotificationAccountDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.welcomeByAdmin'
@@ -255,21 +232,9 @@ export class NotificationAccountDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.welcome'
@@ -290,20 +255,10 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.welcomeSocial,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.welcomeSocial,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -366,21 +321,9 @@ export class NotificationAccountDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.welcomeSocial'
@@ -402,20 +345,10 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.verifiedEmail,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.verifiedEmail,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -480,21 +413,9 @@ export class NotificationAccountDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.verifiedEmail'
@@ -516,20 +437,10 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.verificationEmail,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.verificationEmail,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -594,21 +505,9 @@ export class NotificationAccountDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.verificationEmail'
@@ -630,20 +529,10 @@ export class NotificationAccountDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.verifiedMobileNumber,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.verifiedMobileNumber,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -717,21 +606,9 @@ export class NotificationAccountDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.verifiedMobileNumber'

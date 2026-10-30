@@ -5,7 +5,6 @@ import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { QueueConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
-import { UserDomainModule } from '@modules/user/user.domain.module';
 import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { TermPolicyRepositoryModule } from '@modules/term-policy/term-policy.repository.module';
@@ -40,7 +39,6 @@ import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains
     imports: [
         TermPolicyRepositoryModule,
         AwsModule,
-        UserDomainModule,
         BullModule.registerQueueAsync({
             name: EnumQueue.termPolicy,
             configKey: QueueConfigKey,

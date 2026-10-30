@@ -11,7 +11,9 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { TwoFactor, User } from '@generated/prisma-client/client';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { Duration } from 'luxon';
 
 describe('UserUtil', () => {
     const configGet =
@@ -19,6 +21,9 @@ describe('UserUtil', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
+
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
 
     let util: UserUtil;
 
@@ -65,14 +70,48 @@ describe('UserUtil', () => {
         vi.resetAllMocks();
 
         configGet.mockImplementation(key => configValues[key]);
+        helperDateService.forward.mockImplementation(
+            (date, duration: Duration) =>
+                new Date(date.getTime() + duration.as('milliseconds'))
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserUtil,
                 { provide: ConfigService, useValue: configService },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         util = module.get(UserUtil);
+    });
+
+    describe('getResendWaitInMinutes', () => {
+        const now = new Date('2026-03-01T00:00:00.000Z');
+
+        beforeEach(() => {
+            helperDateService.create.mockReturnValue(now);
+            helperDateService.diff.mockImplementation((from, to) =>
+                Duration.fromMillis(from.getTime() - to.getTime())
+            );
+        });
+
+        it('returns the whole minutes left, rounded up, while the window is open', () => {
+            const lastCreatedAt = new Date(now.getTime() - 30_000);
+
+            expect(util.getResendWaitInMinutes(lastCreatedAt, 5)).toBe(5);
+        });
+
+        it('returns null once the window has passed', () => {
+            const lastCreatedAt = new Date(now.getTime() - 6 * 60 * 1000);
+
+            expect(util.getResendWaitInMinutes(lastCreatedAt, 5)).toBeNull();
+        });
+
+        it('returns null at the exact end of the window', () => {
+            const lastCreatedAt = new Date(now.getTime() - 5 * 60 * 1000);
+
+            expect(util.getResendWaitInMinutes(lastCreatedAt, 5)).toBeNull();
+        });
     });
 
     describe('checkUsernamePattern', () => {
@@ -142,6 +181,18 @@ describe('UserUtil', () => {
             };
 
             expect(util.mapTwoFactor(twoFactor)).toEqual({
+                isEnabled: false,
+                isPendingConfirmation: false,
+                backupCodesRemaining: 0,
+                confirmedAt: null,
+                lastUsedAt: null,
+            });
+        });
+    });
+
+    describe('mapTwoFactor without a row', () => {
+        it('maps a missing two-factor row as disabled', () => {
+            expect(util.mapTwoFactor(null)).toEqual({
                 isEnabled: false,
                 isPendingConfirmation: false,
                 backupCodesRemaining: 0,

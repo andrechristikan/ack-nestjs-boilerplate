@@ -17,7 +17,6 @@ import type {
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -25,8 +24,7 @@ export class FeatureFlagDomain {
     constructor(
         private readonly featureFlagRepository: FeatureFlagRepository,
         private readonly featureFlagUtil: FeatureFlagUtil,
-        private readonly featureFlagCache: FeatureFlagCache,
-        private readonly helperHashService: HelperHashService
+        private readonly featureFlagCache: FeatureFlagCache
     ) {}
 
     private assertRollout(
@@ -34,27 +32,14 @@ export class FeatureFlagDomain {
         key: string,
         identifier: string
     ): void {
-        const checkRollout = this.checkRolloutPercentage(
+        const isInRollout = this.featureFlagUtil.isInRollout(
             rolloutPercent,
             key,
             identifier
         );
-        if (!checkRollout) {
+        if (!isInRollout) {
             throw new FeatureFlagDisabledException();
         }
-    }
-
-    /** Deterministic bucketing salted by flag key so each flag buckets a user independently. */
-    checkRolloutPercentage(
-        rolloutPercent: number,
-        key: string,
-        identifier: string
-    ): boolean {
-        const hash = this.helperHashService.sha256Hash(`${key}:${identifier}`);
-        const num = Number.parseInt(hash.slice(0, 8), 16);
-        const percentage = num % 100;
-
-        return percentage < rolloutPercent;
     }
 
     /** Read-through: the cached flag, or the row loaded from the database and cached. */

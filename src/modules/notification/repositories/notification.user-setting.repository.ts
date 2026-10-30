@@ -37,17 +37,19 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
         });
     }
 
-    async updateUserSettingInTx(
-        tx: IDatabaseTransactionClient,
+    async updateUserSetting(
         userId: string,
         { channel, type, isActive }: INotificationUserSettingUpdate
     ): Promise<boolean> {
-        const { count } = await tx.notificationUserSetting.updateMany({
-            where: { userId, channel, type },
-            data: {
-                isActive,
-            },
-        });
+        const { count } =
+            await this.databaseService.client.notificationUserSetting.updateMany(
+                {
+                    where: { userId, channel, type },
+                    data: {
+                        isActive,
+                    },
+                }
+            );
 
         return count > 0;
     }

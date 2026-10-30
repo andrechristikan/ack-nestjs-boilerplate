@@ -5,7 +5,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { EnumUserStatus } from '@generated/prisma-client/client';
 import type { ForgotPassword } from '@generated/prisma-client/client';
 import type {
-    IUser,
+    IUserForgotPassword,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserPasswordRepository } from '@modules/user/interfaces/user.password-repository.interface';
@@ -20,7 +20,7 @@ export class UserPasswordRepository implements IUserPasswordRepository {
 
     async findOneActiveByForgotPasswordToken(
         token: string
-    ): Promise<(ForgotPassword & { user: IUser }) | null> {
+    ): Promise<IUserForgotPassword | null> {
         const today = this.helperDateService.create();
 
         return this.databaseService.client.forgotPassword.findFirst({

@@ -4,7 +4,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserGender,
     EnumUserSignUpFrom,
@@ -27,10 +26,6 @@ import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { CountryDomain } from '@modules/country/domains/country.domain';
-import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
@@ -45,9 +40,6 @@ import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface'
 
 describe('UserProfileDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
@@ -59,14 +51,6 @@ describe('UserProfileDomain', () => {
     const photoMaxSizeInBytes = 2048;
 
     let domain: UserProfileDomain;
-
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userUpdateProfile,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
 
     const role: IRoleWithPolicies = {
         id: 'role-persimmon',
@@ -164,7 +148,6 @@ describe('UserProfileDomain', () => {
         userUtil.isPhotoProfileKeyOwned.mockImplementation((userId, key) =>
             key.startsWith(`photo-profile/${userId}/`)
         );
-        activityLogDomain.prepare.mockReturnValue(activityLog);
         userRepository.findOneById.mockResolvedValue(profile);
         userQueue.deletePhoto.mockResolvedValue();
         configGet.mockReturnValue(photoMaxSizeInBytes);
@@ -173,8 +156,6 @@ describe('UserProfileDomain', () => {
             providers: [
                 UserProfileDomain,
                 { provide: UserRepository, useValue: userRepository },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: CountryDomain, useValue: countryDomain },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
@@ -206,9 +187,7 @@ describe('UserProfileDomain', () => {
     });
 
     describe('updateProfile', () => {
-        it('updates the profile and stages the activity log', async () => {
-            countryDomain.existsById.mockResolvedValue(true);
-
+        it('updates the profile', async () => {
             await domain.updateProfile(profile.id, {
                 name: 'New Name',
                 countryId: country.id,
@@ -223,33 +202,9 @@ describe('UserProfileDomain', () => {
                     gender: EnumUserGender.male,
                 }
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-        });
-
-        it('throws CountryNotFoundException when the country does not exist', async () => {
-            countryDomain.existsById.mockResolvedValue(false);
-
-            const call = domain.updateProfile(profile.id, {
-                countryId: 'missing',
-                name: null,
-                gender: EnumUserGender.male,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'country',
-                statusCode: EnumCountryStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumCountryStatusCodeError[
-                        EnumCountryStatusCodeError.notFound
-                    ],
-                messagePath: 'country.error.notFound',
-            });
         });
 
         it('rethrows an AppBaseException raised while updating', async () => {
-            countryDomain.existsById.mockResolvedValue(true);
             const error = new UserNotFoundException();
             userRepository.updateProfile.mockRejectedValue(error);
 
@@ -270,7 +225,6 @@ describe('UserProfileDomain', () => {
         });
 
         it('wraps an unknown error raised while updating', async () => {
-            countryDomain.existsById.mockResolvedValue(true);
             const error = new Error('boom');
             userRepository.updateProfile.mockRejectedValue(error);
 
@@ -390,7 +344,7 @@ describe('UserProfileDomain', () => {
             size: 2048,
         };
 
-        it('maps the presign and stages the activity log', async () => {
+        it('maps the presign', async () => {
             awsS3Service.isInitialized.mockReturnValue(true);
             awsS3Service.mapPresign.mockReturnValue(aws);
 
@@ -407,9 +361,6 @@ describe('UserProfileDomain', () => {
                 profile.id,
                 aws
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
         it('enqueues the previous photo delete after the write when a different photo exists', async () => {
@@ -632,7 +583,7 @@ describe('UserProfileDomain', () => {
             size: 2048,
         };
 
-        it('uploads the file and stages the activity log', async () => {
+        it('uploads the file', async () => {
             fileService.extractExtensionFromFilename.mockReturnValue(
                 EnumFileExtensionImage.png
             );
@@ -655,9 +606,6 @@ describe('UserProfileDomain', () => {
                 profile.id,
                 aws
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
         it('enqueues the previous photo delete after the write when a different photo exists', async () => {
@@ -780,7 +728,6 @@ describe('UserProfileDomain', () => {
                 messagePath: 'aws.error.s3NotConfigured',
             });
             expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised during upload', async () => {
@@ -823,7 +770,7 @@ describe('UserProfileDomain', () => {
     describe('claimUsername', () => {
         const username: Lowercase<string> = 'persimmon';
 
-        it('claims the username and stages the activity log', async () => {
+        it('claims the username', async () => {
             userUtil.checkUsernamePattern.mockReturnValue(false);
             userUtil.checkBadWord.mockResolvedValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
@@ -834,9 +781,6 @@ describe('UserProfileDomain', () => {
                 profile.id,
                 { username }
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
         it('throws UserUsernameNotAllowedException when the pattern rejects it', async () => {
@@ -931,6 +875,37 @@ describe('UserProfileDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
+        });
+    });
+
+    describe('deleteOwnedPhoto', () => {
+        it('enqueues the delete of a photo under the profile path of the user', async () => {
+            await domain.deleteOwnedPhoto(profile.id, previousPhoto);
+
+            expect(userUtil.isPhotoProfileKeyOwned).toHaveBeenCalledWith(
+                profile.id,
+                previousPhoto.key
+            );
+            expect(userQueue.deletePhoto).toHaveBeenCalledWith(
+                profile.id,
+                previousPhoto
+            );
+        });
+
+        it('keeps a photo outside the profile path of the user', async () => {
+            await domain.deleteOwnedPhoto(profile.id, {
+                ...previousPhoto,
+                key: 'photo-profile/user-other/previous.png',
+            });
+
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it('enqueues nothing for a user without a photo', async () => {
+            await domain.deleteOwnedPhoto(profile.id, null);
+
+            expect(userUtil.isPhotoProfileKeyOwned).not.toHaveBeenCalled();
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
     });
 

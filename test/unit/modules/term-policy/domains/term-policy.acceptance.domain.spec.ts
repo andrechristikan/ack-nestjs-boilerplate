@@ -10,17 +10,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import {
-    EnumActivityLogAction,
-    EnumRoleType,
-    EnumTermPolicyType,
-} from '@generated/prisma-client/client';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { Prisma } from '@generated/prisma-client/client';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
@@ -30,24 +20,10 @@ import type {
     ITermPolicyRef,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
-import type { IUser } from '@modules/user/interfaces/user.interface';
-import {
-    EnumUserGender,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('TermPolicyAcceptanceDomain', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
-        mock<NotificationRecipientDomain>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -55,51 +31,6 @@ describe('TermPolicyAcceptanceDomain', () => {
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const tx = {} as IDatabaseTransactionClient;
-
-    const baseUser: IUser = {
-        id: 'user-1',
-        name: 'Andre Christi',
-        username: 'johnSmith123',
-        isVerified: true,
-        verifiedAt: timestamp,
-        email: 'andre@example.com',
-        roleId: 'role-1',
-        password: 'hashed-password',
-        passwordExpired: null,
-        passwordCreated: timestamp,
-        passwordAttempt: 0,
-        signUpAt: timestamp,
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.male,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: timestamp,
-        createdBy: null,
-        updatedAt: timestamp,
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-1',
-            name: 'User',
-            description: null,
-            type: EnumRoleType.user,
-            createdAt: timestamp,
-            createdBy: null,
-            updatedAt: timestamp,
-            updatedBy: null,
-            policies: [],
-        },
-        twoFactor: null,
-    };
 
     let domain: TermPolicyAcceptanceDomain;
 
@@ -115,12 +46,6 @@ describe('TermPolicyAcceptanceDomain', () => {
                     provide: TermPolicyRepository,
                     useValue: termPolicyRepository,
                 },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: NotificationRecipientDomain,
-                    useValue: notificationRecipientDomain,
-                },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -363,30 +288,24 @@ describe('TermPolicyAcceptanceDomain', () => {
     });
 
     describe('userAccept', () => {
-        const recipient: INotificationRecipient = {
-            ...TestRecipient,
-            userId: 'user-1',
-        };
         const latest: ITermPolicyRef = {
             id: 'term-policy-1',
             type: EnumTermPolicyType.privacy,
             version: 1,
         };
 
-        const user: IUser = baseUser;
-
         it('throws TermPolicyNotFoundException when the transaction finds no published policy of the type', async () => {
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 []
-            );
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
             );
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
 
-            const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
+            const promise = domain.userAccept(
+                'user-1',
+                EnumTermPolicyType.privacy
+            );
 
             await expect(promise).rejects.toMatchObject({
                 module: 'termPolicy',
@@ -399,15 +318,9 @@ describe('TermPolicyAcceptanceDomain', () => {
                 messagePath: 'termPolicy.error.notFound',
             });
             expect(termPolicyRepository.acceptInTx).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendUserAcceptTermPolicy
-            ).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyAlreadyAcceptedException when the acceptance insert collides on the unique index', async () => {
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
-            );
             const collision = new Prisma.PrismaClientKnownRequestError(
                 'unique',
                 { code: 'P2002', clientVersion: 'test' }
@@ -415,7 +328,10 @@ describe('TermPolicyAcceptanceDomain', () => {
             databaseService.withTransaction.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
-            const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
+            const promise = domain.userAccept(
+                'user-1',
+                EnumTermPolicyType.privacy
+            );
 
             await expect(promise).rejects.toMatchObject({
                 constructor: TermPolicyAlreadyAcceptedException,
@@ -432,16 +348,9 @@ describe('TermPolicyAcceptanceDomain', () => {
                 collision,
                 'termPolicyId'
             );
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendUserAcceptTermPolicy
-            ).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyAlreadyAcceptedException when the transaction hits a write conflict', async () => {
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
-            );
             const conflict = new Error('write conflict');
             databaseService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
@@ -449,7 +358,10 @@ describe('TermPolicyAcceptanceDomain', () => {
                 new DatabaseWriteConflictException()
             );
 
-            const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
+            const promise = domain.userAccept(
+                'user-1',
+                EnumTermPolicyType.privacy
+            );
 
             await expect(promise).rejects.toMatchObject({
                 constructor: TermPolicyAlreadyAcceptedException,
@@ -459,47 +371,20 @@ describe('TermPolicyAcceptanceDomain', () => {
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
-        it('commits nothing and stages nothing when the recipient read rejects', async () => {
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
-            );
-
-            const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
-
-            await expect(promise).rejects.toMatchObject({ rawError: error });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(termPolicyRepository.acceptInTx).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendUserAcceptTermPolicy
-            ).not.toHaveBeenCalled();
-        });
-
-        it('accepts the latest published policy re-read inside the transaction, stages the activity log, and queues the notification', async () => {
+        it('accepts the latest published policy re-read inside the transaction and returns it', async () => {
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 [latest]
             );
-            const preparedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userAcceptTermPolicy,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
+
+            const result = await domain.userAccept(
+                'user-1',
+                EnumTermPolicyType.privacy
             );
 
-            await domain.userAccept(user, EnumTermPolicyType.privacy);
-
+            expect(result).toBe(latest);
             expect(
                 termPolicyRepository.findLatestPublishedByTypesInTx
             ).toHaveBeenCalledWith(tx, [EnumTermPolicyType.privacy]);
@@ -510,34 +395,18 @@ describe('TermPolicyAcceptanceDomain', () => {
                 'user-1',
                 timestamp
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedActivityLog,
-            ]);
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.userAcceptTermPolicy
-            );
-            expect(
-                notificationQueue.sendUserAcceptTermPolicy
-            ).toHaveBeenCalledWith(recipient, {
-                termPolicyId: 'term-policy-1',
-                type: EnumTermPolicyType.privacy,
-                version: 1,
-            });
         });
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
-            );
             const rawError = new Error('write failed');
             databaseService.withTransaction.mockRejectedValue(rawError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             databaseUtil.toException.mockReturnValue(null);
 
-            const promise = domain.userAccept(user, EnumTermPolicyType.privacy);
+            const promise = domain.userAccept(
+                'user-1',
+                EnumTermPolicyType.privacy
+            );
 
             await expect(promise).rejects.toMatchObject({
                 module: 'app',

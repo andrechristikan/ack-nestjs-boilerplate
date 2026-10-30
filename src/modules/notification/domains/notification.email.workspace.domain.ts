@@ -1,7 +1,6 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
-import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
@@ -15,7 +14,7 @@ import type {
     INotificationWorkspaceJoinRejectedPayload,
     INotificationWorkspaceJoinRequestEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -30,15 +29,13 @@ export class NotificationEmailWorkspaceDomain {
 
     private readonly defaultTemplateData: Record<string, string>;
 
-    private readonly encryptionSecretKey: string;
-
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly notificationRepository: NotificationRepository,
-        private readonly messageService: MessageService,
-        private readonly helperEncryptionService: HelperEncryptionService
+        private readonly notificationUtil: NotificationUtil,
+        private readonly messageService: MessageService
     ) {
         // AppEnvSchema requires both addresses once AWS SES credentials are set, and
         // AwsSESService.send is a no-op while SES is uninitialized, so neither is read as null.
@@ -47,24 +44,12 @@ export class NotificationEmailWorkspaceDomain {
 
         this.homeName = this.configService.get<string>('home.name')!;
         this.homeUrl = this.configService.get<string>('home.url')!;
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
             supportEmail: this.supportEmail,
             homeUrl: this.homeUrl,
         };
-    }
-
-    private decryptEmail(encryptedEmail: string, context: string): string {
-        return this.helperEncryptionService.aes256Decrypt(
-            encryptedEmail,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
-            context
-        );
     }
 
     private async stampProcessed(notificationId: string): Promise<void> {
@@ -103,11 +88,12 @@ export class NotificationEmailWorkspaceDomain {
             expiredAt,
         }: INotificationWorkspaceInviteEncryptedPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
-        const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
+        const inviteAcceptLink = this.notificationUtil.decryptPayload(
             encryptedInviteAcceptLink,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
             userId
         );
 
@@ -152,11 +138,12 @@ export class NotificationEmailWorkspaceDomain {
             expiredAt,
         }: INotificationWorkspaceInviteUnregisteredEncryptedPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, reference);
-        const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            reference
+        );
+        const inviteAcceptLink = this.notificationUtil.decryptPayload(
             encryptedInviteAcceptLink,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
             reference
         );
 
@@ -203,14 +190,14 @@ export class NotificationEmailWorkspaceDomain {
             encryptedJoinRequestReviewLink,
         }: INotificationWorkspaceJoinRequestEncryptedPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
-        const joinRequestReviewLink =
-            this.helperEncryptionService.aes256Decrypt(
-                encryptedJoinRequestReviewLink,
-                this.encryptionSecretKey,
-                NotificationPayloadEncryptionPurpose,
-                userId
-            );
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
+        const joinRequestReviewLink = this.notificationUtil.decryptPayload(
+            encryptedJoinRequestReviewLink,
+            userId
+        );
 
         // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
         await this.stampProcessed(notificationId);
@@ -251,7 +238,10 @@ export class NotificationEmailWorkspaceDomain {
         }: INotificationEmailSendEncryptedPayload,
         { workspaceName }: INotificationWorkspaceJoinAcceptedPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
         // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
@@ -292,7 +282,10 @@ export class NotificationEmailWorkspaceDomain {
             rejectReasonCode,
         }: INotificationWorkspaceJoinRejectedPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
         const rejectReasonLabel = this.messageService.setMessage(
             `notification.rejectReason.${rejectReasonCode}`
         );

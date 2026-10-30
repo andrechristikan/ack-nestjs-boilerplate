@@ -12,10 +12,13 @@ import type {
     NotificationUserSetting,
 } from '@generated/prisma-client/client';
 import {
+    EnumActivityLogAction,
     EnumNotificationChannel,
     EnumNotificationPriority,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
@@ -30,6 +33,8 @@ describe('NotificationHttpService', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
     let service: NotificationHttpService;
 
     const cursorParams = { limit: 20, orderBy: [] };
@@ -55,6 +60,7 @@ describe('NotificationHttpService', () => {
                     useValue: requestStoreService,
                 },
                 { provide: MessageService, useValue: messageService },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
         service = module.get(NotificationHttpService);
@@ -282,21 +288,52 @@ describe('NotificationHttpService', () => {
     });
 
     describe('updateUserSetting', () => {
-        it('returns an empty response after updating the setting', async () => {
-            const data: NotificationUserSettingRequestDto = {
-                channel: EnumNotificationChannel.email,
-                type: EnumNotificationType.userActivity,
-                isActive: true,
-            };
+        const data: NotificationUserSettingRequestDto = {
+            channel: EnumNotificationChannel.email,
+            type: EnumNotificationType.userActivity,
+            isActive: true,
+        };
+        const stagedActivityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.userUpdateNotificationSetting,
+            metadata: {},
+            userId: null,
+            createdBy: null,
+            workspaceId: null,
+        };
+
+        it('prepares the activity row, updates the setting, stages the row, and returns an empty response', async () => {
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             notificationDomain.updateUserSetting.mockResolvedValue(undefined);
 
             const result = await service.updateUserSetting('user-id', data);
 
+            expect(result).toEqual({});
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userUpdateNotificationSetting,
+                metadata: {
+                    channel: data.channel,
+                    type: data.type,
+                    isActive: data.isActive,
+                },
+            });
             expect(notificationDomain.updateUserSetting).toHaveBeenCalledWith(
                 'user-id',
                 data
             );
-            expect(result).toEqual({});
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
+        });
+
+        it('stages nothing when the domain update rejects', async () => {
+            const failure = new Error('write failed');
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
+            notificationDomain.updateUserSetting.mockRejectedValue(failure);
+
+            await expect(
+                service.updateUserSetting('user-id', data)
+            ).rejects.toBe(failure);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

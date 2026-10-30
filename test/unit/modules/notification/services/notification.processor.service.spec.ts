@@ -1,4 +1,7 @@
 import { Test } from '@nestjs/testing';
+import { buildTermPolicyPage } from '@test/unit/helpers/test.unit.notification-term-policy.helper';
+import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -9,6 +12,8 @@ import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { NotificationAccountDomain } from '@modules/notification/domains/notification.account.domain';
 import { NotificationSecurityDomain } from '@modules/notification/domains/notification.security.domain';
 import { NotificationTermPolicyDomain } from '@modules/notification/domains/notification.term-policy.domain';
@@ -21,7 +26,6 @@ import type {
     INotificationAcceptTermPolicyPayload,
     INotificationBulkQueuePayload,
     INotificationNewDeviceLoginPayload,
-    INotificationPublishTermPolicyResult,
     INotificationQueuePayload,
     INotificationStepResult,
     INotificationWelcomeEncryptedPayload,
@@ -36,6 +40,9 @@ import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationProcessorService', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
     const notificationAccountDomain: MockProxy<NotificationAccountDomain> =
         mock<NotificationAccountDomain>();
     const notificationSecurityDomain: MockProxy<NotificationSecurityDomain> =
@@ -44,6 +51,9 @@ describe('NotificationProcessorService', () => {
         mock<NotificationTermPolicyDomain>();
     const notificationWorkspaceDomain: MockProxy<NotificationWorkspaceDomain> =
         mock<NotificationWorkspaceDomain>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     let service: NotificationProcessorService;
 
     const completed: INotificationStepResult = {
@@ -63,6 +73,11 @@ describe('NotificationProcessorService', () => {
         const module = await Test.createTestingModule({
             providers: [
                 { provide: MessageService, useValue: messageService },
+                { provide: ConfigService, useValue: configService },
+                {
+                    provide: HelperEncryptionService,
+                    useValue: helperEncryptionService,
+                },
                 NotificationProcessorService,
                 NotificationUtil,
                 {
@@ -81,6 +96,8 @@ describe('NotificationProcessorService', () => {
                     provide: NotificationWorkspaceDomain,
                     useValue: notificationWorkspaceDomain,
                 },
+                { provide: UserDomain, useValue: userDomain },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         service = module.get(NotificationProcessorService);
@@ -930,38 +947,210 @@ describe('NotificationProcessorService', () => {
         });
     });
     describe('processPublishTermPolicy', () => {
-        it('forwards proceedBy and data to the term-policy domain', async () => {
-            const data = {
-                termPolicyId: 'term-policy-id',
-                type: EnumTermPolicyType.privacy,
-                version: 2,
-                recipientCutoffAt: '2024-01-01T00:00:00.000Z',
-                resendNonce: null,
-            };
-            const publishResponse: INotificationPublishTermPolicyResult = {
-                message: 'processed',
-                candidateCounts: 2,
-                createdCounts: 2,
-                batches: 1,
-            };
-            notificationTermPolicyDomain.processPublishTermPolicy.mockResolvedValue(
-                publishResponse
+        const data = {
+            termPolicyId: 'term-policy-id',
+            type: EnumTermPolicyType.privacy,
+            version: 2,
+            recipientCutoffAt: '2024-01-01T00:00:00.000Z',
+            resendNonce: null,
+        };
+        const cutoff = new Date('2024-01-01T00:00:00.000Z');
+        const u1 = { id: 'u1', email: 'u1@example.com', username: 'u1' };
+        const u2 = { id: 'u2', email: 'u2@example.com', username: 'u2' };
+        const u3 = { id: 'u3', email: 'u3@example.com', username: 'u3' };
+        const u4 = { id: 'u4', email: 'u4@example.com', username: 'u4' };
+        const job = buildQueueJob<
+            INotificationBulkQueuePayload<typeof data>,
+            unknown,
+            EnumNotificationProcess
+        >({ proceedBy: 'admin-id', data });
+
+        beforeEach(() => {
+            helperDateService.createFromIso.mockReturnValue(cutoff);
+            Object.defineProperty(
+                notificationTermPolicyDomain,
+                'emailBatchSize',
+                { value: 3 }
             );
-            const job = buildQueueJob<
-                INotificationBulkQueuePayload<typeof data>,
-                unknown,
-                EnumNotificationProcess
-            >({
-                proceedBy: 'admin-id',
+        });
+
+        it('pages the active users at the cutoff and sends each page as batches, advancing the batch index', async () => {
+            userDomain.getListActiveRecipientCursor
+                .mockResolvedValueOnce([u1, u2, u3])
+                .mockResolvedValueOnce([u4]);
+            const firstPage = buildTermPolicyPage([u1, u2, u3]);
+            const secondPage = buildTermPolicyPage([u4]);
+            notificationTermPolicyDomain.getPage
+                .mockResolvedValueOnce(firstPage)
+                .mockResolvedValueOnce(secondPage);
+            notificationTermPolicyDomain.sendFreshBatch.mockResolvedValue(1);
+
+            const result = await service.processPublishTermPolicy(job);
+
+            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
+                data.recipientCutoffAt
+            );
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenNthCalledWith(1, null, 3, cutoff);
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenNthCalledWith(2, 'u3', 3, cutoff);
+            expect(
+                userDomain.getManyActiveRecipientsByIds
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationTermPolicyDomain.getPage
+            ).toHaveBeenNthCalledWith(1, data.termPolicyId, [u1, u2, u3]);
+            expect(
+                notificationTermPolicyDomain.sendFreshBatch
+            ).toHaveBeenNthCalledWith(
+                1,
+                'admin-id',
                 data,
+                firstPage.freshUsers,
+                0
+            );
+            expect(
+                notificationTermPolicyDomain.sendFreshBatch
+            ).toHaveBeenNthCalledWith(
+                2,
+                'admin-id',
+                data,
+                secondPage.freshUsers,
+                1
+            );
+            expect(
+                notificationTermPolicyDomain.getPending
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationTermPolicyDomain.sendPendingBatches
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'notification.queue.publishTermPolicy',
+                candidateCounts: 4,
+                createdCounts: 4,
+                batches: 2,
             });
+        });
+
+        it('fetches the active users off the page that a pending batch names before sending them', async () => {
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([u1]);
+            const page = buildTermPolicyPage([u1], [], ['B']);
+            const pending = { sendableMarkers: [], offPageUserIds: ['u4'] };
+            notificationTermPolicyDomain.getPage.mockResolvedValue(page);
+            notificationTermPolicyDomain.getPending.mockResolvedValue(pending);
+            userDomain.getManyActiveRecipientsByIds.mockResolvedValue([u4]);
+            notificationTermPolicyDomain.sendPendingBatches.mockResolvedValue(
+                1
+            );
+            notificationTermPolicyDomain.sendFreshBatch.mockResolvedValue(0);
 
             const result = await service.processPublishTermPolicy(job);
 
             expect(
-                notificationTermPolicyDomain.processPublishTermPolicy
-            ).toHaveBeenCalledWith('admin-id', data);
-            expect(result).toBe(publishResponse);
+                notificationTermPolicyDomain.getPending
+            ).toHaveBeenCalledWith(data.termPolicyId, page);
+            expect(
+                userDomain.getManyActiveRecipientsByIds
+            ).toHaveBeenCalledWith(['u4'], cutoff);
+            expect(
+                notificationTermPolicyDomain.sendPendingBatches
+            ).toHaveBeenCalledWith('admin-id', data, page, pending, [u4], 0);
+            expect(result).toMatchObject({
+                candidateCounts: 1,
+                createdCounts: 0,
+                batches: 1,
+            });
+        });
+
+        it('creates the fresh batch while the pending batches read their markers and users, numbering it after them', async () => {
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([
+                u1,
+                u2,
+            ]);
+            const page = buildTermPolicyPage([u1, u2], [u2], ['B1', 'B2']);
+            notificationTermPolicyDomain.getPage.mockResolvedValue(page);
+            const deferredPending = Promise.withResolvers<{
+                sendableMarkers: [];
+                offPageUserIds: [];
+            }>();
+            notificationTermPolicyDomain.getPending.mockReturnValue(
+                deferredPending.promise
+            );
+            notificationTermPolicyDomain.sendFreshBatch.mockImplementation(
+                async () => {
+                    deferredPending.resolve({
+                        sendableMarkers: [],
+                        offPageUserIds: [],
+                    });
+
+                    return 1;
+                }
+            );
+            notificationTermPolicyDomain.sendPendingBatches.mockResolvedValue(
+                2
+            );
+
+            const result = await service.processPublishTermPolicy(job);
+
+            expect(
+                notificationTermPolicyDomain.sendFreshBatch
+            ).toHaveBeenCalledWith('admin-id', data, [u2], 2);
+            expect(result).toMatchObject({ createdCounts: 1, batches: 3 });
+        });
+
+        it('advances the cursor past a full page that sends nothing', async () => {
+            userDomain.getListActiveRecipientCursor
+                .mockResolvedValueOnce([u1, u2, u3])
+                .mockResolvedValueOnce([]);
+            notificationTermPolicyDomain.getPage.mockResolvedValue(
+                buildTermPolicyPage([u1, u2, u3], [])
+            );
+            notificationTermPolicyDomain.sendFreshBatch.mockResolvedValue(0);
+
+            const result = await service.processPublishTermPolicy(job);
+
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenNthCalledWith(2, 'u3', 3, cutoff);
+            expect(result).toEqual({
+                message: 'notification.queue.publishTermPolicy',
+                candidateCounts: 3,
+                createdCounts: 0,
+                batches: 0,
+            });
+        });
+
+        it('stops after a page shorter than the batch size', async () => {
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([u1]);
+            notificationTermPolicyDomain.getPage.mockResolvedValue(
+                buildTermPolicyPage([u1])
+            );
+            notificationTermPolicyDomain.sendFreshBatch.mockResolvedValue(1);
+
+            await service.processPublishTermPolicy(job);
+
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('reads and sends nothing when there is no candidate', async () => {
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([]);
+
+            const result = await service.processPublishTermPolicy(job);
+
+            expect(notificationTermPolicyDomain.getPage).not.toHaveBeenCalled();
+            expect(
+                notificationTermPolicyDomain.sendFreshBatch
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'notification.queue.publishTermPolicy',
+                candidateCounts: 0,
+                createdCounts: 0,
+                batches: 0,
+            });
         });
     });
     describe('processUserAcceptTermPolicy', () => {

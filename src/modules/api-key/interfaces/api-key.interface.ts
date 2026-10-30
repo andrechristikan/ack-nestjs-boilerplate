@@ -6,6 +6,11 @@ export type IApiKey = Prisma.ApiKeyGetPayload<{
     select: typeof ApiKeySelect;
 }>;
 
+export interface IApiKeyHeader {
+    key: string;
+    secret: string;
+}
+
 export interface IApiKeyGenerateCredential {
     key: string;
     secret: string;

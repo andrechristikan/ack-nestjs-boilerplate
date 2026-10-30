@@ -1,49 +1,25 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
-    EnumActivityLogAction,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
+import { EnumUserStatus } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
-import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
-import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
 import { AuthTwoFactorNotRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-not-required-setup.exception';
 import { AuthTwoFactorRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-required-setup.exception';
 import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
-import type {
-    IAuthToken,
-    IAuthTwoFactorVerify,
-    IAuthTwoFactorVerifyResult,
-} from '@modules/auth/interfaces/auth.interface';
-import { AuthCache } from '@modules/auth/caches/auth.cache';
-import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { SessionDomain } from '@modules/session/domains/session.domain';
-import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
+import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import type {
     IUser,
-    IUserTwoFactorSetup,
+    IUserTwoFactorLoginSetup,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
-import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
-import { UserUtil } from '@modules/user/utils/user.util';
-import { RoleDomain } from '@modules/role/domains/role.domain';
-import type { IRoleActor } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -51,32 +27,12 @@ export class UserTwoFactorDomain {
     constructor(
         private readonly userTwoFactorRepository: UserTwoFactorRepository,
         private readonly userRepository: UserRepository,
-        private readonly userLoginDomain: UserLoginDomain,
-        private readonly userUtil: UserUtil,
-        private readonly sessionDomain: SessionDomain,
-        private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
-        private readonly authTwoFactorDomain: AuthTwoFactorDomain,
-        private readonly authCache: AuthCache,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationRecipientDomain: NotificationRecipientDomain,
-        private readonly helperDateService: HelperDateService,
-        private readonly roleDomain: RoleDomain
+        private readonly authTwoFactorUtil: AuthTwoFactorUtil
     ) {}
 
-    async loginVerifyTwoFactor(
-        challengeToken: string,
-        { code, backupCode, method }: IAuthTwoFactorVerify
-    ): Promise<IAuthToken> {
-        const challenge =
-            await this.authCache.getTwoFactorChallenge(challengeToken);
-        if (!challenge) {
-            throw new AuthTwoFactorChallengeInvalidException();
-        }
-
-        const user = await this.userRepository.findOneWithRoleById(
-            challenge.userId
-        );
+    /** Resolves the active, verified user of a login challenge whose two-factor is enabled. */
+    private async getOneEnabledForLogin(userId: string): Promise<IUser> {
+        const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new UserNotFoundException();
         } else if (user.status !== EnumUserStatus.active) {
@@ -85,191 +41,70 @@ export class UserTwoFactorDomain {
             throw new UserEmailNotVerifiedException();
         } else if (!user.twoFactor?.enabled) {
             throw new AuthTwoFactorNotEnabledException();
-        } else if (user.twoFactor?.requiredSetup) {
+        }
+
+        return user;
+    }
+
+    async getOneForLoginVerify(userId: string): Promise<IUser> {
+        const user = await this.getOneEnabledForLogin(userId);
+        if (user.twoFactor?.requiredSetup) {
             throw new AuthTwoFactorRequiredSetupException();
         }
 
-        const twoFactorVerified =
-            await this.userLoginDomain.handleTwoFactorValidation(user, {
-                method,
-                code,
-                backupCode,
-            });
-
-        try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            // Sequential by design: write must not run if an earlier step throws
-            await this.userLoginDomain.recordTwoFactorVerification(
-                user,
-                twoFactorVerified
-            );
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            const loginAt = this.helperDateService.create();
-            const [tokens] = await Promise.all([
-                this.userLoginDomain.createTokenAndSession(
-                    user,
-                    challenge.device,
-                    challenge.loginFrom,
-                    challenge.loginWith,
-                    loginAt
-                ),
-                this.authCache.deleteTwoFactorChallenge(challengeToken),
-            ]);
-
-            return tokens;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return user;
     }
 
-    async loginSetupTwoFactor(
-        challengeToken: string,
-        code: string
-    ): Promise<string[]> {
-        const challenge =
-            await this.authCache.getTwoFactorChallenge(challengeToken);
-        if (!challenge) {
-            throw new AuthTwoFactorChallengeInvalidException();
-        }
-
-        const user = await this.userRepository.findOneWithRoleById(
-            challenge.userId
-        );
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new UserInactiveForbiddenException();
-        } else if (!user.isVerified) {
-            throw new UserEmailNotVerifiedException();
-        } else if (!user.twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
-        } else if (!user.twoFactor?.requiredSetup) {
+    async getOneForLoginSetup(
+        userId: string
+    ): Promise<IUserTwoFactorLoginSetup> {
+        const user = await this.getOneEnabledForLogin(userId);
+        if (!user.twoFactor?.requiredSetup) {
             throw new AuthTwoFactorNotRequiredSetupException();
         }
 
-        const pendingSecret = user.twoFactor?.pendingSecret;
+        const pendingSecret = user.twoFactor.pendingSecret;
         if (!pendingSecret) {
             throw new AuthTwoFactorSetupRequiredException();
         }
 
-        // Sequential by design: gate before the work it guards
-        await this.userLoginDomain.handleTwoFactorSetupValidation(
-            user,
-            pendingSecret,
-            code
+        return { user, pendingSecret };
+    }
+
+    async incrementAttempt(userId: string): Promise<number> {
+        return this.userTwoFactorRepository.incrementAttempt(userId);
+    }
+
+    async resetAttempt(userId: string): Promise<void> {
+        await this.userTwoFactorRepository.resetTwoFactorAttempt(userId);
+    }
+
+    async saveSetup(userId: string, encryptedSecret: string): Promise<void> {
+        await this.userTwoFactorRepository.setupTwoFactor(
+            userId,
+            encryptedSecret
         );
-
-        try {
-            const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userEnableTwoFactor,
-                }),
-            ];
-            await this.userTwoFactorRepository.enableTwoFactor(
-                user.id,
-                pendingSecret,
-                backupCodes.hashes
-            );
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return backupCodes.codes;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
     }
 
-    getTwoFactorStatus(user: IUser): TwoFactor {
-        return user.twoFactor!;
-    }
-
-    /** Starts an authenticator setup; while 2FA is enabled a valid unused backup code is required and consumed, and the account keeps its current state until the new authenticator is confirmed. */
-    async setupTwoFactor(
+    /** Stores the pending secret and consumes the verified backup code; the code is consumed only while the stored codes are still the ones it was verified against, otherwise the setup is rejected. */
+    async saveSetupConsumingBackupCode(
         user: IUser,
-        backupCode: string | null
-    ): Promise<IUserTwoFactorSetup> {
-        let backupCodeVerified: IAuthTwoFactorVerifyResult | null = null;
-        let backupCodes: string[] = [];
-        if (user.twoFactor?.enabled) {
-            if (!backupCode) {
-                throw new AuthTwoFactorBackupCodeRequiredException();
-            }
-
-            // Sequential by design: gate before the work it guards
-            backupCodeVerified =
-                await this.userLoginDomain.handleTwoFactorValidation(user, {
-                    method: EnumAuthTwoFactorMethod.backupCodes,
-                    code: null,
-                    backupCode,
-                });
-            backupCodes = user.twoFactor.backupCodes;
-        }
-
-        try {
-            const { encryptedSecret, otpauthUrl, secret } =
-                await this.authTwoFactorDomain.setupTwoFactor(
-                    user.id,
-                    user.email
-                );
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userSetupTwoFactor,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            if (backupCodeVerified) {
-                const isSetUp =
-                    await this.userTwoFactorRepository.setupTwoFactorConsumingBackupCode(
-                        user.id,
-                        encryptedSecret,
-                        backupCodeVerified,
-                        backupCodes
-                    );
-                if (!isSetUp) {
-                    throw new AuthTwoFactorInvalidException();
-                }
-            } else {
-                await this.userTwoFactorRepository.setupTwoFactor(
-                    user.id,
-                    encryptedSecret
-                );
-            }
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return {
-                secret,
-                otpauthUrl,
-            };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
+        encryptedSecret: string,
+        verified: IAuthTwoFactorVerifyResult
+    ): Promise<void> {
+        const isSetUp =
+            await this.userTwoFactorRepository.setupTwoFactorConsumingBackupCode(
+                user.id,
+                encryptedSecret,
+                verified,
+                user.twoFactor?.backupCodes ?? []
+            );
+        if (!isSetUp) {
+            throw new AuthTwoFactorInvalidException();
         }
     }
 
-    /** Confirms the pending authenticator with a code from it, makes it the account's secret, and issues a fresh set of backup codes. */
-    async enableTwoFactor(user: IUser, code: string): Promise<string[]> {
+    getPendingSecret(user: IUser): string {
         const pendingSecret = user.twoFactor?.pendingSecret;
         if (!pendingSecret && user.twoFactor?.enabled) {
             throw new AuthTwoFactorAlreadyEnabledException();
@@ -277,28 +112,22 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorSetupRequiredException();
         }
 
-        // Sequential by design: gate before the work it guards
-        await this.userLoginDomain.handleTwoFactorSetupValidation(
-            user,
-            pendingSecret,
-            code
-        );
+        return pendingSecret;
+    }
 
+    /** Makes the pending authenticator the account's secret and issues a fresh set of backup codes. */
+    async enableTwoFactor(
+        userId: string,
+        pendingSecret: string
+    ): Promise<string[]> {
         try {
-            const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userEnableTwoFactor,
-                }),
-            ];
+            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
             await this.userTwoFactorRepository.enableTwoFactor(
-                user.id,
+                userId,
                 pendingSecret,
                 backupCodes.hashes
             );
 
-            this.activityLogDomain.stagePrepared(activityLogs);
-
             return backupCodes.codes;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -309,172 +138,70 @@ export class UserTwoFactorDomain {
         }
     }
 
-    async disableTwoFactor(
-        user: IUser,
-        { code, backupCode, method }: IAuthTwoFactorVerify
-    ): Promise<void> {
+    assertEnabled(user: IUser): void {
         if (!user.twoFactor?.enabled) {
             throw new AuthTwoFactorNotEnabledException();
-        }
-
-        // Sequential by design: gate before the work it guards
-        await this.userLoginDomain.handleTwoFactorValidation(user, {
-            method,
-            code,
-            backupCode,
-        });
-
-        try {
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userDisableTwoFactor,
-                }),
-            ];
-            const now = this.helperDateService.create();
-            // Sequential by design: write must not run if an earlier step throws
-            const revoked = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userTwoFactorRepository.disableTwoFactorInTx(
-                        tx,
-                        user.id
-                    );
-
-                    return this.sessionDomain.revokeActiveByUserInTx(
-                        tx,
-                        user.id,
-                        user.id,
-                        now
-                    );
-                }
-            );
-            await this.sessionDomain.purgeRevokedLogins(user.id, revoked);
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
         }
     }
 
-    async regenerateTwoFactorBackupCodes(
+    async disableInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.userTwoFactorRepository.disableTwoFactorInTx(tx, userId);
+    }
+
+    async resetByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
+            tx,
+            userId
+        );
+    }
+
+    /** Persists a successful 2FA check in the caller's transaction; a backup code is consumed only while the stored codes are still the ones it was verified against, otherwise the check is rejected. */
+    async recordVerificationInTx(
+        tx: IDatabaseTransactionClient,
         user: IUser,
-        code: string
-    ): Promise<string[]> {
-        if (!user.twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
+        verified: IAuthTwoFactorVerifyResult
+    ): Promise<void> {
+        const recorded = await this.userTwoFactorRepository.verifyTwoFactorInTx(
+            tx,
+            user.id,
+            verified,
+            user.twoFactor?.backupCodes ?? []
+        );
+        if (!recorded) {
+            throw new AuthTwoFactorInvalidException();
         }
+    }
 
-        // Sequential by design: gate before the work it guards
-        await this.userLoginDomain.handleTwoFactorValidation(user, {
-            method: EnumAuthTwoFactorMethod.code,
-            code,
-            backupCode: null,
-        });
+    /** Persists a successful 2FA check; a backup code is consumed only while the stored codes are still the ones it was verified against, otherwise the check is rejected. */
+    async recordVerification(
+        user: IUser,
+        verified: IAuthTwoFactorVerifyResult
+    ): Promise<void> {
+        const recorded = await this.userTwoFactorRepository.verifyTwoFactor(
+            user.id,
+            verified,
+            user.twoFactor?.backupCodes ?? []
+        );
+        if (!recorded) {
+            throw new AuthTwoFactorInvalidException();
+        }
+    }
 
+    async regenerateTwoFactorBackupCodes(userId: string): Promise<string[]> {
         try {
-            const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                }),
-            ];
+            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
             await this.userTwoFactorRepository.regenerateTwoFactorBackupCodes(
-                user.id,
+                userId,
                 backupCodes.hashes
             );
 
-            this.activityLogDomain.stagePrepared(activityLogs);
-
             return backupCodes.codes;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async resetTwoFactorByAdmin(
-        userId: string,
-        updatedBy: string,
-        actor: IRoleActor
-    ): Promise<void> {
-        if (userId === updatedBy) {
-            throw new UserNotSelfException();
-        }
-
-        const user = await this.userRepository.findOneWithRoleById(userId);
-        if (!user) {
-            throw new UserNotFoundException();
-        }
-
-        this.roleDomain.assertActorOutranks(actor.roleType, user.role.type);
-
-        if (user.status === EnumUserStatus.blocked) {
-            throw new UserBlockedInvalidException();
-        } else if (!user.twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
-        }
-
-        try {
-            const actorMetadata =
-                this.userUtil.mapActivityLogActorMetadata(user);
-            const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
-                user,
-                updatedBy
-            );
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.adminUserResetTwoFactor,
-                    metadata: actorMetadata,
-                }),
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userResetTwoFactorByAdmin,
-                    userId,
-                    createdBy: updatedBy,
-                    metadata: targetMetadata,
-                }),
-            ];
-            const now = this.helperDateService.create();
-            // Sequential by design: write must not run if an earlier step throws
-            const recipient =
-                await this.notificationRecipientDomain.getRecipient(
-                    user,
-                    EnumNotificationKind.resetTwoFactorByAdmin
-                );
-            const revoked = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
-                        tx,
-                        userId
-                    );
-
-                    return this.sessionDomain.revokeActiveByUserInTx(
-                        tx,
-                        userId,
-                        updatedBy,
-                        now
-                    );
-                }
-            );
-            await Promise.all([
-                this.authCache.deleteTwoFactorLock(user),
-                this.sessionDomain.purgeRevokedLogins(userId, revoked),
-                this.notificationQueue.sendResetTwoFactorByAdmin(
-                    recipient,
-                    updatedBy
-                ),
-            ]);
-
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;

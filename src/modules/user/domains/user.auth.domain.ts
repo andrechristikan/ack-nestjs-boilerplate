@@ -1,7 +1,4 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumTermPolicyType,
     EnumUserLoginWith,
@@ -9,82 +6,47 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { CountryDomain } from '@modules/country/domains/country.domain';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
+import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserPasswordNotSetException } from '@modules/user/exceptions/user.password-not-set.exception';
-import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
-import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
-import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
-    IUserLoginCredential,
-    IUserLoginOutcome,
+    IUserCredentialAttempt,
     IUserLoginSocial,
-    IUserRecipient,
     IUserSignUp,
-    IUserSignUpWorkspaceContext,
+    IUserSignUpResolved,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserAuthDomain {
-    private readonly userRoleName: string;
-
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userPasswordDomain: UserPasswordDomain,
-        private readonly roleDomain: RoleDomain,
-        private readonly countryDomain: CountryDomain,
-        private readonly userUtil: UserUtil,
         private readonly userVerificationDomain: UserVerificationDomain,
-        private readonly userLoginDomain: UserLoginDomain,
+        private readonly userVerificationUtil: UserVerificationUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly featureFlagDomain: FeatureFlagDomain,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationRecipientDomain: NotificationRecipientDomain,
-        private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
-    ) {
-        this.userRoleName =
-            this.configService.get<string>('user.default.role')!;
-    }
+        private readonly databaseUtil: DatabaseUtil
+    ) {}
 
-    async assertWorkspaceInvitationAllowed(): Promise<void> {
-        await this.userLoginDomain.assertWorkspaceInvitationAllowed();
-    }
-
-    async loginCredential({
-        email,
-        password,
-        from,
-        device,
-    }: IUserLoginCredential): Promise<IUserLoginOutcome> {
+    /** Resolves the active credential user of an email and counts one password attempt against its budget. */
+    async incrementCredentialAttempt(
+        email: string
+    ): Promise<IUserCredentialAttempt> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
         if (!user) {
             throw new UserNotFoundException();
@@ -95,21 +57,28 @@ export class UserAuthDomain {
         }
 
         const isAttemptCounted =
-            await this.userLoginDomain.incrementPasswordAttempt(user.id);
-        if (!isAttemptCounted) {
-            await this.userPasswordDomain.reachMaxPasswordAttempt(user.id);
+            await this.userPasswordDomain.incrementPasswordAttempt(user.id);
 
+        return { user, hashedPassword: user.password, isAttemptCounted };
+    }
+
+    assertAttemptCounted({ isAttemptCounted }: IUserCredentialAttempt): void {
+        if (!isAttemptCounted) {
             throw new UserPasswordAttemptMaxException();
         }
+    }
 
+    /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch, so the caller records the failure before asserting it. */
+    async verifyCredential(
+        { user, hashedPassword }: IUserCredentialAttempt,
+        password: string
+    ): Promise<boolean> {
         const isPasswordValid = await this.authPasswordUtil.validatePassword(
             password,
-            user.password
+            hashedPassword
         );
         if (!isPasswordValid) {
-            await this.userLoginDomain.recordLoginFailed(user.id);
-
-            throw new UserPasswordNotMatchException();
+            return false;
         }
 
         await this.userPasswordDomain.resetPasswordAttempt(user.id);
@@ -120,18 +89,21 @@ export class UserAuthDomain {
             throw new UserPasswordExpiredException();
         }
 
-        const now = this.helperDateService.create();
-
-        return this.userLoginDomain.handleLogin(
-            user,
-            device,
-            from,
-            EnumUserLoginWith.credential,
-            now
-        );
+        return true;
     }
 
-    async prepareSocialCreate(
+    assertPasswordMatched(isMatch: boolean): void {
+        if (!isMatch) {
+            throw new UserPasswordNotMatchException();
+        }
+    }
+
+    /** Reads the live user of an email; null when none. */
+    async getOneByEmail(email: string): Promise<IUser | null> {
+        return this.userRepository.findOneWithRoleByEmail(email);
+    }
+
+    prepareSocialCreate(
         email: string,
         loginWith: EnumUserLoginWith,
         {
@@ -142,48 +114,8 @@ export class UserAuthDomain {
             cookies,
             marketing,
         }: IUserLoginSocial,
-        workspaceContext: IUserSignUpWorkspaceContext
-    ): Promise<IUserCreateWithWorkspaceInput | null> {
-        const [featureFlag, user] = await Promise.all([
-            this.featureFlagDomain.getMetadataByKey<{
-                signUpAllowed: boolean;
-            }>(
-                loginWith === EnumUserLoginWith.socialGoogle
-                    ? 'loginWithGoogle'
-                    : 'loginWithApple'
-            ),
-            this.userRepository.findOneWithRoleByEmail(email),
-        ]);
-        // Sequential by design: gate before the work it guards
-        if (user || !featureFlag?.signUpAllowed) {
-            return null;
-        }
-
-        const [
-            role,
-            checkCountry,
-            checkUsernamePattern,
-            checkUsernameBadWord,
-            usernameExist,
-        ] = await Promise.all([
-            this.roleDomain.getByName(this.userRoleName),
-            this.countryDomain.existsById(countryId),
-            this.userUtil.checkUsernamePattern(username),
-            this.userUtil.checkBadWord(username),
-            this.userRepository.existsByUsername(username),
-        ]);
-        if (!role) {
-            throw new RoleNotFoundException();
-        } else if (!checkCountry) {
-            throw new CountryNotFoundException();
-        } else if (checkUsernamePattern) {
-            throw new UserUsernameNotAllowedException();
-        } else if (checkUsernameBadWord) {
-            throw new UserUsernameContainBadWordException();
-        } else if (usernameExist) {
-            throw new UserUsernameExistException();
-        }
-
+        { roleId, workspaceContext }: IUserSignUpResolved
+    ): IUserCreateWithWorkspaceInput {
         const userId = this.databaseUtil.createId();
 
         return {
@@ -192,7 +124,7 @@ export class UserAuthDomain {
             name,
             username,
             countryId,
-            roleId: role.id,
+            roleId,
             signUpFrom: from,
             signUpWith:
                 loginWith === EnumUserLoginWith.socialApple
@@ -214,11 +146,7 @@ export class UserAuthDomain {
         };
     }
 
-    async loginWithSocial(
-        email: string,
-        loginWith: EnumUserLoginWith,
-        { from, device }: IUserLoginSocial
-    ): Promise<IUserLoginOutcome> {
+    async getOneForSocialLogin(email: string): Promise<IUser> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
         if (!user) {
             throw new UserNotFoundException();
@@ -226,24 +154,34 @@ export class UserAuthDomain {
             throw new UserInactiveForbiddenException();
         }
 
-        if (!user.isVerified) {
-            await this.userVerificationDomain.markVerified(user.id);
-            user.isVerified = true;
-        }
-
-        const now = this.helperDateService.create();
-
-        return this.userLoginDomain.handleLogin(
-            user,
-            device,
-            from,
-            loginWith,
-            now
-        );
+        return user;
     }
 
-    async refresh(user: IUser, refreshToken: string): Promise<IAuthToken> {
-        return this.userLoginDomain.refreshSession(user, refreshToken);
+    /** A social provider vouches for the email: marks the user verified. */
+    async verifyEmailBySocial(user: IUser): Promise<IUser> {
+        await this.userVerificationDomain.markVerified(user.id);
+
+        return { ...user, isVerified: true };
+    }
+
+    /** Creates a fresh email verification for an unverified user trying to log in and stores it replacing the active one. */
+    async persistLoginVerification(
+        user: IUser
+    ): Promise<IUserVerificationEmailCreate> {
+        const emailVerification = this.userVerificationUtil.createEmail();
+        await this.userVerificationDomain.persistVerificationEmail(
+            user.id,
+            user.email,
+            emailVerification
+        );
+
+        return emailVerification;
+    }
+
+    assertVerified(user: IUser): void {
+        if (!user.isVerified) {
+            throw new UserEmailNotVerifiedException();
+        }
     }
 
     async prepareSignUp(
@@ -257,49 +195,15 @@ export class UserAuthDomain {
             cookies,
             marketing,
         }: IUserSignUp,
-        workspaceContext: IUserSignUpWorkspaceContext
+        { roleId, workspaceContext }: IUserSignUpResolved
     ): Promise<{
         input: IUserCreateWithWorkspaceInput;
         emailVerification: IUserVerificationEmailCreate;
     }> {
-        const [
-            role,
-            emailExist,
-            checkCountry,
-            checkUsernamePattern,
-            checkUsernameBadWord,
-            usernameExist,
-        ] = await Promise.all([
-            this.roleDomain.getByName(this.userRoleName),
-            this.userRepository.existsByEmail(email),
-            this.countryDomain.existsById(countryId),
-            this.userUtil.checkUsernamePattern(username),
-            this.userUtil.checkBadWord(username),
-            this.userRepository.existsByUsername(username),
-        ]);
-        if (!role) {
-            throw new RoleNotFoundException();
-        } else if (!checkCountry) {
-            throw new CountryNotFoundException();
-        } else if (emailExist) {
-            throw new UserEmailExistException();
-        }
-
-        if (checkUsernamePattern) {
-            throw new UserUsernameNotAllowedException();
-        } else if (checkUsernameBadWord) {
-            throw new UserUsernameContainBadWordException();
-        } else if (usernameExist) {
-            throw new UserUsernameExistException();
-        }
-
         const userId = this.databaseUtil.createId();
         const password =
             await this.authPasswordUtil.createPassword(passwordString);
-        const emailVerification =
-            this.userVerificationDomain.verificationCreateVerification(
-                EnumVerificationType.email
-            ) as IUserVerificationEmailCreate;
+        const emailVerification = this.userVerificationUtil.createEmail();
 
         return {
             input: {
@@ -308,7 +212,7 @@ export class UserAuthDomain {
                 name,
                 username,
                 countryId,
-                roleId: role.id,
+                roleId,
                 signUpFrom: from,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
@@ -335,56 +239,5 @@ export class UserAuthDomain {
             },
             emailVerification,
         };
-    }
-
-    async notifyWelcome(
-        user: IUserRecipient,
-        emailVerification: IUserVerificationEmailCreate
-    ): Promise<void> {
-        const expiredAt = this.helperDateService.formatToIso(
-            emailVerification.expiredAt
-        );
-        const recipient =
-            this.notificationRecipientDomain.buildNewUserRecipient(
-                user,
-                EnumNotificationKind.welcome
-            );
-        await this.notificationQueue.sendWelcome(recipient, {
-            expiredAt,
-            reference: emailVerification.reference,
-            link: emailVerification.link,
-            expiredInMinutes: emailVerification.expiredInMinutes,
-        });
-    }
-
-    async notifyWelcomeSocial(user: IUserRecipient): Promise<void> {
-        const recipient =
-            this.notificationRecipientDomain.buildNewUserRecipient(
-                user,
-                EnumNotificationKind.welcomeSocial
-            );
-        await this.notificationQueue.sendWelcomeSocial(recipient);
-    }
-
-    async logout(
-        userId: string,
-        sessionId: string,
-        deviceOwnershipId: string
-    ): Promise<void> {
-        try {
-            await this.userLoginDomain.logout(
-                userId,
-                sessionId,
-                deviceOwnershipId
-            );
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
     }
 }

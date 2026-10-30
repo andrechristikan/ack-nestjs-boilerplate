@@ -11,9 +11,12 @@ import {
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperEncryptionSecretInvalidException } from '@common/helper/exceptions/helper.encryption-secret-invalid.exception';
 import { Injectable } from '@nestjs/common';
+import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
 import {
     createCipheriv,
     createDecipheriv,
+    createPrivateKey,
+    createPublicKey,
     hkdfSync,
     randomBytes,
 } from 'node:crypto';
@@ -138,5 +141,23 @@ export class HelperEncryptionService {
         } catch (error: unknown) {
             throw new HelperDecryptFailedException(error);
         }
+    }
+
+    /**
+     * Frames a base64 DER key as PEM under the label (`PRIVATE KEY` PKCS#8, `PUBLIC KEY` SPKI);
+     * throws when the bytes are not a key of that kind.
+     */
+    derBase64ToPem(der: string, label: EnumHelperPemLabel): string {
+        const body = Buffer.from(der, 'base64').toString('base64');
+        const lines = body.match(/.{1,64}/g)?.join('\n') ?? '';
+        const pem = `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----\n`;
+
+        if (label === EnumHelperPemLabel.privateKey) {
+            createPrivateKey(pem);
+        } else {
+            createPublicKey(pem);
+        }
+
+        return pem;
     }
 }

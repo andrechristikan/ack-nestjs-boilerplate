@@ -4,11 +4,8 @@ import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
@@ -16,7 +13,6 @@ import { TermPolicyContentNotFoundException } from '@modules/term-policy/excepti
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
-    ITermPolicyActivityLogSubject,
     ITermPolicyContent,
     ITermPolicyContentPresign,
     ITermPolicyContentUpload,
@@ -25,10 +21,7 @@ import { TermPolicyRepository } from '@modules/term-policy/repositories/term-pol
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    EnumActivityLogAction,
-    EnumTermPolicyStatus,
-} from '@generated/prisma-client/client';
+import { EnumTermPolicyStatus } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -39,29 +32,11 @@ export class TermPolicyContentDomain {
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly activityLogDomain: ActivityLogDomain,
-        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
         this.contentMaxSizeInBytes = this.configService.get<number>(
             'termPolicy.content.maxSizeInBytes'
         )!;
-    }
-
-    private prepareActivityLog(
-        action: EnumActivityLogAction,
-        termPolicy: ITermPolicyActivityLogSubject,
-        timestamp: Date
-    ): IActivityLogStaged {
-        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-            termPolicy,
-            timestamp
-        );
-
-        return this.activityLogDomain.prepare({
-            action,
-            metadata,
-        });
     }
 
     private async findOneDraftById(termPolicyId: string): Promise<TermPolicy> {
@@ -128,7 +103,7 @@ export class TermPolicyContentDomain {
     async updateContentByAdmin(
         termPolicyId: string,
         { key, size, language }: ITermPolicyContentUpload
-    ): Promise<void> {
+    ): Promise<TermPolicy> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
@@ -151,14 +126,6 @@ export class TermPolicyContentDomain {
                 language,
                 ...presign,
             };
-            const timestamp = this.helperDateService.create();
-            const activityLogs = [
-                this.prepareActivityLog(
-                    EnumActivityLogAction.adminTermPolicyUpdateContent,
-                    termPolicy,
-                    timestamp
-                ),
-            ];
             const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
                 contents,
@@ -168,9 +135,7 @@ export class TermPolicyContentDomain {
                 throw new TermPolicyStatusInvalidException();
             }
 
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return;
+            return termPolicy;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -183,7 +148,7 @@ export class TermPolicyContentDomain {
     async addContentByAdmin(
         termPolicyId: string,
         { key, size, language }: ITermPolicyContentUpload
-    ): Promise<void> {
+    ): Promise<TermPolicy> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
@@ -214,14 +179,6 @@ export class TermPolicyContentDomain {
                 language,
                 ...presign,
             };
-            const timestamp = this.helperDateService.create();
-            const activityLogs = [
-                this.prepareActivityLog(
-                    EnumActivityLogAction.adminTermPolicyAddContent,
-                    termPolicy,
-                    timestamp
-                ),
-            ];
             const added = await this.termPolicyRepository.addContent(
                 termPolicyId,
                 mappedContent
@@ -230,9 +187,7 @@ export class TermPolicyContentDomain {
                 throw new TermPolicyStatusInvalidException();
             }
 
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return;
+            return termPolicy;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -245,7 +200,7 @@ export class TermPolicyContentDomain {
     async removeContentByAdmin(
         termPolicyId: string,
         language: EnumMessageLanguage
-    ): Promise<void> {
+    ): Promise<TermPolicy> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
@@ -261,14 +216,6 @@ export class TermPolicyContentDomain {
         }
 
         try {
-            const timestamp = this.helperDateService.create();
-            const activityLogs = [
-                this.prepareActivityLog(
-                    EnumActivityLogAction.adminTermPolicyRemoveContent,
-                    termPolicy,
-                    timestamp
-                ),
-            ];
             const removed = await this.termPolicyRepository.removeContent(
                 termPolicyId,
                 contents,
@@ -278,9 +225,7 @@ export class TermPolicyContentDomain {
                 throw new TermPolicyStatusInvalidException();
             }
 
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return;
+            return termPolicy;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;

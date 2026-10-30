@@ -5,7 +5,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type {
@@ -14,13 +13,10 @@ import type {
     Prisma,
 } from '@generated/prisma-client/client';
 import {
-    EnumActivityLogAction,
     EnumNotificationChannel,
     EnumNotificationPriority,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
@@ -30,7 +26,7 @@ import { NotificationNotFoundException } from '@modules/notification/exceptions/
 import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationDomain', () => {
@@ -39,10 +35,8 @@ describe('NotificationDomain', () => {
         mock<NotificationRepository>();
     const notificationUserSettingRepository: MockProxy<NotificationUserSettingRepository> =
         mock<NotificationUserSettingRepository>();
-    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let domain: NotificationDomain;
 
@@ -89,9 +83,7 @@ describe('NotificationDomain', () => {
                     provide: NotificationUserSettingRepository,
                     useValue: notificationUserSettingRepository,
                 },
-                { provide: UserDomain, useValue: userDomain },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
@@ -115,6 +107,7 @@ describe('NotificationDomain', () => {
             notificationUserSettingRepository.findUserSetting.mockResolvedValue(
                 []
             );
+            notificationUtil.listMutedInAppTypes.mockReturnValue([]);
             notificationRepository.findWithPaginationCursor.mockResolvedValue(
                 paginationResult
             );
@@ -156,6 +149,9 @@ describe('NotificationDomain', () => {
             notificationUserSettingRepository.findUserSetting.mockResolvedValue(
                 settings
             );
+            notificationUtil.listMutedInAppTypes.mockReturnValue([
+                EnumNotificationType.userActivity,
+            ]);
             notificationRepository.findWithPaginationCursor.mockResolvedValue({
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,
@@ -165,6 +161,9 @@ describe('NotificationDomain', () => {
 
             await domain.getListCursor('user-id', pagination);
 
+            expect(notificationUtil.listMutedInAppTypes).toHaveBeenCalledWith(
+                settings
+            );
             expect(
                 notificationUserSettingRepository.findUserSetting
             ).toHaveBeenCalledWith('user-id');
@@ -300,7 +299,9 @@ describe('NotificationDomain', () => {
                     ],
                 messagePath: 'notification.error.invalidType',
             });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                notificationUserSettingRepository.updateUserSetting
+            ).not.toHaveBeenCalled();
         });
 
         it('throws NotificationInvalidChannelException before writing when the channel is not allowed for the type', async () => {
@@ -320,54 +321,25 @@ describe('NotificationDomain', () => {
                     ],
                 messagePath: 'notification.error.invalidChannel',
             });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                notificationUserSettingRepository.updateUserSetting
+            ).not.toHaveBeenCalled();
         });
 
-        it('writes the setting inside a transaction, touches the user, and stages the activity log', async () => {
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.userUpdateNotificationSetting,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-            const tx = {} as IDatabaseTransactionClient;
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
-            notificationUserSettingRepository.updateUserSettingInTx.mockResolvedValue(
+        it('writes the setting', async () => {
+            notificationUserSettingRepository.updateUserSetting.mockResolvedValue(
                 true
             );
 
             await domain.updateUserSetting('user-id', data);
 
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userUpdateNotificationSetting,
-                metadata: {
-                    channel: data.channel,
-                    type: data.type,
-                    isActive: data.isActive,
-                },
-            });
             expect(
-                notificationUserSettingRepository.updateUserSettingInTx
-            ).toHaveBeenCalledWith(tx, 'user-id', data);
-            expect(userDomain.touchUpdatedByInTx).toHaveBeenCalledWith(
-                tx,
-                'user-id'
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
+                notificationUserSettingRepository.updateUserSetting
+            ).toHaveBeenCalledWith('user-id', data);
         });
 
-        it('throws NotificationSettingInvalidException and touches nothing when the setting row does not exist', async () => {
-            const tx = {} as IDatabaseTransactionClient;
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
-            notificationUserSettingRepository.updateUserSettingInTx.mockResolvedValue(
+        it('throws NotificationSettingInvalidException when the setting row does not exist', async () => {
+            notificationUserSettingRepository.updateUserSetting.mockResolvedValue(
                 false
             );
 
@@ -383,13 +355,13 @@ describe('NotificationDomain', () => {
                     ],
                 messagePath: 'notification.error.settingInvalid',
             });
-            expect(userDomain.touchUpdatedByInTx).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('throws NotificationSettingInvalidException when the transaction loses a write conflict', async () => {
+        it('throws NotificationSettingInvalidException when the write loses a write conflict', async () => {
             const conflict = new Error('conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            notificationUserSettingRepository.updateUserSetting.mockRejectedValue(
+                conflict
+            );
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
@@ -401,12 +373,13 @@ describe('NotificationDomain', () => {
                 messagePath: 'notification.error.settingInvalid',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('wraps any other transaction failure in AppUnknownException', async () => {
+        it('wraps any other write failure in AppUnknownException', async () => {
             const failure = new Error('down');
-            databaseService.withTransaction.mockRejectedValue(failure);
+            notificationUserSettingRepository.updateUserSetting.mockRejectedValue(
+                failure
+            );
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(

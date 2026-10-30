@@ -8,6 +8,7 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
@@ -26,6 +27,8 @@ import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/proj
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 
@@ -35,6 +38,8 @@ describe('ProjectHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
 
     const paginationCursor: IPaginationQueryCursorParams<Prisma.ProjectWhereInput> =
         {
@@ -49,6 +54,14 @@ describe('ProjectHttpService', () => {
             limit: 20,
             skip: 0,
         };
+
+    const stagedActivityLog: IActivityLogStaged = {
+        action: EnumActivityLogAction.projectCreated,
+        metadata: {},
+        userId: '507f1f77bcf86cd799439015',
+        createdBy: '507f1f77bcf86cd799439015',
+        workspaceId: '507f1f77bcf86cd799439012',
+    };
 
     let service: ProjectHttpService;
 
@@ -80,6 +93,7 @@ describe('ProjectHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -93,6 +107,7 @@ describe('ProjectHttpService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
 
@@ -154,12 +169,50 @@ describe('ProjectHttpService', () => {
             expect(result).toEqual({ data: project });
             expect(projectDomain.createProject).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439015',
                 {
                     name: 'Website Revamp',
                     description: 'Marketing site redesign',
                 }
             );
+        });
+
+        it('prepares the created activity log before the write and stages it after', async () => {
+            const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
+            projectDomain.createProject.mockImplementation(async () => {
+                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                    action: EnumActivityLogAction.projectCreated,
+                    userId: '507f1f77bcf86cd799439015',
+                    createdBy: '507f1f77bcf86cd799439015',
+                    workspaceId: '507f1f77bcf86cd799439012',
+                });
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+
+                return project;
+            });
+
+            await service.createProject(
+                '507f1f77bcf86cd799439012',
+                '507f1f77bcf86cd799439015',
+                body
+            );
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
+        });
+
+        it('stages nothing when the domain throws', async () => {
+            const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
+            projectDomain.createProject.mockRejectedValue(new Error('boom'));
+
+            await expect(
+                service.createProject(
+                    '507f1f77bcf86cd799439012',
+                    '507f1f77bcf86cd799439015',
+                    body
+                )
+            ).rejects.toThrow('boom');
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -176,7 +229,6 @@ describe('ProjectHttpService', () => {
 
             expect(projectDomain.createProject).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439015',
                 { name: 'Website Revamp', description: null }
             );
         });
@@ -184,12 +236,9 @@ describe('ProjectHttpService', () => {
 
     describe('getProject', () => {
         it('wraps the current project in the response envelope', () => {
-            projectDomain.getProject.mockReturnValue(project);
-
             const result = service.getProject(project);
 
             expect(result).toEqual({ data: project });
-            expect(projectDomain.getProject).toHaveBeenCalledWith(project);
         });
     });
 
@@ -213,11 +262,38 @@ describe('ProjectHttpService', () => {
             );
 
             expect(result).toEqual({ data: updated });
-            expect(projectDomain.updateProject).toHaveBeenCalledWith(
+            expect(projectDomain.updateProject).toHaveBeenCalledWith(project, {
+                name: 'New Name',
+                description: 'New description',
+            });
+        });
+
+        it('prepares the updated activity log before the write and stages it after', async () => {
+            const body: ProjectUpdateRequestDto = {
+                name: 'New Name',
+                description: null,
+            };
+            projectDomain.updateProject.mockImplementation(async () => {
+                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                    action: EnumActivityLogAction.projectUpdated,
+                    userId: '507f1f77bcf86cd799439015',
+                    createdBy: '507f1f77bcf86cd799439015',
+                    workspaceId: project.workspaceId,
+                });
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+
+                return project;
+            });
+
+            await service.updateProject(
                 project,
                 '507f1f77bcf86cd799439015',
-                { name: 'New Name', description: 'New description' }
+                body
             );
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
         });
 
         it('passes a null description through to clear it', async () => {
@@ -234,11 +310,10 @@ describe('ProjectHttpService', () => {
                 body
             );
 
-            expect(projectDomain.updateProject).toHaveBeenCalledWith(
-                project,
-                '507f1f77bcf86cd799439015',
-                { name: 'New Name', description: null }
-            );
+            expect(projectDomain.updateProject).toHaveBeenCalledWith(project, {
+                name: 'New Name',
+                description: null,
+            });
         });
     });
 
@@ -257,9 +332,33 @@ describe('ProjectHttpService', () => {
             expect(result).toEqual({ data: updated });
             expect(projectDomain.updateProjectSlug).toHaveBeenCalledWith(
                 project,
-                '507f1f77bcf86cd799439015',
                 'p-new-slug'
             );
+        });
+
+        it('prepares the updated activity log before the write and stages it after', async () => {
+            const body: ProjectUpdateSlugRequestDto = { slug: 'p-new-slug' };
+            projectDomain.updateProjectSlug.mockImplementation(async () => {
+                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                    action: EnumActivityLogAction.projectUpdated,
+                    userId: '507f1f77bcf86cd799439015',
+                    createdBy: '507f1f77bcf86cd799439015',
+                    workspaceId: project.workspaceId,
+                });
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+
+                return project;
+            });
+
+            await service.updateProjectSlug(
+                project,
+                '507f1f77bcf86cd799439015',
+                body
+            );
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
         });
     });
 
@@ -271,9 +370,29 @@ describe('ProjectHttpService', () => {
             );
 
             expect(projectDomain.softDeleteProject).toHaveBeenCalledWith(
+                project
+            );
+        });
+
+        it('prepares the deleted activity log before the write and stages it after', async () => {
+            projectDomain.softDeleteProject.mockImplementation(async () => {
+                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                    action: EnumActivityLogAction.projectDeleted,
+                    userId: '507f1f77bcf86cd799439015',
+                    createdBy: '507f1f77bcf86cd799439015',
+                    workspaceId: project.workspaceId,
+                });
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            });
+
+            await service.softDeleteProject(
                 project,
                 '507f1f77bcf86cd799439015'
             );
+
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                stagedActivityLog,
+            ]);
         });
     });
 

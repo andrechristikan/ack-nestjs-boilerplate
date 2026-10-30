@@ -79,6 +79,16 @@ export class HelperStringService {
         return `${prefix}${randomSuffix}`;
     }
 
+    generateSlugCandidates(
+        prefix: string,
+        maxLength: number,
+        count: number
+    ): string[] {
+        return Array.from({ length: count }, () =>
+            this.generateSlug(prefix, maxLength)
+        );
+    }
+
     censor(text: string): string {
         if (text.length <= 5) {
             const stringCensor = '*'.repeat(text.length - 1);

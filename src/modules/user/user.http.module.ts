@@ -1,3 +1,5 @@
+import { AccountDomainModule } from '@modules/account/account.domain.module';
+import { CountryDomainModule } from '@modules/country/country.domain.module';
 import { OnboardingDomainModule } from '@modules/onboarding/onboarding.domain.module';
 import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
 import { UserHttpService } from '@modules/user/services/user.http.service';
@@ -32,6 +34,11 @@ import { Module } from '@nestjs/common';
         UserProfileHttpService,
         UserMobileNumberHttpService,
     ],
-    imports: [UserDomainModule, OnboardingDomainModule],
+    imports: [
+        UserDomainModule,
+        OnboardingDomainModule,
+        AccountDomainModule,
+        CountryDomainModule,
+    ],
 })
 export class UserHttpModule {}

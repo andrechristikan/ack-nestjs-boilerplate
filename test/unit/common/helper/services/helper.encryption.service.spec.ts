@@ -1,4 +1,5 @@
-import { randomBytes } from 'node:crypto';
+import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
+import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -413,6 +414,57 @@ describe('HelperEncryptionService', () => {
                     ],
                 messagePath: 'helper.error.decryptFailed',
             });
+        });
+    });
+
+    describe('derBase64ToPem', () => {
+        const keyPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+        const privatePem = keyPair.privateKey.export({
+            type: 'pkcs8',
+            format: 'pem',
+        }) as string;
+        const publicPem = keyPair.publicKey.export({
+            type: 'spki',
+            format: 'pem',
+        }) as string;
+        const privateDer = keyPair.privateKey
+            .export({ type: 'pkcs8', format: 'der' })
+            .toString('base64');
+        const publicDer = keyPair.publicKey
+            .export({ type: 'spki', format: 'der' })
+            .toString('base64');
+
+        it('frames a PKCS#8 DER private key as PEM', () => {
+            const result = service.derBase64ToPem(
+                privateDer,
+                EnumHelperPemLabel.privateKey
+            );
+
+            expect(result).toBe(privatePem);
+        });
+
+        it('frames an SPKI DER public key as PEM', () => {
+            const result = service.derBase64ToPem(
+                publicDer,
+                EnumHelperPemLabel.publicKey
+            );
+
+            expect(result).toBe(publicPem);
+        });
+
+        it('throws when the DER bytes are not a key', () => {
+            expect(() =>
+                service.derBase64ToPem(
+                    'bm90LWEta2V5',
+                    EnumHelperPemLabel.privateKey
+                )
+            ).toThrow();
+            expect(() =>
+                service.derBase64ToPem(
+                    'bm90LWEta2V5',
+                    EnumHelperPemLabel.publicKey
+                )
+            ).toThrow();
         });
     });
 

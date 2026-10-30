@@ -1,4 +1,8 @@
-import { Prisma } from '@generated/prisma-client/client';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -18,6 +22,8 @@ import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.updat
 import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import type { IRole } from '@modules/role/interfaces/role.interface';
+import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -26,8 +32,25 @@ export class RoleHttpService {
     constructor(
         private readonly roleDomain: RoleDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly roleUtil: RoleUtil,
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService
     ) {}
+
+    private prepareActivityLog(
+        action: EnumActivityLogAction,
+        role: IRole
+    ): IActivityLogStaged {
+        const timestamp = this.helperDateService.create();
+        const metadata = this.roleUtil.mapActivityLogMetadata(role, timestamp);
+
+        return this.activityLogDomain.prepare({
+            action,
+            metadata,
+        });
+    }
 
     async getListOffsetByAdmin(
         query: RoleAdminListRequestDto
@@ -115,7 +138,17 @@ export class RoleHttpService {
         body: RoleCreateRequestDto,
         user: IUser
     ): Promise<IResponseReturn<RoleDto>> {
+        const roleId = this.databaseUtil.createId();
+        const activityLogs = [
+            this.prepareActivityLog(EnumActivityLogAction.adminRoleCreate, {
+                id: roleId,
+                name: body.name,
+                type: body.type,
+            }),
+        ];
+
         const created = await this.roleDomain.createByAdmin(
+            roleId,
             {
                 name: body.name,
                 description: body.description ?? null,
@@ -123,6 +156,8 @@ export class RoleHttpService {
             },
             { roleId: user.roleId, roleType: user.role.type }
         );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: created };
     }
@@ -140,6 +175,14 @@ export class RoleHttpService {
             },
             { roleId: user.roleId, roleType: user.role.type }
         );
+        const activityLogs = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminRoleUpdate,
+                updated
+            ),
+        ];
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { data: updated };
     }
@@ -148,10 +191,18 @@ export class RoleHttpService {
         id: string,
         user: IUser
     ): Promise<IResponseReturn<void>> {
-        await this.roleDomain.deleteByAdmin(id, {
+        const deleted = await this.roleDomain.deleteByAdmin(id, {
             roleId: user.roleId,
             roleType: user.role.type,
         });
+        const activityLogs = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminRoleDelete,
+                deleted
+            ),
+        ];
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

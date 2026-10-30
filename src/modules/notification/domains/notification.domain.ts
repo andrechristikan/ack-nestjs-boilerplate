@@ -3,11 +3,9 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumNotificationChannel,
     EnumNotificationType,
     Prisma,
@@ -16,7 +14,6 @@ import type {
     Notification,
     NotificationUserSetting,
 } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
@@ -26,7 +23,7 @@ import { NotificationSettingInvalidException } from '@modules/notification/excep
 import type { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -34,9 +31,7 @@ export class NotificationDomain {
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
-        private readonly userDomain: UserDomain,
-        private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
+        private readonly notificationUtil: NotificationUtil,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -48,13 +43,8 @@ export class NotificationDomain {
             await this.notificationUserSettingRepository.findUserSetting(
                 userId
             );
-        const excludedTypes = settings
-            .filter(
-                setting =>
-                    setting.channel === EnumNotificationChannel.inApp &&
-                    !setting.isActive
-            )
-            .map(setting => setting.type);
+        const excludedTypes =
+            this.notificationUtil.listMutedInAppTypes(settings);
 
         return this.notificationRepository.findWithPaginationCursor(
             userId,
@@ -102,30 +92,15 @@ export class NotificationDomain {
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userUpdateNotificationSetting,
-                metadata: {
-                    channel: data.channel,
-                    type: data.type,
-                    isActive: data.isActive,
-                },
-            }),
-        ];
         try {
-            await this.databaseService.withTransaction(async tx => {
-                const updated =
-                    await this.notificationUserSettingRepository.updateUserSettingInTx(
-                        tx,
-                        userId,
-                        data
-                    );
-                if (!updated) {
-                    throw new NotificationSettingInvalidException();
-                }
-
-                await this.userDomain.touchUpdatedByInTx(tx, userId);
-            });
+            const updated =
+                await this.notificationUserSettingRepository.updateUserSetting(
+                    userId,
+                    data
+                );
+            if (!updated) {
+                throw new NotificationSettingInvalidException();
+            }
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -138,8 +113,6 @@ export class NotificationDomain {
 
             throw new AppUnknownException(err);
         }
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async createDefaultsInTx(

@@ -1,6 +1,3 @@
-import { PasswordHistoryDomainModule } from '@modules/password-history/password-history.domain.module';
-import { ProjectDomainModule } from '@modules/project/project.domain.module';
-import { UserDomainModule } from '@modules/user/user.domain.module';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
@@ -53,9 +50,6 @@ import { WorkspaceMemberAnalyticDomain } from '@modules/workspace/domains/worksp
             useClass: WorkspaceQueueFactory,
         }),
         WorkspaceRepositoryModule,
-        ProjectDomainModule,
-        UserDomainModule,
-        PasswordHistoryDomainModule,
     ],
 })
 export class WorkspaceDomainModule {}

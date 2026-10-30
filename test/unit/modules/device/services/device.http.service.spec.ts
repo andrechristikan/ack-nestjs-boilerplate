@@ -7,6 +7,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    EnumActivityLogAction,
     EnumDevicePlatform,
     EnumRoleType,
     EnumUserSignUpFrom,
@@ -14,7 +15,16 @@ import {
     EnumUserStatus,
     Prisma,
 } from '@generated/prisma-client/client';
+import { AccountDeviceDomain } from '@modules/account/domains/account.device.domain';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
+import { DeviceUtil } from '@modules/device/utils/device.util';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import type { IRole } from '@modules/role/interfaces/role.interface';
+import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
@@ -31,6 +41,13 @@ import {
 
 describe('DeviceHttpService', () => {
     const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const accountDeviceDomain: MockProxy<AccountDeviceDomain> =
+        mock<AccountDeviceDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
+    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -138,6 +155,14 @@ describe('DeviceHttpService', () => {
             providers: [
                 DeviceHttpService,
                 { provide: DeviceDomain, useValue: deviceDomain },
+                {
+                    provide: AccountDeviceDomain,
+                    useValue: accountDeviceDomain,
+                },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: RoleDomain, useValue: roleDomain },
+                { provide: SessionQueue, useValue: sessionQueue },
+                { provide: DeviceUtil, useValue: deviceUtil },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -300,9 +325,24 @@ describe('DeviceHttpService', () => {
     });
 
     describe('refresh', () => {
-        it('forwards the refresh body to the domain and returns an empty response', async () => {
+        const refreshActivityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.userDeviceRefresh,
+            metadata: {},
+            userId: null,
+            createdBy: null,
+            workspaceId: null,
+        };
+
+        it('forwards the refresh body to the domain, stages the refresh activity after it, and returns an empty response', async () => {
             const body: DeviceRefreshRequestDto = { name: 'iPhone 13' };
-            deviceDomain.refresh.mockResolvedValue(undefined);
+            const calls: string[] = [];
+            activityLogDomain.prepare.mockReturnValue(refreshActivityLog);
+            deviceDomain.refresh.mockImplementation(async () => {
+                calls.push('refresh');
+            });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                calls.push('stage');
+            });
 
             const result = await service.refresh(
                 'user-1',
@@ -316,6 +356,13 @@ describe('DeviceHttpService', () => {
                 'device-ownership-1',
                 { name: 'iPhone 13', platform: null, notificationToken: null }
             );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userDeviceRefresh,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                refreshActivityLog,
+            ]);
+            expect(calls).toEqual(['refresh', 'stage']);
         });
 
         it('passes null for the name when the body omits it', async () => {
@@ -323,6 +370,7 @@ describe('DeviceHttpService', () => {
                 platform: EnumDevicePlatform.ios,
                 notificationToken: 'token-1',
             };
+            activityLogDomain.prepare.mockReturnValue(refreshActivityLog);
             deviceDomain.refresh.mockResolvedValue(undefined);
 
             await service.refresh('user-1', 'device-ownership-1', body);
@@ -337,25 +385,131 @@ describe('DeviceHttpService', () => {
                 }
             );
         });
+
+        it('stages nothing when the domain refresh throws', async () => {
+            const notFound = new DeviceNotFoundException();
+            activityLogDomain.prepare.mockReturnValue(refreshActivityLog);
+            deviceDomain.refresh.mockRejectedValue(notFound);
+
+            await expect(
+                service.refresh('user-1', 'device-ownership-1', {})
+            ).rejects.toBe(notFound);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
     });
 
     describe('remove', () => {
-        it('forwards the removal to the domain and returns an empty response', async () => {
-            deviceDomain.remove.mockResolvedValue(undefined);
+        it('removes through the composition, purges the revoked logins, and stages the owner activity', async () => {
+            const revokedSessions = [{ id: 'session-1' }];
+            const metadata = {
+                deviceOwnershipId: 'device-ownership-1',
+                deviceId: 'device-1',
+                sessionCount: 1,
+            };
+            const activityLog: IActivityLogStaged = {
+                action: EnumActivityLogAction.userRemoveDevice,
+                metadata,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                workspaceId: null,
+            };
+            accountDeviceDomain.remove.mockResolvedValue({
+                deviceOwnership,
+                revokedSessions,
+            });
+            deviceUtil.mapActivityLogMetadata.mockReturnValue(metadata);
+            activityLogDomain.prepare.mockReturnValue(activityLog);
 
             const result = await service.remove('user-1', 'device-ownership-1');
 
             expect(result).toEqual({});
-            expect(deviceDomain.remove).toHaveBeenCalledWith(
+            expect(accountDeviceDomain.remove).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1'
             );
+            expect(deviceUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                deviceOwnership,
+                1
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userRemoveDevice,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                metadata,
+            });
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-1',
+                revokedSessions
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
+        });
+
+        it('purges and stages nothing when the composition throws', async () => {
+            const notFound = new DeviceNotFoundException();
+            accountDeviceDomain.remove.mockRejectedValue(notFound);
+
+            await expect(
+                service.remove('user-1', 'device-ownership-1')
+            ).rejects.toBe(notFound);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
     describe('removeByAdmin', () => {
-        it('forwards the admin removal to the domain and returns an empty response', async () => {
-            deviceDomain.removeByAdmin.mockResolvedValue(undefined);
+        const revokedSessions = [{ id: 'session-1' }];
+        const actorMetadata = {
+            deviceOwnershipId: 'device-ownership-1',
+            deviceId: 'device-1',
+            sessionCount: 1,
+            targetUserId: 'user-1',
+            targetUsername: 'jane',
+            timestamp: updatedAt,
+        };
+        const targetMetadata = {
+            deviceOwnershipId: 'device-ownership-1',
+            deviceId: 'device-1',
+            sessionCount: 1,
+            actorUserId: 'admin-1',
+            timestamp: updatedAt,
+        };
+        const actorActivityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.adminDeviceRemove,
+            metadata: actorMetadata,
+            userId: null,
+            createdBy: null,
+            workspaceId: null,
+        };
+        const targetActivityLog: IActivityLogStaged = {
+            action: EnumActivityLogAction.userRemoveDeviceByAdmin,
+            metadata: targetMetadata,
+            userId: 'user-1',
+            createdBy: 'admin-1',
+            workspaceId: null,
+        };
+        const userRole: IRole = {
+            id: 'role-user',
+            name: 'user',
+            type: EnumRoleType.user,
+        };
+
+        it('checks the rank, removes through the composition, purges, and stages the actor and target rows', async () => {
+            roleDomain.getOneByUserId.mockResolvedValue(userRole);
+            accountDeviceDomain.removeByAdmin.mockResolvedValue({
+                deviceOwnership,
+                revokedSessions,
+            });
+            deviceUtil.mapActivityLogActorMetadata.mockReturnValue(
+                actorMetadata
+            );
+            deviceUtil.mapActivityLogTargetMetadata.mockReturnValue(
+                targetMetadata
+            );
+            activityLogDomain.prepare
+                .mockReturnValueOnce(actorActivityLog)
+                .mockReturnValueOnce(targetActivityLog);
 
             const result = await service.removeByAdmin(
                 'user-1',
@@ -364,12 +518,80 @@ describe('DeviceHttpService', () => {
             );
 
             expect(result).toEqual({});
-            expect(deviceDomain.removeByAdmin).toHaveBeenCalledWith(
+            expect(roleDomain.getOneByUserId).toHaveBeenCalledWith('user-1');
+            expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
+                EnumRoleType.admin,
+                EnumRoleType.user
+            );
+            expect(accountDeviceDomain.removeByAdmin).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1',
-                'admin-1',
-                { roleId: 'role-admin', roleType: EnumRoleType.admin }
+                'admin-1'
             );
+            expect(
+                deviceUtil.mapActivityLogTargetMetadata
+            ).toHaveBeenCalledWith(deviceOwnership, 'admin-1', 1);
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
+                action: EnumActivityLogAction.adminDeviceRemove,
+                metadata: actorMetadata,
+            });
+            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
+                action: EnumActivityLogAction.userRemoveDeviceByAdmin,
+                userId: 'user-1',
+                createdBy: 'admin-1',
+                metadata: targetMetadata,
+            });
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-1',
+                revokedSessions
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                actorActivityLog,
+                targetActivityLog,
+            ]);
+        });
+
+        it('stages only the actor row when the admin removes their own device', async () => {
+            roleDomain.getOneByUserId.mockResolvedValue({
+                ...userRole,
+                type: EnumRoleType.admin,
+            });
+            accountDeviceDomain.removeByAdmin.mockResolvedValue({
+                deviceOwnership,
+                revokedSessions,
+            });
+            deviceUtil.mapActivityLogActorMetadata.mockReturnValue(
+                actorMetadata
+            );
+            activityLogDomain.prepare.mockReturnValue(actorActivityLog);
+
+            await service.removeByAdmin('admin-1', 'device-ownership-1', admin);
+
+            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
+            expect(
+                deviceUtil.mapActivityLogTargetMetadata
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                actorActivityLog,
+            ]);
+        });
+
+        it('removes nothing when the actor does not outrank the target', async () => {
+            const rankForbidden = new RoleRankForbiddenException();
+            roleDomain.getOneByUserId.mockResolvedValue({
+                ...userRole,
+                type: EnumRoleType.superAdmin,
+            });
+            roleDomain.assertActorOutranks.mockImplementation(() => {
+                throw rankForbidden;
+            });
+
+            await expect(
+                service.removeByAdmin('user-1', 'device-ownership-1', admin)
+            ).rejects.toBe(rankForbidden);
+            expect(accountDeviceDomain.removeByAdmin).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

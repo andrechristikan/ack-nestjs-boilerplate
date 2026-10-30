@@ -119,6 +119,17 @@ export class LoggerUtil {
         return (request.user as unknown as { userId: string })?.userId ?? null;
     }
 
+    private maskUrl(url: string): string {
+        try {
+            const parsed = new URL(url);
+            const maskedPath = this.maskPath(parsed.pathname);
+
+            return `${parsed.origin}${maskedPath}`;
+        } catch {
+            return this.maskPath(url.split('?')[0]!.split('#')[0]!);
+        }
+    }
+
     sanitizeMessage(message: unknown): unknown {
         if (typeof message === 'string') {
             return stripAnsi(message)
@@ -138,17 +149,6 @@ export class LoggerUtil {
      */
     redactValue(value: unknown): unknown {
         return this.redactNested(value, 0);
-    }
-
-    maskUrl(url: string): string {
-        try {
-            const parsed = new URL(url);
-            const maskedPath = this.maskPath(parsed.pathname);
-
-            return `${parsed.origin}${maskedPath}`;
-        } catch {
-            return this.maskPath(url.split('?')[0]!.split('#')[0]!);
-        }
     }
 
     serializeRequest(request: IRequestApp): Record<string, unknown> {

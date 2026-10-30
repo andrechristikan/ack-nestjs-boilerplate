@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type {
     IAuthJwtAccessTokenPayload,
+    IAuthJwtPayloadIdentified,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     AuthGoogleCertificateErrorPrefix,
@@ -19,7 +22,11 @@ import type { User } from '@generated/prisma-client/client';
 /** Auth utility: shapes the JWT payloads and the jti. See docs/authentication.md. */
 @Injectable()
 export class AuthUtil {
-    constructor(private readonly helperStringService: HelperStringService) {}
+    constructor(
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService,
+        private readonly helperDateService: HelperDateService
+    ) {}
 
     /** Assembles the access token payload from the user and login context. */
     createPayloadAccessToken(
@@ -65,6 +72,42 @@ export class AuthUtil {
     /** Generates a random 32-character jti used to bind a token to its session. */
     generateJti(): string {
         return this.helperStringService.random(32);
+    }
+
+    /** True when the payload carries string `sub` and `jti` claims and a `sessionId`. */
+    isTokenPayloadValid<
+        T extends { sub?: string; jti?: string; sessionId: string },
+    >(payload: T): payload is IAuthJwtPayloadIdentified<T> {
+        const { sub, sessionId, jti } = payload;
+
+        return (
+            !!sub &&
+            !!sessionId &&
+            typeof sub === 'string' &&
+            !!jti &&
+            typeof jti === 'string'
+        );
+    }
+
+    /** Compares the session jti with the token jti by SHA-256 hash. */
+    isJtiMatch(sessionJti: string, jti: string): boolean {
+        const sessionJtiHash = this.helperHashService.sha256Hash(sessionJti);
+        const jtiHash = this.helperHashService.sha256Hash(jti);
+
+        return this.helperHashService.sha256Compare(sessionJtiHash, jtiHash);
+    }
+
+    /** Whole seconds left until the token's `exp` (epoch seconds); a missing `exp` counts as the epoch. */
+    remainingSeconds(exp: number | null): number {
+        const today = this.helperDateService.create();
+        const expiredAt = this.helperDateService.createFromTimestamp(
+            (exp ?? 0) * 1000
+        );
+        const remaining = this.helperDateService.diff(expiredAt, today);
+
+        return remaining.seconds
+            ? remaining.seconds
+            : Math.floor(remaining.milliseconds / 1000);
     }
 
     /**

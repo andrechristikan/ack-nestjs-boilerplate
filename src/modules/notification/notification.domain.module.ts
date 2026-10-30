@@ -1,5 +1,4 @@
 import { AwsModule } from '@common/aws/aws.module';
-import { DeviceDomainModule } from '@modules/device/device.domain.module';
 import { NotificationRepositoryModule } from '@modules/notification/notification.repository.module';
 import { NotificationEmailQueueFactory } from '@modules/notification/factories/notification.email.queue.factory';
 import { NotificationPushQueueFactory } from '@modules/notification/factories/notification.push.queue.factory';
@@ -12,10 +11,8 @@ import { NotificationEmailAccountDomain } from '@modules/notification/domains/no
 import { NotificationEmailSecurityDomain } from '@modules/notification/domains/notification.email.security.domain';
 import { NotificationEmailTermPolicyDomain } from '@modules/notification/domains/notification.email.term-policy.domain';
 import { NotificationEmailWorkspaceDomain } from '@modules/notification/domains/notification.email.workspace.domain';
-import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
 import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
 import { NotificationSecurityDomain } from '@modules/notification/domains/notification.security.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { NotificationTemplateAccountDomain } from '@modules/notification/domains/notification.template.account.domain';
@@ -25,7 +22,6 @@ import { NotificationTemplateWorkspaceDomain } from '@modules/notification/domai
 import { NotificationTermPolicyDomain } from '@modules/notification/domains/notification.term-policy.domain';
 import { NotificationWorkspaceDomain } from '@modules/notification/domains/notification.workspace.domain';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { UserDomainModule } from '@modules/user/user.domain.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import { QueueConfigKey } from '@queues/constants/queue.constant';
@@ -41,7 +37,6 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationTemplateTermPolicyDomain,
         NotificationTemplateWorkspaceDomain,
         NotificationAccountDomain,
-        NotificationRecipientDomain,
         NotificationSecurityDomain,
         NotificationTermPolicyDomain,
         NotificationWorkspaceDomain,
@@ -51,7 +46,6 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationEmailWorkspaceDomain,
         NotificationPushSecurityDomain,
         NotificationPushWorkspaceDomain,
-        NotificationPushMaintenanceDomain,
         NotificationQueue,
         NotificationEmailQueue,
         NotificationPushQueue,
@@ -65,7 +59,6 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationTemplateTermPolicyDomain,
         NotificationTemplateWorkspaceDomain,
         NotificationAccountDomain,
-        NotificationRecipientDomain,
         NotificationSecurityDomain,
         NotificationTermPolicyDomain,
         NotificationWorkspaceDomain,
@@ -75,7 +68,6 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationEmailWorkspaceDomain,
         NotificationPushSecurityDomain,
         NotificationPushWorkspaceDomain,
-        NotificationPushMaintenanceDomain,
         NotificationQueue,
         NotificationEmailQueue,
         NotificationPushQueue,
@@ -100,8 +92,6 @@ import { EnumQueue } from '@queues/enums/queue.enum';
             }
         ),
         NotificationRepositoryModule,
-        UserDomainModule,
-        DeviceDomainModule,
         AwsModule,
     ],
 })

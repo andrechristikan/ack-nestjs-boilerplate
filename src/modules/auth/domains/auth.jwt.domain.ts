@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
 import { ConfigService } from '@nestjs/config';
 import type { Algorithm } from 'jsonwebtoken';
 import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
-import { createPrivateKey, createPublicKey } from 'node:crypto';
 import type {
     IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
@@ -14,7 +14,7 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthBearerScheme } from '@modules/auth/constants/auth.constant';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -44,7 +44,7 @@ export class AuthJwtDomain {
 
     constructor(
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService,
+        private readonly helperEncryptionService: HelperEncryptionService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
         private readonly authUtil: AuthUtil
@@ -64,21 +64,29 @@ export class AuthJwtDomain {
                 'auth.jwt.refreshToken.expirationTimeInSeconds'
             )!;
 
-        this.jwtAccessTokenPrivateKey = this.parseRequiredBase64DerPrivateKey(
-            'auth.jwt.accessToken.privateKey'
+        this.jwtAccessTokenPrivateKey = this.parseRequiredBase64Der(
+            'auth.jwt.accessToken.privateKey',
+            EnumHelperPemLabel.privateKey,
+            'PKCS#8 DER private key'
         );
-        this.jwtAccessTokenPublicKey = this.parseRequiredBase64DerPublicKey(
-            'auth.jwt.accessToken.publicKey'
+        this.jwtAccessTokenPublicKey = this.parseRequiredBase64Der(
+            'auth.jwt.accessToken.publicKey',
+            EnumHelperPemLabel.publicKey,
+            'SPKI DER public key'
         );
         this.jwtAccessTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.accessToken.algorithm'
         )!;
 
-        this.jwtRefreshTokenPrivateKey = this.parseRequiredBase64DerPrivateKey(
-            'auth.jwt.refreshToken.privateKey'
+        this.jwtRefreshTokenPrivateKey = this.parseRequiredBase64Der(
+            'auth.jwt.refreshToken.privateKey',
+            EnumHelperPemLabel.privateKey,
+            'PKCS#8 DER private key'
         );
-        this.jwtRefreshTokenPublicKey = this.parseRequiredBase64DerPublicKey(
-            'auth.jwt.refreshToken.publicKey'
+        this.jwtRefreshTokenPublicKey = this.parseRequiredBase64Der(
+            'auth.jwt.refreshToken.publicKey',
+            EnumHelperPemLabel.publicKey,
+            'SPKI DER public key'
         );
         this.jwtRefreshTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.refreshToken.algorithm'
@@ -88,7 +96,12 @@ export class AuthJwtDomain {
         this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer')!;
     }
 
-    private parseRequiredBase64DerPrivateKey(configKey: string): string {
+    /** Reads a base64 DER key from config and frames it as PEM under the label; `expected` names the key kind in the invalid-config error. */
+    private parseRequiredBase64Der(
+        configKey: string,
+        label: EnumHelperPemLabel,
+        expected: string
+    ): string {
         const value = this.configService.get<string>(configKey);
         const raw = value?.trim();
 
@@ -97,47 +110,24 @@ export class AuthJwtDomain {
         }
 
         try {
-            return createPrivateKey({
-                key: Buffer.from(raw, 'base64'),
-                format: 'der',
-                type: 'pkcs8',
-            }).export({
-                type: 'pkcs8',
-                format: 'pem',
-            }) as string;
+            return this.helperEncryptionService.derBase64ToPem(raw, label);
         } catch (error) {
-            throw new AuthJwtConfigInvalidException(
-                configKey,
-                'PKCS#8 DER private key',
-                error
-            );
+            throw new AuthJwtConfigInvalidException(configKey, expected, error);
         }
     }
 
-    private parseRequiredBase64DerPublicKey(configKey: string): string {
-        const value = this.configService.get<string>(configKey);
-        const raw = value?.trim();
-
-        if (!raw) {
-            throw new AuthJwtConfigMissingException(configKey);
-        }
-
-        try {
-            return createPublicKey({
-                key: Buffer.from(raw, 'base64'),
-                format: 'der',
-                type: 'spki',
-            }).export({
-                type: 'spki',
-                format: 'pem',
-            }) as string;
-        } catch (error) {
-            throw new AuthJwtConfigInvalidException(
-                configKey,
-                'SPKI DER public key',
-                error
-            );
-        }
+    private buildTokens(
+        user: IUser,
+        accessToken: string,
+        refreshToken: string
+    ): IAuthToken {
+        return {
+            tokenType: AuthBearerScheme,
+            roleType: user.role.type,
+            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
+            accessToken,
+            refreshToken,
+        };
     }
 
     createAccessToken(
@@ -253,13 +243,7 @@ export class AuthJwtDomain {
             payloadRefreshToken
         );
 
-        return {
-            tokenType: AuthBearerScheme,
-            roleType: user.role.type,
-            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
-            accessToken,
-            refreshToken,
-        };
+        return this.buildTokens(user, accessToken, refreshToken);
     }
 
     /** Rotates the token pair with a new jti, reusing the session and capping the refresh expiry at the old token's remaining lifetime. */
@@ -297,18 +281,9 @@ export class AuthJwtDomain {
         const newPayloadRefreshToken: IAuthJwtRefreshTokenPayload =
             this.authUtil.createPayloadRefreshToken(payloadAccessToken);
 
-        const today = this.helperDateService.create();
-        const expiredAt = this.helperDateService.createFromTimestamp(
-            (oldExp ?? 0) * 1000
+        const newRefreshTokenExpireInSeconds = this.authUtil.remainingSeconds(
+            oldExp ?? null
         );
-
-        const newRefreshTokenExpire = this.helperDateService.diff(
-            expiredAt,
-            today
-        );
-        const newRefreshTokenExpireInSeconds = newRefreshTokenExpire.seconds
-            ? newRefreshTokenExpire.seconds
-            : Math.floor(newRefreshTokenExpire.milliseconds / 1000);
 
         const newRefreshToken: string = this.createRefreshToken(
             user.id,
@@ -317,13 +292,7 @@ export class AuthJwtDomain {
             newRefreshTokenExpireInSeconds
         );
 
-        const tokens: IAuthToken = {
-            tokenType: AuthBearerScheme,
-            roleType: user.role.type,
-            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
-            accessToken,
-            refreshToken: newRefreshToken,
-        };
+        const tokens = this.buildTokens(user, accessToken, newRefreshToken);
 
         return {
             tokens,

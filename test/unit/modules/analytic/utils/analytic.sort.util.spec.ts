@@ -3,6 +3,7 @@ import type { IPaginationOrderBy } from '@common/pagination/interfaces/paginatio
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
+import { buildAnalyticOffsetParams } from '@test/unit/helpers/test.unit.analytic.helper';
 
 describe('AnalyticSortUtil', () => {
     let util: AnalyticSortUtil;
@@ -17,24 +18,27 @@ describe('AnalyticSortUtil', () => {
         util = module.get(AnalyticSortUtil);
     });
 
-    describe('sortRows', () => {
-        it('returns the very same array instance when orderBy is empty', () => {
+    describe('sortPage', () => {
+        it('keeps the given order when orderBy is empty', () => {
             const rows = [
                 { userId: 'user-2', score: 10 },
                 { userId: 'user-1', score: 40 },
             ];
             const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
 
-            const result = util.sortRows(rows, [], sortableKeys);
+            const result = util.sortPage(
+                rows,
+                buildAnalyticOffsetParams([], 0, 10),
+                sortableKeys
+            ).data;
 
-            expect(result).toBe(rows);
             expect(result).toEqual([
                 { userId: 'user-2', score: 10 },
                 { userId: 'user-1', score: 40 },
             ]);
         });
 
-        it('returns the very same array instance when no orderBy key is sortable', () => {
+        it('keeps the given order when no orderBy key is sortable', () => {
             const rows = [
                 { userId: 'user-2', score: 10 },
                 { userId: 'user-1', score: 40 },
@@ -44,16 +48,19 @@ describe('AnalyticSortUtil', () => {
                 { createdAt: EnumPaginationOrderDirectionType.desc },
             ];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
+            const result = util.sortPage(
+                rows,
+                buildAnalyticOffsetParams(orderBy, 0, 10),
+                sortableKeys
+            ).data;
 
-            expect(result).toBe(rows);
             expect(result).toEqual([
                 { userId: 'user-2', score: 10 },
                 { userId: 'user-1', score: 40 },
             ]);
         });
 
-        it('sorts ascending on a sortable key into a new array and leaves the input untouched', () => {
+        it('sorts ascending on a sortable key and leaves the input untouched', () => {
             const rows = [
                 { userId: 'user-2', score: 10 },
                 { userId: 'user-1', score: 40 },
@@ -63,9 +70,12 @@ describe('AnalyticSortUtil', () => {
                 { userId: EnumPaginationOrderDirectionType.asc },
             ];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
+            const result = util.sortPage(
+                rows,
+                buildAnalyticOffsetParams(orderBy, 0, 10),
+                sortableKeys
+            ).data;
 
-            expect(result).not.toBe(rows);
             expect(result).toEqual([
                 { userId: 'user-1', score: 40 },
                 { userId: 'user-2', score: 10 },
@@ -86,7 +96,11 @@ describe('AnalyticSortUtil', () => {
                 { score: EnumPaginationOrderDirectionType.desc },
             ];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
+            const result = util.sortPage(
+                rows,
+                buildAnalyticOffsetParams(orderBy, 0, 10),
+                sortableKeys
+            ).data;
 
             expect(result).toEqual([
                 { userId: 'user-2', score: 40 },
@@ -105,7 +119,11 @@ describe('AnalyticSortUtil', () => {
                 { userId: EnumPaginationOrderDirectionType.asc },
             ];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
+            const result = util.sortPage(
+                rows,
+                buildAnalyticOffsetParams(orderBy, 0, 10),
+                sortableKeys
+            ).data;
 
             expect(result).toEqual([
                 { userId: 'user-1', score: 40 },
@@ -128,7 +146,11 @@ describe('AnalyticSortUtil', () => {
                 { score: EnumPaginationOrderDirectionType.desc },
             ];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
+            const result = util.sortPage(
+                rows,
+                buildAnalyticOffsetParams(orderBy, 0, 10),
+                sortableKeys
+            ).data;
 
             expect(result).toEqual([
                 { userId: 'user-1', score: 40, band: 'monitor' },
@@ -151,12 +173,38 @@ describe('AnalyticSortUtil', () => {
                 { score: EnumPaginationOrderDirectionType.asc },
             ];
 
-            const result = util.sortRows(rows, orderBy, sortableKeys);
+            const result = util.sortPage(
+                rows,
+                buildAnalyticOffsetParams(orderBy, 0, 10),
+                sortableKeys
+            ).data;
 
             expect(result).toEqual([
                 { userId: 'user-1', score: 10, band: 'review' },
                 { userId: 'user-1', score: 10, band: 'monitor' },
             ]);
+        });
+        it('returns the requested slice and the total of the sorted rows', () => {
+            const rows = [
+                { userId: 'user-1', score: 30 },
+                { userId: 'user-2', score: 10 },
+                { userId: 'user-3', score: 20 },
+            ];
+            const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
+            const orderBy: IPaginationOrderBy[] = [
+                { score: EnumPaginationOrderDirectionType.asc },
+            ];
+
+            const result = util.sortPage(
+                rows,
+                buildAnalyticOffsetParams(orderBy, 1, 1),
+                sortableKeys
+            );
+
+            expect(result).toEqual({
+                data: [{ userId: 'user-3', score: 20 }],
+                total: 3,
+            });
         });
     });
 

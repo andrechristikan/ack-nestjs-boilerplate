@@ -1,3 +1,4 @@
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -5,12 +6,16 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { DeviceAnalyticRepository } from '@modules/device/repositories/device.analytic.repository';
 import { DeviceOwnershipAnalyticRepository } from '@modules/device/repositories/device.ownership.analytic.repository';
+import { DeviceUtil } from '@modules/device/utils/device.util';
 
 describe('DeviceAnalyticDomain', () => {
     const deviceOwnershipAnalyticRepository: MockProxy<DeviceOwnershipAnalyticRepository> =
         mock<DeviceOwnershipAnalyticRepository>();
     const deviceAnalyticRepository: MockProxy<DeviceAnalyticRepository> =
         mock<DeviceAnalyticRepository>();
+    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -31,6 +36,8 @@ describe('DeviceAnalyticDomain', () => {
                     provide: DeviceAnalyticRepository,
                     useValue: deviceAnalyticRepository,
                 },
+                { provide: DeviceUtil, useValue: deviceUtil },
+                { provide: HelperNumberService, useValue: helperNumberService },
             ],
         }).compile();
 
@@ -65,22 +72,15 @@ describe('DeviceAnalyticDomain', () => {
     });
 
     describe('getPushTokenRate', () => {
-        it('divides devices with a push token by the total device count', async () => {
+        it('computes the rate from devices with a push token and the total device count', async () => {
             deviceAnalyticRepository.countWithPushToken.mockResolvedValue(4);
             deviceAnalyticRepository.countDevices.mockResolvedValue(10);
+            helperNumberService.percent.mockReturnValue(40);
 
             const result = await domain.getPushTokenRate();
 
             expect(result).toEqual({ count: 4, total: 10, rate: 40 });
-        });
-
-        it('returns a zero rate when no devices exist', async () => {
-            deviceAnalyticRepository.countWithPushToken.mockResolvedValue(0);
-            deviceAnalyticRepository.countDevices.mockResolvedValue(0);
-
-            const result = await domain.getPushTokenRate();
-
-            expect(result).toEqual({ count: 0, total: 0, rate: 0 });
+            expect(helperNumberService.percent).toHaveBeenCalledWith(4, 10);
         });
     });
 
@@ -184,58 +184,21 @@ describe('DeviceAnalyticDomain', () => {
     });
 
     describe('getProliferationOutliers', () => {
-        it('returns a zero result when no user carries a device', async () => {
+        it('reads the per-user counts and scores them through the util', async () => {
+            const counts = [{ userId: 'user-1', count: 3 }];
+            const outliers = { count: 0, avg: 3, stdDev: 0, rows: [] };
             deviceOwnershipAnalyticRepository.countPerUser.mockResolvedValue(
-                []
+                counts
             );
+            deviceUtil.findProliferationOutliers.mockReturnValue(outliers);
 
             const result = await domain.getProliferationOutliers(2);
 
-            expect(result).toEqual({
-                count: 0,
-                avg: 0,
-                stdDev: 0,
-                rows: [],
-            });
-        });
-
-        it('flags and sorts users whose device count crosses the z-score threshold, highest first', async () => {
-            deviceOwnershipAnalyticRepository.countPerUser.mockResolvedValue([
-                { userId: 'user-1', count: 1 },
-                { userId: 'user-2', count: 1 },
-                { userId: 'user-3', count: 10 },
-                { userId: 'user-4', count: 8 },
-            ]);
-
-            const result = await domain.getProliferationOutliers(0.5);
-
-            expect(result.count).toBe(2);
-            expect(result.rows).toEqual([
-                {
-                    userId: 'user-3',
-                    deviceCount: 10,
-                    zScore: expect.any(Number),
-                },
-                {
-                    userId: 'user-4',
-                    deviceCount: 8,
-                    zScore: expect.any(Number),
-                },
-            ]);
-        });
-
-        it('scores every user zero when every user carries the same device count', async () => {
-            deviceOwnershipAnalyticRepository.countPerUser.mockResolvedValue([
-                { userId: 'user-1', count: 2 },
-                { userId: 'user-2', count: 2 },
-            ]);
-
-            const result = await domain.getProliferationOutliers(-1);
-
-            expect(result.rows).toEqual([
-                { userId: 'user-1', deviceCount: 2, zScore: 0 },
-                { userId: 'user-2', deviceCount: 2, zScore: 0 },
-            ]);
+            expect(result).toBe(outliers);
+            expect(deviceUtil.findProliferationOutliers).toHaveBeenCalledWith(
+                counts,
+                2
+            );
         });
     });
 });

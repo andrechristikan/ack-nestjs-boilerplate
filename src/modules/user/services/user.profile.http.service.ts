@@ -1,6 +1,9 @@
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { CountryDomain } from '@modules/country/domains/country.domain';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import type { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
@@ -11,7 +14,11 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserProfileHttpService {
-    constructor(private readonly userProfileDomain: UserProfileDomain) {}
+    constructor(
+        private readonly userProfileDomain: UserProfileDomain,
+        private readonly countryDomain: CountryDomain,
+        private readonly activityLogDomain: ActivityLogDomain
+    ) {}
 
     async getProfile(userId: string): Promise<IResponseReturn<IUserProfile>> {
         const user = await this.userProfileDomain.getProfile(userId);
@@ -23,11 +30,21 @@ export class UserProfileHttpService {
         userId: string,
         { countryId, gender, name }: UserUpdateProfileRequestDto
     ): Promise<IResponseReturn<void>> {
+        // Sequential by design: gate before the work it guards
+        await this.countryDomain.getOne(countryId);
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userUpdateProfile,
+            }),
+        ];
         await this.userProfileDomain.updateProfile(userId, {
             countryId,
             gender,
             name,
         });
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -49,10 +66,17 @@ export class UserProfileHttpService {
         userId: string,
         { key, size }: UserUpdateProfilePhotoRequestDto
     ): Promise<IResponseReturn<void>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userUpdatePhotoProfile,
+            }),
+        ];
         await this.userProfileDomain.updatePhotoProfile(userId, {
             key,
             size,
         });
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -61,7 +85,14 @@ export class UserProfileHttpService {
         userId: string,
         file: IFile
     ): Promise<IResponseReturn<void>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userUpdatePhotoProfile,
+            }),
+        ];
         await this.userProfileDomain.uploadPhotoProfile(userId, file);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }
@@ -70,7 +101,14 @@ export class UserProfileHttpService {
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<IResponseReturn<void>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userClaimUsername,
+            }),
+        ];
         await this.userProfileDomain.claimUsername(userId, username);
+
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};
     }

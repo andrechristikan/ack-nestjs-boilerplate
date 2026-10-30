@@ -7,22 +7,18 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IRoleActor } from '@modules/role/interfaces/role.interface';
-import { RoleDomain } from '@modules/role/domains/role.domain';
+import type { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type {
     ISession,
+    ISessionCache,
     ISessionList,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
-import { SessionQueue } from '@modules/session/queues/session.queue';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
 
@@ -31,11 +27,7 @@ export class SessionDomain {
     constructor(
         private readonly sessionRepository: SessionRepository,
         private readonly sessionCache: SessionCache,
-        private readonly sessionUtil: SessionUtil,
-        private readonly sessionQueue: SessionQueue,
-        private readonly activityLogDomain: ActivityLogDomain,
-        private readonly helperDateService: HelperDateService,
-        private readonly roleDomain: RoleDomain
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async getListOffsetByAdmin(
@@ -58,6 +50,33 @@ export class SessionDomain {
             userId,
             pagination
         );
+    }
+
+    /** Reads the cached login entry; a store failure throws, so the caller does not mistake an outage for a revoked session. */
+    async getLogin(
+        userId: string,
+        sessionId: string
+    ): Promise<ISessionCache | null> {
+        return this.sessionCache.getLogin(userId, sessionId);
+    }
+
+    /** Stores the login entry for the access-token lifetime; a store failure throws. */
+    async setLogin(
+        userId: string,
+        sessionId: string,
+        jti: string
+    ): Promise<void> {
+        await this.sessionCache.setLogin(userId, sessionId, jti);
+    }
+
+    /** Rotates the cached jti by compare-and-set and answers the outcome. */
+    async updateLogin(
+        userId: string,
+        sessionId: string,
+        oldJti: string,
+        newJti: string
+    ): Promise<EnumSessionCacheUpdate> {
+        return this.sessionCache.updateLogin(userId, sessionId, oldJti, newJti);
     }
 
     async deleteLogins(userId: string, sessions: ISessionRef[]): Promise<void> {
@@ -186,11 +205,6 @@ export class SessionDomain {
         // Sequential by design: gate before the work it guards
         await this.validateActive(userId, sessionId);
 
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userRevokeSession,
-            }),
-        ];
         const revokedAt = this.helperDateService.create();
         const isRevoked = await this.sessionRepository.revoke(
             userId,
@@ -201,49 +215,16 @@ export class SessionDomain {
         if (!isRevoked) {
             throw new SessionNotFoundException();
         }
-
-        await this.purgeRevokedLogins(userId, [{ id: sessionId }]);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async revokeByAdmin(
         userId: string,
         sessionId: string,
         revokedBy: string,
-        actor: IRoleActor
-    ): Promise<void> {
+        revokedAt: Date
+    ): Promise<ISession> {
         // Sequential by design: gate before the work it guards
-        const targetRole = await this.roleDomain.getOneByUserId(userId);
-        this.roleDomain.assertActorOutranks(actor.roleType, targetRole.type);
         const session = await this.validateActive(userId, sessionId);
-
-        const revokedAt = this.helperDateService.create();
-        const actorMetadata = this.sessionUtil.mapActivityLogActorMetadata(
-            session,
-            revokedAt
-        );
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.adminSessionRevoke,
-                metadata: actorMetadata,
-            }),
-        ];
-        if (userId !== revokedBy) {
-            const targetMetadata =
-                this.sessionUtil.mapActivityLogTargetMetadata(
-                    session,
-                    revokedBy,
-                    revokedAt
-                );
-            const revokedByAdminActivityLog = this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userRevokeSessionByAdmin,
-                userId,
-                createdBy: revokedBy,
-                metadata: targetMetadata,
-            });
-            activityLogs.push(revokedByAdminActivityLog);
-        }
 
         const isRevoked = await this.sessionRepository.revokeByAdmin(
             sessionId,
@@ -254,96 +235,20 @@ export class SessionDomain {
             throw new SessionNotFoundException();
         }
 
-        await this.purgeRevokedLogins(userId, [{ id: sessionId }]);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
+        return session;
     }
 
-    /**
-     * Runs after the revoke is committed: enqueues the purge of exactly the revoked logins from
-     * the session cache. An enqueue failure is logged and reported, so the committed revoke
-     * still succeeds.
-     */
-    async purgeRevokedLogins(
-        userId: string,
-        sessions: ISessionRef[]
-    ): Promise<void> {
-        await this.sessionQueue.purgeLogins(userId, sessions);
-    }
-
-    /** Prepares the admin revoke-all pair for a committed revoke; nothing when no session was revoked. */
-    prepareRevokeAllByAdmin(
-        userId: string,
-        revokedBy: string,
-        sessionCount: number
-    ): IActivityLogStaged[] {
-        if (sessionCount === 0) {
-            return [];
+    assertNotSelf(userId: string, revokedBy: string): void {
+        if (userId === revokedBy) {
+            throw new UserNotSelfException();
         }
-
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.adminSessionRevokeAll,
-                metadata: {
-                    targetUserId: userId,
-                    sessionCount,
-                },
-            }),
-        ];
-        if (userId !== revokedBy) {
-            const revokedAllByAdminActivityLog = this.activityLogDomain.prepare(
-                {
-                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                    userId,
-                    createdBy: revokedBy,
-                    metadata: {
-                        actorUserId: revokedBy,
-                        sessionCount,
-                    },
-                }
-            );
-            activityLogs.push(revokedAllByAdminActivityLog);
-        }
-
-        return activityLogs;
-    }
-
-    /** Prepares the self revoke-all row of a whole-user revoke. */
-    prepareRevokeAllSelf(userId: string): IActivityLogStaged[] {
-        return [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId,
-                createdBy: userId,
-            }),
-        ];
-    }
-
-    /** Runs after a whole-user revoke commits: enqueues the purge of the revoked logins, then stages the prepared revoke-all activity logs. */
-    async finalizeRevokeAll(
-        userId: string,
-        sessions: ISessionRef[],
-        activityLogs: IActivityLogStaged[]
-    ): Promise<void> {
-        await this.purgeRevokedLogins(userId, sessions);
-
-        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async revokeAllByAdmin(
         userId: string,
         revokedBy: string,
-        actor: IRoleActor
-    ): Promise<void> {
-        if (userId === revokedBy) {
-            throw new UserNotSelfException();
-        }
-
-        // Sequential by design: gate before the work it guards
-        const targetRole = await this.roleDomain.getOneByUserId(userId);
-        this.roleDomain.assertActorOutranks(actor.roleType, targetRole.type);
-
-        const revokedAt = this.helperDateService.create();
+        revokedAt: Date
+    ): Promise<ISessionRef[]> {
         const sessions = await this.sessionRepository.revokeActiveByUser(
             userId,
             revokedBy,
@@ -353,11 +258,6 @@ export class SessionDomain {
             throw new SessionNotFoundException();
         }
 
-        const activityLogs = this.prepareRevokeAllByAdmin(
-            userId,
-            revokedBy,
-            sessions.length
-        );
-        await this.finalizeRevokeAll(userId, sessions, activityLogs);
+        return sessions;
     }
 }

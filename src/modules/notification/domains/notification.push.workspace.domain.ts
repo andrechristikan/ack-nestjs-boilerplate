@@ -1,10 +1,8 @@
 import type { IFirebasePushPayload } from '@common/firebase/interfaces/firebase.interface';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
-import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import {
     EnumNotificationPushProcess,
@@ -25,27 +23,18 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { UnrecoverableError } from 'bullmq';
-import { ConfigService } from '@nestjs/config';
 
 /** Renders and delivers the workspace invite and join-request push messages. */
 @Injectable()
 export class NotificationPushWorkspaceDomain {
-    private readonly encryptionSecretKey: string;
-
     constructor(
         private readonly firebaseService: FirebaseService,
         private readonly notificationRepository: NotificationRepository,
         private readonly messageService: MessageService,
         private readonly notificationPushQueue: NotificationPushQueue,
         private readonly notificationUtil: NotificationUtil,
-        private readonly helperDateService: HelperDateService,
-        private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly configService: ConfigService
-    ) {
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
-    }
+        private readonly helperDateService: HelperDateService
+    ) {}
 
     private throwDeliveryNotFound(process: EnumNotificationPushProcess): never {
         const message = this.messageService.setMessage(
@@ -89,15 +78,6 @@ export class NotificationPushWorkspaceDomain {
         }
     }
 
-    private decryptToken(encryptedToken: string, userId: string): string {
-        return this.helperEncryptionService.aes256Decrypt(
-            encryptedToken,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
-            userId
-        );
-    }
-
     private async sendMulticastStep(
         userId: string,
         encryptedNotificationTokens: string[],
@@ -108,7 +88,10 @@ export class NotificationPushWorkspaceDomain {
         const pairs = (
             encryptedPendingTokens ?? encryptedNotificationTokens
         ).map(encrypted => {
-            const token = this.decryptToken(encrypted, userId);
+            const token = this.notificationUtil.decryptPayload(
+                encrypted,
+                userId
+            );
 
             return { encrypted, token };
         });
@@ -241,7 +224,7 @@ export class NotificationPushWorkspaceDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -265,21 +248,9 @@ export class NotificationPushWorkspaceDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.workspaceInvite'
@@ -387,7 +358,7 @@ export class NotificationPushWorkspaceDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -411,21 +382,9 @@ export class NotificationPushWorkspaceDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.workspaceJoinRequest'
@@ -532,7 +491,7 @@ export class NotificationPushWorkspaceDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -556,21 +515,9 @@ export class NotificationPushWorkspaceDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.workspaceJoinAccepted'
@@ -681,7 +628,7 @@ export class NotificationPushWorkspaceDomain {
 
         const recordedTokens = tokens ?? [];
         const plainFailureTokens = recordedTokens.map(encrypted =>
-            this.decryptToken(encrypted, userId)
+            this.notificationUtil.decryptPayload(encrypted, userId)
         );
         const steps: EnumNotificationStep[] = [];
         const promises: Promise<void>[] = [];
@@ -705,21 +652,9 @@ export class NotificationPushWorkspaceDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.push.workspaceJoinRejected'

@@ -1,3 +1,4 @@
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import type { IAnalyticForgotPasswordConversion } from '@modules/analytic/interfaces/analytic.interface';
 import type { IUserForgotPasswordAnalyticUserCount } from '@modules/user/interfaces/user.interface';
 import { UserForgotPasswordAnalyticRepository } from '@modules/user/repositories/user.forgot-password.analytic.repository';
@@ -6,7 +7,8 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class UserForgotPasswordAnalyticDomain {
     constructor(
-        private readonly userForgotPasswordAnalyticRepository: UserForgotPasswordAnalyticRepository
+        private readonly userForgotPasswordAnalyticRepository: UserForgotPasswordAnalyticRepository,
+        private readonly helperNumberService: HelperNumberService
     ) {}
 
     async getConversion(
@@ -23,11 +25,8 @@ export class UserForgotPasswordAnalyticDomain {
                 endDate
             ),
         ]);
-        return {
-            created,
-            used,
-            rate: created === 0 ? 0 : (used / created) * 100,
-        };
+        const rate = this.helperNumberService.percent(used, created);
+        return { created, used, rate };
     }
 
     getUnusedTokenCountsByUser(

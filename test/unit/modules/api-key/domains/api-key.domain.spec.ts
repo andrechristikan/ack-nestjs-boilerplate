@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -12,13 +11,8 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumApiKeyType,
-} from '@generated/prisma-client/client';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey, Prisma } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
@@ -39,9 +33,6 @@ describe('ApiKeyDomain', () => {
     const apiKeyCache: MockProxy<ApiKeyCache> = mock<ApiKeyCache>();
     const apiKeyRepository: MockProxy<ApiKeyRepository> =
         mock<ApiKeyRepository>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const now = new Date('2026-01-15T00:00:00.000Z');
     const apiKey: ApiKey = {
@@ -58,20 +49,13 @@ describe('ApiKeyDomain', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminApiKeyCreate,
-        metadata: { apiKeyId: apiKey.id },
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
 
     let domain: ApiKeyDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
-        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
+        apiKeyUtil.isActive.mockImplementation(key => key.isActive);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -84,8 +68,6 @@ describe('ApiKeyDomain', () => {
                 },
                 { provide: ApiKeyCache, useValue: apiKeyCache },
                 { provide: ApiKeyRepository, useValue: apiKeyRepository },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
@@ -168,12 +150,11 @@ describe('ApiKeyDomain', () => {
                 secret: 'plain-secret',
                 hash: 'hashed-secret',
             });
-            databaseUtil.createId.mockReturnValue('api-key-1');
             apiKeyRepository.create.mockResolvedValue(apiKey);
         });
 
-        it('creates the api key with no date window and stages the create activity log', async () => {
-            const result = await domain.createByAdmin(create);
+        it('creates the api key under the given id with no date window', async () => {
+            const result = await domain.createByAdmin('api-key-1', create);
 
             expect(result).toEqual({ apiKey, secret: 'plain-secret' });
             expect(apiKeyRepository.create).toHaveBeenCalledWith(
@@ -187,9 +168,6 @@ describe('ApiKeyDomain', () => {
                 'local_abc123',
                 'hashed-secret'
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
 
         it('validates a future startAt and normalizes the date window when both dates are given', async () => {
@@ -210,7 +188,11 @@ describe('ApiKeyDomain', () => {
                 return date;
             });
 
-            await domain.createByAdmin({ ...create, startAt, endAt });
+            await domain.createByAdmin('api-key-1', {
+                ...create,
+                startAt,
+                endAt,
+            });
 
             expect(apiKeyRepository.create).toHaveBeenCalledWith(
                 'api-key-1',
@@ -223,16 +205,13 @@ describe('ApiKeyDomain', () => {
                 'local_abc123',
                 'hashed-secret'
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
 
         it('throws ApiKeyStartAtNotFutureException when startAt is not in the future', async () => {
             const startAt = new Date('2025-01-01T00:00:00.000Z');
 
             await expect(
-                domain.createByAdmin({ ...create, startAt })
+                domain.createByAdmin('api-key-1', { ...create, startAt })
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
@@ -287,7 +266,7 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('updates the status, stages the activity log, and purges the cache', async () => {
+        it('updates the status and purges the cache', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
             apiKeyUtil.isExpired.mockReturnValue(false);
             const updated: ApiKey = { ...apiKey, isActive: false };
@@ -300,9 +279,6 @@ describe('ApiKeyDomain', () => {
                 apiKey.id,
                 { isActive: false }
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
         });
     });
@@ -330,7 +306,6 @@ describe('ApiKeyDomain', () => {
                 ...apiKey,
                 isActive: false,
             });
-            apiKeyUtil.isActive.mockReturnValue(false);
 
             await expect(
                 domain.updateByAdmin(apiKey.id, 'New Name')
@@ -346,19 +321,13 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('renames the api key, stages the activity log in order, and purges the cache when a name is given', async () => {
+        it('renames the api key and purges the cache after the write', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyUtil.isActive.mockReturnValue(true);
-            const metadata = { apiKeyId: apiKey.id };
-            apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
             const renamed: ApiKey = { ...apiKey, name: 'New Name' };
             const callOrder: string[] = [];
             apiKeyRepository.updateName.mockImplementation(async () => {
                 callOrder.push('updateName');
                 return renamed;
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
             });
             apiKeyCache.deleteApiKey.mockImplementation(async () => {
                 callOrder.push('deleteApiKey');
@@ -367,27 +336,12 @@ describe('ApiKeyDomain', () => {
             const result = await domain.updateByAdmin(apiKey.id, 'New Name');
 
             expect(result).toBe(renamed);
-            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                { id: apiKey.id, type: apiKey.type, name: 'New Name' },
-                now
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminApiKeyUpdate,
-                metadata,
-            });
             expect(apiKeyRepository.updateName).toHaveBeenCalledWith(
                 apiKey.id,
                 'New Name'
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
-            expect(callOrder).toEqual([
-                'updateName',
-                'stagePrepared',
-                'deleteApiKey',
-            ]);
+            expect(callOrder).toEqual(['updateName', 'deleteApiKey']);
         });
     });
 
@@ -430,8 +384,10 @@ describe('ApiKeyDomain', () => {
         });
 
         it('throws ApiKeyInactiveException when the api key is inactive', async () => {
-            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyUtil.isActive.mockReturnValue(false);
+            apiKeyRepository.findOneById.mockResolvedValue({
+                ...apiKey,
+                isActive: false,
+            });
 
             await expect(
                 domain.updateDatesByAdmin(apiKey.id, startAt, endAt)
@@ -447,11 +403,10 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('normalizes and updates the date window, stages the activity log in order, and purges the cache', async () => {
+        it('normalizes and updates the date window and purges the cache after the write', async () => {
             const startAtDay = new Date('2026-02-01T00:00:00.000Z');
             const endAtDay = new Date('2026-03-01T23:59:59.999Z');
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyUtil.isActive.mockReturnValue(true);
             helperDateService.create.mockImplementation((date, options) => {
                 if (!date) {
                     return now;
@@ -464,8 +419,6 @@ describe('ApiKeyDomain', () => {
                 }
                 return date;
             });
-            const metadata = { apiKeyId: apiKey.id };
-            apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
             const updated: ApiKey = {
                 ...apiKey,
                 startAt: startAtDay,
@@ -475,9 +428,6 @@ describe('ApiKeyDomain', () => {
             apiKeyRepository.updateDates.mockImplementation(async () => {
                 callOrder.push('updateDates');
                 return updated;
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
             });
             apiKeyCache.deleteApiKey.mockImplementation(async () => {
                 callOrder.push('deleteApiKey');
@@ -494,23 +444,8 @@ describe('ApiKeyDomain', () => {
                 apiKey.id,
                 { startAt: startAtDay, endAt: endAtDay }
             );
-            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                apiKey,
-                now
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminApiKeyUpdateDate,
-                metadata,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
-            expect(callOrder).toEqual([
-                'updateDates',
-                'stagePrepared',
-                'deleteApiKey',
-            ]);
+            expect(callOrder).toEqual(['updateDates', 'deleteApiKey']);
         });
     });
 
@@ -531,8 +466,10 @@ describe('ApiKeyDomain', () => {
         });
 
         it('throws ApiKeyInactiveException when the api key is inactive', async () => {
-            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyUtil.isActive.mockReturnValue(false);
+            apiKeyRepository.findOneById.mockResolvedValue({
+                ...apiKey,
+                isActive: false,
+            });
 
             await expect(domain.resetByAdmin(apiKey.id)).rejects.toMatchObject({
                 module: 'apiKey',
@@ -546,21 +483,15 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('creates a new secret, updates the hash, stages the activity log in order, and purges the cache', async () => {
+        it('creates a new secret, updates the hash, and purges the cache after the write', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyUtil.isActive.mockReturnValue(true);
             apiKeyCredentialUtil.createSecret.mockReturnValue('new-secret');
             apiKeyCredentialUtil.createHash.mockReturnValue('new-hash');
-            const metadata = { apiKeyId: apiKey.id };
-            apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
             const updated: ApiKey = { ...apiKey, hash: 'new-hash' };
             const callOrder: string[] = [];
             apiKeyRepository.updateHash.mockImplementation(async () => {
                 callOrder.push('updateHash');
                 return updated;
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
             });
             apiKeyCache.deleteApiKey.mockImplementation(async () => {
                 callOrder.push('deleteApiKey');
@@ -577,23 +508,8 @@ describe('ApiKeyDomain', () => {
                 apiKey.id,
                 'new-hash'
             );
-            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                apiKey,
-                now
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminApiKeyReset,
-                metadata,
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
-            expect(callOrder).toEqual([
-                'updateHash',
-                'stagePrepared',
-                'deleteApiKey',
-            ]);
+            expect(callOrder).toEqual(['updateHash', 'deleteApiKey']);
         });
     });
 
@@ -615,7 +531,7 @@ describe('ApiKeyDomain', () => {
             );
         });
 
-        it('deletes the api key, stages the activity log, and purges the cache', async () => {
+        it('deletes the api key and purges the cache', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
             apiKeyRepository.delete.mockResolvedValue(apiKey);
 
@@ -623,14 +539,18 @@ describe('ApiKeyDomain', () => {
 
             expect(result).toBe(apiKey);
             expect(apiKeyRepository.delete).toHaveBeenCalledWith(apiKey.id);
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
         });
     });
 
     describe('validateXApiKey', () => {
+        beforeEach(() => {
+            apiKeyCredentialUtil.parseHeader.mockReturnValue({
+                key: 'local_abc123',
+                secret: 'secret-1',
+            });
+        });
+
         it('throws ApiKeyXApiKeyRequiredException when the header is null', async () => {
             await expect(domain.validateXApiKey(null)).rejects.toMatchObject({
                 module: 'apiKey',
@@ -657,24 +577,11 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('throws ApiKeyXApiKeyInvalidException when the header has no colon separator', async () => {
-            await expect(
-                domain.validateXApiKey('local_abc123')
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.invalid',
-            });
-        });
+        it('throws ApiKeyXApiKeyInvalidException when the header does not parse', async () => {
+            apiKeyCredentialUtil.parseHeader.mockReturnValue(null);
 
-        it('throws ApiKeyXApiKeyInvalidException when the header has more than one colon separator', async () => {
             await expect(
-                domain.validateXApiKey('local_abc123:secret:extra')
+                domain.validateXApiKey('  local_abc123  ')
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
@@ -685,36 +592,10 @@ describe('ApiKeyDomain', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
                 messagePath: 'apiKey.error.xApiKey.invalid',
             });
-        });
-
-        it('throws ApiKeyXApiKeyInvalidException when the key half is blank', async () => {
-            await expect(
-                domain.validateXApiKey(' :secret')
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.invalid',
-            });
-        });
-
-        it('throws ApiKeyXApiKeyInvalidException when the secret half is blank', async () => {
-            await expect(
-                domain.validateXApiKey('local_abc123: ')
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.invalid',
-            });
+            expect(apiKeyCredentialUtil.parseHeader).toHaveBeenCalledWith(
+                'local_abc123'
+            );
+            expect(apiKeyCache.getApiKey).not.toHaveBeenCalled();
         });
 
         it('throws ApiKeyXApiKeyInvalidException when no api key matches the key half', async () => {
@@ -755,9 +636,11 @@ describe('ApiKeyDomain', () => {
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the key is inactive', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
+            apiKeyCache.getApiKey.mockResolvedValue({
+                ...apiKey,
+                isActive: false,
+            });
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isActive.mockReturnValue(false);
 
             await expect(
                 domain.validateXApiKey('local_abc123:secret-1')
@@ -769,7 +652,6 @@ describe('ApiKeyDomain', () => {
         it('throws ApiKeyXApiKeyInvalidException when the key is not yet active', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isActive.mockReturnValue(true);
             apiKeyUtil.isNotYetActive.mockReturnValue(true);
 
             await expect(
@@ -787,7 +669,6 @@ describe('ApiKeyDomain', () => {
             };
             apiKeyCache.getApiKey.mockResolvedValue(expiredApiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isActive.mockReturnValue(true);
             apiKeyUtil.isNotYetActive.mockReturnValue(false);
             apiKeyUtil.isExpired.mockReturnValue(true);
 
@@ -819,7 +700,6 @@ describe('ApiKeyDomain', () => {
             apiKeyCache.getApiKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(expiredApiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isActive.mockReturnValue(true);
             apiKeyUtil.isNotYetActive.mockReturnValue(false);
             apiKeyUtil.isExpired.mockReturnValue(true);
 
@@ -834,7 +714,6 @@ describe('ApiKeyDomain', () => {
         it('returns the cached api key without reading the repository on a cache hit', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isActive.mockReturnValue(true);
             apiKeyUtil.isNotYetActive.mockReturnValue(false);
             apiKeyUtil.isExpired.mockReturnValue(false);
 
@@ -854,7 +733,6 @@ describe('ApiKeyDomain', () => {
             apiKeyCache.getApiKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isActive.mockReturnValue(true);
             apiKeyUtil.isNotYetActive.mockReturnValue(false);
             apiKeyUtil.isExpired.mockReturnValue(false);
 
@@ -932,13 +810,12 @@ describe('ApiKeyDomain', () => {
         });
 
         it('throws ApiKeyInactiveException when includeActive is true and the api key is inactive', () => {
-            apiKeyUtil.isActive.mockReturnValue(false);
             const validateApiKey: ValidateApiKey =
                 domain['validateApiKey'].bind(domain);
 
             let thrown: unknown;
             try {
-                validateApiKey(apiKey, true);
+                validateApiKey({ ...apiKey, isActive: false }, true);
             } catch (error) {
                 thrown = error;
             }
@@ -962,7 +839,6 @@ describe('ApiKeyDomain', () => {
         });
 
         it('returns with no throw when includeActive is true and the api key is active', () => {
-            apiKeyUtil.isActive.mockReturnValue(true);
             const validateApiKey: ValidateApiKey =
                 domain['validateApiKey'].bind(domain);
 
@@ -997,29 +873,6 @@ describe('ApiKeyDomain', () => {
             expect(() =>
                 domain['validateStartAtIsFuture'](future)
             ).not.toThrow();
-        });
-    });
-
-    describe('prepareActivityLog', () => {
-        it('maps the metadata and prepares the activity log', () => {
-            const metadata = { apiKeyId: apiKey.id };
-            apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
-
-            const result = domain['prepareActivityLog'](
-                EnumActivityLogAction.adminApiKeyCreate,
-                apiKey,
-                now
-            );
-
-            expect(result).toBe(stagedActivityLog);
-            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                apiKey,
-                now
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminApiKeyCreate,
-                metadata,
-            });
         });
     });
 });

@@ -1,10 +1,12 @@
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import type {
+    IAnalyticTermPolicyAcceptanceCounts,
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { TermPolicyAnalyticDomain } from '@modules/term-policy/domains/term-policy.analytic.domain';
 import { TermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/repositories/term-policy.acceptance.analytic.repository';
-import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
+import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -12,28 +14,31 @@ export class TermPolicyAcceptanceAnalyticDomain {
     constructor(
         private readonly termPolicyAcceptanceAnalyticRepository: TermPolicyAcceptanceAnalyticRepository,
         private readonly termPolicyAnalyticDomain: TermPolicyAnalyticDomain,
-        private readonly userAnalyticDomain: UserAnalyticDomain
+        private readonly termPolicyUtil: TermPolicyUtil,
+        private readonly helperNumberService: HelperNumberService
     ) {}
 
-    async getAcceptanceRate(
+    async getAcceptanceCounts(
         startDate: Date | null,
         endDate: Date | null
-    ): Promise<IAnalyticTermPolicyAcceptanceRate> {
-        const [acceptances, users, published] = await Promise.all([
+    ): Promise<IAnalyticTermPolicyAcceptanceCounts> {
+        const [acceptances, published] = await Promise.all([
             this.termPolicyAcceptanceAnalyticRepository.countAcceptances(
                 startDate,
                 endDate
             ),
-            this.userAnalyticDomain.getCountActive(),
             this.termPolicyAnalyticDomain.getCountPublished(),
         ]);
-        const expected = users * published;
-        return {
-            acceptances,
-            users,
-            published,
-            rate: expected === 0 ? 0 : (acceptances / expected) * 100,
-        };
+        return { acceptances, published };
+    }
+
+    mapAcceptanceRate(
+        { acceptances, published }: IAnalyticTermPolicyAcceptanceCounts,
+        activeUserCount: number
+    ): IAnalyticTermPolicyAcceptanceRate {
+        const expected = activeUserCount * published;
+        const rate = this.helperNumberService.percent(acceptances, expected);
+        return { acceptances, users: activeUserCount, published, rate };
     }
 
     async getTimeToAccept(
@@ -45,15 +50,7 @@ export class TermPolicyAcceptanceAnalyticDomain {
                 startDate,
                 endDate
             );
-        const deltas = rows.flatMap(row =>
-            row.publishedAt === null
-                ? []
-                : [row.acceptedAt.getTime() - row.publishedAt.getTime()]
-        );
-        if (deltas.length === 0) {
-            return { count: 0, averageMs: 0 };
-        }
-        const averageMs = deltas.reduce((s, d) => s + d, 0) / deltas.length;
-        return { count: deltas.length, averageMs };
+
+        return this.termPolicyUtil.averageAcceptanceMs(rows);
     }
 }

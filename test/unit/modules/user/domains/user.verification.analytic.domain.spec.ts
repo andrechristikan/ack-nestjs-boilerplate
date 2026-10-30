@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { EnumVerificationType } from '@generated/prisma-client/client';
 import { UserVerificationAnalyticDomain } from '@modules/user/domains/user.verification.analytic.domain';
 import { UserVerificationAnalyticRepository } from '@modules/user/repositories/user.verification.analytic.repository';
@@ -9,6 +10,8 @@ import { UserVerificationAnalyticRepository } from '@modules/user/repositories/u
 describe('UserVerificationAnalyticDomain', () => {
     const userVerificationAnalyticRepository: MockProxy<UserVerificationAnalyticRepository> =
         mock<UserVerificationAnalyticRepository>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
 
     let domain: UserVerificationAnalyticDomain;
 
@@ -25,6 +28,7 @@ describe('UserVerificationAnalyticDomain', () => {
                     provide: UserVerificationAnalyticRepository,
                     useValue: userVerificationAnalyticRepository,
                 },
+                { provide: HelperNumberService, useValue: helperNumberService },
             ],
         }).compile();
         domain = module.get(UserVerificationAnalyticDomain);
@@ -36,6 +40,7 @@ describe('UserVerificationAnalyticDomain', () => {
                 { isUsed: true, count: 3 },
                 { isUsed: false, count: 7 },
             ]);
+            helperNumberService.percent.mockReturnValue(30);
 
             await expect(
                 domain.getFunnel(EnumVerificationType.email, startDate, endDate)
@@ -52,12 +57,14 @@ describe('UserVerificationAnalyticDomain', () => {
                 startDate,
                 endDate
             );
+            expect(helperNumberService.percent).toHaveBeenCalledWith(3, 10);
         });
 
         it('defaults used and unused to zero when their bucket is absent', async () => {
             userVerificationAnalyticRepository.groupByUsed.mockResolvedValue(
                 []
             );
+            helperNumberService.percent.mockReturnValue(0);
 
             await expect(
                 domain.getFunnel(EnumVerificationType.mobileNumber, null, null)

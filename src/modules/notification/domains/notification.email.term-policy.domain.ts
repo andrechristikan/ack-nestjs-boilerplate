@@ -2,11 +2,8 @@ import { BulkEmailStatus } from '@aws-sdk/client-ses';
 import type { BulkEmailDestinationStatus } from '@aws-sdk/client-ses';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IAwsSESSendBulkRecipient } from '@common/aws/interfaces/aws.ses.interface';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import type {
@@ -15,6 +12,7 @@ import type {
     INotificationTermPolicyBatchRecipientEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QueueException } from '@queues/exceptions/queue.exception';
@@ -31,15 +29,13 @@ export class NotificationEmailTermPolicyDomain {
 
     private readonly defaultTemplateData: Record<string, string>;
 
-    private readonly encryptionSecretKey: string;
-
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly notificationRepository: NotificationRepository,
         private readonly helperDateService: HelperDateService,
-        private readonly helperEncryptionService: HelperEncryptionService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly notificationUtil: NotificationUtil,
         private readonly messageService: MessageService
     ) {
         // AppEnvSchema requires both addresses once AWS SES credentials are set, and
@@ -49,30 +45,12 @@ export class NotificationEmailTermPolicyDomain {
 
         this.homeName = this.configService.get<string>('home.name')!;
         this.homeUrl = this.configService.get<string>('home.url')!;
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
             supportEmail: this.supportEmail,
             homeUrl: this.homeUrl,
         };
-    }
-
-    private toBulkDestination({
-        userId,
-        encryptedEmail,
-        username,
-    }: INotificationTermPolicyBatchRecipientEncryptedPayload): IAwsSESSendBulkRecipient {
-        const recipient = this.helperEncryptionService.aes256Decrypt(
-            encryptedEmail,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
-            userId
-        );
-
-        return { recipient, templateData: { username } };
     }
 
     private async markSent(
@@ -132,7 +110,7 @@ export class NotificationEmailTermPolicyDomain {
         const destinations = new Map(
             batchRecipients.map(recipient => [
                 recipient.userId,
-                this.toBulkDestination(recipient),
+                this.notificationUtil.toBulkDestination(recipient),
             ])
         );
 

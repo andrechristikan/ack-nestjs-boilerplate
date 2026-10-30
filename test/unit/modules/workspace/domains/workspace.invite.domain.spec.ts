@@ -1,59 +1,31 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { Duration } from 'luxon';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumProjectMemberRole,
-    EnumUserGender,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type {
+    Prisma,
     Project,
-    User,
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationRecipientDomain } from '@modules/notification/domains/notification.recipient.domain';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
-import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import type {
-    IUserSignUpWorkspaceInvite,
-    IUserSignUpWorkspacePersonal,
-} from '@modules/user/interfaces/user.interface';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
-import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
@@ -63,61 +35,25 @@ import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exce
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
 import type {
     IWorkspaceInviteCreate,
-    IWorkspaceInviteInviter,
+    IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
-import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 
 describe('WorkspaceInviteDomain', () => {
     const workspaceInviteRepository: MockProxy<WorkspaceInviteRepository> =
         mock<WorkspaceInviteRepository>();
-    const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
-        mock<WorkspaceMemberRepository>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
         mock<WorkspaceMemberDomain>();
-    const projectDomain: MockProxy<ProjectDomain> = mock<ProjectDomain>();
-    const projectMemberDomain: MockProxy<ProjectMemberDomain> =
-        mock<ProjectMemberDomain>();
-    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
-        mock<UserOnboardingDomain>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationRecipientDomain: MockProxy<NotificationRecipientDomain> =
-        mock<NotificationRecipientDomain>();
-    const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
-        mock<NotificationEmailQueue>();
-    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
-        mock<FeatureFlagDomain>();
-
-    const configValues: Record<string, unknown> = {
-        'home.url': 'https://app.example.com',
-        'workspace.invite.expiredInDays': 7,
-        'workspace.invite.tokenLength': 40,
-        'workspace.invite.referencePrefix': 'WIN',
-        'workspace.invite.referenceRandomLength': 6,
-        'workspace.invite.linkPattern':
-            '{homeUrl}/workspace/invites?inviteToken={token}',
-        'workspace.invite.signUpLinkPattern': '{homeUrl}/sign-up/{token}',
-    };
 
     const workspace: Workspace = {
         id: 'workspace-1',
@@ -153,39 +89,6 @@ describe('WorkspaceInviteDomain', () => {
         acceptedByUserId: null,
     };
 
-    const baseUser: User = {
-        id: 'user-2',
-        name: 'Jane Doe',
-        username: 'jane',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'jane@example.com',
-        roleId: 'role-1',
-        password: null,
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.female,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-    };
-
     const baseProject: Project = {
         id: 'project-1',
         workspaceId: 'workspace-1',
@@ -200,11 +103,28 @@ describe('WorkspaceInviteDomain', () => {
         deletedBy: null,
     };
 
+    const tokenData: IWorkspaceInviteTokenData = {
+        token: 'token-value',
+        hashedToken: 'hashed-token',
+        reference: 'WIN-abc123',
+        expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+        claimLink:
+            'https://app.example.com/workspace/invites?inviteToken=token-value',
+        signUpLink: 'https://app.example.com/sign-up/token-value',
+    };
+
+    const baseCreate: IWorkspaceInviteCreate = {
+        email: 'invitee@example.com' as Lowercase<string>,
+        workspaceRole: EnumWorkspaceMemberRole.member,
+        projectId: null,
+        projectRole: null,
+        expiryDuration: null,
+    };
+
     let domain: WorkspaceInviteDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => configValues[key]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -213,42 +133,15 @@ describe('WorkspaceInviteDomain', () => {
                     provide: WorkspaceInviteRepository,
                     useValue: workspaceInviteRepository,
                 },
-                {
-                    provide: WorkspaceMemberRepository,
-                    useValue: workspaceMemberRepository,
-                },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
                 {
                     provide: WorkspaceMemberDomain,
                     useValue: workspaceMemberDomain,
                 },
-                { provide: ProjectDomain, useValue: projectDomain },
-                { provide: ProjectMemberDomain, useValue: projectMemberDomain },
-                { provide: UserDomain, useValue: userDomain },
-                {
-                    provide: UserOnboardingDomain,
-                    useValue: userOnboardingDomain,
-                },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
                 { provide: HelperHashService, useValue: helperHashService },
-                { provide: ConfigService, useValue: configService },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: NotificationRecipientDomain,
-                    useValue: notificationRecipientDomain,
-                },
-                {
-                    provide: NotificationEmailQueue,
-                    useValue: notificationEmailQueue,
-                },
-                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
             ],
         }).compile();
 
@@ -280,48 +173,21 @@ describe('WorkspaceInviteDomain', () => {
         });
 
         it('returns the pending invite matching the token', async () => {
-            const invite = baseInvite;
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                invite
+                baseInvite
             );
 
             const result = await domain.validateInviteToken('raw-token');
 
-            expect(result).toBe(invite);
+            expect(result).toBe(baseInvite);
             expect(
                 workspaceInviteRepository.findPendingByHashedToken
             ).toHaveBeenCalledWith('hashed-token');
         });
     });
 
-    describe('resolveForSignUp', () => {
-        it('builds a personal workspace context when no invite token is given', async () => {
-            const personalContext: IUserSignUpWorkspacePersonal = {
-                type: EnumUserSignUpWorkspaceContextType.personal,
-                workspaceId: 'workspace-1',
-                slugCandidates: ['user-a'],
-                name: 'User One',
-            };
-            userOnboardingDomain.buildPersonalWorkspaceContexts.mockReturnValue(
-                [personalContext]
-            );
-
-            const result = await domain.resolveForSignUp(
-                null,
-                'user@example.com',
-                'alice'
-            );
-
-            expect(result).toBe(personalContext);
-            expect(
-                userOnboardingDomain.buildPersonalWorkspaceContexts
-            ).toHaveBeenCalledWith(['alice']);
-            expect(
-                featureFlagDomain.validateFeatureFlagMetadata
-            ).not.toHaveBeenCalled();
-        });
-
+    describe('validateInviteForEmail', () => {
         it('throws WorkspaceInviteInvalidException when no pending invite matches the token', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
@@ -329,94 +195,50 @@ describe('WorkspaceInviteDomain', () => {
             );
 
             await expect(
-                domain.resolveForSignUp(
-                    'raw-token',
-                    'user@example.com',
-                    'alice'
-                )
+                domain.validateInviteForEmail('raw-token', 'user@example.com')
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteInvalidException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
                 messagePath: 'workspace.error.inviteInvalid',
             });
-            expect(
-                featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            expect(workspaceUtil.isInviteEmailMatch).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceInviteInvalidException when the invite email does not match, case-insensitively', async () => {
+        it('throws WorkspaceInviteInvalidException when the util reports the invite email as a mismatch', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 { ...baseInvite, email: 'other@example.com' }
             );
+            workspaceUtil.isInviteEmailMatch.mockReturnValue(false);
 
             await expect(
-                domain.resolveForSignUp(
-                    'raw-token',
-                    'USER@example.com',
-                    'alice'
-                )
+                domain.validateInviteForEmail('raw-token', 'USER@example.com')
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteInvalidException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
                 messagePath: 'workspace.error.inviteInvalid',
             });
+            expect(workspaceUtil.isInviteEmailMatch).toHaveBeenCalledWith(
+                'other@example.com',
+                'USER@example.com'
+            );
         });
 
-        it('returns the invite workspace context with project fields defaulted to null', async () => {
+        it('returns the pending invite when its email matches', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                { ...baseInvite, email: 'USER@example.com' }
+                baseInvite
             );
+            workspaceUtil.isInviteEmailMatch.mockReturnValue(true);
 
-            const result = await domain.resolveForSignUp(
+            const result = await domain.validateInviteForEmail(
                 'raw-token',
-                'user@example.com',
-                'alice'
+                'invitee@example.com'
             );
 
-            expect(result).toEqual({
-                type: EnumUserSignUpWorkspaceContextType.invite,
-                workspaceId: 'workspace-1',
-                workspaceInviteId: 'invite-1',
-                invitedByUserId: 'user-1',
-                workspaceMemberRole: EnumWorkspaceMemberRole.member,
-                projectId: null,
-                projectMemberRole: null,
-            });
-        });
-
-        it('returns the invite workspace context with project fields present', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                {
-                    ...baseInvite,
-                    email: 'user@example.com',
-                    projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
-                }
-            );
-
-            const result = await domain.resolveForSignUp(
-                'raw-token',
-                'user@example.com',
-                'alice'
-            );
-
-            expect(result).toMatchObject({
-                projectId: 'project-1',
-                projectMemberRole: EnumProjectMemberRole.member,
-            });
+            expect(result).toBe(baseInvite);
         });
     });
 
@@ -430,16 +252,29 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
+    describe('expirePendingByWorkspaceInTx', () => {
+        it('expires the pending invites of the workspace on the given transaction', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+
+            await domain.expirePendingByWorkspaceInTx(tx, 'workspace-1');
+
+            expect(
+                workspaceInviteRepository.expirePendingByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1');
+        });
+    });
+
     describe('getInvitesList', () => {
-        it('validates the invitation feature-flag then delegates to the repository', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
-                { limit: 20, orderBy: [] };
-            const page: IResponsePaginationReturn<never> = {
-                type: EnumPaginationType.cursor,
-                perPage: 20,
-                hasNext: false,
-                data: [],
-            };
+        const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
+            { limit: 20, orderBy: [] };
+        const page: IResponsePaginationReturn<never> = {
+            type: EnumPaginationType.cursor,
+            perPage: 20,
+            hasNext: false,
+            data: [],
+        };
+
+        it('delegates to the repository with a null status filter', async () => {
             workspaceInviteRepository.findWithPaginationCursor.mockResolvedValue(
                 page
             );
@@ -451,22 +286,11 @@ describe('WorkspaceInviteDomain', () => {
 
             expect(result).toBe(page);
             expect(
-                featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
-            expect(
                 workspaceInviteRepository.findWithPaginationCursor
             ).toHaveBeenCalledWith('workspace-1', pagination, null);
         });
 
         it('forwards the status filter to the repository', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
-                { limit: 20, orderBy: [] };
-            const page: IResponsePaginationReturn<never> = {
-                type: EnumPaginationType.cursor,
-                perPage: 20,
-                hasNext: false,
-                data: [],
-            };
             const status = { status: { in: ['pending'] } };
             workspaceInviteRepository.findWithPaginationCursor.mockResolvedValue(
                 page
@@ -485,364 +309,171 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
-    describe('createInvite', () => {
-        const create: IWorkspaceInviteCreate = {
-            email: 'invitee@example.com' as Lowercase<string>,
-            workspaceRole: EnumWorkspaceMemberRole.member,
-            projectId: null,
-            projectRole: null,
-            expiryDuration: null,
-        };
-
-        beforeEach(() => {
-            helperStringService.random.mockReturnValue('random-value');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            helperDateService.forward.mockReturnValue(
-                new Date('2026-01-08T00:00:00.000Z')
-            );
-            helperStringService.fillPattern.mockReturnValue(
-                'https://app.example.com/workspace/invites?inviteToken=random-value'
-            );
-            databaseUtil.createId.mockReturnValue('invite-1');
-            workspaceInviteRepository.existsPendingByWorkspaceAndEmail.mockResolvedValue(
-                false
-            );
-            userDomain.getOneActiveByEmail.mockResolvedValue(null);
-            workspaceInviteRepository.createPending.mockResolvedValue(
-                baseInvite
-            );
-        });
-
-        it('throws WorkspaceInviteRoleRequiredException when only projectId is given', async () => {
-            await expect(
-                domain.createInvite(workspace, 'user-1', {
-                    ...create,
+    describe('assertProjectRolePaired', () => {
+        it('throws WorkspaceInviteRoleRequiredException when only projectId is given', () => {
+            expect(() =>
+                domain.assertProjectRolePaired({
+                    ...baseCreate,
                     projectId: 'project-1',
                 })
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteRoleRequiredException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteRoleRequired
-                    ],
-                messagePath: 'workspace.error.inviteRoleRequired',
-            });
+            ).toThrow(
+                expect.objectContaining({
+                    constructor: WorkspaceInviteRoleRequiredException,
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
+                    statusCodeKey:
+                        EnumWorkspaceStatusCodeError[
+                            EnumWorkspaceStatusCodeError.inviteRoleRequired
+                        ],
+                    messagePath: 'workspace.error.inviteRoleRequired',
+                })
+            );
         });
 
-        it('throws WorkspaceInviteRoleRequiredException when only projectRole is given', async () => {
-            await expect(
-                domain.createInvite(workspace, 'user-1', {
-                    ...create,
+        it('throws WorkspaceInviteRoleRequiredException when only projectRole is given', () => {
+            expect(() =>
+                domain.assertProjectRolePaired({
+                    ...baseCreate,
                     projectRole: EnumProjectMemberRole.member,
                 })
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteRoleRequiredException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteRoleRequired
-                    ],
-                messagePath: 'workspace.error.inviteRoleRequired',
-            });
+            ).toThrow(
+                expect.objectContaining({
+                    constructor: WorkspaceInviteRoleRequiredException,
+                })
+            );
         });
 
-        it('throws WorkspaceInviteProjectMismatchException when the project is not active in the workspace', async () => {
-            projectDomain.getActiveByIdAndWorkspace.mockResolvedValue(null);
-
-            await expect(
-                domain.createInvite(workspace, 'user-1', {
-                    ...create,
+        it('passes when both or neither are given', () => {
+            expect(() =>
+                domain.assertProjectRolePaired(baseCreate)
+            ).not.toThrow();
+            expect(() =>
+                domain.assertProjectRolePaired({
+                    ...baseCreate,
                     projectId: 'project-1',
                     projectRole: EnumProjectMemberRole.member,
                 })
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteProjectMismatchException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteProjectMismatch,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteProjectMismatch
-                    ],
-                messagePath: 'workspace.error.inviteProjectMismatch',
-            });
+            ).not.toThrow();
         });
+    });
 
-        it('throws WorkspaceInviteDuplicateException when a pending invite already exists', async () => {
+    describe('existsPendingByEmail', () => {
+        it('delegates the pending-invite existence read to the repository', async () => {
             workspaceInviteRepository.existsPendingByWorkspaceAndEmail.mockResolvedValue(
                 true
             );
 
             await expect(
-                domain.createInvite(workspace, 'user-1', create)
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteDuplicateException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteDuplicate
-                    ],
-                messagePath: 'workspace.error.inviteDuplicate',
-            });
-        });
-
-        it('creates the invite, stages the activity log in order, and emails the unregistered invitee when no user matches', async () => {
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-            const callOrder: string[] = [];
-            workspaceInviteRepository.createPending.mockImplementation(
-                async () => {
-                    callOrder.push('createPending');
-                    return baseInvite;
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            const invite = await domain.createInvite(
-                workspace,
-                'user-1',
-                create
-            );
-
-            expect(invite).toBe(baseInvite);
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { workspaceInviteId: 'invite-1' },
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
-            expect(callOrder).toEqual(['createPending', 'stagePrepared']);
+                domain.existsPendingByEmail(
+                    'workspace-1',
+                    'invitee@example.com'
+                )
+            ).resolves.toBe(true);
             expect(
-                workspaceInviteRepository.createPending
-            ).toHaveBeenCalledWith(
-                expect.objectContaining({ projectId: null, projectRole: null })
-            );
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                notificationQueue.sendWorkspaceInvite
-            ).not.toHaveBeenCalled();
-        });
-
-        it('creates the invite with two activity logs in order and notifies the existing user when it differs from the actor', async () => {
-            const existingUser = { ...baseUser, id: 'user-9' };
-            userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            notificationRecipientDomain.getRecipient.mockResolvedValue({
-                ...TestRecipient,
-                userId: existingUser.id,
-            });
-            const createdActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const createdByAdminActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(createdActivityLog)
-                .mockReturnValueOnce(createdByAdminActivityLog);
-            const callOrder: string[] = [];
-            workspaceInviteRepository.createPending.mockImplementation(
-                async () => {
-                    callOrder.push('createPending');
-                    return baseInvite;
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            await domain.createInvite(workspace, 'user-1', create);
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(2);
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: {
-                    workspaceInviteId: 'invite-1',
-                    targetUserId: 'user-9',
-                },
-            });
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
-                userId: 'user-9',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                createdActivityLog,
-                createdByAdminActivityLog,
-            ]);
-            expect(callOrder).toEqual(['createPending', 'stagePrepared']);
-            expect(notificationQueue.sendWorkspaceInvite).toHaveBeenCalledTimes(
-                1
-            );
-        });
-
-        it('creates the invite with a single activity log in order when the existing user is the actor', async () => {
-            const existingUser = { ...baseUser, id: 'user-1' };
-            userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-            const callOrder: string[] = [];
-            workspaceInviteRepository.createPending.mockImplementation(
-                async () => {
-                    callOrder.push('createPending');
-                    return baseInvite;
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            await domain.createInvite(workspace, 'user-1', create);
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: {
-                    workspaceInviteId: 'invite-1',
-                    targetUserId: 'user-1',
-                },
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
-            expect(callOrder).toEqual(['createPending', 'stagePrepared']);
-        });
-
-        it('creates nothing and stages nothing when the inviter name read rejects', async () => {
-            const error = new Error('inviter-unavailable');
-            userDomain.getNameById.mockRejectedValue(error);
-
-            const call = domain.createInvite(workspace, 'user-1', create);
-
-            await expect(call).rejects.toBe(error);
-            expect(
-                workspaceInviteRepository.createPending
-            ).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('creates nothing and stages nothing when the invitee recipient read rejects', async () => {
-            userDomain.getOneActiveByEmail.mockResolvedValue(baseUser);
-            userDomain.getNameById.mockResolvedValue(null);
-            const error = new Error('recipient-unavailable');
-            notificationRecipientDomain.getRecipient.mockRejectedValueOnce(
-                error
-            );
-
-            const call = domain.createInvite(workspace, 'user-1', create);
-
-            await expect(call).rejects.toBe(error);
-            expect(
-                workspaceInviteRepository.createPending
-            ).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('looks up the active project when a project id and role are given', async () => {
-            const project = baseProject;
-            projectDomain.getActiveByIdAndWorkspace.mockResolvedValue(project);
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-
-            await domain.createInvite(workspace, 'user-1', {
-                ...create,
-                projectId: 'project-1',
-                projectRole: EnumProjectMemberRole.member,
-            });
-
-            expect(
-                projectDomain.getActiveByIdAndWorkspace
-            ).toHaveBeenCalledWith('project-1', 'workspace-1');
-            expect(
-                workspaceInviteRepository.createPending
-            ).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
-                })
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
+                workspaceInviteRepository.existsPendingByWorkspaceAndEmail
+            ).toHaveBeenCalledWith('workspace-1', 'invitee@example.com');
         });
     });
 
-    describe('resendInvite', () => {
-        beforeEach(() => {
-            helperStringService.random.mockReturnValue('random-value');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
+    describe('assertCreatable', () => {
+        const pairedCreate = {
+            ...baseCreate,
+            projectId: 'project-1',
+            projectRole: EnumProjectMemberRole.member,
+        };
+
+        it('throws WorkspaceInviteProjectMismatchException when the project is not active in the workspace', () => {
+            expect(() =>
+                domain.assertCreatable(pairedCreate, null, true)
+            ).toThrow(
+                expect.objectContaining({
+                    constructor: WorkspaceInviteProjectMismatchException,
+                    module: 'workspace',
+                    statusCode:
+                        EnumWorkspaceStatusCodeError.inviteProjectMismatch,
+                    statusCodeKey:
+                        EnumWorkspaceStatusCodeError[
+                            EnumWorkspaceStatusCodeError.inviteProjectMismatch
+                        ],
+                    messagePath: 'workspace.error.inviteProjectMismatch',
+                })
             );
-            helperDateService.forward.mockReturnValue(
-                new Date('2026-01-08T00:00:00.000Z')
-            );
-            helperStringService.fillPattern.mockReturnValue(
-                'https://app.example.com/workspace/invites?inviteToken=random-value'
-            );
-            userDomain.getOneActiveByEmail.mockResolvedValue(null);
         });
 
+        it('throws WorkspaceInviteDuplicateException when a pending invite already exists', () => {
+            expect(() =>
+                domain.assertCreatable(baseCreate, null, true)
+            ).toThrow(
+                expect.objectContaining({
+                    constructor: WorkspaceInviteDuplicateException,
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
+                    statusCodeKey:
+                        EnumWorkspaceStatusCodeError[
+                            EnumWorkspaceStatusCodeError.inviteDuplicate
+                        ],
+                    messagePath: 'workspace.error.inviteDuplicate',
+                })
+            );
+        });
+
+        it('passes when no project is requested and no invite is pending', () => {
+            expect(() =>
+                domain.assertCreatable(baseCreate, null, false)
+            ).not.toThrow();
+        });
+
+        it('passes when the requested project is active in the workspace', () => {
+            expect(() =>
+                domain.assertCreatable(pairedCreate, baseProject, false)
+            ).not.toThrow();
+        });
+    });
+
+    describe('createInvite', () => {
+        it('creates the pending invite from the token data under a fresh id', async () => {
+            databaseUtil.createId.mockReturnValue('invite-new');
+            workspaceInviteRepository.createPending.mockResolvedValue(
+                baseInvite
+            );
+
+            const result = await domain.createInvite(
+                'workspace-1',
+                'user-1',
+                {
+                    ...baseCreate,
+                    projectId: 'project-1',
+                    projectRole: EnumProjectMemberRole.member,
+                },
+                tokenData
+            );
+
+            expect(result).toBe(baseInvite);
+            expect(
+                workspaceInviteRepository.createPending
+            ).toHaveBeenCalledWith({
+                workspaceInviteId: 'invite-new',
+                workspaceId: 'workspace-1',
+                email: 'invitee@example.com',
+                workspaceRole: EnumWorkspaceMemberRole.member,
+                projectId: 'project-1',
+                projectRole: EnumProjectMemberRole.member,
+                hashedToken: 'hashed-token',
+                reference: 'WIN-abc123',
+                expiredAt: tokenData.expiredAt,
+                invitedByUserId: 'user-1',
+            });
+        });
+    });
+
+    describe('getPendingById', () => {
         it('throws WorkspaceInviteNotFoundException when the invite does not exist', async () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 null
             );
 
             await expect(
-                domain.resendInvite(
-                    workspace,
-                    'user-1',
-                    'invite-1',
-                    EnumWorkspaceInviteExpiry.sevenDays
-                )
+                domain.getPendingById('invite-1', 'workspace-1')
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteNotFoundException,
                 module: 'workspace',
@@ -862,46 +493,66 @@ describe('WorkspaceInviteDomain', () => {
             });
 
             await expect(
-                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
+                domain.getPendingById('invite-1', 'workspace-1')
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteAlreadyProcessed
-                    ],
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
         });
 
-        it('throws WorkspaceInviteAlreadyProcessedException and notifies nothing when the guarded rotation misses', async () => {
+        it('returns the pending invite', async () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 baseInvite
             );
+
+            const result = await domain.getPendingById(
+                'invite-1',
+                'workspace-1'
+            );
+
+            expect(result).toBe(baseInvite);
+            expect(
+                workspaceInviteRepository.findByIdAndWorkspace
+            ).toHaveBeenCalledWith('invite-1', 'workspace-1');
+        });
+    });
+
+    describe('resendInvite', () => {
+        it('rotates the token and returns the rotated invite', async () => {
+            workspaceInviteRepository.rotateForResend.mockResolvedValue(
+                baseInvite
+            );
+
+            const result = await domain.resendInvite('invite-1', tokenData);
+
+            expect(result).toBe(baseInvite);
+            expect(
+                workspaceInviteRepository.rotateForResend
+            ).toHaveBeenCalledWith(
+                'invite-1',
+                'hashed-token',
+                'WIN-abc123',
+                tokenData.expiredAt
+            );
+        });
+
+        it('throws WorkspaceInviteAlreadyProcessedException when the guarded rotation misses', async () => {
             workspaceInviteRepository.rotateForResend.mockResolvedValue(null);
 
             await expect(
-                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
+                domain.resendInvite('invite-1', tokenData)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
+                module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict on the rotation to WorkspaceInviteAlreadyProcessedException', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                { code: 'P2034', clientVersion: 'test' }
-            );
+            const conflict = new Error('conflict');
             workspaceInviteRepository.rotateForResend.mockRejectedValue(
                 conflict
             );
@@ -910,488 +561,113 @@ describe('WorkspaceInviteDomain', () => {
             );
 
             await expect(
-                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
+                domain.resendInvite('invite-1', tokenData)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps another rotation failure in AppUnknownException', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
             const cause = new Error('db-down');
             workspaceInviteRepository.rotateForResend.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
+                domain.resendInvite('invite-1', tokenData)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
             });
-        });
-
-        it('rotates nothing when the invitee read rejects', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const error = new Error('invitee-unavailable');
-            userDomain.getOneActiveByEmail.mockRejectedValue(error);
-
-            const call = domain.resendInvite(
-                workspace,
-                'user-1',
-                'invite-1',
-                null
-            );
-
-            await expect(call).rejects.toBe(error);
-            expect(
-                workspaceInviteRepository.rotateForResend
-            ).not.toHaveBeenCalled();
-        });
-
-        it('rotates nothing when the inviter name read rejects', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const error = new Error('inviter-unavailable');
-            userDomain.getNameById.mockRejectedValue(error);
-
-            const call = domain.resendInvite(
-                workspace,
-                'user-1',
-                'invite-1',
-                null
-            );
-
-            await expect(call).rejects.toBe(error);
-            expect(
-                workspaceInviteRepository.rotateForResend
-            ).not.toHaveBeenCalled();
-        });
-
-        it('starts the inviter name read before the invitee lookup resolves', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const lookup = Promise.withResolvers<User | null>();
-            userDomain.getOneActiveByEmail.mockReturnValue(lookup.promise);
-            userDomain.getNameById.mockResolvedValue(null);
-            workspaceInviteRepository.rotateForResend.mockResolvedValue(
-                baseInvite
-            );
-
-            const pending = domain.resendInvite(
-                workspace,
-                'user-1',
-                'invite-1',
-                null
-            );
-
-            await new Promise(setImmediate);
-
-            expect(userDomain.getOneActiveByEmail).toHaveBeenCalledWith(
-                baseInvite.email
-            );
-            expect(userDomain.getNameById).toHaveBeenCalledWith('user-1');
-            expect(
-                workspaceInviteRepository.rotateForResend
-            ).not.toHaveBeenCalled();
-
-            lookup.resolve(null);
-            await pending;
-
-            expect(
-                workspaceInviteRepository.rotateForResend
-            ).toHaveBeenCalledTimes(1);
-        });
-
-        it('notifies the in-app recipient of an existing invitee', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const recipient: INotificationRecipient = {
-                ...TestRecipient,
-                userId: baseUser.id,
-            };
-            userDomain.getOneActiveByEmail.mockResolvedValue(baseUser);
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
-            );
-            workspaceInviteRepository.rotateForResend.mockResolvedValue(
-                baseInvite
-            );
-
-            await domain.resendInvite(workspace, 'user-1', 'invite-1', null);
-
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.workspaceInvite
-            );
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).not.toHaveBeenCalled();
-        });
-
-        it('rotates the token, notifies, and returns the rotated invite', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const rotated = { ...baseInvite, reference: 'WIN-xyz999' };
-            workspaceInviteRepository.rotateForResend.mockResolvedValue(
-                rotated
-            );
-
-            const result = await domain.resendInvite(
-                workspace,
-                'user-1',
-                'invite-1',
-                null
-            );
-
-            expect(result).toBe(rotated);
-            expect(
-                workspaceInviteRepository.rotateForResend
-            ).toHaveBeenCalledWith(
-                'invite-1',
-                'hashed-token',
-                expect.any(String),
-                new Date('2026-01-08T00:00:00.000Z')
-            );
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).toHaveBeenCalledTimes(1);
-        });
-
-        it('stages the resend activity log for the actor after the rotation when the invitee has no account', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const resentActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteResent,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const callOrder: string[] = [];
-            activityLogDomain.prepare.mockImplementation(() => {
-                callOrder.push('prepare');
-                return resentActivityLog;
-            });
-            workspaceInviteRepository.rotateForResend.mockImplementation(
-                async () => {
-                    callOrder.push('rotateForResend');
-                    return baseInvite;
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            await domain.resendInvite(workspace, 'user-1', 'invite-1', null);
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceInviteResent,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { workspaceInviteId: 'invite-1' },
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                resentActivityLog,
-            ]);
-            expect(callOrder).toEqual([
-                'prepare',
-                'rotateForResend',
-                'stagePrepared',
-            ]);
-        });
-
-        it('stages the actor row and the invitee row when the invitee has an account other than the actor', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const existingUser = { ...baseUser, id: 'user-9' };
-            userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            notificationRecipientDomain.getRecipient.mockResolvedValue({
-                ...TestRecipient,
-                userId: existingUser.id,
-            });
-            const resentActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteResent,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const resentByAdminActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteResentByAdmin,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(resentActivityLog)
-                .mockReturnValueOnce(resentByAdminActivityLog);
-            workspaceInviteRepository.rotateForResend.mockResolvedValue(
-                baseInvite
-            );
-
-            await domain.resendInvite(workspace, 'user-1', 'invite-1', null);
-
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.workspaceInviteResent,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: {
-                    workspaceInviteId: 'invite-1',
-                    targetUserId: 'user-9',
-                },
-            });
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceInviteResentByAdmin,
-                userId: 'user-9',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                resentActivityLog,
-                resentByAdminActivityLog,
-            ]);
-        });
-
-        it('stages only the actor row when the invitee account is the actor', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            userDomain.getOneActiveByEmail.mockResolvedValue({
-                ...baseUser,
-                id: 'user-1',
-            });
-            notificationRecipientDomain.getRecipient.mockResolvedValue({
-                ...TestRecipient,
-                userId: 'user-1',
-            });
-            workspaceInviteRepository.rotateForResend.mockResolvedValue(
-                baseInvite
-            );
-
-            await domain.resendInvite(workspace, 'user-1', 'invite-1', null);
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    action: EnumActivityLogAction.workspaceInviteResent,
-                    metadata: {
-                        workspaceInviteId: 'invite-1',
-                        targetUserId: 'user-1',
-                    },
-                })
-            );
-        });
-
-        it('stages nothing when the rotation rejects', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            const cause = new Error('rotate-failed');
-            workspaceInviteRepository.rotateForResend.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
-
-            await expect(
-                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
-
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
     describe('revokeInvite', () => {
-        it('throws WorkspaceInviteNotFoundException when the invite does not exist', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                null
-            );
+        it('revokes the invite', async () => {
+            workspaceInviteRepository.revoke.mockResolvedValue(true);
 
-            await expect(
-                domain.revokeInvite('workspace-1', 'user-1', 'invite-1')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteNotFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteNotFound
-                    ],
-                messagePath: 'workspace.error.inviteNotFound',
-            });
-        });
+            await domain.revokeInvite('invite-1');
 
-        it('throws WorkspaceInviteAlreadyProcessedException when the invite is no longer pending', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue({
-                ...baseInvite,
-                status: EnumWorkspaceInviteStatus.expired,
-            });
-
-            await expect(
-                domain.revokeInvite('workspace-1', 'user-1', 'invite-1')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteAlreadyProcessed
-                    ],
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
-            });
-        });
-
-        it('revokes with a single activity log in order when no active user matches the invited email', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            userDomain.getOneActiveByEmail.mockResolvedValue(null);
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteRevoked,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-            const callOrder: string[] = [];
-            workspaceInviteRepository.revoke.mockImplementation(async () => {
-                callOrder.push('revoke');
-
-                return true;
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            await domain.revokeInvite('workspace-1', 'user-1', 'invite-1');
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceInviteRevoked,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { workspaceInviteId: 'invite-1' },
-            });
             expect(workspaceInviteRepository.revoke).toHaveBeenCalledWith(
                 'invite-1'
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
-            expect(callOrder).toEqual(['revoke', 'stagePrepared']);
         });
 
-        it('revokes with two activity logs in order when the existing user differs from the actor', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            workspaceInviteRepository.revoke.mockResolvedValue(true);
-            userDomain.getOneActiveByEmail.mockResolvedValue({
-                ...baseUser,
-                id: 'user-9',
-            });
-            const revokedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteRevoked,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const revokedByAdminActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(revokedActivityLog)
-                .mockReturnValueOnce(revokedByAdminActivityLog);
-
-            await domain.revokeInvite('workspace-1', 'user-1', 'invite-1');
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(2);
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
-                userId: 'user-9',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                revokedActivityLog,
-                revokedByAdminActivityLog,
-            ]);
-        });
-
-        it('revokes with a single activity log when the existing user is the actor', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            workspaceInviteRepository.revoke.mockResolvedValue(true);
-            userDomain.getOneActiveByEmail.mockResolvedValue({
-                ...baseUser,
-                id: 'user-1',
-            });
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteRevoked,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-
-            await domain.revokeInvite('workspace-1', 'user-1', 'invite-1');
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
-        });
-
-        it('throws WorkspaceInviteAlreadyProcessedException and stages nothing when the guarded revoke matches no pending invite', async () => {
-            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
-                baseInvite
-            );
-            userDomain.getOneActiveByEmail.mockResolvedValue(null);
+        it('throws WorkspaceInviteAlreadyProcessedException when the guarded revoke matches no pending invite', async () => {
             workspaceInviteRepository.revoke.mockResolvedValue(false);
 
+            await expect(domain.revokeInvite('invite-1')).rejects.toMatchObject(
+                {
+                    constructor: WorkspaceInviteAlreadyProcessedException,
+                    module: 'workspace',
+                    statusCode:
+                        EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+                    messagePath: 'workspace.error.inviteAlreadyProcessed',
+                }
+            );
+        });
+    });
+
+    describe('acceptPendingInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const acceptedAt = new Date('2026-01-01T00:00:00.000Z');
+
+        it('accepts the invite on the given transaction', async () => {
+            workspaceInviteRepository.acceptInTx.mockResolvedValue(true);
+
+            await domain.acceptPendingInTx(
+                tx,
+                'invite-1',
+                'user-2',
+                acceptedAt
+            );
+
+            expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledWith(
+                tx,
+                'invite-1',
+                'user-2',
+                acceptedAt
+            );
+        });
+
+        it('throws WorkspaceInviteAlreadyProcessedException when the guarded accept matches no pending invite', async () => {
+            workspaceInviteRepository.acceptInTx.mockResolvedValue(false);
+
             await expect(
-                domain.revokeInvite('workspace-1', 'user-1', 'invite-1')
+                domain.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
-                module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteAlreadyProcessed
-                    ],
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict on the accept to WorkspaceInviteAlreadyProcessedException', async () => {
+            const conflict = new Error('conflict');
+            workspaceInviteRepository.acceptInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('wraps another accept failure in AppUnknownException', async () => {
+            const cause = new Error('db-down');
+            workspaceInviteRepository.acceptInTx.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                domain.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
         });
     });
 
@@ -1409,9 +685,12 @@ describe('WorkspaceInviteDomain', () => {
 
         beforeEach(() => {
             workspaceInviteRepository.acceptInTx.mockResolvedValue(true);
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
         });
 
-        it('throws WorkspaceInviteAlreadyProcessedException and creates no project membership when the guarded accept matches no pending invite', async () => {
+        it('throws WorkspaceInviteAlreadyProcessedException when the guarded accept matches no pending invite', async () => {
             workspaceInviteRepository.acceptInTx.mockResolvedValue(false);
 
             await expect(
@@ -1421,53 +700,10 @@ describe('WorkspaceInviteDomain', () => {
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
-            expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a write conflict on the accept to WorkspaceInviteAlreadyProcessedException', async () => {
-            const conflict = new Error('conflict');
-            workspaceInviteRepository.acceptInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            await expect(
-                domain.acceptOnSignUpInTx(tx, 'user-2', inviteContext)
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-        });
-
-        it('wraps another accept failure in AppUnknownException', async () => {
-            const cause = new Error('db-down');
-            workspaceInviteRepository.acceptInTx.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
-
-            await expect(
-                domain.acceptOnSignUpInTx(tx, 'user-2', inviteContext)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
-        });
-
-        it('creates the workspace membership and accepts the invite with no project', async () => {
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            const context: IUserSignUpWorkspaceInvite = {
-                type: EnumUserSignUpWorkspaceContextType.invite,
-                workspaceId: 'workspace-1',
-                workspaceInviteId: 'invite-1',
-                invitedByUserId: 'user-1',
-                workspaceMemberRole: EnumWorkspaceMemberRole.member,
-                projectId: null,
-                projectMemberRole: null,
-            };
-
-            await domain.acceptOnSignUpInTx(tx, 'user-2', context);
+        it('creates the workspace membership, then accepts the invite on the same transaction', async () => {
+            await domain.acceptOnSignUpInTx(tx, 'user-2', inviteContext);
 
             expect(workspaceMemberDomain.createInTx).toHaveBeenCalledWith(
                 tx,
@@ -1482,520 +718,35 @@ describe('WorkspaceInviteDomain', () => {
                 'user-2',
                 new Date('2026-01-01T00:00:00.000Z')
             );
-            expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
-        });
-
-        it('creates the project membership as well when a project id and role are given', async () => {
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            const context: IUserSignUpWorkspaceInvite = {
-                type: EnumUserSignUpWorkspaceContextType.invite,
-                workspaceId: 'workspace-1',
-                workspaceInviteId: 'invite-1',
-                invitedByUserId: 'user-1',
-                workspaceMemberRole: EnumWorkspaceMemberRole.member,
-                projectId: 'project-1',
-                projectMemberRole: EnumProjectMemberRole.member,
-            };
-
-            await domain.acceptOnSignUpInTx(tx, 'user-2', context);
-
-            expect(projectMemberDomain.createInTx).toHaveBeenCalledWith(
-                tx,
-                'project-1',
-                'user-2',
-                EnumProjectMemberRole.member,
-                'user-2'
+            expect(workspaceMemberDomain.createInTx).toHaveBeenCalledBefore(
+                workspaceInviteRepository.acceptInTx
             );
         });
     });
 
-    describe('claimInvite', () => {
-        beforeEach(() => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            const tx = {} as IDatabaseTransactionClient;
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceInviteRepository.acceptInTx.mockResolvedValue(true);
-        });
-
-        it('throws WorkspaceInviteAlreadyProcessedException and stages nothing when the guarded accept matches no pending invite', async () => {
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                { ...baseInvite, email: 'user@example.com' }
-            );
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                null
-            );
-            workspaceInviteRepository.acceptInTx.mockResolvedValue(false);
+    describe('getWorkspaceOfInvite', () => {
+        it('throws WorkspaceInviteInvalidException when the workspace is not active', async () => {
+            workspaceRepository.findActiveById.mockResolvedValue(null);
 
             await expect(
-                domain.claimInvite('user-1', 'user@example.com', 'raw-token')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
-            });
-            expect(userDomain.setLastWorkspaceInTx).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('maps a write conflict on the accept to WorkspaceInviteAlreadyProcessedException', async () => {
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                { ...baseInvite, email: 'user@example.com' }
-            );
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                null
-            );
-            const conflict = new Error('conflict');
-            workspaceInviteRepository.acceptInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            await expect(
-                domain.claimInvite('user-1', 'user@example.com', 'raw-token')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceInviteInvalidException when the token does not resolve a pending invite', async () => {
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                null
-            );
-
-            await expect(
-                domain.claimInvite('user-1', 'user@example.com', 'raw-token')
+                domain.getWorkspaceOfInvite(baseInvite)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteInvalidException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
                 messagePath: 'workspace.error.inviteInvalid',
             });
         });
 
-        it('throws WorkspaceInviteInvalidException when the caller email does not match the invite', async () => {
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                { ...baseInvite, email: 'invitee@example.com' }
-            );
+        it('returns the active workspace of the invite', async () => {
+            workspaceRepository.findActiveById.mockResolvedValue(workspace);
 
-            await expect(
-                domain.claimInvite(
-                    'user-1',
-                    'someone-else@example.com',
-                    'raw-token'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteInvalidException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
-                messagePath: 'workspace.error.inviteInvalid',
-            });
-        });
+            const result = await domain.getWorkspaceOfInvite(baseInvite);
 
-        it('throws WorkspaceInviteInvalidException when the caller is already a member', async () => {
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                { ...baseInvite, email: 'user@example.com' }
-            );
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                {
-                    id: 'member-1',
-                    createdAt: new Date('2026-01-01T00:00:00.000Z'),
-                    createdBy: null,
-                    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-                    updatedBy: null,
-                    workspaceId: 'workspace-1',
-                    userId: 'user-1',
-                    role: EnumWorkspaceMemberRole.member,
-                    joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-                }
-            );
-
-            await expect(
-                domain.claimInvite('user-1', 'user@example.com', 'raw-token')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteInvalidException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
-                messagePath: 'workspace.error.inviteInvalid',
-            });
-        });
-
-        it('claims with a single activity log and no project membership when the caller invited itself', async () => {
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                {
-                    ...baseInvite,
-                    email: 'user@example.com',
-                    invitedByUserId: 'user-1',
-                }
-            );
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                null
-            );
-            const stagedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteAccepted,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-
-            await domain.claimInvite('user-1', 'user@example.com', 'raw-token');
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-            expect(userDomain.setLastWorkspaceInTx).toHaveBeenCalledWith(
-                {},
-                'user-1',
+            expect(result).toBe(workspace);
+            expect(workspaceRepository.findActiveById).toHaveBeenCalledWith(
                 'workspace-1'
             );
-            expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
-        });
-
-        it('claims with two activity logs and creates the project membership when both invitedByUserId and project fields differ', async () => {
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                {
-                    ...baseInvite,
-                    email: 'user@example.com',
-                    invitedByUserId: 'user-9',
-                    projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
-                }
-            );
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                null
-            );
-            const acceptedActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteAccepted,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            const acceptedByInviteeActivityLog: IActivityLogStaged = {
-                action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
-                metadata: {},
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-            };
-            activityLogDomain.prepare
-                .mockReturnValueOnce(acceptedActivityLog)
-                .mockReturnValueOnce(acceptedByInviteeActivityLog);
-
-            await domain.claimInvite('user-1', 'user@example.com', 'raw-token');
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(2);
-            expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
-                userId: 'user-9',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
-            expect(projectMemberDomain.createInTx).toHaveBeenCalledWith(
-                {},
-                'project-1',
-                'user-1',
-                EnumProjectMemberRole.member,
-                'user-1'
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                acceptedActivityLog,
-                acceptedByInviteeActivityLog,
-            ]);
-        });
-    });
-
-    describe('previewInvite', () => {
-        it('throws WorkspaceInviteInvalidException when the workspace is not active', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                baseInvite
-            );
-            workspaceRepository.findActiveById.mockResolvedValue(null);
-            userDomain.getNameById.mockResolvedValue(null);
-
-            await expect(
-                domain.previewInvite('raw-token')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteInvalidException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
-                messagePath: 'workspace.error.inviteInvalid',
-            });
-        });
-
-        it('returns the workspace, invite, and inviter', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            const invite = baseInvite;
-            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                invite
-            );
-            workspaceRepository.findActiveById.mockResolvedValue(workspace);
-            const inviter: IWorkspaceInviteInviter = {
-                name: 'Jane Doe',
-                username: 'jane',
-            };
-            userDomain.getNameById.mockResolvedValue(inviter);
-
-            const result = await domain.previewInvite('raw-token');
-
-            expect(result).toEqual({ workspace, invite, inviter });
-        });
-    });
-
-    describe('assertInvitationAllowed', () => {
-        it('validates the invitationAllowed feature-flag metadata', async () => {
-            await domain['assertInvitationAllowed']();
-
-            expect(
-                featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
-        });
-    });
-
-    describe('createInviteTokenData', () => {
-        beforeEach(() => {
-            helperStringService.random
-                .mockReturnValueOnce('token-value')
-                .mockReturnValueOnce('reference-suffix');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            helperDateService.forward.mockReturnValue(
-                new Date('2026-01-08T00:00:00.000Z')
-            );
-            helperStringService.fillPattern
-                .mockReturnValueOnce(
-                    'https://app.example.com/workspace/invites?inviteToken=token-value'
-                )
-                .mockReturnValueOnce(
-                    'https://app.example.com/sign-up/token-value'
-                );
-        });
-
-        it('builds token data with the default expiry when none is given', () => {
-            const result = domain['createInviteTokenData'](null);
-
-            expect(result).toEqual({
-                token: 'token-value',
-                hashedToken: 'hashed-token',
-                reference: 'WIN-reference-suffix',
-                expiredAt: new Date('2026-01-08T00:00:00.000Z'),
-                claimLink:
-                    'https://app.example.com/workspace/invites?inviteToken=token-value',
-                signUpLink: 'https://app.example.com/sign-up/token-value',
-            });
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                new Date('2026-01-01T00:00:00.000Z'),
-                Duration.fromObject({ days: 7 })
-            );
-        });
-
-        it('builds token data with the given expiry duration', () => {
-            domain['createInviteTokenData'](14);
-
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                new Date('2026-01-01T00:00:00.000Z'),
-                Duration.fromObject({ days: 14 })
-            );
-        });
-    });
-
-    describe('getInviterName', () => {
-        it('returns the inviter name', async () => {
-            userDomain.getNameById.mockResolvedValue({
-                name: 'Jane Doe',
-                username: 'jane',
-            });
-
-            const result = await domain['getInviterName'](workspace, 'user-1');
-
-            expect(userDomain.getNameById).toHaveBeenCalledWith('user-1');
-            expect(result).toBe('Jane Doe');
-        });
-
-        it('falls back to the workspace name when the inviter is missing', async () => {
-            userDomain.getNameById.mockResolvedValue(null);
-
-            const result = await domain['getInviterName'](workspace, 'user-1');
-
-            expect(result).toBe(workspace.name);
-        });
-
-        it('falls back to the inviter username when the inviter has no name', async () => {
-            userDomain.getNameById.mockResolvedValue({
-                name: null,
-                username: 'jane',
-            });
-
-            const result = await domain['getInviterName'](workspace, 'user-1');
-
-            expect(result).toBe('jane');
-        });
-    });
-
-    describe('getInviteeByEmail', () => {
-        it('returns the active user and the in-app recipient', async () => {
-            const recipient: INotificationRecipient = {
-                ...TestRecipient,
-                userId: baseUser.id,
-            };
-            userDomain.getOneActiveByEmail.mockResolvedValue(baseUser);
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
-            );
-
-            const result = await domain['getInviteeByEmail'](baseUser.email);
-
-            expect(userDomain.getOneActiveByEmail).toHaveBeenCalledWith(
-                baseUser.email
-            );
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.workspaceInvite
-            );
-            expect(result).toEqual({ existingUser: baseUser, recipient });
-        });
-
-        it('returns a null user and a null recipient when no active user matches', async () => {
-            userDomain.getOneActiveByEmail.mockResolvedValue(null);
-
-            const result = await domain['getInviteeByEmail']('new@example.com');
-
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).not.toHaveBeenCalled();
-            expect(result).toEqual({ existingUser: null, recipient: null });
-        });
-    });
-
-    describe('getInviteeRecipient', () => {
-        it('returns the in-app recipient of an existing user', async () => {
-            const recipient: INotificationRecipient = {
-                ...TestRecipient,
-                userId: baseUser.id,
-            };
-            notificationRecipientDomain.getRecipient.mockResolvedValue(
-                recipient
-            );
-
-            const result = await domain['getInviteeRecipient'](baseUser);
-
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.workspaceInvite
-            );
-            expect(result).toBe(recipient);
-        });
-
-        it('returns null without a recipient read for an unregistered invitee', async () => {
-            const result = await domain['getInviteeRecipient'](null);
-
-            expect(
-                notificationRecipientDomain.getRecipient
-            ).not.toHaveBeenCalled();
-            expect(result).toBeNull();
-        });
-    });
-
-    describe('sendInviteNotification', () => {
-        const invite = baseInvite;
-        const tokenData = {
-            token: 'token-value',
-            hashedToken: 'hashed-token',
-            reference: 'WIN-abc123',
-            expiredAt: new Date('2026-02-01T00:00:00.000Z'),
-            claimLink:
-                'https://app.example.com/workspace/invites?inviteToken=token-value',
-            signUpLink: 'https://app.example.com/sign-up/token-value',
-        };
-
-        beforeEach(() => {
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-02-01T00:00:00.000Z'
-            );
-        });
-
-        it('sends the in-app invite when the target carries a recipient', async () => {
-            const recipient: INotificationRecipient = {
-                ...TestRecipient,
-                userId: baseUser.id,
-            };
-
-            await domain['sendInviteNotification'](
-                workspace,
-                invite,
-                tokenData,
-                'user-1',
-                { inviterName: 'Jane Doe', recipient }
-            );
-
-            expect(notificationQueue.sendWorkspaceInvite).toHaveBeenCalledWith(
-                recipient,
-                expect.objectContaining({
-                    inviteAcceptLink: tokenData.claimLink,
-                    inviterName: 'Jane Doe',
-                }),
-                'user-1'
-            );
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).not.toHaveBeenCalled();
-        });
-
-        it('emails the unregistered invitee when the target carries no recipient', async () => {
-            await domain['sendInviteNotification'](
-                workspace,
-                invite,
-                tokenData,
-                'user-1',
-                { inviterName: workspace.name, recipient: null }
-            );
-
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).toHaveBeenCalledWith(
-                invite.email,
-                expect.objectContaining({
-                    inviteAcceptLink: tokenData.signUpLink,
-                    inviterName: workspace.name,
-                })
-            );
-            expect(
-                notificationQueue.sendWorkspaceInvite
-            ).not.toHaveBeenCalled();
         });
     });
 });

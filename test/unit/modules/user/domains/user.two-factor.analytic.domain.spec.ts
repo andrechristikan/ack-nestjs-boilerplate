@@ -2,24 +2,17 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
-import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { UserTwoFactorAnalyticDomain } from '@modules/user/domains/user.two-factor.analytic.domain';
 import { UserTwoFactorAnalyticRepository } from '@modules/user/repositories/user.two-factor.analytic.repository';
 
 describe('UserTwoFactorAnalyticDomain', () => {
     const userTwoFactorAnalyticRepository: MockProxy<UserTwoFactorAnalyticRepository> =
         mock<UserTwoFactorAnalyticRepository>();
-    const userAnalyticDomain: MockProxy<UserAnalyticDomain> =
-        mock<UserAnalyticDomain>();
-    const activityLogAnalyticDomain: MockProxy<ActivityLogAnalyticDomain> =
-        mock<ActivityLogAnalyticDomain>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
 
     let domain: UserTwoFactorAnalyticDomain;
-
-    const startDate = new Date('2026-01-01T00:00:00.000Z');
-    const endDate = new Date('2026-02-01T00:00:00.000Z');
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -32,96 +25,32 @@ describe('UserTwoFactorAnalyticDomain', () => {
                     useValue: userTwoFactorAnalyticRepository,
                 },
                 {
-                    provide: UserAnalyticDomain,
-                    useValue: userAnalyticDomain,
-                },
-                {
-                    provide: ActivityLogAnalyticDomain,
-                    useValue: activityLogAnalyticDomain,
+                    provide: HelperNumberService,
+                    useValue: helperNumberService,
                 },
             ],
         }).compile();
         domain = module.get(UserTwoFactorAnalyticDomain);
     });
 
-    describe('getAdoption', () => {
-        it('computes the rate when total is not zero', async () => {
+    describe('getEnabledCount', () => {
+        it('delegates the enabled count to the repository', async () => {
             userTwoFactorAnalyticRepository.countEnabled.mockResolvedValue(4);
-            userAnalyticDomain.getCountActive.mockResolvedValue(8);
 
-            await expect(domain.getAdoption()).resolves.toEqual({
+            await expect(domain.getEnabledCount()).resolves.toBe(4);
+        });
+    });
+
+    describe('mapAdoption', () => {
+        it('computes the rate from the enabled count and the active user count', () => {
+            helperNumberService.percent.mockReturnValue(50);
+
+            expect(domain.mapAdoption(4, 8)).toEqual({
                 enabled: 4,
                 total: 8,
                 rate: 50,
             });
-        });
-
-        it('returns a zero rate when total is zero', async () => {
-            userTwoFactorAnalyticRepository.countEnabled.mockResolvedValue(0);
-            userAnalyticDomain.getCountActive.mockResolvedValue(0);
-
-            await expect(domain.getAdoption()).resolves.toEqual({
-                enabled: 0,
-                total: 0,
-                rate: 0,
-            });
-        });
-    });
-
-    describe('getAdminResetCount', () => {
-        it('counts admin two-factor resets', async () => {
-            activityLogAnalyticDomain.getCountByActionsInRange.mockResolvedValue(
-                3
-            );
-
-            await expect(
-                domain.getAdminResetCount(startDate, endDate)
-            ).resolves.toBe(3);
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userResetTwoFactorByAdmin],
-                startDate,
-                endDate
-            );
-        });
-    });
-
-    describe('getVerifySuccessCount', () => {
-        it('counts successful two-factor verifications', async () => {
-            activityLogAnalyticDomain.getCountByActionsInRange.mockResolvedValue(
-                6
-            );
-
-            await expect(
-                domain.getVerifySuccessCount(startDate, endDate)
-            ).resolves.toBe(6);
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userVerifyTwoFactor],
-                startDate,
-                endDate
-            );
-        });
-    });
-
-    describe('getBackupCodeRegenerationCount', () => {
-        it('counts backup-code regenerations', async () => {
-            activityLogAnalyticDomain.getCountByActionsInRange.mockResolvedValue(
-                2
-            );
-
-            await expect(
-                domain.getBackupCodeRegenerationCount(startDate, endDate)
-            ).resolves.toBe(2);
-            expect(
-                activityLogAnalyticDomain.getCountByActionsInRange
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
-                startDate,
-                endDate
-            );
+            expect(helperNumberService.percent).toHaveBeenCalledWith(4, 8);
         });
     });
 

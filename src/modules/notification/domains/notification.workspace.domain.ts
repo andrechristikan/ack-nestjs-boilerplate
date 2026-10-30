@@ -8,7 +8,6 @@ import type {
     INotificationEmailSendEncryptedPayload,
     INotificationRecipientEncryptedPayload,
     INotificationSendPushEncryptedPayload,
-    INotificationStepFailure,
     INotificationStepResult,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
@@ -43,20 +42,10 @@ export class NotificationWorkspaceDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.workspaceInvite,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.workspaceInvite,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -153,21 +142,9 @@ export class NotificationWorkspaceDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.workspaceInvite'
@@ -190,20 +167,10 @@ export class NotificationWorkspaceDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.workspaceJoinRequest,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.workspaceJoinRequest,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -300,21 +267,9 @@ export class NotificationWorkspaceDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.workspaceJoinRequest'
@@ -337,20 +292,10 @@ export class NotificationWorkspaceDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.workspaceJoinAccepted,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.workspaceJoinAccepted,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -442,21 +387,9 @@ export class NotificationWorkspaceDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.workspaceJoinAccepted'
@@ -479,20 +412,10 @@ export class NotificationWorkspaceDomain {
     ): Promise<INotificationStepResult> {
         const done = [...completedSteps];
         if (recipient.channels.length === 0) {
-            const message = this.messageService.setMessage(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.workspaceJoinRejected,
-                    },
-                }
+            return this.notificationUtil.toNoChannelResult(
+                EnumNotificationProcess.workspaceJoinRejected,
+                done
             );
-
-            return {
-                message,
-                completedSteps: done,
-                failedSteps: [],
-            };
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
@@ -585,21 +508,9 @@ export class NotificationWorkspaceDomain {
         }
 
         const outcomes = await Promise.allSettled(promises);
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                done.push(step);
-
-                continue;
-            }
-
-            const failure = this.notificationUtil.toStepFailure(
-                step,
-                outcome.reason
-            );
-            failedSteps.push(failure);
-        }
+        const { completedSteps: settledSteps, failedSteps } =
+            this.notificationUtil.foldStepOutcomes(steps, outcomes);
+        done.push(...settledSteps);
 
         const message = this.messageService.setMessage(
             'notification.queue.workspaceJoinRejected'

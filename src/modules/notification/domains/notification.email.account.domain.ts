@@ -1,6 +1,5 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
@@ -12,7 +11,7 @@ import type {
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from '@common/message/services/message.service';
@@ -28,14 +27,12 @@ export class NotificationEmailAccountDomain {
 
     private readonly defaultTemplateData: Record<string, string>;
 
-    private readonly encryptionSecretKey: string;
-
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly notificationRepository: NotificationRepository,
-        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly notificationUtil: NotificationUtil,
         private readonly messageService: MessageService
     ) {
         // AppEnvSchema requires both addresses once AWS SES credentials are set, and
@@ -45,24 +42,12 @@ export class NotificationEmailAccountDomain {
 
         this.homeName = this.configService.get<string>('home.name')!;
         this.homeUrl = this.configService.get<string>('home.url')!;
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
             supportEmail: this.supportEmail,
             homeUrl: this.homeUrl,
         };
-    }
-
-    private decryptEmail(encryptedEmail: string, userId: string): string {
-        return this.helperEncryptionService.aes256Decrypt(
-            encryptedEmail,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
-            userId
-        );
     }
 
     private async stampProcessed(notificationId: string): Promise<void> {
@@ -92,7 +77,10 @@ export class NotificationEmailAccountDomain {
         userId,
         notificationId,
     }: INotificationEmailSendEncryptedPayload): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
         // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
@@ -123,7 +111,10 @@ export class NotificationEmailAccountDomain {
         userId,
         notificationId,
     }: INotificationEmailSendEncryptedPayload): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
         // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
@@ -161,11 +152,12 @@ export class NotificationEmailAccountDomain {
             passwordCreatedAt,
         }: INotificationWelcomeByAdminEncryptedPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
-        const password = this.helperEncryptionService.aes256Decrypt(
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
+        const password = this.notificationUtil.decryptPayload(
             encryptedPassword,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
             userId
         );
         const passwordExpiredAtDate =
@@ -217,11 +209,12 @@ export class NotificationEmailAccountDomain {
             expiredInMinutes,
         }: INotificationVerificationEmailEncryptedPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
-        const link = this.helperEncryptionService.aes256Decrypt(
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
+        const link = this.notificationUtil.decryptPayload(
             encryptedLink,
-            this.encryptionSecretKey,
-            NotificationPayloadEncryptionPurpose,
             userId
         );
         const expiredAtDate = this.helperDateService.createFromIso(expiredAt);
@@ -266,7 +259,10 @@ export class NotificationEmailAccountDomain {
         }: INotificationEmailSendEncryptedPayload,
         { reference }: INotificationVerifiedEmailPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
         // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
@@ -301,7 +297,10 @@ export class NotificationEmailAccountDomain {
         }: INotificationEmailSendEncryptedPayload,
         { reference, mobileNumber }: INotificationVerifiedMobileNumberPayload
     ): Promise<INotificationEmailResult> {
-        const email = this.decryptEmail(encryptedEmail, userId);
+        const email = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
         // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
