@@ -10,7 +10,12 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { Prisma } from '@generated/prisma-client/client';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
@@ -31,6 +36,8 @@ describe('SessionDomain', () => {
     const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
 
@@ -82,6 +89,10 @@ describe('SessionDomain', () => {
                 { provide: SessionRepository, useValue: sessionRepository },
                 { provide: SessionCache, useValue: sessionCache },
                 { provide: HelperDateService, useValue: helperDateService },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
             ],
         }).compile();
         domain = module.get(SessionDomain);
@@ -398,21 +409,85 @@ describe('SessionDomain', () => {
         });
     });
 
-    describe('findOneActive', () => {
+    describe('getOneActive', () => {
         it('returns the active session row', async () => {
             sessionRepository.findOneActive.mockResolvedValue(session);
 
             await expect(
-                domain.findOneActive('user-1', 'session-1')
+                domain.getOneActive('user-1', 'session-1')
             ).resolves.toBe(session);
         });
 
-        it('returns null when the session is revoked or expired', async () => {
+        it('throws SessionRevokedException when the session is revoked or expired', async () => {
             sessionRepository.findOneActive.mockResolvedValue(null);
 
             await expect(
-                domain.findOneActive('user-1', 'session-1')
-            ).resolves.toBeNull();
+                domain.getOneActive('user-1', 'session-1')
+            ).rejects.toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
+                messagePath: 'session.error.revoked',
+            });
+        });
+    });
+
+    describe('getRefreshedTokens', () => {
+        const tokens: IAuthToken = {
+            tokenType: 'Bearer',
+            roleType: EnumRoleType.user,
+            expiresIn: 3600,
+            accessToken: 'access-token',
+            refreshToken: 'refresh-token',
+        };
+
+        it('returns the tokens of a rotated refresh', () => {
+            expect(domain.getRefreshedTokens(tokens)).toBe(tokens);
+        });
+
+        it('throws SessionRevokedException for a replayed refresh', () => {
+            expect(() => domain.getRefreshedTokens(null)).toThrow(
+                expect.objectContaining({
+                    module: 'session',
+                    statusCode: EnumSessionStatusCodeError.revoked,
+                    messagePath: 'session.error.revoked',
+                })
+            );
+        });
+    });
+
+    describe('getRequestLog', () => {
+        const requestLog: IRequestLog = {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        };
+
+        it('returns the request log of the current request', () => {
+            requestStoreService.get.mockReturnValue(requestLog);
+
+            expect(domain.getRequestLog()).toBe(requestLog);
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestLogStoreKey
+            );
+        });
+
+        it('throws RequestContextMissingException when the store holds no request log', () => {
+            requestStoreService.get.mockReturnValue(null);
+
+            expect(() => domain.getRequestLog()).toThrow(
+                expect.objectContaining({
+                    module: 'request',
+                    statusCode: EnumRequestStatusCodeError.contextMissing,
+                    messagePath: 'request.error.contextMissing',
+                })
+            );
         });
     });
 

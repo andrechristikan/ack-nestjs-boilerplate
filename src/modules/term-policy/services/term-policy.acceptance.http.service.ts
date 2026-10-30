@@ -10,7 +10,9 @@ import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { AccountDomain } from '@modules/account/domains/account.domain';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -23,7 +25,9 @@ export class TermPolicyAcceptanceHttpService {
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly accountDomain: AccountDomain,
+        private readonly deviceDomain: DeviceDomain,
+        private readonly notificationDomain: NotificationDomain,
+        private readonly notificationUtil: NotificationUtil,
         private readonly notificationQueue: NotificationQueue
     ) {}
 
@@ -62,11 +66,17 @@ export class TermPolicyAcceptanceHttpService {
             }),
         ];
         // Sequential by design: write must not run if an earlier step throws
-        const recipient =
-            await this.accountDomain.getNotificationRecipientOfUser(
-                user,
-                EnumNotificationKind.userAcceptTermPolicy
-            );
+        const [ownerships, settings] = await Promise.all([
+            this.deviceDomain.getOwnershipsWithNotificationToken(user.id),
+            this.notificationDomain.getListUserSetting(user.id),
+        ]);
+        const tokens = ownerships.map(ownership => ownership.notificationToken);
+        const recipient = this.notificationUtil.mapRecipient(
+            user,
+            EnumNotificationKind.userAcceptTermPolicy,
+            tokens,
+            settings
+        );
         const accepted = await this.termPolicyAcceptanceDomain.userAccept(
             user.id,
             type

@@ -79,6 +79,20 @@ export class WorkspaceInviteDomain {
         return invite;
     }
 
+    async assertInviteeNotMember(
+        workspaceId: string,
+        userId: string
+    ): Promise<void> {
+        const existingMember =
+            await this.workspaceMemberDomain.getOneByWorkspaceAndUser(
+                workspaceId,
+                userId
+            );
+        if (existingMember) {
+            throw new WorkspaceInviteInvalidException();
+        }
+    }
+
     async expireStalePending(): Promise<number> {
         return this.workspaceInviteRepository.expireStalePending();
     }

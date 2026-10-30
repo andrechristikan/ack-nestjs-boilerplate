@@ -1,3 +1,5 @@
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -12,16 +14,18 @@ import type {
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
-import { AccountDomain } from '@modules/account/domains/account.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { MembershipInviteDomain } from '@modules/membership/domains/membership.invite.domain';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceInviteDefaultAvailableOrderBy,
@@ -35,6 +39,7 @@ import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/re
 import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import type {
     IWorkspaceInviteCreate,
@@ -48,17 +53,22 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceInviteHttpService {
     constructor(
         private readonly workspaceInviteDomain: WorkspaceInviteDomain,
-        private readonly membershipInviteDomain: MembershipInviteDomain,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly projectDomain: ProjectDomain,
+        private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly userDomain: UserDomain,
-        private readonly accountDomain: AccountDomain,
+        private readonly deviceDomain: DeviceDomain,
+        private readonly notificationDomain: NotificationDomain,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationEmailQueue: NotificationEmailQueue,
+        private readonly notificationUtil: NotificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly databaseService: DatabaseService,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     private async assertInvitationAllowed(): Promise<void> {
@@ -84,9 +94,19 @@ export class WorkspaceInviteHttpService {
             return null;
         }
 
-        return this.accountDomain.getNotificationRecipientOfUser(
+        const [ownerships, settings] = await Promise.all([
+            this.deviceDomain.getOwnershipsWithNotificationToken(
+                existingUser.id
+            ),
+            this.notificationDomain.getListUserSetting(existingUser.id),
+        ]);
+        const tokens = ownerships.map(ownership => ownership.notificationToken);
+
+        return this.notificationUtil.mapRecipient(
             existingUser,
-            EnumNotificationKind.workspaceInvite
+            EnumNotificationKind.workspaceInvite,
+            tokens,
+            settings
         );
     }
 
@@ -373,11 +393,46 @@ export class WorkspaceInviteHttpService {
         // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
-        const invite = await this.membershipInviteDomain.claim(
-            userId,
-            userEmail,
-            inviteToken
+        const invite = await this.workspaceInviteDomain.validateInviteForEmail(
+            inviteToken,
+            userEmail
         );
+        // Sequential by design: gate before the work it guards
+        await this.workspaceInviteDomain.assertInviteeNotMember(
+            invite.workspaceId,
+            userId
+        );
+
+        const acceptedAt = this.helperDateService.create();
+        await this.databaseService.withTransaction(async tx => {
+            await this.workspaceInviteDomain.acceptPendingInTx(
+                tx,
+                invite.id,
+                userId,
+                acceptedAt
+            );
+            await this.workspaceMemberDomain.createInTx(
+                tx,
+                invite.workspaceId,
+                userId,
+                invite.workspaceRole,
+                userId
+            );
+            await this.userDomain.setLastWorkspaceInTx(
+                tx,
+                userId,
+                invite.workspaceId
+            );
+            if (invite.projectId && invite.projectRole) {
+                await this.projectMemberDomain.createInTx(
+                    tx,
+                    invite.projectId,
+                    userId,
+                    invite.projectRole,
+                    userId
+                );
+            }
+        });
 
         const activityLogs = [
             this.activityLogDomain.prepare({

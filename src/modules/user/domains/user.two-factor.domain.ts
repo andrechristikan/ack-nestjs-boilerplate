@@ -4,6 +4,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { EnumUserStatus } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
+import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
 import { AuthTwoFactorNotRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-not-required-setup.exception';
@@ -142,6 +143,29 @@ export class UserTwoFactorDomain {
         if (!user.twoFactor?.enabled) {
             throw new AuthTwoFactorNotEnabledException();
         }
+    }
+
+    getEnabledTwoFactor({ twoFactor }: IUser): TwoFactor {
+        if (!twoFactor?.enabled) {
+            throw new AuthTwoFactorNotEnabledException();
+        }
+
+        return twoFactor;
+    }
+
+    getBackupCodeForSetup(
+        user: IUser,
+        backupCode: string | null
+    ): string | null {
+        if (!user.twoFactor?.enabled) {
+            return null;
+        }
+
+        if (!backupCode) {
+            throw new AuthTwoFactorBackupCodeRequiredException();
+        }
+
+        return backupCode;
     }
 
     async disableInTx(

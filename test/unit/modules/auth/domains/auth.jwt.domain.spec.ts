@@ -17,6 +17,7 @@ import {
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import type {
     IAuthJwtAccessTokenPayload,
@@ -291,6 +292,33 @@ describe('AuthJwtDomain', () => {
 
             expect(result).toBe(decoded);
             expect(jwtService.decode).toHaveBeenCalledWith('token');
+        });
+    });
+
+    describe('getRefreshJti', () => {
+        const payload = {
+            loginAt: new Date('2026-01-01T00:00:00.000Z'),
+            userId: 'user-1',
+            sessionId: 'session-1',
+            deviceOwnershipId: 'device-ownership-1',
+            loginFrom: EnumUserLoginFrom.website,
+            loginWith: EnumUserLoginWith.credential,
+        };
+
+        it('returns the jti the refresh payload carries', () => {
+            expect(domain.getRefreshJti({ ...payload, jti: 'jti-1' })).toBe(
+                'jti-1'
+            );
+        });
+
+        it('throws AuthJwtRefreshTokenInvalidException when the payload carries no jti', () => {
+            expect(() => domain.getRefreshJti(payload)).toThrow(
+                expect.objectContaining({
+                    module: 'auth',
+                    statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+                    messagePath: 'auth.error.refreshTokenUnauthorized',
+                })
+            );
         });
     });
 

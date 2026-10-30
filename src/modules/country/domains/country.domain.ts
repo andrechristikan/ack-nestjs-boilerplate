@@ -16,12 +16,14 @@ export class CountryDomain {
         return this.countryRepository.findWithPaginationCursor(pagination);
     }
 
-    async existsById(countryId: string): Promise<boolean> {
-        return this.countryRepository.existsById(countryId);
-    }
+    async getIdByAlpha2Code(alpha2Code: string): Promise<string> {
+        const countryId =
+            await this.countryRepository.findIdByAlpha2Code(alpha2Code);
+        if (countryId === null) {
+            throw new CountryNotFoundException();
+        }
 
-    async getIdByAlpha2Code(alpha2Code: string): Promise<string | null> {
-        return this.countryRepository.findIdByAlpha2Code(alpha2Code);
+        return countryId;
     }
 
     async getOne(countryId: string): Promise<Country> {

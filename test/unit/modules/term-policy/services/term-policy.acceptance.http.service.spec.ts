@@ -18,8 +18,14 @@ import {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type {
+    DeviceOwnership,
+    NotificationUserSetting,
+} from '@generated/prisma-client/client';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { AccountDomain } from '@modules/account/domains/account.domain';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
@@ -41,7 +47,11 @@ describe('TermPolicyAcceptanceHttpService', () => {
         mock<RequestStoreService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
-    const accountDomain: MockProxy<AccountDomain> = mock<AccountDomain>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const notificationDomain: MockProxy<NotificationDomain> =
+        mock<NotificationDomain>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
 
@@ -124,7 +134,9 @@ describe('TermPolicyAcceptanceHttpService', () => {
                     useValue: requestStoreService,
                 },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: AccountDomain, useValue: accountDomain },
+                { provide: DeviceDomain, useValue: deviceDomain },
+                { provide: NotificationDomain, useValue: notificationDomain },
+                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
@@ -160,6 +172,30 @@ describe('TermPolicyAcceptanceHttpService', () => {
             ...TestRecipient,
             userId: 'user-1',
         };
+        const ownership: DeviceOwnership = {
+            id: 'ownership-1',
+            deviceId: 'device-1',
+            userId: 'user-1',
+            revokedAt: null,
+            isRevoked: false,
+            revokedById: null,
+            lastActiveAt: timestamp,
+            notificationToken: 'token-1',
+            notificationProvider: null,
+            biometricEnabled: false,
+            biometricToken: null,
+            biometricType: null,
+            biometricEnabledAt: null,
+            createdAt: timestamp,
+            createdBy: null,
+            updatedAt: timestamp,
+            updatedBy: null,
+        };
+        const ownerships: DeviceOwnership[] = [
+            ownership,
+            { ...ownership, id: 'ownership-2', notificationToken: null },
+        ];
+        const settings: NotificationUserSetting[] = [];
         const accepted: ITermPolicyRef = {
             id: 'term-policy-1',
             type: EnumTermPolicyType.privacy,
@@ -175,20 +211,20 @@ describe('TermPolicyAcceptanceHttpService', () => {
 
         beforeEach(() => {
             activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
-            accountDomain.getNotificationRecipientOfUser.mockResolvedValue(
-                recipient
+            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue(
+                ownerships
             );
+            notificationDomain.getListUserSetting.mockResolvedValue(settings);
+            notificationUtil.mapRecipient.mockReturnValue(recipient);
             notificationQueue.sendUserAcceptTermPolicy.mockResolvedValue();
         });
 
         it('reads the recipient, accepts, stages the activity log, then queues the notification', async () => {
             const calls: string[] = [];
-            accountDomain.getNotificationRecipientOfUser.mockImplementation(
-                async () => {
-                    calls.push('recipient');
-                    return recipient;
-                }
-            );
+            notificationUtil.mapRecipient.mockImplementation(() => {
+                calls.push('recipient');
+                return recipient;
+            });
             termPolicyAcceptanceDomain.userAccept.mockImplementation(
                 async () => {
                     calls.push('accept');
@@ -211,10 +247,16 @@ describe('TermPolicyAcceptanceHttpService', () => {
             expect(result).toEqual({});
             expect(calls).toEqual(['recipient', 'accept', 'stage', 'enqueue']);
             expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(
+                deviceDomain.getOwnershipsWithNotificationToken
+            ).toHaveBeenCalledWith('user-1');
+            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
+                'user-1'
+            );
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.userAcceptTermPolicy
+                EnumNotificationKind.userAcceptTermPolicy,
+                ['token-1', null],
+                settings
             );
             expect(termPolicyAcceptanceDomain.userAccept).toHaveBeenCalledWith(
                 'user-1',
@@ -237,7 +279,7 @@ describe('TermPolicyAcceptanceHttpService', () => {
 
         it('accepts nothing when the recipient read rejects', async () => {
             const error = new Error('recipient-unavailable');
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            deviceDomain.getOwnershipsWithNotificationToken.mockRejectedValue(
                 error
             );
 

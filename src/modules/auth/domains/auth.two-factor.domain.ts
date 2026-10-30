@@ -5,6 +5,9 @@ import type { TwoFactor } from '@generated/prisma-client/client';
 import { AuthCache } from '@modules/auth/caches/auth.cache';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
+import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
+import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
 import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exceptions/auth.two-factor-secret-unavailable.exception';
 import type {
     IAuthTwoFactorChallenge,
@@ -154,10 +157,13 @@ export class AuthTwoFactorDomain {
         return this.authCache.setTwoFactorChallenge(payload);
     }
 
-    async getChallenge(
-        token: string
-    ): Promise<IAuthTwoFactorChallengeCache | null> {
-        return this.authCache.getTwoFactorChallenge(token);
+    async getChallenge(token: string): Promise<IAuthTwoFactorChallengeCache> {
+        const challenge = await this.authCache.getTwoFactorChallenge(token);
+        if (!challenge) {
+            throw new AuthTwoFactorChallengeInvalidException();
+        }
+
+        return challenge;
     }
 
     async deleteChallenge(token: string): Promise<void> {
@@ -196,5 +202,19 @@ export class AuthTwoFactorDomain {
         throw new AuthTwoFactorAttemptTemporaryLockException(
             Math.ceil(remainingMs / 1000)
         );
+    }
+
+    assertMethodProvided(
+        method: EnumAuthTwoFactorMethod | null
+    ): asserts method is EnumAuthTwoFactorMethod {
+        if (!method) {
+            throw new AuthTwoFactorMethodRequiredException();
+        }
+    }
+
+    assertValid(isValid: boolean): void {
+        if (!isValid) {
+            throw new AuthTwoFactorInvalidException();
+        }
     }
 }

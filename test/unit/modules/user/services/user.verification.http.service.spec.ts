@@ -6,9 +6,16 @@ import {
     EnumActivityLogAction,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { User, Verification } from '@generated/prisma-client/client';
+import type {
+    DeviceOwnership,
+    NotificationUserSetting,
+    User,
+    Verification,
+} from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { AccountDomain } from '@modules/account/domains/account.domain';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -27,7 +34,11 @@ describe('UserVerificationHttpService', () => {
         mock<UserVerificationDomain>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
         mock<UserVerificationUtil>();
-    const accountDomain: MockProxy<AccountDomain> = mock<AccountDomain>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const notificationDomain: MockProxy<NotificationDomain> =
+        mock<NotificationDomain>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const notificationQueue: MockProxy<NotificationQueue> =
@@ -62,6 +73,13 @@ describe('UserVerificationHttpService', () => {
         createdAt: new Date('2026-02-01T00:00:00.000Z'),
         createdBy: null,
     };
+    const ownerships = [
+        { notificationToken: 'token-wren' },
+        { notificationToken: null },
+    ] as DeviceOwnership[];
+    const settings = [
+        { channel: 'push' },
+    ] as unknown as NotificationUserSetting[];
     const user = {
         id: 'user-wren',
         email: 'wren@example.com',
@@ -80,9 +98,11 @@ describe('UserVerificationHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(activityLog);
-        accountDomain.getNotificationRecipientOfUser.mockResolvedValue(
-            recipient
+        deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue(
+            ownerships
         );
+        notificationDomain.getListUserSetting.mockResolvedValue(settings);
+        notificationUtil.mapRecipient.mockReturnValue(recipient);
         userVerificationDomain.getOneActiveByEmailToken.mockResolvedValue({
             verification,
             user,
@@ -104,7 +124,12 @@ describe('UserVerificationHttpService', () => {
                     provide: UserVerificationUtil,
                     useValue: userVerificationUtil,
                 },
-                { provide: AccountDomain, useValue: accountDomain },
+                { provide: DeviceDomain, useValue: deviceDomain },
+                {
+                    provide: NotificationDomain,
+                    useValue: notificationDomain,
+                },
+                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -129,8 +154,17 @@ describe('UserVerificationHttpService', () => {
                 createdBy: 'user-wren',
             });
             expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(user, EnumNotificationKind.verifiedEmail);
+                deviceDomain.getOwnershipsWithNotificationToken
+            ).toHaveBeenCalledWith('user-wren');
+            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
+                'user-wren'
+            );
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.verifiedEmail,
+                ['token-wren', null],
+                settings
+            );
             expect(userVerificationDomain.verifyEmail).toHaveBeenCalledWith(
                 verification
             );
@@ -144,7 +178,7 @@ describe('UserVerificationHttpService', () => {
         });
 
         it('writes nothing when the recipient read rejects', async () => {
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            deviceDomain.getOwnershipsWithNotificationToken.mockRejectedValue(
                 new Error('recipient-unavailable')
             );
 
@@ -188,11 +222,11 @@ describe('UserVerificationHttpService', () => {
                 userId: 'user-wren',
                 createdBy: 'user-wren',
             });
-            expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.verificationEmail
+                EnumNotificationKind.verificationEmail,
+                ['token-wren', null],
+                settings
             );
             expect(
                 userVerificationDomain.persistVerificationEmail
@@ -215,7 +249,7 @@ describe('UserVerificationHttpService', () => {
         });
 
         it('writes nothing when the recipient read rejects', async () => {
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            deviceDomain.getOwnershipsWithNotificationToken.mockRejectedValue(
                 new Error('recipient-unavailable')
             );
 

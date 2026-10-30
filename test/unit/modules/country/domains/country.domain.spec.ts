@@ -65,27 +65,6 @@ describe('CountryDomain', () => {
         });
     });
 
-    describe('existsById', () => {
-        it('returns true when the repository reports the country exists', async () => {
-            countryRepository.existsById.mockResolvedValue(true);
-
-            const result = await domain.existsById('country-1');
-
-            expect(result).toBe(true);
-            expect(countryRepository.existsById).toHaveBeenCalledWith(
-                'country-1'
-            );
-        });
-
-        it('returns false when the repository reports the country does not exist', async () => {
-            countryRepository.existsById.mockResolvedValue(false);
-
-            const result = await domain.existsById('country-1');
-
-            expect(result).toBe(false);
-        });
-    });
-
     describe('getIdByAlpha2Code', () => {
         it('returns the country id resolved by alpha-2 code', async () => {
             countryRepository.findIdByAlpha2Code.mockResolvedValue('country-1');
@@ -98,12 +77,14 @@ describe('CountryDomain', () => {
             );
         });
 
-        it('returns null when no country matches the alpha-2 code', async () => {
+        it('throws CountryNotFoundException when no country matches the alpha-2 code', async () => {
             countryRepository.findIdByAlpha2Code.mockResolvedValue(null);
 
-            const result = await domain.getIdByAlpha2Code('ZZ');
-
-            expect(result).toBeNull();
+            await expect(domain.getIdByAlpha2Code('ZZ')).rejects.toMatchObject({
+                module: 'country',
+                statusCode: EnumCountryStatusCodeError.notFound,
+                messagePath: 'country.error.notFound',
+            });
         });
     });
 

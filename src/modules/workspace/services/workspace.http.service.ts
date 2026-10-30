@@ -1,3 +1,5 @@
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -9,7 +11,7 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { MembershipWorkspaceDomain } from '@modules/membership/domains/membership.workspace.domain';
+import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceCursorAvailableOrderBy,
@@ -24,6 +26,8 @@ import type { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/
 import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
+import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -32,12 +36,16 @@ export class WorkspaceHttpService {
     constructor(
         private readonly workspaceDomain: WorkspaceDomain,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
-        private readonly membershipWorkspaceDomain: MembershipWorkspaceDomain,
+        private readonly workspaceInviteDomain: WorkspaceInviteDomain,
+        private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
+        private readonly projectDomain: ProjectDomain,
         private readonly userDomain: UserDomain,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly databaseService: DatabaseService,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async getListCursorByMember(
@@ -199,7 +207,28 @@ export class WorkspaceHttpService {
             }),
         ];
 
-        await this.membershipWorkspaceDomain.softDelete(workspaceId, actorId);
+        const deletedAt = this.helperDateService.create();
+        await this.databaseService.withTransaction(async tx => {
+            await this.workspaceDomain.softDeleteInTx(
+                tx,
+                workspaceId,
+                deletedAt
+            );
+            await this.projectDomain.softDeleteByWorkspaceInTx(
+                tx,
+                workspaceId,
+                deletedAt,
+                actorId
+            );
+            await this.workspaceInviteDomain.expirePendingByWorkspaceInTx(
+                tx,
+                workspaceId
+            );
+            await this.workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx(
+                tx,
+                workspaceId
+            );
+        });
 
         this.activityLogDomain.stagePrepared(activityLogs);
 

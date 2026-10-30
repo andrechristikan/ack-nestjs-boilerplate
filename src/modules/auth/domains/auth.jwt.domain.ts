@@ -23,6 +23,7 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt-config-invalid.exception';
 import { AuthJwtConfigMissingException } from '@modules/auth/exceptions/auth.jwt-config-missing.exception';
+import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 
 /** Signs, verifies and rotates the access/refresh token pair. See docs/authentication.md. */
 @Injectable()
@@ -203,6 +204,14 @@ export class AuthJwtDomain {
     /** Decodes a JWT payload WITHOUT signature verification; use only on already-verified tokens. */
     payloadToken<T>(token: string): T {
         return this.jwtService.decode<T>(token);
+    }
+
+    getRefreshJti({ jti }: IAuthJwtRefreshTokenPayload): string {
+        if (!jti) {
+            throw new AuthJwtRefreshTokenInvalidException();
+        }
+
+        return jti;
     }
 
     /** Mints a new session id and a new jti. */

@@ -16,38 +16,24 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
-import { AccountDomain } from '@modules/account/domains/account.domain';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { SessionDomain } from '@modules/session/domains/session.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import {
-    EnumUserCreateMode,
-    EnumUserSignUpWorkspaceContextType,
-} from '@modules/user/enums/user.enum';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
-import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserHttpService } from '@modules/user/services/user.http.service';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
 import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
-import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import type {
-    IUser,
-    IUserCreateWithWorkspaceInput,
-    IUserList,
-} from '@modules/user/interfaces/user.interface';
+import type { IUser, IUserList } from '@modules/user/interfaces/user.interface';
 import {
     UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
@@ -55,13 +41,17 @@ import {
 
 describe('UserHttpService', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const onboardingDomain: MockProxy<OnboardingDomain> =
-        mock<OnboardingDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const accountDomain: MockProxy<AccountDomain> = mock<AccountDomain>();
+    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const tx = {} as IDatabaseTransactionClient;
+    const now = new Date('2026-03-05T00:00:00.000Z');
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
@@ -70,14 +60,6 @@ describe('UserHttpService', () => {
     const userProfileDomain: MockProxy<UserProfileDomain> =
         mock<UserProfileDomain>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const userOnboardingUtil: MockProxy<UserOnboardingUtil> =
-        mock<UserOnboardingUtil>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let service: UserHttpService;
 
@@ -128,12 +110,15 @@ describe('UserHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        helperDateService.create.mockReturnValue(now);
+        databaseService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserHttpService,
                 { provide: UserDomain, useValue: userDomain },
-                { provide: OnboardingDomain, useValue: onboardingDomain },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -142,17 +127,16 @@ describe('UserHttpService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
-                { provide: AccountDomain, useValue: accountDomain },
+                { provide: SessionDomain, useValue: sessionDomain },
+                { provide: DeviceDomain, useValue: deviceDomain },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
                 { provide: SessionUtil, useValue: sessionUtil },
                 { provide: UserProfileDomain, useValue: userProfileDomain },
                 { provide: UserUtil, useValue: userUtil },
-                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
-                { provide: NotificationUtil, useValue: notificationUtil },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         service = module.get(UserHttpService);
@@ -265,167 +249,6 @@ describe('UserHttpService', () => {
         });
     });
 
-    describe('createByAdmin', () => {
-        const dto: UserCreateRequestDto = {
-            username: 'cinder2wolfe',
-            email: 'cinder@example.com' as Lowercase<string>,
-            roleId: 'role-cinder',
-            countryId: 'country-cinder',
-        };
-
-        const adminUser: IUser = {
-            ...baseUser,
-            id: 'admin-cinder',
-            roleId: 'role-admin-cinder',
-            role: {
-                ...baseUser.role,
-                id: 'role-admin-cinder',
-                type: EnumRoleType.admin,
-            },
-        };
-
-        const password: IAuthPassword = {
-            passwordHash: 'hashed',
-            passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-            passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-            passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
-        };
-        const input: IUserCreateWithWorkspaceInput = {
-            userId: 'user-cinder',
-            email: 'cinder@example.com',
-            name: null,
-            username: 'cinder2wolfe',
-            countryId: 'country-cinder',
-            roleId: 'role-cinder',
-            signUpFrom: EnumUserSignUpFrom.admin,
-            signUpWith: EnumUserSignUpWith.credential,
-            isVerified: false,
-            acceptedTermPolicyTypes: [],
-            password,
-            passwordHistoryType: null,
-            verification: null,
-            workspaceContext: {
-                type: EnumUserSignUpWorkspaceContextType.personal,
-                workspaceId: 'workspace-cinder',
-                slugCandidates: ['w-cinder'],
-                name: "cinder2wolfe's Workspace",
-            },
-            createdBy: 'admin-cinder',
-        };
-        const stageInput = {
-            action: EnumActivityLogAction.adminUserCreate,
-            metadata: {},
-        };
-        const recipient: INotificationRecipient = {
-            ...TestRecipient,
-            userId: 'user-cinder',
-        };
-        const activityLog: IActivityLogStaged = {
-            action: EnumActivityLogAction.adminUserCreate,
-            metadata: {},
-            userId: null,
-            createdBy: null,
-            workspaceId: null,
-        };
-
-        beforeEach(() => {
-            onboardingDomain.createByAdmin.mockResolvedValue({
-                inputs: [input],
-                users: [baseUser],
-                passwordString: 'random-password',
-            });
-            userOnboardingUtil.buildActivityStages.mockReturnValue([
-                stageInput,
-            ]);
-            activityLogDomain.prepare.mockReturnValue(activityLog);
-            notificationUtil.mapRecipient.mockReturnValue(recipient);
-            helperDateService.formatToIso
-                .mockReturnValueOnce('2026-01-01T00:00:00.000Z')
-                .mockReturnValueOnce('2026-06-01T00:00:00.000Z');
-        });
-
-        it('delegates creation to OnboardingDomain, stages the rows, enqueues the welcome, and returns the id', async () => {
-            const result = await service.createByAdmin(dto, adminUser);
-
-            expect(result).toEqual({ data: { id: 'user-cinder' } });
-            expect(onboardingDomain.createByAdmin).toHaveBeenCalledWith(
-                {
-                    username: dto.username,
-                    email: dto.email,
-                    name: null,
-                    roleId: dto.roleId,
-                    countryId: dto.countryId,
-                },
-                'admin-cinder',
-                { roleId: 'role-admin-cinder', roleType: EnumRoleType.admin }
-            );
-            expect(userOnboardingUtil.buildActivityStages).toHaveBeenCalledWith(
-                EnumUserCreateMode.admin,
-                [input],
-                [baseUser],
-                EnumActivityLogAction.adminUserCreate
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith(stageInput);
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.welcomeByAdmin,
-                [],
-                []
-            );
-            expect(notificationQueue.sendWelcomeByAdmin).toHaveBeenCalledWith(
-                recipient,
-                {
-                    password: 'random-password',
-                    passwordCreatedAt: '2026-01-01T00:00:00.000Z',
-                    passwordExpiredAt: '2026-06-01T00:00:00.000Z',
-                },
-                'admin-cinder'
-            );
-        });
-
-        it('skips the welcome when no password was generated', async () => {
-            onboardingDomain.createByAdmin.mockResolvedValue({
-                inputs: [{ ...input, password: null }],
-                users: [baseUser],
-                passwordString: 'random-password',
-            });
-
-            await service.createByAdmin(dto, adminUser);
-
-            expect(notificationQueue.sendWelcomeByAdmin).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-        });
-
-        it('forwards the name when the dto carries one', async () => {
-            await service.createByAdmin(
-                { ...dto, name: 'Cinder Wolfe' },
-                adminUser
-            );
-
-            expect(onboardingDomain.createByAdmin).toHaveBeenCalledWith(
-                expect.objectContaining({ name: 'Cinder Wolfe' }),
-                'admin-cinder',
-                { roleId: 'role-admin-cinder', roleType: EnumRoleType.admin }
-            );
-        });
-
-        it('stages nothing and enqueues nothing when onboarding throws', async () => {
-            const failure = new Error('create failed');
-            onboardingDomain.createByAdmin.mockRejectedValue(failure);
-
-            await expect(service.createByAdmin(dto, adminUser)).rejects.toBe(
-                failure
-            );
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-            expect(notificationQueue.sendWelcomeByAdmin).not.toHaveBeenCalled();
-        });
-    });
-
     describe('updateStatusByAdmin', () => {
         const activityLog: IActivityLogStaged = {
             action: EnumActivityLogAction.userUpdateStatus,
@@ -467,10 +290,29 @@ describe('UserHttpService', () => {
             });
         });
 
-        it('gates the rank, writes, purges, and stages the revoke-all rows before the status rows', async () => {
-            accountDomain.updateStatusByAdmin.mockResolvedValue({
-                user: row,
-                revoked,
+        it('gates the rank, writes the status and the revoke on one transaction, purges after commit, and stages the revoke-all rows before the status rows', async () => {
+            const calls: string[] = [];
+            databaseService.withTransaction.mockImplementation(async fn => {
+                calls.push('begin');
+                const value = await fn(tx);
+                calls.push('commit');
+
+                return value as never;
+            });
+            userDomain.updateStatusByAdminInTx.mockImplementation(async () => {
+                calls.push('updateStatus');
+
+                return row;
+            });
+            sessionDomain.revokeActiveByUserInTx.mockImplementation(
+                async () => {
+                    calls.push('revokeSessions');
+
+                    return revoked;
+                }
+            );
+            sessionQueue.purgeLogins.mockImplementation(async () => {
+                calls.push('purge');
             });
             const dto: UserUpdateStatusRequestDto = {
                 status: EnumUserStatus.blocked,
@@ -488,12 +330,25 @@ describe('UserHttpService', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(accountDomain.updateStatusByAdmin).toHaveBeenCalledWith(
+            expect(userDomain.updateStatusByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 'user-cinder',
                 EnumUserStatus.blocked,
-                3,
-                'admin-cinder'
+                3
             );
+            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cinder',
+                'admin-cinder',
+                now
+            );
+            expect(calls).toEqual([
+                'begin',
+                'updateStatus',
+                'revokeSessions',
+                'commit',
+                'purge',
+            ]);
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
                 'user-cinder',
                 revoked
@@ -530,10 +385,8 @@ describe('UserHttpService', () => {
         });
 
         it('records the plain status action for a status other than blocked', async () => {
-            accountDomain.updateStatusByAdmin.mockResolvedValue({
-                user: row,
-                revoked,
-            });
+            userDomain.updateStatusByAdminInTx.mockResolvedValue(row);
+            sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revoked);
 
             await service.updateStatusByAdmin(
                 'user-cinder',
@@ -549,10 +402,8 @@ describe('UserHttpService', () => {
         });
 
         it('purges an empty list and stages no revoke-all row when no session was open', async () => {
-            accountDomain.updateStatusByAdmin.mockResolvedValue({
-                user: row,
-                revoked: [],
-            });
+            userDomain.updateStatusByAdminInTx.mockResolvedValue(row);
+            sessionDomain.revokeActiveByUserInTx.mockResolvedValue([]);
 
             await service.updateStatusByAdmin(
                 'user-cinder',
@@ -568,10 +419,7 @@ describe('UserHttpService', () => {
         });
 
         it('purges and revokes nothing when the status keeps access', async () => {
-            accountDomain.updateStatusByAdmin.mockResolvedValue({
-                user: row,
-                revoked: null,
-            });
+            userDomain.updateStatusByAdminInTx.mockResolvedValue(row);
 
             await service.updateStatusByAdmin(
                 'user-cinder',
@@ -579,8 +427,24 @@ describe('UserHttpService', () => {
                 admin
             );
 
+            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+        });
+
+        it('purges and stages nothing when the transaction fails', async () => {
+            const cause = new Error('database exploded');
+            databaseService.withTransaction.mockRejectedValue(cause);
+
+            await expect(
+                service.updateStatusByAdmin(
+                    'user-cinder',
+                    { status: EnumUserStatus.blocked },
+                    admin
+                )
+            ).rejects.toBe(cause);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('stops at the rank gate before the blocked gate', async () => {
@@ -596,7 +460,7 @@ describe('UserHttpService', () => {
                 )
             ).rejects.toThrow('rank');
             expect(userDomain.assertUnblocked).not.toHaveBeenCalled();
-            expect(accountDomain.updateStatusByAdmin).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
     });
 
@@ -656,19 +520,63 @@ describe('UserHttpService', () => {
             activityLogDomain.prepare.mockReturnValue(activityLog);
         });
 
-        it('deletes, purges the revoked logins, and stages the revoke-all row before the delete row', async () => {
-            accountDomain.deleteSelf.mockResolvedValue({
-                user: { ...baseUser, photo: null },
-                revoked,
+        it('deletes, revokes sessions and devices on one transaction, purges after commit, and stages the revoke-all row before the delete row', async () => {
+            const calls: string[] = [];
+            databaseService.withTransaction.mockImplementation(async fn => {
+                calls.push('begin');
+                const value = await fn(tx);
+                calls.push('commit');
+
+                return value as never;
+            });
+            userDomain.deleteSelfInTx.mockImplementation(async () => {
+                calls.push('deleteUser');
+
+                return { ...baseUser, photo: null };
+            });
+            sessionDomain.revokeActiveByUserInTx.mockImplementation(
+                async () => {
+                    calls.push('revokeSessions');
+
+                    return revoked;
+                }
+            );
+            deviceDomain.revokeAllByUserInTx.mockImplementation(async () => {
+                calls.push('revokeDevices');
+            });
+            sessionQueue.purgeLogins.mockImplementation(async () => {
+                calls.push('purge');
             });
 
             await expect(service.deleteSelf('user-cinder')).resolves.toEqual(
                 {}
             );
 
-            expect(accountDomain.deleteSelf).toHaveBeenCalledWith(
-                'user-cinder'
+            expect(userDomain.deleteSelfInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cinder',
+                now
             );
+            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cinder',
+                'user-cinder',
+                now
+            );
+            expect(deviceDomain.revokeAllByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cinder',
+                'user-cinder',
+                now
+            );
+            expect(calls).toEqual([
+                'begin',
+                'deleteUser',
+                'revokeSessions',
+                'revokeDevices',
+                'commit',
+                'purge',
+            ]);
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
                 'user-cinder',
                 revoked
@@ -692,10 +600,11 @@ describe('UserHttpService', () => {
         });
 
         it('hands the stored photo to the profile domain', async () => {
-            accountDomain.deleteSelf.mockResolvedValue({
-                user: { ...baseUser, photo },
-                revoked,
+            userDomain.deleteSelfInTx.mockResolvedValue({
+                ...baseUser,
+                photo,
             });
+            sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revoked);
 
             await service.deleteSelf('user-cinder');
 
@@ -703,6 +612,16 @@ describe('UserHttpService', () => {
                 'user-cinder',
                 photo
             );
+        });
+
+        it('purges and stages nothing when the transaction fails', async () => {
+            const cause = new Error('database exploded');
+            databaseService.withTransaction.mockRejectedValue(cause);
+
+            await expect(service.deleteSelf('user-cinder')).rejects.toBe(cause);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(userProfileDomain.deleteOwnedPhoto).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

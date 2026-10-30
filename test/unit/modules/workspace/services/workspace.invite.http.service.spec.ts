@@ -4,6 +4,9 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -21,17 +24,19 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type {
+    DeviceOwnership,
     Project,
     User,
     Workspace,
     WorkspaceInvite,
+    WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { AccountDomain } from '@modules/account/domains/account.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { MembershipInviteDomain } from '@modules/membership/domains/membership.invite.domain';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationRecipient,
@@ -39,7 +44,9 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceInviteDefaultAvailableOrderBy,
@@ -51,6 +58,7 @@ import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/re
 import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
@@ -67,11 +75,20 @@ import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.he
 describe('WorkspaceInviteHttpService', () => {
     const workspaceInviteDomain: MockProxy<WorkspaceInviteDomain> =
         mock<WorkspaceInviteDomain>();
-    const membershipInviteDomain: MockProxy<MembershipInviteDomain> =
-        mock<MembershipInviteDomain>();
+    const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
+        mock<WorkspaceMemberDomain>();
+    const projectMemberDomain: MockProxy<ProjectMemberDomain> =
+        mock<ProjectMemberDomain>();
     const projectDomain: MockProxy<ProjectDomain> = mock<ProjectDomain>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const accountDomain: MockProxy<AccountDomain> = mock<AccountDomain>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const notificationDomain: MockProxy<NotificationDomain> =
+        mock<NotificationDomain>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -191,6 +208,41 @@ describe('WorkspaceInviteHttpService', () => {
         userId: 'user-2',
     };
 
+    const ownership: DeviceOwnership = {
+        id: 'ownership-1',
+        deviceId: 'device-1',
+        userId: 'user-2',
+        revokedAt: null,
+        isRevoked: false,
+        revokedById: null,
+        lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+        notificationToken: 'token-1',
+        notificationProvider: null,
+        biometricEnabled: false,
+        biometricToken: null,
+        biometricType: null,
+        biometricEnabledAt: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+
+    const existingMember: WorkspaceMember = {
+        id: 'member-1',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        workspaceId: 'workspace-1',
+        userId: 'user-2',
+        role: EnumWorkspaceMemberRole.member,
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+    };
+
+    const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
+    const now = new Date('2026-01-01T00:00:00.000Z');
+
     const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.workspaceInviteCreated,
         metadata: {},
@@ -207,6 +259,12 @@ describe('WorkspaceInviteHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
+        helperDateService.create.mockReturnValue(now);
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
+            ownership,
+        ]);
+        notificationDomain.getListUserSetting.mockResolvedValue([]);
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -220,12 +278,17 @@ describe('WorkspaceInviteHttpService', () => {
                     useValue: workspaceInviteDomain,
                 },
                 {
-                    provide: MembershipInviteDomain,
-                    useValue: membershipInviteDomain,
+                    provide: WorkspaceMemberDomain,
+                    useValue: workspaceMemberDomain,
                 },
+                { provide: ProjectMemberDomain, useValue: projectMemberDomain },
                 { provide: ProjectDomain, useValue: projectDomain },
                 { provide: UserDomain, useValue: userDomain },
-                { provide: AccountDomain, useValue: accountDomain },
+                { provide: DeviceDomain, useValue: deviceDomain },
+                { provide: NotificationDomain, useValue: notificationDomain },
+                { provide: NotificationUtil, useValue: notificationUtil },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: NotificationQueue, useValue: notificationQueue },
@@ -332,9 +395,7 @@ describe('WorkspaceInviteHttpService', () => {
             workspaceUtil.createInviteTokenData.mockReturnValue(tokenData);
             workspaceUtil.mapInviteNotificationPayload.mockReturnValue(payload);
             workspaceInviteDomain.createInvite.mockResolvedValue(invite);
-            accountDomain.getNotificationRecipientOfUser.mockResolvedValue(
-                recipient
-            );
+            notificationUtil.mapRecipient.mockReturnValue(recipient);
         });
 
         it('gates, checks, reads the inviter and invitee, writes, stages, and emails an unregistered invitee in order', async () => {
@@ -441,9 +502,7 @@ describe('WorkspaceInviteHttpService', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).not.toHaveBeenCalled();
+            expect(notificationUtil.mapRecipient).not.toHaveBeenCalled();
             expect(
                 workspaceUtil.mapInviteNotificationPayload
             ).toHaveBeenCalledWith(workspace, invite, 'Jane Doe');
@@ -464,10 +523,16 @@ describe('WorkspaceInviteHttpService', () => {
             await service.createInvite(workspace, 'user-1', body);
 
             expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(
+                deviceDomain.getOwnershipsWithNotificationToken
+            ).toHaveBeenCalledWith('user-2');
+            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
+                'user-2'
+            );
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
                 existingUser,
-                EnumNotificationKind.workspaceInvite
+                EnumNotificationKind.workspaceInvite,
+                ['token-1'],
+                []
             );
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.workspaceInviteCreated,
@@ -625,7 +690,7 @@ describe('WorkspaceInviteHttpService', () => {
         it('creates nothing and stages nothing when the invitee recipient read rejects', async () => {
             const failure = new Error('read-failed');
             userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            deviceDomain.getOwnershipsWithNotificationToken.mockRejectedValue(
                 failure
             );
 
@@ -662,9 +727,7 @@ describe('WorkspaceInviteHttpService', () => {
             workspaceUtil.createInviteTokenData.mockReturnValue(tokenData);
             workspaceUtil.mapInviteNotificationPayload.mockReturnValue(payload);
             workspaceInviteDomain.resendInvite.mockResolvedValue(invite);
-            accountDomain.getNotificationRecipientOfUser.mockResolvedValue(
-                recipient
-            );
+            notificationUtil.mapRecipient.mockReturnValue(recipient);
         });
 
         it('gates, reads the pending invite, prepares the row, rotates, stages, and emails an unregistered invitee in order', async () => {
@@ -764,10 +827,16 @@ describe('WorkspaceInviteHttpService', () => {
             await service.resendInvite(workspace, 'user-1', 'invite-1', body);
 
             expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(
+                deviceDomain.getOwnershipsWithNotificationToken
+            ).toHaveBeenCalledWith('user-2');
+            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
+                'user-2'
+            );
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
                 existingUser,
-                EnumNotificationKind.workspaceInvite
+                EnumNotificationKind.workspaceInvite,
+                ['token-1'],
+                []
             );
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
                 action: EnumActivityLogAction.workspaceInviteResentByAdmin,
@@ -817,7 +886,7 @@ describe('WorkspaceInviteHttpService', () => {
         it('rotates nothing when the invitee recipient read rejects', async () => {
             const failure = new Error('read-failed');
             userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            deviceDomain.getOwnershipsWithNotificationToken.mockRejectedValue(
                 failure
             );
 
@@ -996,17 +1065,38 @@ describe('WorkspaceInviteHttpService', () => {
             inviteToken: 'raw-token',
         };
 
-        it('gates, claims through the composition, then prepares and stages the accepted rows from the returned invite', async () => {
+        beforeEach(() => {
+            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue(
+                invite
+            );
+        });
+
+        it('gates, validates, accepts the invite before the member insert on one transaction, then stages the accepted rows', async () => {
             const callOrder: string[] = [];
             featureFlagDomain.validateFeatureFlagMetadata.mockImplementation(
                 async () => {
                     callOrder.push('gate');
                 }
             );
-            membershipInviteDomain.claim.mockImplementation(async () => {
-                callOrder.push('claim');
+            workspaceInviteDomain.validateInviteForEmail.mockImplementation(
+                async () => {
+                    callOrder.push('validate');
 
-                return invite;
+                    return invite;
+                }
+            );
+            workspaceInviteDomain.acceptPendingInTx.mockImplementation(
+                async () => {
+                    callOrder.push('acceptInvite');
+                }
+            );
+            workspaceMemberDomain.createInTx.mockImplementation(async () => {
+                callOrder.push('createMember');
+
+                return existingMember;
+            });
+            userDomain.setLastWorkspaceInTx.mockImplementation(async () => {
+                callOrder.push('setLastWorkspace');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stage');
@@ -1019,15 +1109,40 @@ describe('WorkspaceInviteHttpService', () => {
             );
 
             expect(result).toEqual({});
-            expect(callOrder).toEqual(['gate', 'claim', 'stage']);
+            expect(callOrder).toEqual([
+                'gate',
+                'validate',
+                'acceptInvite',
+                'createMember',
+                'setLastWorkspace',
+                'stage',
+            ]);
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
             ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
-            expect(membershipInviteDomain.claim).toHaveBeenCalledWith(
+            expect(
+                workspaceInviteDomain.validateInviteForEmail
+            ).toHaveBeenCalledWith('raw-token', 'invitee@example.com');
+            expect(
+                workspaceInviteDomain.assertInviteeNotMember
+            ).toHaveBeenCalledWith('workspace-1', 'user-2');
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceInviteDomain.acceptPendingInTx
+            ).toHaveBeenCalledWith(tx, 'invite-1', 'user-2', now);
+            expect(workspaceMemberDomain.createInTx).toHaveBeenCalledWith(
+                tx,
+                'workspace-1',
                 'user-2',
-                'invitee@example.com',
-                'raw-token'
+                EnumWorkspaceMemberRole.member,
+                'user-2'
             );
+            expect(userDomain.setLastWorkspaceInTx).toHaveBeenCalledWith(
+                tx,
+                'user-2',
+                'workspace-1'
+            );
+            expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.workspaceInviteAccepted,
                 userId: 'user-2',
@@ -1048,8 +1163,42 @@ describe('WorkspaceInviteHttpService', () => {
             ]);
         });
 
+        it('creates the project membership last on the same transaction when the invite carries a project and role', async () => {
+            const projectInvite: WorkspaceInvite = {
+                ...invite,
+                projectId: 'project-1',
+                projectRole: EnumProjectMemberRole.member,
+            };
+            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue(
+                projectInvite
+            );
+            const callOrder: string[] = [];
+            userDomain.setLastWorkspaceInTx.mockImplementation(async () => {
+                callOrder.push('setLastWorkspace');
+            });
+            projectMemberDomain.createInTx.mockImplementation(async () => {
+                callOrder.push('createProjectMember');
+
+                return mock();
+            });
+
+            await service.claimInvite('user-2', 'invitee@example.com', body);
+
+            expect(callOrder).toEqual([
+                'setLastWorkspace',
+                'createProjectMember',
+            ]);
+            expect(projectMemberDomain.createInTx).toHaveBeenCalledWith(
+                tx,
+                'project-1',
+                'user-2',
+                EnumProjectMemberRole.member,
+                'user-2'
+            );
+        });
+
         it('stages a single row when the caller invited itself', async () => {
-            membershipInviteDomain.claim.mockResolvedValue({
+            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue({
                 ...invite,
                 invitedByUserId: 'user-2',
             });
@@ -1062,7 +1211,7 @@ describe('WorkspaceInviteHttpService', () => {
             ]);
         });
 
-        it('claims nothing when the gate rejects', async () => {
+        it('validates nothing when the gate rejects', async () => {
             featureFlagDomain.validateFeatureFlagMetadata.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
@@ -1070,17 +1219,50 @@ describe('WorkspaceInviteHttpService', () => {
             await expect(
                 service.claimInvite('user-2', 'invitee@example.com', body)
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
-            expect(membershipInviteDomain.claim).not.toHaveBeenCalled();
+            expect(
+                workspaceInviteDomain.validateInviteForEmail
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('stages nothing when the claim rejects', async () => {
-            membershipInviteDomain.claim.mockRejectedValue(
+        it('throws WorkspaceInviteInvalidException before the membership read when the token does not resolve', async () => {
+            workspaceInviteDomain.validateInviteForEmail.mockRejectedValue(
                 new WorkspaceInviteInvalidException()
             );
 
             await expect(
                 service.claimInvite('user-2', 'invitee@example.com', body)
             ).rejects.toBeInstanceOf(WorkspaceInviteInvalidException);
+            expect(
+                workspaceInviteDomain.assertInviteeNotMember
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('throws WorkspaceInviteInvalidException when the caller is already a member', async () => {
+            workspaceInviteDomain.assertInviteeNotMember.mockRejectedValue(
+                new WorkspaceInviteInvalidException()
+            );
+
+            await expect(
+                service.claimInvite('user-2', 'invitee@example.com', body)
+            ).rejects.toBeInstanceOf(WorkspaceInviteInvalidException);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('propagates WorkspaceInviteAlreadyProcessedException from the guarded accept, writes nothing after it, and stages nothing', async () => {
+            workspaceInviteDomain.acceptPendingInTx.mockRejectedValue(
+                new WorkspaceInviteAlreadyProcessedException()
+            );
+
+            await expect(
+                service.claimInvite('user-2', 'invitee@example.com', body)
+            ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
+            expect(workspaceMemberDomain.createInTx).not.toHaveBeenCalled();
+            expect(userDomain.setLastWorkspaceInTx).not.toHaveBeenCalled();
+            expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });

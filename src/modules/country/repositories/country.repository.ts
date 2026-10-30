@@ -23,14 +23,6 @@ export class CountryRepository implements ICountryRepository {
         );
     }
 
-    async existsById(id: string): Promise<boolean> {
-        const count = await this.databaseService.client.country.count({
-            where: { id },
-        });
-
-        return count > 0;
-    }
-
     async findIdByAlpha2Code(alpha2Code: string): Promise<string | null> {
         const country = await this.databaseService.client.country.findUnique({
             where: { alpha2Code },

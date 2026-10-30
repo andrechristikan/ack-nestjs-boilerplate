@@ -35,9 +35,8 @@ import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.
 import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import type { IUserLoginOutcome } from '@modules/user/interfaces/user.interface';
-import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
+import { UserOnboardingHttpService } from '@modules/user/services/user.onboarding.http.service';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
-import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
 import { UserVerificationHttpService } from '@modules/user/services/user.verification.http.service';
 import {
     Body,
@@ -58,10 +57,9 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 })
 export class UserPublicController {
     constructor(
-        private readonly userAuthHttpService: UserAuthHttpService,
+        private readonly userOnboardingHttpService: UserOnboardingHttpService,
         private readonly userVerificationHttpService: UserVerificationHttpService,
-        private readonly userPasswordHttpService: UserPasswordHttpService,
-        private readonly userTwoFactorHttpService: UserTwoFactorHttpService
+        private readonly userPasswordHttpService: UserPasswordHttpService
     ) {}
 
     @Doc({ summary: 'login with credential' })
@@ -75,7 +73,7 @@ export class UserPublicController {
         @Body({ schema: UserLoginRequestSchema })
         body: UserLoginRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
-        return this.userAuthHttpService.loginCredential(body);
+        return this.userOnboardingHttpService.loginCredential(body);
     }
 
     @Doc({ summary: 'login with social google' })
@@ -95,7 +93,7 @@ export class UserPublicController {
         @Body({ schema: UserCreateSocialRequestSchema })
         body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
-        return this.userAuthHttpService.loginWithSocial(
+        return this.userOnboardingHttpService.loginWithSocial(
             email,
             EnumUserLoginWith.socialGoogle,
             body
@@ -119,7 +117,7 @@ export class UserPublicController {
         @Body({ schema: UserCreateSocialRequestSchema })
         body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
-        return this.userAuthHttpService.loginWithSocial(
+        return this.userOnboardingHttpService.loginWithSocial(
             email,
             EnumUserLoginWith.socialApple,
             body
@@ -137,7 +135,7 @@ export class UserPublicController {
         @Body({ schema: UserSignUpRequestSchema })
         body: UserSignUpRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userAuthHttpService.signUp(body);
+        return this.userOnboardingHttpService.signUp(body);
     }
 
     @Doc({ summary: 'user email verification' })
@@ -201,7 +199,7 @@ export class UserPublicController {
         @Body({ schema: UserLoginVerifyTwoFactorRequestSchema })
         body: UserLoginVerifyTwoFactorRequestDto
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userTwoFactorHttpService.loginVerifyTwoFactor(body);
+        return this.userOnboardingHttpService.loginVerifyTwoFactor(body);
     }
 
     @Doc({
@@ -219,6 +217,6 @@ export class UserPublicController {
         @Body({ schema: UserLoginSetupTwoFactorRequestSchema })
         body: UserLoginSetupTwoFactorRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userTwoFactorHttpService.loginSetupTwoFactor(body);
+        return this.userOnboardingHttpService.loginSetupTwoFactor(body);
     }
 }

@@ -5,12 +5,17 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
+import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
+import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
     ISession,
     ISessionCache,
@@ -27,7 +32,8 @@ export class SessionDomain {
     constructor(
         private readonly sessionRepository: SessionRepository,
         private readonly sessionCache: SessionCache,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListOffsetByAdmin(
@@ -115,11 +121,34 @@ export class SessionDomain {
         );
     }
 
-    async findOneActive(
-        userId: string,
-        sessionId: string
-    ): Promise<ISession | null> {
-        return this.sessionRepository.findOneActive(userId, sessionId);
+    async getOneActive(userId: string, sessionId: string): Promise<ISession> {
+        const session = await this.sessionRepository.findOneActive(
+            userId,
+            sessionId
+        );
+        if (!session) {
+            throw new SessionRevokedException();
+        }
+
+        return session;
+    }
+
+    getRefreshedTokens(tokens: IAuthToken | null): IAuthToken {
+        if (tokens === null) {
+            throw new SessionRevokedException();
+        }
+
+        return tokens;
+    }
+
+    getRequestLog(): IRequestLog {
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
+        if (requestLog === null) {
+            throw new RequestContextMissingException(RequestLogStoreKey);
+        }
+
+        return requestLog;
     }
 
     async updateJtiInTx(

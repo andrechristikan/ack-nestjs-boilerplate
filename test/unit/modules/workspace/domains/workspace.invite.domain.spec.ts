@@ -21,6 +21,7 @@ import type {
     Project,
     Workspace,
     WorkspaceInvite,
+    WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
@@ -239,6 +240,48 @@ describe('WorkspaceInviteDomain', () => {
             );
 
             expect(result).toBe(baseInvite);
+        });
+    });
+
+    describe('assertInviteeNotMember', () => {
+        const member: WorkspaceMember = {
+            id: 'member-1',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+            workspaceId: 'workspace-1',
+            userId: 'user-2',
+            role: EnumWorkspaceMemberRole.member,
+            joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+        };
+
+        it('resolves when the user is not a member of the workspace', async () => {
+            workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                domain.assertInviteeNotMember('workspace-1', 'user-2')
+            ).resolves.toBeUndefined();
+            expect(
+                workspaceMemberDomain.getOneByWorkspaceAndUser
+            ).toHaveBeenCalledWith('workspace-1', 'user-2');
+        });
+
+        it('throws WorkspaceInviteInvalidException when the user already belongs to the workspace', async () => {
+            workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
+                member
+            );
+
+            await expect(
+                domain.assertInviteeNotMember('workspace-1', 'user-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteInvalidException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
+                messagePath: 'workspace.error.inviteInvalid',
+            });
         });
     });
 

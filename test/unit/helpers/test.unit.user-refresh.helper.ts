@@ -9,23 +9,25 @@ import { EnumSessionStatusCodeError } from '@modules/session/enums/session.statu
 import type { SessionDomain } from '@modules/session/domains/session.domain';
 import type { ISession } from '@modules/session/interfaces/session.interface';
 
-export interface IAccountRefreshSessionDoubles {
+export interface IUserRefreshSessionDoubles {
     authJwtDomain: MockProxy<AuthJwtDomain>;
     sessionDomain: MockProxy<SessionDomain>;
 }
 
-export interface IAccountRefreshSessionFixture {
+export interface IUserRefreshSessionFixture {
     payload: IAuthJwtRefreshTokenPayload;
-    session: ISession | null;
+    oldJti: string;
+    session: ISession;
     refreshed: IAuthAccessTokenGenerate;
 }
 
-export function stubAccountRefreshSession(
-    doubles: IAccountRefreshSessionDoubles,
-    fixture: IAccountRefreshSessionFixture
+export function stubUserRefreshSession(
+    doubles: IUserRefreshSessionDoubles,
+    fixture: IUserRefreshSessionFixture
 ): void {
     doubles.authJwtDomain.payloadToken.mockReturnValue(fixture.payload);
-    doubles.sessionDomain.findOneActive.mockResolvedValue(fixture.session);
+    doubles.authJwtDomain.getRefreshJti.mockReturnValue(fixture.oldJti);
+    doubles.sessionDomain.getOneActive.mockResolvedValue(fixture.session);
     doubles.authJwtDomain.refreshToken.mockReturnValue(fixture.refreshed);
     doubles.sessionDomain.updateJtiInTx.mockResolvedValue(true);
     doubles.sessionDomain.updateLogin.mockResolvedValue(

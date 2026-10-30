@@ -1,18 +1,23 @@
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { AccountDeviceDomain } from '@modules/account/domains/account.device.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
-import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
+import type {
+    IDeviceOwnershipDetail,
+    IDeviceRemoveResult,
+} from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -25,14 +30,46 @@ import {
 export class DeviceHttpService {
     constructor(
         private readonly deviceDomain: DeviceDomain,
-        private readonly accountDeviceDomain: AccountDeviceDomain,
+        private readonly sessionDomain: SessionDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly roleDomain: RoleDomain,
         private readonly sessionQueue: SessionQueue,
         private readonly deviceUtil: DeviceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly databaseService: DatabaseService,
+        private readonly helperDateService: HelperDateService
     ) {}
+
+    private async removeRevokedBy(
+        userId: string,
+        deviceOwnershipId: string,
+        removedBy: string
+    ): Promise<IDeviceRemoveResult> {
+        // Sequential by design: gate before the work it guards
+        await this.deviceDomain.assertActive(userId, deviceOwnershipId);
+        const now = this.helperDateService.create();
+
+        return this.databaseService.withTransaction(async tx => {
+            const revokedSessions =
+                await this.sessionDomain.revokeByDeviceOwnershipInTx(
+                    tx,
+                    userId,
+                    deviceOwnershipId,
+                    removedBy,
+                    now
+                );
+            const deviceOwnership = await this.deviceDomain.removeOwnershipInTx(
+                tx,
+                userId,
+                deviceOwnershipId,
+                removedBy,
+                now
+            );
+
+            return { deviceOwnership, revokedSessions };
+        });
+    }
 
     async getListOffsetByAdmin(
         userId: string,
@@ -132,8 +169,11 @@ export class DeviceHttpService {
         userId: string,
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        const { deviceOwnership, revokedSessions } =
-            await this.accountDeviceDomain.remove(userId, deviceOwnershipId);
+        const { deviceOwnership, revokedSessions } = await this.removeRevokedBy(
+            userId,
+            deviceOwnershipId,
+            userId
+        );
 
         const metadata = this.deviceUtil.mapActivityLogMetadata(
             deviceOwnership,
@@ -164,12 +204,11 @@ export class DeviceHttpService {
         const targetRole = await this.roleDomain.getOneByUserId(userId);
         this.roleDomain.assertActorOutranks(user.role.type, targetRole.type);
 
-        const { deviceOwnership, revokedSessions } =
-            await this.accountDeviceDomain.removeByAdmin(
-                userId,
-                deviceOwnershipId,
-                user.id
-            );
+        const { deviceOwnership, revokedSessions } = await this.removeRevokedBy(
+            userId,
+            deviceOwnershipId,
+            user.id
+        );
 
         const actorMetadata = this.deviceUtil.mapActivityLogActorMetadata(
             deviceOwnership,

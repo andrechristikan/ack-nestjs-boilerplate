@@ -1,5 +1,4 @@
-import { AccountDomainModule } from '@modules/account/account.domain.module';
-import { MembershipDomainModule } from '@modules/membership/membership.domain.module';
+import { DeviceDomainModule } from '@modules/device/device.domain.module';
 import { ProjectDomainModule } from '@modules/project/project.domain.module';
 import { UserDomainModule } from '@modules/user/user.domain.module';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
@@ -24,8 +23,7 @@ import { Module } from '@nestjs/common';
         WorkspaceJoinRequestHttpService,
     ],
     imports: [
-        AccountDomainModule,
-        MembershipDomainModule,
+        DeviceDomainModule,
         ProjectDomainModule,
         UserDomainModule,
         WorkspaceDomainModule,

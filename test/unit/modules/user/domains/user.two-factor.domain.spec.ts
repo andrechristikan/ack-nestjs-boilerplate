@@ -583,6 +583,72 @@ describe('UserTwoFactorDomain', () => {
         });
     });
 
+    describe('getEnabledTwoFactor', () => {
+        it('returns the two-factor row when two-factor is enabled', () => {
+            expect(domain.getEnabledTwoFactor(baseUser)).toBe(baseTwoFactor);
+        });
+
+        it('throws AuthTwoFactorNotEnabledException when two-factor is not enabled', () => {
+            const user = {
+                ...baseUser,
+                twoFactor: { ...baseTwoFactor, enabled: false },
+            };
+
+            expect(() => domain.getEnabledTwoFactor(user)).toThrow(
+                expect.objectContaining({
+                    statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                })
+            );
+        });
+
+        it('throws AuthTwoFactorNotEnabledException when the user has no two-factor row', () => {
+            expect(() =>
+                domain.getEnabledTwoFactor({ ...baseUser, twoFactor: null })
+            ).toThrow(
+                expect.objectContaining({
+                    statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                })
+            );
+        });
+    });
+
+    describe('getBackupCodeForSetup', () => {
+        it('returns null when two-factor is not enabled', () => {
+            expect(
+                domain.getBackupCodeForSetup(
+                    { ...baseUser, twoFactor: null },
+                    'backup-code'
+                )
+            ).toBeNull();
+        });
+
+        it('returns the backup code when two-factor is enabled', () => {
+            expect(domain.getBackupCodeForSetup(baseUser, 'backup-code')).toBe(
+                'backup-code'
+            );
+        });
+
+        it('throws AuthTwoFactorBackupCodeRequiredException when two-factor is enabled and no backup code is given', () => {
+            expect(() => domain.getBackupCodeForSetup(baseUser, null)).toThrow(
+                expect.objectContaining({
+                    module: 'auth',
+                    statusCode:
+                        EnumAuthStatusCodeError.twoFactorBackupCodeRequired,
+                    messagePath: 'auth.error.twoFactorBackupCodeRequired',
+                })
+            );
+        });
+
+        it('throws AuthTwoFactorBackupCodeRequiredException when the backup code is blank', () => {
+            expect(() => domain.getBackupCodeForSetup(baseUser, '')).toThrow(
+                expect.objectContaining({
+                    statusCode:
+                        EnumAuthStatusCodeError.twoFactorBackupCodeRequired,
+                })
+            );
+        });
+    });
+
     describe('disableInTx', () => {
         it('disables two-factor on the given transaction', async () => {
             await domain.disableInTx(tx, 'user-quartz');

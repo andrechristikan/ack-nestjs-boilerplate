@@ -42,6 +42,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 
 describe('UserDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -494,27 +495,27 @@ describe('UserDomain', () => {
     });
 
     describe('deactivateForMaxPasswordAttemptInTx', () => {
-        it('answers whether the repository deactivated the still-active account', async () => {
+        it('resolves when the repository deactivated the still-active account', async () => {
             userRepository.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
                 true
             );
 
             await expect(
                 domain.deactivateForMaxPasswordAttemptInTx(tx, 'user-cobalt')
-            ).resolves.toBe(true);
+            ).resolves.toBeUndefined();
             expect(
                 userRepository.deactivateForMaxPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-cobalt');
         });
 
-        it('answers false when the account was no longer active', async () => {
+        it('throws UserPasswordAttemptMaxException when the account was no longer active', async () => {
             userRepository.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
                 false
             );
 
             await expect(
                 domain.deactivateForMaxPasswordAttemptInTx(tx, 'user-cobalt')
-            ).resolves.toBe(false);
+            ).rejects.toBeInstanceOf(UserPasswordAttemptMaxException);
         });
     });
 

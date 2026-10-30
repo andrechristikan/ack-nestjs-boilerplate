@@ -2,6 +2,9 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -24,7 +27,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { MembershipWorkspaceDomain } from '@modules/membership/domains/membership.workspace.domain';
+import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
@@ -43,14 +46,19 @@ import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/requ
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
+import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 
 describe('WorkspaceHttpService', () => {
     const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
         mock<WorkspaceMemberDomain>();
-    const membershipWorkspaceDomain: MockProxy<MembershipWorkspaceDomain> =
-        mock<MembershipWorkspaceDomain>();
+    const workspaceInviteDomain: MockProxy<WorkspaceInviteDomain> =
+        mock<WorkspaceInviteDomain>();
+    const workspaceJoinRequestDomain: MockProxy<WorkspaceJoinRequestDomain> =
+        mock<WorkspaceJoinRequestDomain>();
+    const projectDomain: MockProxy<ProjectDomain> = mock<ProjectDomain>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
@@ -60,6 +68,12 @@ describe('WorkspaceHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+
+    const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
+    const deletedAt = new Date('2026-01-01T00:00:00.000Z');
 
     const workspace: Workspace = {
         id: 'workspace-1',
@@ -102,6 +116,8 @@ describe('WorkspaceHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
+        helperDateService.create.mockReturnValue(deletedAt);
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         paginationQueryUtil.offset.mockReturnValue({
             params: offsetPagination,
             storePatch: {},
@@ -120,9 +136,16 @@ describe('WorkspaceHttpService', () => {
                     useValue: workspaceMemberDomain,
                 },
                 {
-                    provide: MembershipWorkspaceDomain,
-                    useValue: membershipWorkspaceDomain,
+                    provide: WorkspaceInviteDomain,
+                    useValue: workspaceInviteDomain,
                 },
+                {
+                    provide: WorkspaceJoinRequestDomain,
+                    useValue: workspaceJoinRequestDomain,
+                },
+                { provide: ProjectDomain, useValue: projectDomain },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: UserDomain, useValue: userDomain },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
@@ -476,16 +499,29 @@ describe('WorkspaceHttpService', () => {
     });
 
     describe('softDeleteWorkspace', () => {
-        it('prepares the deleted activity, soft-deletes through the membership composition, and stages it', async () => {
+        it('prepares the deleted activity, soft-deletes the workspace, its projects, its pending invites, and its pending join requests in order on one transaction, and stages it', async () => {
             const callOrder: string[] = [];
             activityLogDomain.prepare.mockImplementation(() => {
                 callOrder.push('prepare');
 
                 return stagedActivityLog;
             });
-            membershipWorkspaceDomain.softDelete.mockImplementation(
+            workspaceDomain.softDeleteInTx.mockImplementation(async () => {
+                callOrder.push('workspace');
+            });
+            projectDomain.softDeleteByWorkspaceInTx.mockImplementation(
                 async () => {
-                    callOrder.push('softDelete');
+                    callOrder.push('projects');
+                }
+            );
+            workspaceInviteDomain.expirePendingByWorkspaceInTx.mockImplementation(
+                async () => {
+                    callOrder.push('invites');
+                }
+            );
+            workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx.mockImplementation(
+                async () => {
+                    callOrder.push('joinRequests');
                 }
             );
             activityLogDomain.stagePrepared.mockImplementation(() => {
@@ -498,27 +534,54 @@ describe('WorkspaceHttpService', () => {
             );
 
             expect(result).toEqual({});
-            expect(membershipWorkspaceDomain.softDelete).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(workspaceDomain.softDeleteInTx).toHaveBeenCalledWith(
+                tx,
                 'workspace-1',
-                'user-1'
+                deletedAt
             );
+            expect(
+                projectDomain.softDeleteByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', deletedAt, 'user-1');
+            expect(
+                workspaceInviteDomain.expirePendingByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1');
+            expect(
+                workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1');
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.workspaceDeleted,
                 userId: 'user-1',
                 createdBy: 'user-1',
                 workspaceId: 'workspace-1',
             });
-            expect(callOrder).toEqual(['prepare', 'softDelete', 'stage']);
+            expect(callOrder).toEqual([
+                'prepare',
+                'workspace',
+                'projects',
+                'invites',
+                'joinRequests',
+                'stage',
+            ]);
         });
 
-        it('stages nothing when the composition rejects', async () => {
-            membershipWorkspaceDomain.softDelete.mockRejectedValue(
+        it('runs no later step and stages nothing when the workspace soft delete rejects', async () => {
+            workspaceDomain.softDeleteInTx.mockRejectedValue(
                 new WorkspaceNotFoundException()
             );
 
             await expect(
                 service.softDeleteWorkspace('workspace-1', 'user-1')
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            expect(
+                projectDomain.softDeleteByWorkspaceInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                workspaceInviteDomain.expirePendingByWorkspaceInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx
+            ).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });

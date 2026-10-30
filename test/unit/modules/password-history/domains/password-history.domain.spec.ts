@@ -13,10 +13,14 @@ import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
+import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 describe('PasswordHistoryDomain', () => {
     const passwordHistoryRepository: MockProxy<PasswordHistoryRepository> =
         mock<PasswordHistoryRepository>();
+    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
+        mock<AuthPasswordUtil>();
     let domain: PasswordHistoryDomain;
 
     beforeEach(async () => {
@@ -28,6 +32,7 @@ describe('PasswordHistoryDomain', () => {
                     provide: PasswordHistoryRepository,
                     useValue: passwordHistoryRepository,
                 },
+                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
             ],
         }).compile();
         domain = module.get(PasswordHistoryDomain);
@@ -88,32 +93,6 @@ describe('PasswordHistoryDomain', () => {
         });
     });
 
-    describe('getActiveByUser', () => {
-        it('returns the active password history rows for the user', async () => {
-            const histories: PasswordHistory[] = [
-                {
-                    id: 'history-id',
-                    userId: 'user-id',
-                    password: 'hashed',
-                    type: EnumPasswordHistoryType.profile,
-                    expiredAt: new Date('2024-02-01T00:00:00.000Z'),
-                    createdAt: new Date('2024-01-01T00:00:00.000Z'),
-                    createdBy: 'user-id',
-                },
-            ];
-            passwordHistoryRepository.findActiveUser.mockResolvedValue(
-                histories
-            );
-
-            const result = await domain.getActiveByUser('user-id');
-
-            expect(result).toBe(histories);
-            expect(
-                passwordHistoryRepository.findActiveUser
-            ).toHaveBeenCalledWith('user-id');
-        });
-    });
-
     describe('createInTx', () => {
         it('creates the password history row inside the transaction', async () => {
             const tx = {} as IDatabaseTransactionClient;
@@ -150,6 +129,50 @@ describe('PasswordHistoryDomain', () => {
                 createdAt,
                 'admin-id'
             );
+        });
+    });
+
+    describe('assertNew', () => {
+        const history: PasswordHistory = {
+            id: 'history-id',
+            userId: 'user-id',
+            password: 'hashed-old',
+            type: EnumPasswordHistoryType.profile,
+            expiredAt: new Date('2026-06-01T00:00:00.000Z'),
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: 'user-id',
+        };
+
+        it('passes when the new password repeats no history entry', async () => {
+            passwordHistoryRepository.findActiveUser.mockResolvedValue([
+                history,
+            ]);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+
+            await expect(
+                domain.assertNew('user-id', 'new-password')
+            ).resolves.toBeUndefined();
+            expect(authPasswordUtil.checkPasswordPeriod).toHaveBeenCalledWith(
+                [history],
+                'new-password'
+            );
+        });
+
+        it('throws UserPasswordMustNewException with the period when the new password repeats a history entry', async () => {
+            passwordHistoryRepository.findActiveUser.mockResolvedValue([
+                history,
+            ]);
+            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(history);
+            authPasswordUtil.getPasswordPeriodInDays.mockReturnValue(90);
+
+            await expect(
+                domain.assertNew('user-id', 'old-password')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordMustNew,
+                messagePath: 'user.error.passwordMustNew',
+                messageProperties: { period: 90 },
+            });
         });
     });
 });

@@ -10,14 +10,17 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
-import { AccountDomain } from '@modules/account/domains/account.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceJoinRequestDefaultStatus,
@@ -36,10 +39,12 @@ export class WorkspaceJoinRequestHttpService {
         private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly userDomain: UserDomain,
-        private readonly accountDomain: AccountDomain,
+        private readonly deviceDomain: DeviceDomain,
+        private readonly notificationDomain: NotificationDomain,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly notificationQueue: NotificationQueue,
+        private readonly notificationUtil: NotificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -61,12 +66,42 @@ export class WorkspaceJoinRequestHttpService {
 
         return Promise.all(
             reviewers.map(reviewer =>
-                this.accountDomain.getNotificationRecipientOfUser(
+                this.mapRecipientOfUser(
                     reviewer,
                     EnumNotificationKind.workspaceJoinRequest
                 )
             )
         );
+    }
+
+    private async mapRecipientOfUser(
+        user: IUserRecipient,
+        kind: EnumNotificationKind
+    ): Promise<INotificationRecipient> {
+        const [ownerships, settings] = await Promise.all([
+            this.deviceDomain.getOwnershipsWithNotificationToken(user.id),
+            this.notificationDomain.getListUserSetting(user.id),
+        ]);
+        const tokens = ownerships.map(ownership => ownership.notificationToken);
+
+        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
+    }
+
+    private async getRequesterRecipient(
+        requesterId: string,
+        kind: EnumNotificationKind
+    ): Promise<INotificationRecipient | null> {
+        const [user, ownerships, settings] = await Promise.all([
+            this.userDomain.getOneActive(requesterId),
+            this.deviceDomain.getOwnershipsWithNotificationToken(requesterId),
+            this.notificationDomain.getListUserSetting(requesterId),
+        ]);
+        if (user === null) {
+            return null;
+        }
+        const tokens = ownerships.map(ownership => ownership.notificationToken);
+
+        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
     private prepareReviewActivityLogs(
@@ -218,7 +253,7 @@ export class WorkspaceJoinRequestHttpService {
         );
 
         // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.accountDomain.getNotificationRecipient(
+        const recipient = await this.getRequesterRecipient(
             joinRequest.userId,
             EnumNotificationKind.workspaceJoinAccepted
         );
@@ -264,7 +299,7 @@ export class WorkspaceJoinRequestHttpService {
         );
 
         // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.accountDomain.getNotificationRecipient(
+        const recipient = await this.getRequesterRecipient(
             joinRequest.userId,
             EnumNotificationKind.workspaceJoinRejected
         );

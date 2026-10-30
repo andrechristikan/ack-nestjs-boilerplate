@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
+    EnumPasswordHistoryType,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -11,28 +12,44 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
+import type {
+    DeviceOwnership,
+    NotificationUserSetting,
+    PasswordHistory,
+    TwoFactor,
+    User,
+} from '@generated/prisma-client/client';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { AccountPasswordDomain } from '@modules/account/domains/account.password.domain';
-import { AccountDomain } from '@modules/account/domains/account.domain';
-import { AccountTwoFactorDomain } from '@modules/account/domains/account.two-factor.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type {
     IAuthPassword,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
+import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
@@ -49,11 +66,16 @@ describe('UserPasswordHttpService', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const userPasswordDomain: MockProxy<UserPasswordDomain> =
         mock<UserPasswordDomain>();
-    const accountPasswordDomain: MockProxy<AccountPasswordDomain> =
-        mock<AccountPasswordDomain>();
-    const accountDomain: MockProxy<AccountDomain> = mock<AccountDomain>();
-    const accountTwoFactorDomain: MockProxy<AccountTwoFactorDomain> =
-        mock<AccountTwoFactorDomain>();
+    const userTwoFactorDomain: MockProxy<UserTwoFactorDomain> =
+        mock<UserTwoFactorDomain>();
+    const authTwoFactorDomain: MockProxy<AuthTwoFactorDomain> =
+        mock<AuthTwoFactorDomain>();
+    const passwordHistoryDomain: MockProxy<PasswordHistoryDomain> =
+        mock<PasswordHistoryDomain>();
+    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const notificationDomain: MockProxy<NotificationDomain> =
+        mock<NotificationDomain>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
@@ -64,7 +86,11 @@ describe('UserPasswordHttpService', () => {
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -137,6 +163,32 @@ describe('UserPasswordHttpService', () => {
         userId: user.id,
     };
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
+    const tx = {} as IDatabaseTransactionClient;
+    const now = new Date('2026-03-05T00:00:00.000Z');
+    const ownerships = [
+        { notificationToken: 'token-linden' },
+    ] as DeviceOwnership[];
+    const settings = [
+        { channel: 'push' },
+    ] as unknown as NotificationUserSetting[];
+    const twoFactorRow: TwoFactor = {
+        id: 'two-factor-linden',
+        userId: 'user-linden',
+        secret: 'encrypted-secret',
+        pendingSecret: null,
+        backupCodes: ['hash-one'],
+        enabled: true,
+        requiredSetup: false,
+        confirmedAt: new Date('2026-01-05T00:00:00.000Z'),
+        lastUsedAt: null,
+        attempt: 0,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+    const twoFactorUser: IUser = { ...user, twoFactor: twoFactorRow };
+    const passwordHistory = { id: 'history-linden' } as PasswordHistory;
     const twoFactorVerified: IAuthTwoFactorVerifyResult = {
         isValid: true,
         method: EnumAuthTwoFactorMethod.code,
@@ -164,11 +216,22 @@ describe('UserPasswordHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(activityLog);
-        accountDomain.getNotificationRecipientOfUser.mockResolvedValue(
-            recipient
-        );
+        helperDateService.create.mockReturnValue(now);
         helperDateService.formatToIso.mockReturnValue(
             '2026-03-01T00:00:00.000Z'
+        );
+        databaseService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
+        deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue(
+            ownerships
+        );
+        notificationDomain.getListUserSetting.mockResolvedValue(settings);
+        notificationUtil.mapRecipient.mockReturnValue(recipient);
+        userTwoFactorDomain.getEnabledTwoFactor.mockReturnValue(twoFactorRow);
+        userTwoFactorDomain.incrementAttempt.mockResolvedValue(1);
+        authTwoFactorDomain.verifyTwoFactor.mockResolvedValue(
+            twoFactorVerified
         );
 
         const module: TestingModule = await Test.createTestingModule({
@@ -177,13 +240,22 @@ describe('UserPasswordHttpService', () => {
                 { provide: UserDomain, useValue: userDomain },
                 { provide: UserPasswordDomain, useValue: userPasswordDomain },
                 {
-                    provide: AccountPasswordDomain,
-                    useValue: accountPasswordDomain,
+                    provide: UserTwoFactorDomain,
+                    useValue: userTwoFactorDomain,
                 },
-                { provide: AccountDomain, useValue: accountDomain },
                 {
-                    provide: AccountTwoFactorDomain,
-                    useValue: accountTwoFactorDomain,
+                    provide: AuthTwoFactorDomain,
+                    useValue: authTwoFactorDomain,
+                },
+                {
+                    provide: PasswordHistoryDomain,
+                    useValue: passwordHistoryDomain,
+                },
+                { provide: SessionDomain, useValue: sessionDomain },
+                { provide: DeviceDomain, useValue: deviceDomain },
+                {
+                    provide: NotificationDomain,
+                    useValue: notificationDomain,
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: RoleDomain, useValue: roleDomain },
@@ -191,7 +263,10 @@ describe('UserPasswordHttpService', () => {
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: UserUtil, useValue: userUtil },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -205,11 +280,6 @@ describe('UserPasswordHttpService', () => {
                 password,
                 passwordString: 'temp-password',
             });
-            accountPasswordDomain.updateByAdmin.mockResolvedValue({
-                user: updatedRow,
-                passwordHistoryId: 'history-linden',
-                revoked,
-            });
             userUtil.mapActivityLogActorMetadata.mockReturnValue({
                 targetUserId: 'user-linden',
             });
@@ -218,7 +288,36 @@ describe('UserPasswordHttpService', () => {
             });
         });
 
-        it('gates the actor rank, writes, purges, notifies, and stages both rows', async () => {
+        it('gates the actor rank, writes the password, history, and revoke on one transaction, purges after commit, notifies, and stages both rows', async () => {
+            const calls: string[] = [];
+            databaseService.withTransaction.mockImplementation(async fn => {
+                calls.push('begin');
+                const value = await fn(tx);
+                calls.push('commit');
+
+                return value as never;
+            });
+            userDomain.updatePasswordInTx.mockImplementation(async () => {
+                calls.push('updatePassword');
+
+                return updatedRow;
+            });
+            passwordHistoryDomain.createInTx.mockImplementation(async () => {
+                calls.push('createHistory');
+
+                return passwordHistory;
+            });
+            sessionDomain.revokeActiveByUserInTx.mockImplementation(
+                async () => {
+                    calls.push('revokeSessions');
+
+                    return revoked;
+                }
+            );
+            sessionQueue.purgeLogins.mockImplementation(async () => {
+                calls.push('purge');
+            });
+
             await expect(
                 service.updatePasswordByAdmin('user-linden', admin)
             ).resolves.toEqual({});
@@ -234,17 +333,41 @@ describe('UserPasswordHttpService', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.temporaryPasswordByAdmin
+                EnumNotificationKind.temporaryPasswordByAdmin,
+                ['token-linden'],
+                settings
             );
-            expect(accountPasswordDomain.updateByAdmin).toHaveBeenCalledWith(
+            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
+                tx,
                 'user-linden',
                 password,
                 'admin-linden'
             );
+            expect(passwordHistoryDomain.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'hashed',
+                EnumPasswordHistoryType.admin,
+                password.passwordPeriodExpired,
+                password.passwordCreated,
+                'admin-linden'
+            );
+            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'admin-linden',
+                password.passwordCreated
+            );
+            expect(calls).toEqual([
+                'begin',
+                'updatePassword',
+                'createHistory',
+                'revokeSessions',
+                'commit',
+                'purge',
+            ]);
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
                 'user-linden',
                 revoked
@@ -286,19 +409,33 @@ describe('UserPasswordHttpService', () => {
                 service.updatePasswordByAdmin('user-linden', admin)
             ).rejects.toThrow('rank');
             expect(userDomain.assertUnblocked).not.toHaveBeenCalled();
-            expect(accountPasswordDomain.updateByAdmin).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the recipient read rejects', async () => {
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            deviceDomain.getOwnershipsWithNotificationToken.mockRejectedValue(
                 new Error('read')
             );
 
             await expect(
                 service.updatePasswordByAdmin('user-linden', admin)
             ).rejects.toThrow('read');
-            expect(accountPasswordDomain.updateByAdmin).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('purges, notifies, and stages nothing when the transaction fails', async () => {
+            const cause = new Error('database exploded');
+            databaseService.withTransaction.mockRejectedValue(cause);
+
+            await expect(
+                service.updatePasswordByAdmin('user-linden', admin)
+            ).rejects.toBe(cause);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendTemporaryPasswordByAdmin
+            ).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
@@ -310,49 +447,109 @@ describe('UserPasswordHttpService', () => {
         };
 
         beforeEach(() => {
-            accountTwoFactorDomain.verifyIfEnabled.mockResolvedValue(null);
             authPasswordUtil.createPassword.mockResolvedValue(password);
-            accountPasswordDomain.change.mockResolvedValue({
-                passwordHistoryId: 'history-linden',
-                revoked,
-            });
+            userDomain.updatePasswordInTx.mockResolvedValue(updatedRow);
+            passwordHistoryDomain.createInTx.mockResolvedValue(passwordHistory);
+            sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revoked);
         });
 
-        it('verifies, hashes, writes, purges, notifies, and stages the row', async () => {
+        it('verifies the old password and history, hashes, writes on one transaction, purges after commit, notifies, and stages the row', async () => {
+            const calls: string[] = [];
+            databaseService.withTransaction.mockImplementation(async fn => {
+                calls.push('begin');
+                const value = await fn(tx);
+                calls.push('commit');
+
+                return value as never;
+            });
+            userDomain.updatePasswordInTx.mockImplementation(async () => {
+                calls.push('updatePassword');
+
+                return updatedRow;
+            });
+            passwordHistoryDomain.createInTx.mockImplementation(async () => {
+                calls.push('createHistory');
+
+                return passwordHistory;
+            });
+            sessionDomain.revokeActiveByUserInTx.mockImplementation(
+                async () => {
+                    calls.push('revokeSessions');
+
+                    return revoked;
+                }
+            );
+            sessionQueue.purgeLogins.mockImplementation(async () => {
+                calls.push('purge');
+            });
+
             await expect(service.changePassword(user, dto)).resolves.toEqual(
                 {}
             );
 
-            expect(accountPasswordDomain.verifyChange).toHaveBeenCalledWith(
-                user,
-                'old-password',
+            expect(userPasswordDomain.verifyOldPassword).toHaveBeenCalledWith(
+                'user-linden',
+                'hashed-password',
+                'old-password'
+            );
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).toHaveBeenCalledWith('user-linden');
+            expect(passwordHistoryDomain.assertNew).toHaveBeenCalledWith(
+                'user-linden',
                 'new-password'
             );
-            expect(accountTwoFactorDomain.verifyIfEnabled).toHaveBeenCalledWith(
-                user,
-                {
-                    code: null,
-                    backupCode: null,
-                    method: null,
-                }
+            expect(userPasswordDomain.verifyOldPassword).toHaveBeenCalledBefore(
+                passwordHistoryDomain.assertNew
+            );
+            expect(passwordHistoryDomain.assertNew).toHaveBeenCalledBefore(
+                authPasswordUtil.createPassword
             );
             expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
                 'new-password'
             );
-            expect(
-                accountTwoFactorDomain.verifyIfEnabled
-            ).toHaveBeenCalledBefore(authPasswordUtil.createPassword);
+            expect(authTwoFactorDomain.assertUnlocked).not.toHaveBeenCalled();
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userChangePassword,
             });
-            expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(user, EnumNotificationKind.changePassword);
-            expect(accountPasswordDomain.change).toHaveBeenCalledWith(
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
                 user,
-                password,
-                null
+                EnumNotificationKind.changePassword,
+                ['token-linden'],
+                settings
             );
+            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                password,
+                'user-linden'
+            );
+            expect(passwordHistoryDomain.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'hashed',
+                EnumPasswordHistoryType.profile,
+                password.passwordPeriodExpired,
+                password.passwordCreated,
+                'user-linden'
+            );
+            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'user-linden',
+                password.passwordCreated
+            );
+            expect(
+                userTwoFactorDomain.recordVerificationInTx
+            ).not.toHaveBeenCalled();
+            expect(calls).toEqual([
+                'begin',
+                'updatePassword',
+                'createHistory',
+                'revokeSessions',
+                'commit',
+                'purge',
+            ]);
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
                 'user-linden',
                 revoked
@@ -366,43 +563,107 @@ describe('UserPasswordHttpService', () => {
             ]);
         });
 
-        it('stages the verify-two-factor row too when the check passed', async () => {
-            accountTwoFactorDomain.verifyIfEnabled.mockResolvedValue(
-                twoFactorVerified
-            );
+        it('skips the old password and history checks for an account with no password', async () => {
+            await service.changePassword({ ...user, password: null }, dto);
 
-            await service.changePassword(user, {
+            expect(userPasswordDomain.verifyOldPassword).not.toHaveBeenCalled();
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).not.toHaveBeenCalled();
+            expect(passwordHistoryDomain.assertNew).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('verifies two-factor, records the verification on the transaction, and stages the verify row when two-factor is enabled', async () => {
+            await service.changePassword(twoFactorUser, {
                 ...dto,
                 code: '123456',
                 method: EnumAuthTwoFactorMethod.code,
             });
 
+            expect(authTwoFactorDomain.assertUnlocked).toHaveBeenCalledWith(
+                twoFactorUser
+            );
+            expect(
+                authTwoFactorDomain.assertMethodProvided
+            ).toHaveBeenCalledWith(EnumAuthTwoFactorMethod.code);
+            expect(authTwoFactorDomain.verifyTwoFactor).toHaveBeenCalledWith(
+                twoFactorRow,
+                {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '123456',
+                    backupCode: null,
+                }
+            );
+            expect(authTwoFactorDomain.assertValid).toHaveBeenCalledWith(true);
+            expect(userTwoFactorDomain.resetAttempt).toHaveBeenCalledWith(
+                'user-linden'
+            );
+            expect(
+                userTwoFactorDomain.recordVerificationInTx
+            ).toHaveBeenCalledWith(tx, twoFactorUser, twoFactorVerified);
+            expect(authTwoFactorDomain.assertUnlocked).toHaveBeenCalledBefore(
+                authPasswordUtil.createPassword
+            );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userVerifyTwoFactor,
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(accountPasswordDomain.change).toHaveBeenCalledWith(
-                user,
-                password,
-                twoFactorVerified
-            );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
                 activityLog,
             ]);
         });
 
+        it('writes nothing when the two-factor check rejects', async () => {
+            const failure = new Error('invalid');
+            authTwoFactorDomain.assertValid.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                service.changePassword(twoFactorUser, {
+                    ...dto,
+                    code: '000000',
+                    method: EnumAuthTwoFactorMethod.code,
+                })
+            ).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+        });
+
+        it('writes nothing when the old password check rejects', async () => {
+            const failure = new Error('mismatch');
+            userPasswordDomain.verifyOldPassword.mockRejectedValue(failure);
+
+            await expect(service.changePassword(user, dto)).rejects.toBe(
+                failure
+            );
+            expect(passwordHistoryDomain.assertNew).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('writes nothing when the recipient read rejects', async () => {
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            deviceDomain.getOwnershipsWithNotificationToken.mockRejectedValue(
                 new Error('read')
             );
 
             await expect(service.changePassword(user, dto)).rejects.toThrow(
                 'read'
             );
-            expect(accountPasswordDomain.change).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+        });
+
+        it('purges, notifies, and stages nothing when the transaction fails', async () => {
+            const cause = new Error('database exploded');
+            databaseService.withTransaction.mockRejectedValue(cause);
+
+            await expect(service.changePassword(user, dto)).rejects.toBe(cause);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(notificationQueue.sendChangePassword).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 
@@ -447,9 +708,12 @@ describe('UserPasswordHttpService', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(user, EnumNotificationKind.forgotPassword);
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.forgotPassword,
+                ['token-linden'],
+                settings
+            );
             expect(
                 userPasswordDomain.createForgotPassword
             ).toHaveBeenCalledWith('user-linden', 'linden@example.com', forgot);
@@ -467,7 +731,7 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('creates nothing when the recipient read rejects', async () => {
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            notificationDomain.getListUserSetting.mockRejectedValue(
                 new Error('read')
             );
 
@@ -495,15 +759,54 @@ describe('UserPasswordHttpService', () => {
             newPassword: 'new-password',
             token: 'raw-token',
         };
+        const resetTwoFactorRow = {
+            ...resetRow,
+            user: twoFactorUser,
+        } as IUserForgotPassword;
 
         beforeEach(() => {
             userPasswordDomain.getOneActiveReset.mockResolvedValue(resetRow);
-            accountTwoFactorDomain.verifyIfEnabled.mockResolvedValue(null);
             authPasswordUtil.createPassword.mockResolvedValue(password);
-            accountPasswordDomain.reset.mockResolvedValue(revoked);
+            userDomain.updatePasswordInTx.mockResolvedValue(updatedRow);
+            passwordHistoryDomain.createInTx.mockResolvedValue(passwordHistory);
+            sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revoked);
         });
 
-        it('gates the flag, checks the history, hashes, writes, purges, notifies, and stages', async () => {
+        it('gates the flag, checks the history, hashes, writes on one transaction, purges after commit, notifies, and stages', async () => {
+            const calls: string[] = [];
+            databaseService.withTransaction.mockImplementation(async fn => {
+                calls.push('begin');
+                const value = await fn(tx);
+                calls.push('commit');
+
+                return value as never;
+            });
+            userDomain.updatePasswordInTx.mockImplementation(async () => {
+                calls.push('updatePassword');
+
+                return updatedRow;
+            });
+            passwordHistoryDomain.createInTx.mockImplementation(async () => {
+                calls.push('createHistory');
+
+                return passwordHistory;
+            });
+            userPasswordDomain.markResetUsedInTx.mockImplementation(
+                async () => {
+                    calls.push('markResetUsed');
+                }
+            );
+            sessionDomain.revokeActiveByUserInTx.mockImplementation(
+                async () => {
+                    calls.push('revokeSessions');
+
+                    return revoked;
+                }
+            );
+            sessionQueue.purgeLogins.mockImplementation(async () => {
+                calls.push('purge');
+            });
+
             await expect(service.resetPassword(dto)).resolves.toEqual({});
 
             expect(
@@ -512,21 +815,14 @@ describe('UserPasswordHttpService', () => {
             expect(userPasswordDomain.getOneActiveReset).toHaveBeenCalledWith(
                 'raw-token'
             );
-            expect(accountPasswordDomain.assertNew).toHaveBeenCalledWith(
+            expect(passwordHistoryDomain.assertNew).toHaveBeenCalledWith(
                 'user-linden',
                 'new-password'
             );
-            expect(accountPasswordDomain.assertNew).toHaveBeenCalledBefore(
-                accountTwoFactorDomain.verifyIfEnabled
+            expect(passwordHistoryDomain.assertNew).toHaveBeenCalledBefore(
+                authPasswordUtil.createPassword
             );
-            expect(accountTwoFactorDomain.verifyIfEnabled).toHaveBeenCalledWith(
-                user,
-                {
-                    code: null,
-                    backupCode: null,
-                    method: null,
-                }
-            );
+            expect(authTwoFactorDomain.assertUnlocked).not.toHaveBeenCalled();
             expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
                 'new-password'
             );
@@ -535,14 +831,50 @@ describe('UserPasswordHttpService', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(
-                accountDomain.getNotificationRecipientOfUser
-            ).toHaveBeenCalledWith(user, EnumNotificationKind.resetPassword);
-            expect(accountPasswordDomain.reset).toHaveBeenCalledWith(
-                resetRow,
-                password,
-                null
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.resetPassword,
+                ['token-linden'],
+                settings
             );
+            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                password,
+                'user-linden'
+            );
+            expect(passwordHistoryDomain.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'hashed',
+                EnumPasswordHistoryType.forgot,
+                password.passwordPeriodExpired,
+                password.passwordCreated,
+                'user-linden'
+            );
+            expect(userPasswordDomain.markResetUsedInTx).toHaveBeenCalledWith(
+                tx,
+                'forgot-linden',
+                password.passwordCreated
+            );
+            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'user-linden',
+                password.passwordCreated
+            );
+            expect(
+                userTwoFactorDomain.recordVerificationInTx
+            ).not.toHaveBeenCalled();
+            expect(calls).toEqual([
+                'begin',
+                'updatePassword',
+                'createHistory',
+                'markResetUsed',
+                'revokeSessions',
+                'commit',
+                'purge',
+            ]);
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
                 'user-linden',
                 revoked
@@ -556,9 +888,9 @@ describe('UserPasswordHttpService', () => {
             ]);
         });
 
-        it('stages the verify-two-factor row too when the check passed', async () => {
-            accountTwoFactorDomain.verifyIfEnabled.mockResolvedValue(
-                twoFactorVerified
+        it('verifies two-factor of the reset user, records it on the transaction, and stages the verify row when two-factor is enabled', async () => {
+            userPasswordDomain.getOneActiveReset.mockResolvedValue(
+                resetTwoFactorRow
             );
 
             await service.resetPassword({
@@ -567,6 +899,20 @@ describe('UserPasswordHttpService', () => {
                 method: EnumAuthTwoFactorMethod.code,
             });
 
+            expect(authTwoFactorDomain.assertUnlocked).toHaveBeenCalledWith(
+                twoFactorUser
+            );
+            expect(authTwoFactorDomain.verifyTwoFactor).toHaveBeenCalledWith(
+                twoFactorRow,
+                {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '123456',
+                    backupCode: null,
+                }
+            );
+            expect(
+                userTwoFactorDomain.recordVerificationInTx
+            ).toHaveBeenCalledWith(tx, twoFactorUser, twoFactorVerified);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userVerifyTwoFactor,
                 userId: 'user-linden',
@@ -578,13 +924,60 @@ describe('UserPasswordHttpService', () => {
             ]);
         });
 
+        it('writes nothing when the history check rejects', async () => {
+            const failure = new Error('must new');
+            passwordHistoryDomain.assertNew.mockRejectedValue(failure);
+
+            await expect(service.resetPassword(dto)).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(authTwoFactorDomain.assertUnlocked).not.toHaveBeenCalled();
+        });
+
         it('writes nothing when the recipient read rejects', async () => {
-            accountDomain.getNotificationRecipientOfUser.mockRejectedValue(
+            deviceDomain.getOwnershipsWithNotificationToken.mockRejectedValue(
                 new Error('read')
             );
 
             await expect(service.resetPassword(dto)).rejects.toThrow('read');
-            expect(accountPasswordDomain.reset).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+        });
+
+        it('rethrows a typed exception the transaction raises', async () => {
+            const failure = new UserTokenInvalidException();
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(service.resetPassword(dto)).rejects.toBe(failure);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to UserTokenInvalidException', async () => {
+            const conflict = new Error('write conflict');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(service.resetPassword(dto)).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                messagePath: 'user.error.verificationTokenInvalid',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(notificationQueue.sendResetPassword).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps an unknown transaction failure in AppUnknownException', async () => {
+            const cause = new Error('database exploded');
+            databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(service.resetPassword(dto)).rejects.toMatchObject({
+                rawError: cause,
+            });
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
         });
     });

@@ -197,17 +197,27 @@ describe('RoleDomain', () => {
     });
 
     describe('getById', () => {
-        it('delegates the read to the repository', async () => {
+        it('returns the role the repository reads', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
 
             const result = await domain.getById(role.id);
 
             expect(result).toBe(role);
         });
+
+        it('throws RoleNotFoundException when the role does not exist', async () => {
+            roleRepository.findOneById.mockResolvedValue(null);
+
+            await expect(domain.getById('missing')).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+                messagePath: 'role.error.notFound',
+            });
+        });
     });
 
     describe('getByName', () => {
-        it('delegates the read to the repository', async () => {
+        it('returns the role the repository reads', async () => {
             roleRepository.findOneByName.mockResolvedValue(role);
 
             const result = await domain.getByName(role.name);
@@ -216,6 +226,16 @@ describe('RoleDomain', () => {
             expect(roleRepository.findOneByName).toHaveBeenCalledWith(
                 role.name
             );
+        });
+
+        it('throws RoleNotFoundException when no role carries the name', async () => {
+            roleRepository.findOneByName.mockResolvedValue(null);
+
+            await expect(domain.getByName('missing')).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+                messagePath: 'role.error.notFound',
+            });
         });
     });
 

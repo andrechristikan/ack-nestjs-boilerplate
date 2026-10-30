@@ -9,14 +9,17 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { PasswordHistory } from '@generated/prisma-client/client';
+import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
+import { UserPasswordMustNewException } from '@modules/user/exceptions/user.password-must-new.exception';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class PasswordHistoryDomain {
     constructor(
-        private readonly passwordHistoryRepository: PasswordHistoryRepository
+        private readonly passwordHistoryRepository: PasswordHistoryRepository,
+        private readonly authPasswordUtil: AuthPasswordUtil
     ) {}
 
     async getListOffsetByAdmin(
@@ -39,8 +42,19 @@ export class PasswordHistoryDomain {
         );
     }
 
-    async getActiveByUser(userId: string): Promise<PasswordHistory[]> {
-        return this.passwordHistoryRepository.findActiveUser(userId);
+    async assertNew(userId: string, newPassword: string): Promise<void> {
+        const passwordHistories =
+            await this.passwordHistoryRepository.findActiveUser(userId);
+        const repeated = await this.authPasswordUtil.checkPasswordPeriod(
+            passwordHistories,
+            newPassword
+        );
+        if (repeated) {
+            const passwordPeriodInDays =
+                this.authPasswordUtil.getPasswordPeriodInDays();
+
+            throw new UserPasswordMustNewException(passwordPeriodInDays);
+        }
     }
 
     async createInTx(

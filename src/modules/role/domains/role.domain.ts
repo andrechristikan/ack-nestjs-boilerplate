@@ -74,12 +74,22 @@ export class RoleDomain {
         this.assertActorOutranks(actor.roleType, role.type);
     }
 
-    async getById(roleId: string): Promise<IRole | null> {
-        return this.roleRepository.findOneById(roleId);
+    async getById(roleId: string): Promise<IRole> {
+        const role = await this.roleRepository.findOneById(roleId);
+        if (!role) {
+            throw new RoleNotFoundException();
+        }
+
+        return role;
     }
 
-    async getByName(name: string): Promise<IRole | null> {
-        return this.roleRepository.findOneByName(name);
+    async getByName(name: string): Promise<IRole> {
+        const role = await this.roleRepository.findOneByName(name);
+        if (!role) {
+            throw new RoleNotFoundException();
+        }
+
+        return role;
     }
 
     async getOneByUserId(userId: string): Promise<IRole> {

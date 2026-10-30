@@ -33,6 +33,7 @@ import { RequestContextMissingException } from '@common/request/exceptions/reque
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserAccountNotFoundException } from '@modules/user/exceptions/user.account-not-found.exception';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
+import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
@@ -156,11 +157,15 @@ export class UserDomain {
     async deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<boolean> {
-        return this.userRepository.deactivateForMaxPasswordAttemptInTx(
-            tx,
-            userId
-        );
+    ): Promise<void> {
+        const isDeactivated =
+            await this.userRepository.deactivateForMaxPasswordAttemptInTx(
+                tx,
+                userId
+            );
+        if (!isDeactivated) {
+            throw new UserPasswordAttemptMaxException();
+        }
     }
 
     async updatePasswordInTx(

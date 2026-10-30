@@ -1,4 +1,4 @@
-import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
+import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -18,20 +18,15 @@ import {
     EnumUserStatus,
     Prisma,
 } from '@generated/prisma-client/client';
-import { AccountDomain } from '@modules/account/domains/account.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
 import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
-import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type {
     IUser,
@@ -40,7 +35,6 @@ import type {
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
 import { Injectable } from '@nestjs/common';
@@ -49,20 +43,18 @@ import { Injectable } from '@nestjs/common';
 export class UserHttpService {
     constructor(
         private readonly userDomain: UserDomain,
-        private readonly onboardingDomain: OnboardingDomain,
-        private readonly accountDomain: AccountDomain,
         private readonly roleDomain: RoleDomain,
+        private readonly sessionDomain: SessionDomain,
+        private readonly deviceDomain: DeviceDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
         private readonly sessionUtil: SessionUtil,
         private readonly userProfileDomain: UserProfileDomain,
         private readonly userUtil: UserUtil,
-        private readonly userOnboardingUtil: UserOnboardingUtil,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationUtil: NotificationUtil,
-        private readonly helperDateService: HelperDateService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly databaseService: DatabaseService,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async getListOffsetByAdmin(
@@ -110,57 +102,6 @@ export class UserHttpService {
         return { data: user };
     }
 
-    async createByAdmin(
-        { countryId, email, name, roleId, username }: UserCreateRequestDto,
-        user: IUser
-    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        const { inputs, users, passwordString } =
-            await this.onboardingDomain.createByAdmin(
-                { countryId, email, name: name ?? null, roleId, username },
-                user.id,
-                { roleId: user.roleId, roleType: user.role.type }
-            );
-        const created = users[0]!;
-        const input = inputs[0]!;
-        const stages = this.userOnboardingUtil.buildActivityStages(
-            EnumUserCreateMode.admin,
-            inputs,
-            users,
-            EnumActivityLogAction.adminUserCreate
-        );
-        const activityLogs = stages.map(stage =>
-            this.activityLogDomain.prepare(stage)
-        );
-
-        this.activityLogDomain.stagePrepared(activityLogs);
-
-        if (input.password) {
-            const passwordCreatedAt = this.helperDateService.formatToIso(
-                input.password.passwordCreated
-            );
-            const passwordExpiredAt = this.helperDateService.formatToIso(
-                input.password.passwordExpired
-            );
-            const recipient = this.notificationUtil.mapRecipient(
-                created,
-                EnumNotificationKind.welcomeByAdmin,
-                [],
-                []
-            );
-            await this.notificationQueue.sendWelcomeByAdmin(
-                recipient,
-                {
-                    password: passwordString,
-                    passwordCreatedAt,
-                    passwordExpiredAt,
-                },
-                user.id
-            );
-        }
-
-        return { data: { id: created.id } };
-    }
-
     async updateStatusByAdmin(
         userId: string,
         { status }: UserUpdateStatusRequestDto,
@@ -173,13 +114,29 @@ export class UserHttpService {
         this.roleDomain.assertActorOutranks(user.role.type, target.role.type);
         this.userDomain.assertUnblocked(target);
 
-        const { user: row, revoked } =
-            await this.accountDomain.updateStatusByAdmin(
-                userId,
-                status,
-                target.passwordAttempt,
-                user.id
-            );
+        const now = this.helperDateService.create();
+        const { row, revoked } = await this.databaseService.withTransaction(
+            async tx => {
+                const row = await this.userDomain.updateStatusByAdminInTx(
+                    tx,
+                    userId,
+                    status,
+                    target.passwordAttempt
+                );
+                if (status === EnumUserStatus.active) {
+                    return { row, revoked: null };
+                }
+
+                const revoked = await this.sessionDomain.revokeActiveByUserInTx(
+                    tx,
+                    userId,
+                    user.id,
+                    now
+                );
+
+                return { row, revoked };
+            }
+        );
 
         const action =
             status === EnumUserStatus.blocked
@@ -267,11 +224,34 @@ export class UserHttpService {
             }),
         ];
 
-        const { user, revoked } = await this.accountDomain.deleteSelf(userId);
+        const now = this.helperDateService.create();
+        const { deleted, revoked } = await this.databaseService.withTransaction(
+            async tx => {
+                const deleted = await this.userDomain.deleteSelfInTx(
+                    tx,
+                    userId,
+                    now
+                );
+                const revoked = await this.sessionDomain.revokeActiveByUserInTx(
+                    tx,
+                    userId,
+                    userId,
+                    now
+                );
+                await this.deviceDomain.revokeAllByUserInTx(
+                    tx,
+                    userId,
+                    userId,
+                    now
+                );
+
+                return { deleted, revoked };
+            }
+        );
 
         await Promise.all([
             this.sessionQueue.purgeLogins(userId, revoked),
-            this.userProfileDomain.deleteOwnedPhoto(userId, user.photo),
+            this.userProfileDomain.deleteOwnedPhoto(userId, deleted.photo),
         ]);
 
         this.activityLogDomain.stagePrepared(activityLogs);

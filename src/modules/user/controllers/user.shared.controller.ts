@@ -67,7 +67,7 @@ import type {
     IUserProfile,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
-import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
+import { UserOnboardingHttpService } from '@modules/user/services/user.onboarding.http.service';
 import { UserMobileNumberHttpService } from '@modules/user/services/user.mobile-number.http.service';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
 import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
@@ -95,7 +95,7 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class UserSharedController {
     constructor(
-        private readonly userAuthHttpService: UserAuthHttpService,
+        private readonly userOnboardingHttpService: UserOnboardingHttpService,
         private readonly userProfileHttpService: UserProfileHttpService,
         private readonly userPasswordHttpService: UserPasswordHttpService,
         private readonly userMobileNumberHttpService: UserMobileNumberHttpService,
@@ -114,7 +114,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @AuthJwtToken() refreshToken: string
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userAuthHttpService.refresh(user, refreshToken);
+        return this.userOnboardingHttpService.refresh(user, refreshToken);
     }
 
     @Doc({ summary: 'get profile' })
@@ -425,7 +425,7 @@ export class UserSharedController {
         @AuthJwtPayload()
         { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
     ): Promise<IResponseReturn<void>> {
-        return this.userAuthHttpService.logout(
+        return this.userOnboardingHttpService.logout(
             userId,
             sessionId,
             deviceOwnershipId

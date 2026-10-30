@@ -171,13 +171,35 @@ describe('AuthTwoFactorDomain', () => {
     });
 
     describe('getChallenge', () => {
-        it('reads the challenge of a token', async () => {
-            authCache.getTwoFactorChallenge.mockResolvedValue(null);
+        it('returns the challenge of a token', async () => {
+            const challenge = {
+                userId: 'user-1',
+                device: {
+                    fingerprint: 'device-1',
+                    name: null,
+                    platform: null,
+                    notificationToken: null,
+                },
+                loginFrom: EnumUserLoginFrom.website,
+                loginWith: EnumUserLoginWith.credential,
+            };
+            authCache.getTwoFactorChallenge.mockResolvedValue(challenge);
 
-            await expect(domain.getChallenge('token-1')).resolves.toBeNull();
+            await expect(domain.getChallenge('token-1')).resolves.toBe(
+                challenge
+            );
             expect(authCache.getTwoFactorChallenge).toHaveBeenCalledWith(
                 'token-1'
             );
+        });
+
+        it('throws AuthTwoFactorChallengeInvalidException when the token has no challenge', async () => {
+            authCache.getTwoFactorChallenge.mockResolvedValue(null);
+
+            await expect(domain.getChallenge('token-1')).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
+            });
         });
     });
 
@@ -274,6 +296,40 @@ describe('AuthTwoFactorDomain', () => {
             await expect(
                 domain.assertAttemptAllowed(twoFactorUser, 10)
             ).rejects.toBe(failure);
+        });
+    });
+
+    describe('assertMethodProvided', () => {
+        it('passes when a method is given', () => {
+            expect(() =>
+                domain.assertMethodProvided(EnumAuthTwoFactorMethod.code)
+            ).not.toThrow();
+        });
+
+        it('throws AuthTwoFactorMethodRequiredException when the method is null', () => {
+            expect(() => domain.assertMethodProvided(null)).toThrow(
+                expect.objectContaining({
+                    module: 'auth',
+                    statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
+                    messagePath: 'auth.error.twoFactorMethodRequired',
+                })
+            );
+        });
+    });
+
+    describe('assertValid', () => {
+        it('passes when the check is valid', () => {
+            expect(() => domain.assertValid(true)).not.toThrow();
+        });
+
+        it('throws AuthTwoFactorInvalidException when the check is not valid', () => {
+            expect(() => domain.assertValid(false)).toThrow(
+                expect.objectContaining({
+                    module: 'auth',
+                    statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+                    messagePath: 'auth.error.twoFactorInvalid',
+                })
+            );
         });
     });
 
