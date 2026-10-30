@@ -23,12 +23,17 @@ An HTTP service and a processor service sequence domain calls for one entry poin
 
 ## Transactions
 
-- One cross-module transaction per flow, opened in the method serving that flow; each feature domain joins as `*InTx(tx, ...)` (`database.md`, Transactions).
-- No helper shared across flows switches on a mode or caller kind. An identical pure piece goes to a util or the owning domain.
+- One cross-module transaction per flow, opened in the method serving that flow or in a private helper of the same service; each feature domain joins as `*InTx(tx, ...)` (`database.md`, Transactions).
+- A private helper may open that transaction for several flows of its own service when it takes no mode or caller-kind parameter: `UserAuthHttpService` `createTokenAndSession` serves `loginCredential`, `loginWithSocial`, and `loginVerifyTwoFactor`; `UserRegistrationHttpService` `createByAdmin` and `importByAdmin` share one.
+- No helper is shared across services: an HTTP service injects no other HTTP service. An identical pure piece goes to a util or the owning domain.
 
 ## Branches
 
-- A branch picks the next domain call on a util predicate or a domain result, never an inline business comparison: `if (!this.userUtil.revokesSessionsOn(status))`, not `if (status === EnumUserStatus.active)`.
+- A branch picks the next domain call on a util predicate or a domain result: `if (!this.userUtil.revokesSessionsOn(status))`, not `if (status === EnumUserStatus.active)`.
+- Inline, a branch tests only:
+    - a null or presence check of an input (`!inviteToken`, `revoked.length > 0`);
+    - an enum comparison of a value a domain returned (`cacheUpdate === EnumSessionCacheUpdate.mismatch`).
+- A business-state check on an entity (`!user.isVerified`, `user.twoFactor.enabled`, `status === EnumUserStatus.active`) goes through a util predicate or a domain assert (`layering.md`, Roles).
 
 ## Processor service
 
