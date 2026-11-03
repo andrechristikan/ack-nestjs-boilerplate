@@ -92,22 +92,25 @@ describe('AnalyticWorkspaceUserDomain', () => {
             expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
 
-        it('computes member and project counts and skips activity when dates are omitted', async () => {
+        it('counts all-time workspace activity when dates are omitted', async () => {
             workspaceMemberAnalyticDomain.getCountByWorkspace.mockResolvedValue(
                 3
             );
             projectAnalyticDomain.getCountByWorkspace.mockResolvedValue(2);
+            activityLogAnalyticDomain.getCountByWorkspaceInRange.mockResolvedValue(
+                21
+            );
 
             const result = await domain.summary('workspace-1', null, null);
 
             expect(result).toEqual({
                 memberCount: 3,
                 projectCount: 2,
-                activityCount: 0,
+                activityCount: 21,
             });
             expect(
                 activityLogAnalyticDomain.getCountByWorkspaceInRange
-            ).not.toHaveBeenCalled();
+            ).toHaveBeenCalledWith('workspace-1', null, null);
             expect(analyticCache.setDashboard).toHaveBeenCalledWith(
                 'workspace.summary',
                 'workspace-window',
@@ -115,7 +118,7 @@ describe('AnalyticWorkspaceUserDomain', () => {
                 {
                     memberCount: 3,
                     projectCount: 2,
-                    activityCount: 0,
+                    activityCount: 21,
                 }
             );
         });

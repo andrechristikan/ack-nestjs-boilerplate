@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
@@ -9,6 +9,8 @@ import * as Sentry from '@sentry/nestjs';
  */
 @Injectable()
 export class HealthSentryIndicator {
+    private readonly logger = new Logger(HealthSentryIndicator.name);
+
     private readonly dsn: string | null;
 
     constructor(
@@ -42,10 +44,9 @@ export class HealthSentryIndicator {
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'Sentry health check failed');
 
-            return indicator.down(`HealthSentryIndicator Failed - ${message}`);
+            return indicator.down('Sentry check failed');
         }
     }
 }

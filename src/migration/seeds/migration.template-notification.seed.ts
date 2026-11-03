@@ -85,7 +85,7 @@ export class MigrationTemplateEmailNotificationSeed
             this.notificationTemplateWorkspaceDomain.emailGetWorkspaceJoinRejected(),
         ]);
 
-        const promises: Promise<boolean>[] = [];
+        const promises: Promise<void>[] = [];
         if (!changePasswordEmail) {
             this.logger.log(
                 'Change Password Email template missing, importing...'

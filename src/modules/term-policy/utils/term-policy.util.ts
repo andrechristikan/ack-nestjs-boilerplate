@@ -11,6 +11,8 @@ import type {
     ITermPolicyAcceptanceAnalytic,
     ITermPolicyActivityLogSubject,
     ITermPolicyContent,
+    ITermPolicyContentUpload,
+    ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -108,6 +110,19 @@ export class TermPolicyUtil {
             type,
             version: version.toString(),
         });
+    }
+
+    mapPublicContentKeys(
+        { type, version }: ITermPolicyRef,
+        contents: ITermPolicyContent[]
+    ): ITermPolicyContentUpload[] {
+        const destination = this.getContentPublicPath(type, version);
+
+        return contents.map(({ language, size, key }) => ({
+            language,
+            size,
+            key: `${destination}/${key.slice(key.lastIndexOf('/') + 1)}`,
+        }));
     }
 
     mapActivityLogMetadata(

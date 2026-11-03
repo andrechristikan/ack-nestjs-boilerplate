@@ -109,13 +109,18 @@ export class NotificationPushWorkspaceDomain {
                 ...toEncrypted(result.failureTokens),
             ];
             const pending = toEncrypted(result.retryTokens);
-            const failure: INotificationStepFailure | null =
-                pending.length > 0
-                    ? {
-                          step: EnumNotificationStep.sendMulticast,
-                          error: `${pending.length} tokens pending retry`,
-                      }
-                    : null;
+            let failure: INotificationStepFailure | null = null;
+            if (pending.length > 0) {
+                const message = this.messageService.setMessage(
+                    'notification.queue.push.error.tokensPending',
+                    { properties: { count: pending.length } }
+                );
+                failure = {
+                    step: EnumNotificationStep.sendMulticast,
+                    message,
+                    rawError: new Error(message),
+                };
+            }
 
             return {
                 encryptedFailureTokens: [...new Set(merged)],

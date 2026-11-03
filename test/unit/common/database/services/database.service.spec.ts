@@ -224,59 +224,43 @@ describe('DatabaseService', () => {
     });
 
     describe('logQuery', () => {
+        it('logs a query event without throwing', () => {
+            expect(() =>
+                service['logQuery']({
+                    timestamp: new Date('2026-01-01T00:00:00.000Z'),
+                    query: 'db.User.find({ email: "jane@example.com" })',
+                    params: '["jane@example.com"]',
+                    duration: 1500,
+                    target: 'quaint::pooled',
+                })
+            ).not.toThrow();
+        });
+    });
+
+    describe('describeQuery', () => {
         const baseEvent: Prisma.QueryEvent = {
-            timestamp: new Date(),
-            query: 'SELECT * FROM "User" WHERE 1=1',
-            params: '[]',
-            duration: 10,
+            timestamp: new Date('2026-01-01T00:00:00.000Z'),
+            query: 'db.User.aggregate([ { $match: { email: "jane@example.com" } } ])',
+            params: '["jane@example.com"]',
+            duration: 12,
             target: 'quaint::pooled',
         };
 
-        it('unescapes and collapses the query when prettier mode is on, below the slow-query threshold, with empty params', () => {
-            expect(() =>
-                service['logQuery']({
+        it('returns the model, action, and duration only', () => {
+            expect(service['describeQuery'](baseEvent)).toEqual({
+                model: 'User',
+                action: 'aggregate',
+                duration: 12,
+            });
+        });
+
+        it('returns a null model and action for a statement that names no collection', () => {
+            expect(
+                service['describeQuery']({
                     ...baseEvent,
-                    query: 'SELECT \\"a\\"   FROM\\n"User" WHERE x = \\\\1',
-                    params: '[]',
-                    duration: 10,
+                    query: 'BEGIN',
                 })
-            ).not.toThrow();
-        });
-
-        it('appends params to the prettified message when they are not the empty array', () => {
-            expect(() =>
-                service['logQuery']({ ...baseEvent, params: '["a"]' })
-            ).not.toThrow();
-        });
-
-        it('flags a query over one second as slow', () => {
-            expect(() =>
-                service['logQuery']({ ...baseEvent, duration: 1500 })
-            ).not.toThrow();
-        });
-
-        it('logs the raw query when prettier mode is off', async () => {
-            const rawService = await createDatabaseService(
-                {
-                    'database.debug': true,
-                    'logger.prettier': false,
-                },
-                databaseClientFactory,
-                client
-            );
-
-            expect(() =>
-                rawService['logQuery']({ ...baseEvent, params: '["a"]' })
-            ).not.toThrow();
-        });
-
-        it('skips sanitizing a query event whose query is not a string', () => {
-            expect(() =>
-                service['logQuery']({
-                    ...baseEvent,
-                    query: 123 as unknown as string,
-                })
-            ).not.toThrow();
+            ).toEqual({ model: null, action: null, duration: 12 });
         });
     });
 

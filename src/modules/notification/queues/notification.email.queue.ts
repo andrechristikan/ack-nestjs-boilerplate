@@ -19,7 +19,7 @@ import type {
     INotificationTermPolicyBatchRecipientEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
+    INotificationVerifiedMobileNumberEncryptedPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceInviteUnregisteredEncryptedPayload,
@@ -482,12 +482,12 @@ export class NotificationEmailQueue extends QueueBase {
             bcc,
         }: INotificationEmailSendEncryptedPayload,
         {
-            mobileNumber,
+            encryptedMobileNumber,
             reference,
             resendInMinutes,
-        }: INotificationVerifiedMobileNumberPayload
+        }: INotificationVerifiedMobileNumberEncryptedPayload
     ): Promise<void> {
-        const payload: INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload> =
+        const payload: INotificationEmailQueuePayload<INotificationVerifiedMobileNumberEncryptedPayload> =
             {
                 send: {
                     userId,
@@ -498,7 +498,7 @@ export class NotificationEmailQueue extends QueueBase {
                     bcc,
                 },
                 data: {
-                    mobileNumber,
+                    encryptedMobileNumber,
                     reference,
                     resendInMinutes,
                 },

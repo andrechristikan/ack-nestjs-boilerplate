@@ -77,6 +77,33 @@ describe('RequestCustomLanguageMiddleware', () => {
             expect(next).toHaveBeenCalledTimes(1);
         });
 
+        it.each([
+            ['en-US', 'en'],
+            ['ID', 'id'],
+            ['id_ID', 'id'],
+            [' id-ID,en;q=0.9', 'id'],
+        ])(
+            'checks the primary subtag of the custom language header %s against the supported languages',
+            async (header, primary) => {
+                const req = {
+                    headers: { [RequestCustomLangHeaderName]: header },
+                } as unknown as IRequestApp;
+                helperArrayService.intersection.mockReturnValue([primary]);
+
+                await middleware.use(req, res, next);
+
+                expect(helperArrayService.intersection).toHaveBeenCalledWith(
+                    [primary],
+                    ['en', 'id']
+                );
+                expect(requestStoreService.set).toHaveBeenCalledWith(
+                    RequestLanguageStoreKey,
+                    primary
+                );
+                expect(req.headers[RequestCustomLangHeaderName]).toBe(primary);
+            }
+        );
+
         it('falls back to the default language for an unsupported custom language header', async () => {
             const req = {
                 headers: { [RequestCustomLangHeaderName]: 'fr' },
@@ -103,6 +130,14 @@ describe('RequestCustomLanguageMiddleware', () => {
                 'en'
             );
             expect(req.headers[RequestCustomLangHeaderName]).toBe('en');
+        });
+    });
+
+    describe('normalizeLanguage', () => {
+        it('returns the lowercased primary subtag of the first listed language', () => {
+            expect(middleware['normalizeLanguage']('EN-us,id;q=0.5')).toBe(
+                'en'
+            );
         });
     });
 

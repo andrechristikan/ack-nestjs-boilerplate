@@ -9,12 +9,12 @@ import {
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
+import { UserCredentialInvalidException } from '@modules/user/exceptions/user.credential-invalid.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
-import { UserPasswordNotSetException } from '@modules/user/exceptions/user.password-not-set.exception';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -41,17 +41,13 @@ export class UserAuthDomain {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    /** Resolves the active credential user of an email and counts one password attempt against its budget. */
+    /** Resolves the active credential user of an email and counts one password attempt against its budget; an unknown, inactive, or passwordless account answers the one credential error. */
     async incrementCredentialAttempt(
         email: string
     ): Promise<IUserCredentialAttempt> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new UserInactiveForbiddenException();
-        } else if (!user.password) {
-            throw new UserPasswordNotSetException();
+        if (!user || user.status !== EnumUserStatus.active || !user.password) {
+            throw new UserCredentialInvalidException();
         }
 
         const isAttemptCounted =
@@ -90,9 +86,17 @@ export class UserAuthDomain {
         }
     }
 
-    /** Reads the live user of an email; null when none. */
+    assertCredentialMatched(isMatch: boolean): void {
+        if (!isMatch) {
+            throw new UserCredentialInvalidException();
+        }
+    }
+
+    /** Reads the live user of an email, trimmed and lowercased first; null when none. */
     async getOneByEmail(email: string): Promise<IUser | null> {
-        return this.userRepository.findOneWithRoleByEmail(email);
+        return this.userRepository.findOneWithRoleByEmail(
+            email.trim().toLowerCase()
+        );
     }
 
     prepareSocialCreate(
@@ -112,7 +116,7 @@ export class UserAuthDomain {
 
         return {
             userId,
-            email,
+            email: email.trim().toLowerCase(),
             name,
             username,
             countryId,
@@ -137,7 +141,9 @@ export class UserAuthDomain {
     }
 
     async getOneForSocialLogin(email: string): Promise<IUser> {
-        const user = await this.userRepository.findOneWithRoleByEmail(email);
+        const user = await this.userRepository.findOneWithRoleByEmail(
+            email.trim().toLowerCase()
+        );
         if (!user) {
             throw new UserNotFoundException();
         } else if (user.status !== EnumUserStatus.active) {
@@ -152,20 +158,6 @@ export class UserAuthDomain {
         await this.userVerificationDomain.markVerified(user.id);
 
         return { ...user, isVerified: true };
-    }
-
-    /** Creates a fresh email verification for an unverified user trying to log in and stores it replacing the active one. */
-    async persistLoginVerification(
-        user: IUser
-    ): Promise<IUserVerificationEmailCreate> {
-        const emailVerification = this.userVerificationUtil.createEmail();
-        await this.userVerificationDomain.persistVerificationEmail(
-            user.id,
-            user.email,
-            emailVerification
-        );
-
-        return emailVerification;
     }
 
     assertVerified(user: IUser): void {

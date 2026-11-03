@@ -71,6 +71,7 @@ describe('UserCreateUtil', () => {
         requiredSetup: false,
         confirmedAt: null,
         lastUsedAt: null,
+        lastUsedStep: null,
         attempt: 0,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -214,6 +215,7 @@ describe('UserCreateUtil', () => {
                 invitedByUserId: 'inviter-harbor',
                 acceptedAt: null,
                 acceptedByUserId: null,
+                pendingKey: 'workspace-harbor:harbor@example.com',
             };
 
             expect(util.buildInviteWorkspaceContext(invite)).toEqual({
@@ -246,6 +248,7 @@ describe('UserCreateUtil', () => {
                 invitedByUserId: 'inviter-harbor',
                 acceptedAt: null,
                 acceptedByUserId: null,
+                pendingKey: 'workspace-harbor:harbor@example.com',
             };
 
             expect(util.buildInviteWorkspaceContext(invite)).toMatchObject({

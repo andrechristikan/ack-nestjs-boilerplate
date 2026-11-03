@@ -63,9 +63,9 @@ export class SessionAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: SessionAdminListRequestSchema })
@@ -95,9 +95,9 @@ export class SessionAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
         @Param('userId', { schema: RequestMongoIdSchema })
@@ -128,9 +128,9 @@ export class SessionAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/revoke-all')
     async revokeAll(
         @Param('userId', { schema: RequestMongoIdSchema })

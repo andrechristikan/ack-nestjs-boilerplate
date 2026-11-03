@@ -37,16 +37,16 @@ export class AuthDomain {
         return payload;
     }
 
-    /** Rejects a token whose session has no stored jti (no login) or whose jti is not the one stored for the session. */
+    /** Rejects a token whose session has no stored jti digest (no login) or whose jti does not hash to the digest stored for the session. */
     validateJwtAccessSession(
         payload: IAuthJwtPayloadIdentified<IAuthJwtAccessTokenPayload>,
-        sessionJti: string | null
+        sessionJtiDigest: string | null
     ): IAuthJwtAccessTokenPayload {
-        if (sessionJti === null) {
+        if (sessionJtiDigest === null) {
             throw new SessionRevokedException();
         }
 
-        const isMatch = this.authUtil.isJtiMatch(sessionJti, payload.jti);
+        const isMatch = this.authUtil.isJtiMatch(sessionJtiDigest, payload.jti);
         if (!isMatch) {
             throw new SessionRevokedException();
         }
@@ -126,7 +126,10 @@ export class AuthDomain {
                 emailVerified: payload.email_verified,
             };
         } catch (err: unknown) {
-            if (err instanceof AuthSocialAppleNotConfiguredException) {
+            if (
+                err instanceof AuthSocialAppleNotConfiguredException ||
+                err instanceof AuthSocialAppleInvalidException
+            ) {
                 throw err;
             }
 
@@ -147,7 +150,10 @@ export class AuthDomain {
                 emailVerified: payload.email_verified ?? false,
             };
         } catch (err: unknown) {
-            if (err instanceof AuthSocialGoogleNotConfiguredException) {
+            if (
+                err instanceof AuthSocialGoogleNotConfiguredException ||
+                err instanceof AuthSocialGoogleInvalidException
+            ) {
                 throw err;
             }
 

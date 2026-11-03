@@ -1,3 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -6,6 +11,8 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
@@ -14,7 +21,10 @@ import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos
 import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
+import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
+import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -23,8 +33,13 @@ export class WorkspaceMemberHttpService {
     constructor(
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly activityLogDomain: ActivityLogDomain,
+        private readonly projectMemberDomain: ProjectMemberDomain,
+        private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
+        private readonly userDomain: UserDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async transferOwnership(
@@ -73,7 +88,41 @@ export class WorkspaceMemberHttpService {
             }),
         ];
 
-        await this.workspaceMemberDomain.leaveWorkspace(workspaceId, member);
+        try {
+            await this.databaseService.withTransaction(async tx => {
+                await this.workspaceMemberDomain.leaveWorkspaceInTx(
+                    tx,
+                    workspaceId,
+                    member
+                );
+                await this.projectMemberDomain.removeByWorkspaceAndUserInTx(
+                    tx,
+                    workspaceId,
+                    member.userId
+                );
+                await this.workspaceJoinRequestDomain.cancelPendingByUserInTx(
+                    tx,
+                    workspaceId,
+                    member.userId
+                );
+                await this.userDomain.clearLastWorkspaceInTx(
+                    tx,
+                    member.userId,
+                    workspaceId
+                );
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceMemberNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
 
@@ -154,11 +203,48 @@ export class WorkspaceMemberHttpService {
         actorMember: WorkspaceMember,
         targetMemberId: string
     ): Promise<IResponseReturn<void>> {
-        const targetMember = await this.workspaceMemberDomain.removeMember(
-            workspaceId,
-            actorMember,
-            targetMemberId
-        );
+        let targetMember: WorkspaceMember;
+        try {
+            targetMember = await this.databaseService.withTransaction(
+                async tx => {
+                    const removed =
+                        await this.workspaceMemberDomain.removeMemberInTx(
+                            tx,
+                            workspaceId,
+                            actorMember,
+                            targetMemberId
+                        );
+                    await this.projectMemberDomain.removeByWorkspaceAndUserInTx(
+                        tx,
+                        workspaceId,
+                        removed.userId
+                    );
+                    await this.workspaceJoinRequestDomain.cancelPendingByUserInTx(
+                        tx,
+                        workspaceId,
+                        removed.userId
+                    );
+                    await this.userDomain.clearLastWorkspaceInTx(
+                        tx,
+                        removed.userId,
+                        workspaceId
+                    );
+
+                    return removed;
+                }
+            );
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceMemberPeerForbiddenException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         const activityLogs = [
             this.activityLogDomain.prepare({

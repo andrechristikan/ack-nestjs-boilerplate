@@ -51,9 +51,9 @@ export class ActivityLogAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/user/:userId/list')
     async listByUser(
         @Query({ schema: ActivityLogAdminListRequestSchema })
@@ -81,9 +81,9 @@ export class ActivityLogAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/:workspaceId/list')
     async listByWorkspace(
         @Query({ schema: ActivityLogAdminWorkspaceListRequestSchema })

@@ -27,4 +27,5 @@ export enum EnumWorkspaceStatusCodeError {
     headerMissing = 51621,
     guardMissing = 51622,
     memberGuardMissing = 51623,
+    memberAlreadyExists = 51624,
 }

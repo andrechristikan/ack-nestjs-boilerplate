@@ -297,7 +297,7 @@ describe('NotificationEmailProcessorService', () => {
             const data = {
                 reference: 'ref-1',
                 resendInMinutes: 5,
-                mobileNumber: '+15551234567',
+                encryptedMobileNumber: 'cipher(+15551234567)',
             };
             notificationEmailAccountDomain.processVerifiedMobileNumber.mockResolvedValue(
                 response

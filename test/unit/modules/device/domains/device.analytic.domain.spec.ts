@@ -119,31 +119,23 @@ describe('DeviceAnalyticDomain', () => {
         });
     });
 
-    describe('getInactive', () => {
-        it('delegates to the ownership analytic repository with the cutoff date', async () => {
-            const rows = [
-                {
-                    id: 'ownership-1',
-                    userId: 'user-1',
-                    lastActiveAt: startDate,
-                    deviceId: 'device-1',
-                },
-            ];
-            deviceOwnershipAnalyticRepository.findInactive.mockResolvedValue(
-                rows
+    describe('getCountInactive', () => {
+        it('delegates the inactive count to the ownership analytic repository with the cutoff date', async () => {
+            deviceOwnershipAnalyticRepository.countInactive.mockResolvedValue(
+                4
             );
 
-            const result = await domain.getInactive(startDate);
+            const result = await domain.getCountInactive(startDate);
 
-            expect(result).toBe(rows);
+            expect(result).toBe(4);
             expect(
-                deviceOwnershipAnalyticRepository.findInactive
+                deviceOwnershipAnalyticRepository.countInactive
             ).toHaveBeenCalledWith(startDate);
         });
     });
 
-    describe('getCreatedInRange', () => {
-        it('delegates to the ownership analytic repository', async () => {
+    describe('getCreatedInRangeByUser', () => {
+        it('delegates to the ownership analytic repository with the user and range', async () => {
             const rows = [
                 {
                     id: 'ownership-1',
@@ -152,16 +144,20 @@ describe('DeviceAnalyticDomain', () => {
                     createdAt: startDate,
                 },
             ];
-            deviceOwnershipAnalyticRepository.findCreatedInRange.mockResolvedValue(
+            deviceOwnershipAnalyticRepository.findCreatedInRangeByUser.mockResolvedValue(
                 rows
             );
 
-            const result = await domain.getCreatedInRange(startDate, endDate);
+            const result = await domain.getCreatedInRangeByUser(
+                'user-1',
+                startDate,
+                endDate
+            );
 
             expect(result).toBe(rows);
             expect(
-                deviceOwnershipAnalyticRepository.findCreatedInRange
-            ).toHaveBeenCalledWith(startDate, endDate);
+                deviceOwnershipAnalyticRepository.findCreatedInRangeByUser
+            ).toHaveBeenCalledWith('user-1', startDate, endDate);
         });
     });
 

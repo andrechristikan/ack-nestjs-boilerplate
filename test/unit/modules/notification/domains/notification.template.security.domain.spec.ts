@@ -1,7 +1,9 @@
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
 import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationTemplateSecurityDomain } from '@modules/notification/domains/notification.template.security.domain';
@@ -26,14 +28,14 @@ describe('NotificationTemplateSecurityDomain', () => {
     });
 
     describe('emailImportChangePassword', () => {
-        it('creates the change password template and returns true', async () => {
+        it('creates the change password template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportChangePassword();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportChangePassword()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.changePassword,
                 subject: 'Change Password',
@@ -41,12 +43,16 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportChangePassword();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportChangePassword()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -66,45 +72,64 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetChangePassword();
+            await expect(domain.emailGetChangePassword()).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(domain.emailGetChangePassword()).rejects.toMatchObject(
+                {
+                    constructor: AppUnknownException,
+                    rawError: error,
+                }
+            );
         });
     });
 
     describe('emailDeleteChangePassword', () => {
-        it('deletes the change password template and returns true', async () => {
+        it('deletes the change password template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteChangePassword();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteChangePassword()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.changePassword,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteChangePassword();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteChangePassword()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailImportTemporaryPasswordByAdmin', () => {
-        it('creates the temporary password by admin template and returns true', async () => {
+        it('creates the temporary password by admin template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportTemporaryPasswordByAdmin();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportTemporaryPasswordByAdmin()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.temporaryPasswordByAdmin,
                 subject: 'Temporary Password By Admin',
@@ -112,12 +137,16 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportTemporaryPasswordByAdmin();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportTemporaryPasswordByAdmin()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -137,45 +166,66 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetTemporaryPasswordByAdmin();
+            await expect(
+                domain.emailGetTemporaryPasswordByAdmin()
+            ).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(
+                domain.emailGetTemporaryPasswordByAdmin()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailDeleteTemporaryPasswordByAdmin', () => {
-        it('deletes the temporary password by admin template and returns true', async () => {
+        it('deletes the temporary password by admin template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteTemporaryPasswordByAdmin();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteTemporaryPasswordByAdmin()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.temporaryPasswordByAdmin,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteTemporaryPasswordByAdmin();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteTemporaryPasswordByAdmin()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailImportResetPassword', () => {
-        it('creates the reset password template and returns true', async () => {
+        it('creates the reset password template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportResetPassword();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportResetPassword()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.resetPassword,
                 subject: 'Reset Password',
@@ -183,12 +233,16 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportResetPassword();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportResetPassword()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -208,45 +262,62 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetResetPassword();
+            await expect(domain.emailGetResetPassword()).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(domain.emailGetResetPassword()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailDeleteResetPassword', () => {
-        it('deletes the reset password template and returns true', async () => {
+        it('deletes the reset password template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteResetPassword();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteResetPassword()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.resetPassword,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteResetPassword();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteResetPassword()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailImportForgotPassword', () => {
-        it('creates the forgot password template and returns true', async () => {
+        it('creates the forgot password template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportForgotPassword();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportForgotPassword()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.forgotPassword,
                 subject: 'Forgot Password',
@@ -254,12 +325,16 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportForgotPassword();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportForgotPassword()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -279,45 +354,64 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetForgotPassword();
+            await expect(domain.emailGetForgotPassword()).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(domain.emailGetForgotPassword()).rejects.toMatchObject(
+                {
+                    constructor: AppUnknownException,
+                    rawError: error,
+                }
+            );
         });
     });
 
     describe('emailDeleteForgotPassword', () => {
-        it('deletes the forgot password template and returns true', async () => {
+        it('deletes the forgot password template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteForgotPassword();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteForgotPassword()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.forgotPassword,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteForgotPassword();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteForgotPassword()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailImportResetTwoFactorByAdmin', () => {
-        it('creates the reset two factor by admin template and returns true', async () => {
+        it('creates the reset two factor by admin template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportResetTwoFactorByAdmin();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportResetTwoFactorByAdmin()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.resetTwoFactorByAdmin,
                 subject: 'Reset Two Factor By Admin',
@@ -325,12 +419,16 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportResetTwoFactorByAdmin();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportResetTwoFactorByAdmin()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -350,45 +448,66 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetResetTwoFactorByAdmin();
+            await expect(
+                domain.emailGetResetTwoFactorByAdmin()
+            ).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(
+                domain.emailGetResetTwoFactorByAdmin()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailDeleteResetTwoFactorByAdmin', () => {
-        it('deletes the reset two factor by admin template and returns true', async () => {
+        it('deletes the reset two factor by admin template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteResetTwoFactorByAdmin();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteResetTwoFactorByAdmin()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.resetTwoFactorByAdmin,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteResetTwoFactorByAdmin();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteResetTwoFactorByAdmin()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailImportNewDeviceLogin', () => {
-        it('creates the new device login template and returns true', async () => {
+        it('creates the new device login template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportNewDeviceLogin();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportNewDeviceLogin()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.newDeviceLogin,
                 subject: 'Device Login',
@@ -396,12 +515,16 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportNewDeviceLogin();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportNewDeviceLogin()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -421,33 +544,52 @@ describe('NotificationTemplateSecurityDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetNewDeviceLogin();
+            await expect(domain.emailGetNewDeviceLogin()).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(domain.emailGetNewDeviceLogin()).rejects.toMatchObject(
+                {
+                    constructor: AppUnknownException,
+                    rawError: error,
+                }
+            );
         });
     });
 
     describe('emailDeleteNewDeviceLogin', () => {
-        it('deletes the new device login template and returns true', async () => {
+        it('deletes the new device login template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteNewDeviceLogin();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteNewDeviceLogin()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.newDeviceLogin,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteNewDeviceLogin();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteNewDeviceLogin()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 });

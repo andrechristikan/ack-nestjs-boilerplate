@@ -62,6 +62,7 @@ describe('UserPasswordDomain', () => {
         requiredSetup: false,
         confirmedAt: null,
         lastUsedAt: null,
+        lastUsedStep: null,
         attempt: 0,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -342,16 +343,17 @@ describe('UserPasswordDomain', () => {
             );
         });
 
-        it('throws UserNotFoundException when the user is missing', async () => {
+        it('returns null without a reset payload when no active user holds the email', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(null);
 
             await expect(
                 domain.prepareForgotPassword('hollow@example.com')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
-            });
+            ).resolves.toBeNull();
+
+            expect(
+                userPasswordRepository.findOneLatestByForgotPassword
+            ).not.toHaveBeenCalled();
+            expect(userPasswordUtil.createForgot).not.toHaveBeenCalled();
         });
 
         it('throws UserForgotPasswordRequestLimitExceededException with the minutes left when resent too soon', async () => {
@@ -413,7 +415,7 @@ describe('UserPasswordDomain', () => {
             ).toHaveBeenCalledWith('hashed-token');
         });
 
-        it('throws UserNotFoundException when no active request matches', async () => {
+        it('throws UserTokenInvalidException when no active request matches', async () => {
             userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 null
             );
@@ -422,8 +424,8 @@ describe('UserPasswordDomain', () => {
                 domain.getOneActiveReset('raw-token')
             ).rejects.toMatchObject({
                 module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                messagePath: 'user.error.verificationTokenInvalid',
             });
         });
     });

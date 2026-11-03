@@ -21,7 +21,7 @@ describe('UserForgotPasswordRequestLimitExceededException', () => {
                         EnumUserStatusCodeError
                             .forgotPasswordRequestLimitExceeded
                     ],
-                httpStatus: HttpStatus.BAD_REQUEST,
+                httpStatus: HttpStatus.TOO_MANY_REQUESTS,
                 messagePath: 'user.error.forgotPasswordRequestLimitExceeded',
                 messageProperties: { minutes },
             });

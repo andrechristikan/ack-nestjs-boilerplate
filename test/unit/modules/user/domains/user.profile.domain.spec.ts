@@ -14,6 +14,7 @@ import type {
     TwoFactor,
     UserPhoto,
 } from '@generated/prisma-client/client';
+import { NotFound } from '@aws-sdk/client-s3';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type {
@@ -25,6 +26,7 @@ import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
@@ -41,6 +43,7 @@ describe('UserProfileDomain', () => {
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const photoMaxSizeInBytes = 2048;
 
     let domain: UserProfileDomain;
@@ -66,6 +69,7 @@ describe('UserProfileDomain', () => {
         requiredSetup: false,
         confirmedAt: null,
         lastUsedAt: null,
+        lastUsedStep: null,
         attempt: 0,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -155,6 +159,7 @@ describe('UserProfileDomain', () => {
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
                 { provide: UserQueue, useValue: userQueue },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         domain = module.get(UserProfileDomain);
@@ -339,28 +344,68 @@ describe('UserProfileDomain', () => {
             size: 2048,
         };
 
-        it('maps the presign', async () => {
-            awsS3Service.isInitialized.mockReturnValue(true);
-            awsS3Service.mapPresign.mockReturnValue(aws);
+        it('heads the uploaded object and stores the headed item', async () => {
+            awsS3Service.checkItem.mockResolvedValue(aws);
 
-            await domain.updatePhotoProfile(profile.id, {
-                key: aws.key,
-                size: aws.size,
+            await domain.updatePhotoProfile(profile.id, { key: aws.key });
+
+            expect(awsS3Service.checkItem).toHaveBeenCalledWith(aws.key, {
+                access: EnumAwsS3Accessibility.public,
             });
-
-            expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
-                { key: aws.key, size: aws.size },
-                { access: EnumAwsS3Accessibility.public }
-            );
             expect(userRepository.updatePhotoProfile).toHaveBeenCalledWith(
                 profile.id,
                 aws
             );
         });
 
+        it('caps the size of the headed object, not a client size', async () => {
+            awsS3Service.checkItem.mockResolvedValue({
+                ...aws,
+                size: photoMaxSizeInBytes + 1,
+            });
+
+            const call = domain.updatePhotoProfile(profile.id, {
+                key: aws.key,
+            });
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.photoSizeExceeded
+                    ],
+                messagePath: 'user.error.photoSizeExceeded',
+                httpStatus: 400,
+            });
+            expect(userUtil.isPhotoSizeAllowed).toHaveBeenCalledWith(
+                photoMaxSizeInBytes + 1
+            );
+            expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPhotoKeyInvalidException and writes nothing when the object was never uploaded', async () => {
+            awsS3Service.checkItem.mockRejectedValue(
+                new NotFound({ message: 'missing', $metadata: {} })
+            );
+
+            const call = domain.updatePhotoProfile(profile.id, {
+                key: aws.key,
+            });
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.photoKeyInvalid,
+                messagePath: 'user.error.photoKeyInvalid',
+                httpStatus: 400,
+            });
+            expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
+            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
+        });
+
         it('enqueues the previous photo delete after the write when a different photo exists', async () => {
-            awsS3Service.isInitialized.mockReturnValue(true);
-            awsS3Service.mapPresign.mockReturnValue(aws);
+            awsS3Service.checkItem.mockResolvedValue(aws);
             const calls: string[] = [];
             userRepository.findOneById.mockResolvedValue({
                 ...profile,
@@ -375,10 +420,7 @@ describe('UserProfileDomain', () => {
                 calls.push('enqueue');
             });
 
-            await domain.updatePhotoProfile(profile.id, {
-                key: aws.key,
-                size: aws.size,
-            });
+            await domain.updatePhotoProfile(profile.id, { key: aws.key });
 
             expect(userQueue.deletePhoto).toHaveBeenCalledWith(
                 profile.id,
@@ -392,17 +434,10 @@ describe('UserProfileDomain', () => {
             'photo-profile/user-persimmon-sibling/random.png',
             'term-policies/privacy/1/en.pdf',
         ])(
-            'throws UserPhotoKeyInvalidException and writes nothing when the key %s is outside the user photo path',
+            'throws UserPhotoKeyInvalidException and heads nothing when the key %s is outside the user photo path',
             async foreignKey => {
-                awsS3Service.isInitialized.mockReturnValue(true);
-                awsS3Service.mapPresign.mockReturnValue({
-                    ...aws,
-                    key: foreignKey,
-                });
-
                 const call = domain.updatePhotoProfile(profile.id, {
                     key: foreignKey,
-                    size: aws.size,
                 });
 
                 await expect(call).rejects.toMatchObject({
@@ -415,6 +450,7 @@ describe('UserProfileDomain', () => {
                     messagePath: 'user.error.photoKeyInvalid',
                     httpStatus: 400,
                 });
+                expect(awsS3Service.checkItem).not.toHaveBeenCalled();
                 expect(
                     userRepository.updatePhotoProfile
                 ).not.toHaveBeenCalled();
@@ -423,13 +459,9 @@ describe('UserProfileDomain', () => {
         );
 
         it('enqueues nothing when the user has no previous photo', async () => {
-            awsS3Service.isInitialized.mockReturnValue(true);
-            awsS3Service.mapPresign.mockReturnValue(aws);
+            awsS3Service.checkItem.mockResolvedValue(aws);
 
-            await domain.updatePhotoProfile(profile.id, {
-                key: aws.key,
-                size: aws.size,
-            });
+            await domain.updatePhotoProfile(profile.id, { key: aws.key });
 
             expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
@@ -441,69 +473,36 @@ describe('UserProfileDomain', () => {
         ])(
             'enqueues nothing when the previous photo key %s sits outside the user prefix',
             async foreignKey => {
-                awsS3Service.isInitialized.mockReturnValue(true);
-                awsS3Service.mapPresign.mockReturnValue(aws);
+                awsS3Service.checkItem.mockResolvedValue(aws);
                 userRepository.findOneById.mockResolvedValue({
                     ...profile,
                     photo: { ...previousPhoto, key: foreignKey },
                 });
 
-                await domain.updatePhotoProfile(profile.id, {
-                    key: aws.key,
-                    size: aws.size,
-                });
+                await domain.updatePhotoProfile(profile.id, { key: aws.key });
 
                 expect(userQueue.deletePhoto).not.toHaveBeenCalled();
             }
         );
 
         it('enqueues nothing when the previous photo has the same key', async () => {
-            awsS3Service.isInitialized.mockReturnValue(true);
-            awsS3Service.mapPresign.mockReturnValue(aws);
+            awsS3Service.checkItem.mockResolvedValue(aws);
             userRepository.findOneById.mockResolvedValue({
                 ...profile,
                 photo: { ...previousPhoto, key: aws.key },
             });
 
-            await domain.updatePhotoProfile(profile.id, {
-                key: aws.key,
-                size: aws.size,
-            });
+            await domain.updatePhotoProfile(profile.id, { key: aws.key });
 
-            expect(userQueue.deletePhoto).not.toHaveBeenCalled();
-        });
-
-        it('throws UserPhotoSizeExceededException and writes nothing when size exceeds the configured max', async () => {
-            awsS3Service.isInitialized.mockReturnValue(true);
-
-            const call = domain.updatePhotoProfile(profile.id, {
-                key: aws.key,
-                size: photoMaxSizeInBytes + 1,
-            });
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.photoSizeExceeded,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.photoSizeExceeded
-                    ],
-                messagePath: 'user.error.photoSizeExceeded',
-                httpStatus: 400,
-            });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
-            expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
             expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
 
         it('enqueues nothing and writes nothing when the user is missing', async () => {
-            awsS3Service.isInitialized.mockReturnValue(true);
-            awsS3Service.mapPresign.mockReturnValue(aws);
+            awsS3Service.checkItem.mockResolvedValue(aws);
             userRepository.findOneById.mockResolvedValue(null);
 
             const rejection = domain.updatePhotoProfile(profile.id, {
                 key: aws.key,
-                size: aws.size,
             });
 
             await expect(rejection).rejects.toMatchObject({
@@ -516,11 +515,10 @@ describe('UserProfileDomain', () => {
         });
 
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
-            awsS3Service.isInitialized.mockReturnValue(false);
+            awsS3Service.checkItem.mockResolvedValue(null);
 
             const call = domain.updatePhotoProfile(profile.id, {
                 key: aws.key,
-                size: aws.size,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -532,20 +530,15 @@ describe('UserProfileDomain', () => {
                     ],
                 messagePath: 'aws.error.s3NotConfigured',
             });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
             expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised while updating', async () => {
             const error = new UserNotFoundException();
-            awsS3Service.isInitialized.mockReturnValue(true);
-            awsS3Service.mapPresign.mockImplementation(() => {
-                throw error;
-            });
+            awsS3Service.checkItem.mockRejectedValue(error);
 
             const call = domain.updatePhotoProfile(profile.id, {
                 key: aws.key,
-                size: aws.size,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -560,14 +553,10 @@ describe('UserProfileDomain', () => {
 
         it('wraps an unknown error raised while updating', async () => {
             const error = new Error('boom');
-            awsS3Service.isInitialized.mockReturnValue(true);
-            awsS3Service.mapPresign.mockImplementation(() => {
-                throw error;
-            });
+            awsS3Service.checkItem.mockRejectedValue(error);
 
             const call = domain.updatePhotoProfile(profile.id, {
                 key: aws.key,
-                size: aws.size,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -873,6 +862,27 @@ describe('UserProfileDomain', () => {
                     ],
                 messagePath: 'user.error.usernameExist',
             });
+        });
+
+        it('maps a username unique collision to UserUsernameExistException', async () => {
+            userUtil.checkUsernamePattern.mockReturnValue(false);
+            userUtil.checkBadWord.mockResolvedValue(false);
+            userRepository.existsByUsername.mockResolvedValue(false);
+            const collision = new Error('unique');
+            userRepository.claimUsername.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            const call = domain.claimUsername(profile.id, username);
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.usernameExist,
+                messagePath: 'user.error.usernameExist',
+            });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'username'
+            );
         });
 
         it('rethrows an AppBaseException raised while claiming', async () => {

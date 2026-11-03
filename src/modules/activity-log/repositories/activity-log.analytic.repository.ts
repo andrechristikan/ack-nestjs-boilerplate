@@ -11,6 +11,7 @@ import type {
     IActivityLogIpGroup,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import { Injectable } from '@nestjs/common';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 
@@ -95,14 +96,15 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
     async countByWorkspaceInRange(
         excludedActions: EnumActivityLogAction[],
         workspaceId: string,
-        startDate: Date,
-        endDate: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<number> {
         return this.databaseService.client.activityLog.count({
             where: {
                 workspaceId,
                 action: { notIn: excludedActions },
-                createdAt: { gte: startDate, lt: endDate },
+                ...(startDate &&
+                    endDate && { createdAt: { gte: startDate, lt: endDate } }),
             },
         });
     }
@@ -116,6 +118,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         const { skip, limit } = params;
         const scopedWhere: Prisma.ActivityLogWhereInput = {
             workspaceId: { not: null },
+            workspace: { OR: WorkspaceActiveFilter },
             action: { notIn: excludedActions },
             createdAt: { gte: startDate, lt: endDate },
         };

@@ -4,10 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseClientToken } from '@common/database/constants/database.constant';
+import {
+    DatabaseClientToken,
+    DatabaseQueryTargetRegex,
+} from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type {
     IDatabaseClient,
+    IDatabaseQueryLog,
     IDatabaseTransactionClient,
     IDatabaseTransactionOptions,
 } from '@common/database/interfaces/database.client.interface';
@@ -16,7 +20,6 @@ import type {
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private readonly logger: Logger = new Logger(DatabaseService.name);
     private readonly isDebugMode: boolean;
-    private readonly prettier: boolean;
     readonly client: IDatabaseClient;
 
     constructor(
@@ -26,7 +29,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         private readonly databaseClient: IDatabaseClient
     ) {
         this.isDebugMode = this.configService.get<boolean>('database.debug')!;
-        this.prettier = this.configService.get<boolean>('logger.prettier')!;
         this.client = this.databaseClient;
     }
 
@@ -73,46 +75,26 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     /**
-     * Logs one query at verbose level, unescaping and collapsing the SQL when prettier mode is on,
-     * and flagging anything over a second as a slow query.
+     * Reads the collection and operation off a query event; the statement text and its params carry
+     * filter values, so neither is kept.
+     */
+    private describeQuery(event: Prisma.QueryEvent): IDatabaseQueryLog {
+        const match = DatabaseQueryTargetRegex.exec(event.query);
+
+        return {
+            model: match?.[1] ?? null,
+            action: match?.[2] ?? null,
+            duration: event.duration,
+        };
+    }
+
+    /**
+     * Logs the model, action, and duration of one query at verbose level.
      */
     private logQuery(event: Prisma.QueryEvent): void {
-        const { query, duration, params, ...other } = event;
-        if (this.prettier) {
-            let sanitizedQuery: string = query;
-            if (typeof sanitizedQuery === 'string') {
-                sanitizedQuery = sanitizedQuery
-                    .replaceAll(/\\"/g, '"')
-                    .replaceAll(/\\\\/g, '\\')
-                    .replaceAll(/\\n/g, '\n')
-                    .replaceAll(/\s+/g, ' ')
-                    .trim();
-            }
+        const queryLog = this.describeQuery(event);
 
-            const message = `[Prisma Query] ${duration}ms - ${sanitizedQuery}${params !== '[]' ? ` | Params: ${params}` : ''}`;
-
-            this.logger.verbose(
-                {
-                    ...other,
-                    message,
-                    params,
-                    duration,
-                    slowQuery: duration > 1000,
-                },
-                'A Prisma query was executed'
-            );
-        } else {
-            this.logger.verbose(
-                {
-                    ...other,
-                    message: query,
-                    params,
-                    duration,
-                    slowQuery: duration > 1000,
-                },
-                'A Prisma query was executed'
-            );
-        }
+        this.logger.verbose(queryLog, 'A Prisma query was executed');
     }
 
     /**

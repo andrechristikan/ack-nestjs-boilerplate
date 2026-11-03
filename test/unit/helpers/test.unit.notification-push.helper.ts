@@ -143,7 +143,11 @@ export function expectPushSentAtFailure(
 ): void {
     expect(notificationPushQueue.sendCleanupTokens).toHaveBeenCalledTimes(1);
     expect(result.failedSteps).toEqual([
-        { step: EnumNotificationStep.updateSentAt, error: 'mongo' },
+        {
+            step: EnumNotificationStep.updateSentAt,
+            message: 'mongo',
+            rawError: new Error('mongo'),
+        },
     ]);
     expect(result.completedSteps).toEqual(PushRecordedSteps);
 }
@@ -155,7 +159,11 @@ export function expectPushSendFailure(
     expect(notificationPushQueue.sendCleanupTokens).not.toHaveBeenCalled();
     expect(notificationRepository.updateDeliverySentAt).not.toHaveBeenCalled();
     expect(result.failedSteps).toEqual([
-        { step: EnumNotificationStep.sendMulticast, error: 'fcm' },
+        {
+            step: EnumNotificationStep.sendMulticast,
+            message: 'fcm',
+            rawError: new Error('fcm'),
+        },
     ]);
     expect(result.completedSteps).toEqual([
         EnumNotificationStep.updateProcessAt,
@@ -173,7 +181,8 @@ export function expectPushOutagePending(
     expect(result.failedSteps).toEqual([
         {
             step: EnumNotificationStep.sendMulticast,
-            error: '2 tokens pending retry',
+            message: 'notification.queue.push.error.tokensPending',
+            rawError: new Error('notification.queue.push.error.tokensPending'),
         },
     ]);
     expect(result.completedSteps).toEqual([

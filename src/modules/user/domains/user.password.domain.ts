@@ -3,7 +3,6 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { User } from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
@@ -99,13 +98,13 @@ export class UserPasswordDomain {
         }
     }
 
-    /** Resolves the active user of an email whose last request is out of its resend window, with a fresh reset payload. */
+    /** Resolves the active user of an email whose last request is out of its resend window, with a fresh reset payload; null when no active user holds the email. */
     async prepareForgotPassword(
         email: string
-    ): Promise<IUserForgotPasswordPrepared> {
+    ): Promise<IUserForgotPasswordPrepared | null> {
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
-            throw new UserNotFoundException();
+            return null;
         }
 
         // Sequential by design: gate before the work it guards
@@ -149,7 +148,7 @@ export class UserPasswordDomain {
                 hashedToken
             );
         if (!reset) {
-            throw new UserNotFoundException();
+            throw new UserTokenInvalidException();
         }
 
         return reset;

@@ -6,7 +6,11 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
-import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import type {
+    Project,
+    ProjectMember,
+    WorkspaceMember,
+} from '@generated/prisma-client/client';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
@@ -14,6 +18,7 @@ import type { IProjectMember } from '@modules/project/interfaces/project.interfa
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { ProjectUtil } from '@modules/project/utils/project.util';
 import { Injectable } from '@nestjs/common';
 import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 
@@ -22,6 +27,7 @@ export class ProjectMemberHttpService {
     constructor(
         private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly projectUtil: ProjectUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly activityLogDomain: ActivityLogDomain
@@ -49,14 +55,11 @@ export class ProjectMemberHttpService {
 
     async assignMember(
         project: Project,
-        actorId: string,
+        actorMember: WorkspaceMember,
         { userId, role }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
-        const targetMember =
-            await this.workspaceMemberDomain.getOneByWorkspaceAndUser(
-                project.workspaceId,
-                userId
-            );
+        const actor = this.projectUtil.mapMemberActor(actorMember);
+        const actorId = actor.userId;
         const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberAssigned,
@@ -77,9 +80,14 @@ export class ProjectMemberHttpService {
             activityLogs.push(assignedByAdminActivityLog);
         }
 
+        const targetMember =
+            await this.workspaceMemberDomain.getOneByWorkspaceAndUser(
+                project.workspaceId,
+                userId
+            );
         const member = await this.projectMemberDomain.assignMember(
             project,
-            actorId,
+            actor,
             targetMember,
             role
         );
@@ -91,12 +99,15 @@ export class ProjectMemberHttpService {
 
     async updateMemberRole(
         project: Project,
-        actorId: string,
+        actorMember: WorkspaceMember,
         targetMemberId: string,
         { role }: ProjectMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
+        const actor = this.projectUtil.mapMemberActor(actorMember);
+        const actorId = actor.userId;
         const targetMember = await this.projectMemberDomain.updateMemberRole(
             project,
+            actor,
             targetMemberId,
             role
         );
@@ -128,12 +139,14 @@ export class ProjectMemberHttpService {
 
     async removeMember(
         project: Project,
-        actorId: string,
+        actorMember: WorkspaceMember,
         targetMemberId: string
     ): Promise<IResponseReturn<void>> {
+        const actor = this.projectUtil.mapMemberActor(actorMember);
+        const actorId = actor.userId;
         const targetMember = await this.projectMemberDomain.removeMember(
             project,
-            actorId,
+            actor,
             targetMemberId
         );
         const activityLogs = [

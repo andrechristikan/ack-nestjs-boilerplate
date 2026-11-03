@@ -169,6 +169,38 @@ describe('FileExtensionPipe', () => {
             await expectFileExtensionInvalid(promise);
         });
 
+        it('throws when the sniffed type belongs to another allowed extension than the declared one', async () => {
+            const pipe = await createFileExtensionPipe(
+                [EnumFileExtension.jpg, EnumFileExtension.png],
+                fileService
+            );
+            fileService.extractExtensionFromFilename.mockReturnValue('jpg');
+            fileService.sniffExtensionFromBuffer.mockResolvedValue('png');
+
+            const promise = pipe.transform(
+                { ...baseFile, originalname: 'a.jpg' },
+                metadata
+            );
+
+            await expectFileExtensionInvalid(promise);
+        });
+
+        it('throws when a declared csv carries a sniffed binary signature of another allowed extension', async () => {
+            const pipe = await createFileExtensionPipe(
+                [EnumFileExtension.csv, EnumFileExtension.pdf],
+                fileService
+            );
+            fileService.extractExtensionFromFilename.mockReturnValue('csv');
+            fileService.sniffExtensionFromBuffer.mockResolvedValue('pdf');
+
+            const promise = pipe.transform(
+                { ...baseFile, originalname: 'a.csv' },
+                metadata
+            );
+
+            await expectFileExtensionInvalid(promise);
+        });
+
         it('validates every element of an array, element by element', async () => {
             const pipe = await createFileExtensionPipe(
                 [EnumFileExtension.pdf],

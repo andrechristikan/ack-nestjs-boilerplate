@@ -158,11 +158,16 @@ describe('AuthSocialDomain', () => {
     });
 
     describe('verifyApple', () => {
+        const appleResponse = {
+            email: 'jane@example.com',
+            email_verified: true,
+        };
+
         it('verifies with only the sign-in client id when the client id is unset', async () => {
             const bare = await createAuthSocialDomain({
                 'auth.apple.clientId': null,
             });
-            verifyAppleMock.mockResolvedValue({ email: 'jane@example.com' });
+            verifyAppleMock.mockResolvedValue(appleResponse);
 
             await bare.verifyApple('id-token');
 
@@ -176,7 +181,7 @@ describe('AuthSocialDomain', () => {
             const bare = await createAuthSocialDomain({
                 'auth.apple.signInClientId': null,
             });
-            verifyAppleMock.mockResolvedValue({ email: 'jane@example.com' });
+            verifyAppleMock.mockResolvedValue(appleResponse);
 
             await bare.verifyApple('id-token');
 
@@ -208,16 +213,56 @@ describe('AuthSocialDomain', () => {
         });
 
         it('verifies the Apple id token with both configured client ids', async () => {
-            const response = { email: 'jane@example.com' };
-            verifyAppleMock.mockResolvedValue(response);
+            verifyAppleMock.mockResolvedValue(appleResponse);
 
             const result = await domain.verifyApple('id-token');
 
-            expect(result).toBe(response);
+            expect(result).toBe(appleResponse);
             expect(verifyAppleMock).toHaveBeenCalledWith({
                 idToken: 'id-token',
                 clientId: ['apple-client-id', 'apple-sign-in-client-id'],
             });
         });
+
+        it('accepts an email_verified claim Apple sends as the string "true"', async () => {
+            const response = { ...appleResponse, email_verified: 'true' };
+            verifyAppleMock.mockResolvedValue(response);
+
+            const result = await domain.verifyApple('id-token');
+
+            expect(result).toBe(response);
+        });
+
+        it.each([
+            ['no email', { email_verified: true }],
+            ['an empty email', { email: '', email_verified: true }],
+            ['no email_verified', { email: 'jane@example.com' }],
+            [
+                'email_verified false',
+                { email: 'jane@example.com', email_verified: false },
+            ],
+            [
+                'email_verified the string "false"',
+                { email: 'jane@example.com', email_verified: 'false' },
+            ],
+        ])(
+            'throws AuthSocialAppleInvalidException when the token has %s',
+            async (_label, response) => {
+                verifyAppleMock.mockResolvedValue(response);
+
+                const rejection = domain.verifyApple('id-token');
+
+                await expect(rejection).rejects.toMatchObject({
+                    module: 'auth',
+                    statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
+                    statusCodeKey:
+                        EnumAuthStatusCodeError[
+                            EnumAuthStatusCodeError.socialAppleInvalid
+                        ],
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    messagePath: 'auth.error.socialAppleInvalid',
+                });
+            }
+        );
     });
 });

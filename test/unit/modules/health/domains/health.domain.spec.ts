@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { HealthCheckService } from '@nestjs/terminus';
 import type {
     HealthCheckResult,
@@ -20,6 +21,8 @@ import { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indi
 import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.indicator';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
+import { HealthUtil } from '@modules/health/utils/health.util';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 describe('HealthDomain', () => {
     const health: MockProxy<HealthCheckService> = mock<HealthCheckService>();
@@ -46,6 +49,8 @@ describe('HealthDomain', () => {
     const queueIndicator: MockProxy<HealthQueueIndicator> =
         mock<HealthQueueIndicator>();
 
+    const healthUtil: MockProxy<HealthUtil> = mock<HealthUtil>();
+
     const healthCheckResult: HealthCheckResult = {
         status: 'ok',
         details: {},
@@ -60,6 +65,7 @@ describe('HealthDomain', () => {
             providers: [
                 HealthDomain,
                 { provide: HealthCheckService, useValue: health },
+                { provide: HealthUtil, useValue: healthUtil },
                 {
                     provide: HealthInstanceIndicator,
                     useValue: healthInstanceIndicator,
@@ -267,6 +273,54 @@ describe('HealthDomain', () => {
             expect(
                 healthInstanceIndicator.isHealthyStorage
             ).toHaveBeenCalledWith('storage');
+        });
+    });
+
+    describe('check', () => {
+        it('returns the Terminus result when every indicator passes', async () => {
+            health.check.mockResolvedValue(healthCheckResult);
+
+            const result = await domain['check']([]);
+
+            expect(result).toBe(healthCheckResult);
+        });
+
+        it('returns the health result Terminus reports through ServiceUnavailableException', async () => {
+            const failed: HealthCheckResult = {
+                ...healthCheckResult,
+                status: 'error',
+            };
+            health.check.mockRejectedValue(
+                new ServiceUnavailableException(failed)
+            );
+            healthUtil.isHealthCheckResult.mockReturnValue(true);
+
+            const result = await domain['check']([]);
+
+            expect(result).toEqual(failed);
+            expect(healthUtil.isHealthCheckResult).toHaveBeenCalledWith(failed);
+        });
+
+        it('wraps a ServiceUnavailableException that carries no health result in AppUnknownException', async () => {
+            const error = new ServiceUnavailableException('unavailable');
+            health.check.mockRejectedValue(error);
+            healthUtil.isHealthCheckResult.mockReturnValue(false);
+
+            await expect(domain['check']([])).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const error = new Error('indicator crashed');
+            health.check.mockRejectedValue(error);
+
+            await expect(domain['check']([])).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
+            expect(healthUtil.isHealthCheckResult).not.toHaveBeenCalled();
         });
     });
 });

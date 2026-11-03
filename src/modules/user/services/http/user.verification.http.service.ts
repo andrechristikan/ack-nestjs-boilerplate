@@ -74,6 +74,9 @@ export class UserVerificationHttpService {
     }: UserSendEmailVerificationRequestDto): Promise<IResponseReturn<void>> {
         const user =
             await this.userVerificationDomain.getOneForResendByEmail(email);
+        if (user === null) {
+            return {};
+        }
 
         const emailVerification = this.userVerificationUtil.createEmail();
         const activityLogs = [

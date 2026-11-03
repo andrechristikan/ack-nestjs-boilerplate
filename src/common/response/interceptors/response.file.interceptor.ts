@@ -110,12 +110,16 @@ export function ResponseFileInterceptor(
             return this.helperDateService.getTimestamp(today);
         }
 
-        private createDefaultFilename(timestamp: number): string {
+        private createDefaultFilename(
+            extension: EnumFileExtensionDocument
+        ): string {
+            const timestamp = this.createTimestamp();
+
             return this.helperStringService.fillPattern(
                 this.filenameExportPattern,
                 {
                     timestamp: String(timestamp),
-                    extension: EnumFileExtensionDocument.csv,
+                    extension,
                 }
             );
         }
@@ -155,9 +159,9 @@ export function ResponseFileInterceptor(
                             throw new FileExceedMaxSizeExportException();
                         }
 
-                        const timestamp = this.createTimestamp();
-                        const defaultFilename =
-                            this.createDefaultFilename(timestamp);
+                        const defaultFilename = this.createDefaultFilename(
+                            responseData.extension
+                        );
                         const filename =
                             responseData.filename ?? defaultFilename;
                         const mimeFromFilename =

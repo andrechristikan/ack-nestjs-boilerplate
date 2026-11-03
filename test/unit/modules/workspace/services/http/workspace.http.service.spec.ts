@@ -514,7 +514,7 @@ describe('WorkspaceHttpService', () => {
                     callOrder.push('projects');
                 }
             );
-            workspaceInviteDomain.expirePendingByWorkspaceInTx.mockImplementation(
+            workspaceInviteDomain.revokePendingByWorkspaceInTx.mockImplementation(
                 async () => {
                     callOrder.push('invites');
                 }
@@ -544,7 +544,7 @@ describe('WorkspaceHttpService', () => {
                 projectDomain.softDeleteByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', deletedAt, 'user-1');
             expect(
-                workspaceInviteDomain.expirePendingByWorkspaceInTx
+                workspaceInviteDomain.revokePendingByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1');
             expect(
                 workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx
@@ -577,7 +577,7 @@ describe('WorkspaceHttpService', () => {
                 projectDomain.softDeleteByWorkspaceInTx
             ).not.toHaveBeenCalled();
             expect(
-                workspaceInviteDomain.expirePendingByWorkspaceInTx
+                workspaceInviteDomain.revokePendingByWorkspaceInTx
             ).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx

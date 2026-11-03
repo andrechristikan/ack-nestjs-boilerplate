@@ -67,9 +67,9 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: ApiKeyListRequestSchema }) query: ApiKeyListRequestDto
@@ -86,9 +86,9 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
         @Body({ schema: ApiKeyCreateRequestSchema })
@@ -108,9 +108,9 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/reset/:apiKeyId')
     async reset(
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
@@ -130,9 +130,9 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update/:apiKeyId')
     async update(
         @Body({ schema: ApiKeyUpdateRequestSchema })
@@ -154,9 +154,9 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update/:apiKeyId/date')
     async updateDate(
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
@@ -178,9 +178,9 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
@@ -202,9 +202,9 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/delete/:apiKeyId')
     async delete(
         @Param('apiKeyId', { schema: RequestMongoIdSchema })

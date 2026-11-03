@@ -14,6 +14,7 @@ import type {
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { Injectable } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
@@ -24,7 +25,10 @@ import { PaginationFailedToDecodeCursorException } from '@common/pagination/exce
 
 @Injectable()
 export class PaginationService {
-    constructor(private readonly helperHashService: HelperHashService) {}
+    constructor(
+        private readonly helperHashService: HelperHashService,
+        private readonly databaseUtil: DatabaseUtil
+    ) {}
 
     private canonicalize(value: unknown): unknown {
         if (value instanceof Date) {
@@ -76,7 +80,10 @@ export class PaginationService {
         }
     }
 
-    private decodeCursor(cursor: string): IPaginationCursorValue {
+    private decodeCursor(
+        cursor: string,
+        cursorField: string
+    ): IPaginationCursorValue {
         if (!cursor || typeof cursor !== 'string') {
             throw new PaginationInvalidCursorFormatException();
         }
@@ -89,8 +96,21 @@ export class PaginationService {
                 Buffer.from(base64, 'base64').toString()
             );
 
-            if (!decoded.cursor || !decoded.fingerprint) {
+            if (
+                typeof decoded.cursor !== 'string' ||
+                !decoded.cursor ||
+                !decoded.fingerprint
+            ) {
                 throw new PaginationInvalidCursorDataException();
+            }
+
+            if (cursorField === PaginationDefaultCursorField) {
+                const isValidId = this.databaseUtil.checkIdIsValid(
+                    decoded.cursor
+                );
+                if (!isValidId) {
+                    throw new PaginationInvalidCursorDataException();
+                }
             }
 
             return decoded as IPaginationCursorValue;
@@ -193,7 +213,7 @@ export class PaginationService {
         let decodedCursor: IPaginationCursorValue | null = null;
 
         if (cursor) {
-            decodedCursor = this.decodeCursor(cursor);
+            decodedCursor = this.decodeCursor(cursor, cursorField);
 
             if (decodedCursor.fingerprint !== fingerprint) {
                 throw new PaginationInvalidCursorPaginationParamsException();

@@ -6,7 +6,7 @@ import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/use
  * @public
  */
 export const UserTwoFactorRegenerateBackupCodeRequestSchema =
-    UserTwoFactorEnableRequestSchema;
+    UserTwoFactorEnableRequestSchema.omit({ password: true });
 
 /**
  * Body for regenerating two-factor backup codes.

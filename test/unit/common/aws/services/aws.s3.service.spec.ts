@@ -1570,6 +1570,33 @@ describe('AwsS3Service', () => {
                 access: EnumAwsS3Accessibility.public,
             });
         });
+
+        it('encodes every segment of the source key in the copy source', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({});
+
+            await service.copyItem(
+                { ...source, key: 'users/my avatar+1?.jpg' },
+                'archive',
+                {
+                    accessFrom: EnumAwsS3Accessibility.private,
+                    accessTo: EnumAwsS3Accessibility.public,
+                }
+            );
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        CopySource:
+                            'private-bucket/users/my%20avatar%2B1%3F.jpg',
+                    }),
+                })
+            );
+        });
     });
 
     describe('copyItems', () => {

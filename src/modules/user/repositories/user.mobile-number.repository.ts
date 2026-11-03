@@ -99,4 +99,13 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
 
         return row;
     }
+
+    async deleteByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await tx.userMobileNumber.deleteMany({
+            where: { userId },
+        });
+    }
 }

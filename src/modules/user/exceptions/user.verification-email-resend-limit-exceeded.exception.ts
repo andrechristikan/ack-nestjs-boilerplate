@@ -11,7 +11,7 @@ export class UserVerificationEmailResendLimitExceededException extends AppBaseEx
     readonly statusCode =
         EnumUserStatusCodeError.verificationEmailResendLimitExceeded;
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.BAD_REQUEST;
+    readonly httpStatus = HttpStatus.TOO_MANY_REQUESTS;
 
     constructor(readonly minutes: number) {
         super('user.error.verificationEmailResendLimitExceeded', {

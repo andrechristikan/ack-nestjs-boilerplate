@@ -92,7 +92,7 @@ describe('HealthSentryIndicator', () => {
             expect(session.up).toHaveBeenCalledWith();
         });
 
-        it('reports down with the error message when reading the client throws an Error', async () => {
+        it('reports down with a fixed message when reading the client throws an Error', async () => {
             vi.mocked(Sentry.getClient).mockImplementation(() => {
                 throw new Error('client unavailable');
             });
@@ -101,12 +101,10 @@ describe('HealthSentryIndicator', () => {
             const result = await indicator.isHealthy('sentry');
 
             expect(result).toEqual({ sentry: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'HealthSentryIndicator Failed - client unavailable'
-            );
+            expect(session.down).toHaveBeenCalledWith('Sentry check failed');
         });
 
-        it('reports down with an unknown-error message when a non-Error is thrown', async () => {
+        it('reports down with the same fixed message when a non-Error is thrown', async () => {
             vi.mocked(Sentry.getClient).mockImplementation(() => {
                 throw 'not-an-error';
             });
@@ -115,9 +113,7 @@ describe('HealthSentryIndicator', () => {
             const result = await indicator.isHealthy('sentry');
 
             expect(result).toEqual({ sentry: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'HealthSentryIndicator Failed - Unknown error'
-            );
+            expect(session.down).toHaveBeenCalledWith('Sentry check failed');
         });
     });
 });

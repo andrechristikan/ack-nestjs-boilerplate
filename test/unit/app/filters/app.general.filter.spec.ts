@@ -22,7 +22,7 @@ import type { ResponseMetadataDto } from '@common/response/dtos/response.metadat
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
+import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
 
 describe('AppGeneralFilter', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -219,17 +219,16 @@ describe('AppGeneralFilter', () => {
         });
 
         it('translates the exception messagePath with its messageProperties and the metadata language', async () => {
-            const exception = new AuthTwoFactorAttemptTemporaryLockException(
-                30
-            );
+            const exception =
+                new UserForgotPasswordRequestLimitExceededException(30);
 
             await filter.catch(exception, argumentsHost);
 
             expect(messageService.setMessage).toHaveBeenCalledWith(
-                'auth.error.twoFactorAttemptTemporaryLock',
+                'user.error.forgotPasswordRequestLimitExceeded',
                 {
                     customLanguage: EnumMessageLanguage.en,
-                    properties: { retryAfterSeconds: 30 },
+                    properties: { minutes: 30 },
                 }
             );
         });

@@ -479,8 +479,13 @@ describe('DeviceDomain', () => {
             notificationToken: null,
         };
 
-        it('throws when the ownership does not exist or is inactive', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(false);
+        it('throws DeviceNotFoundException when the guarded refresh matches no live ownership, writing no device row', async () => {
+            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
+            helperDateService.create.mockReturnValue(now);
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
+            databaseService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
 
             await expect(
                 domain.refresh('user-1', 'device-ownership-1', data)
@@ -494,11 +499,13 @@ describe('DeviceDomain', () => {
                     ],
                 messagePath: 'device.error.notFound',
             });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(deviceRepository.refreshInTx).not.toHaveBeenCalled();
+            expect(
+                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('refreshes the ownership token and the device on success', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(
                 EnumDeviceNotificationProvider.fcm
             );
@@ -527,7 +534,6 @@ describe('DeviceDomain', () => {
         });
 
         it('clears the refreshed token from every other user ownership row in the same transaction', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(
                 EnumDeviceNotificationProvider.fcm
             );
@@ -548,7 +554,6 @@ describe('DeviceDomain', () => {
         });
 
         it('clears no other row when the refresh carries no token', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
@@ -564,7 +569,6 @@ describe('DeviceDomain', () => {
         });
 
         it('resolves the notification provider from a null platform when none is given', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
@@ -589,7 +593,6 @@ describe('DeviceDomain', () => {
                 platform: null,
                 notificationToken: null,
             };
-            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
@@ -620,7 +623,6 @@ describe('DeviceDomain', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             const notFound = new DeviceNotFoundException();
@@ -632,7 +634,6 @@ describe('DeviceDomain', () => {
         });
 
         it('wraps a non-application error raised inside the transaction', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             const cause = new Error('database exploded');
@@ -649,37 +650,6 @@ describe('DeviceDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: cause,
             });
-        });
-    });
-
-    describe('assertActive', () => {
-        it('throws when the ownership does not exist or is inactive', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(false);
-
-            await expect(
-                domain.assertActive('user-1', 'device-ownership-1')
-            ).rejects.toMatchObject({
-                constructor: DeviceNotFoundException,
-                module: 'device',
-                statusCode: EnumDeviceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumDeviceStatusCodeError[
-                        EnumDeviceStatusCodeError.notFound
-                    ],
-                messagePath: 'device.error.notFound',
-            });
-            expect(deviceOwnershipRepository.existsActive).toHaveBeenCalledWith(
-                'user-1',
-                'device-ownership-1'
-            );
-        });
-
-        it('resolves when the ownership is live', async () => {
-            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
-
-            await expect(
-                domain.assertActive('user-1', 'device-ownership-1')
-            ).resolves.toBeUndefined();
         });
     });
 
@@ -707,6 +677,31 @@ describe('DeviceDomain', () => {
                 'admin-1',
                 now
             );
+        });
+
+        it('throws DeviceNotFoundException when the guarded revoke matches no live ownership, as on a second removal', async () => {
+            deviceOwnershipRepository.removeOwnershipInTx.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                domain.removeOwnershipInTx(
+                    tx,
+                    'user-1',
+                    'device-ownership-1',
+                    'admin-1',
+                    now
+                )
+            ).rejects.toMatchObject({
+                constructor: DeviceNotFoundException,
+                module: 'device',
+                statusCode: EnumDeviceStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumDeviceStatusCodeError[
+                        EnumDeviceStatusCodeError.notFound
+                    ],
+                messagePath: 'device.error.notFound',
+            });
         });
     });
 });

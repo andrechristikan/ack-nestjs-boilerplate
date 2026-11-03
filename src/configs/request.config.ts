@@ -89,7 +89,10 @@ export default registerAs('request', (): IConfigRequest => {
                 'HEAD',
                 'OPTIONS',
             ],
-            allowedOrigin: process.env.CORS_ALLOWED_ORIGIN!.split(','),
+            allowedOrigin: process.env
+                .CORS_ALLOWED_ORIGIN!.split(',')
+                .map(origin => origin.trim())
+                .filter(origin => origin !== ''),
             allowedHeader: [
                 'Accept',
                 'Accept-Language',

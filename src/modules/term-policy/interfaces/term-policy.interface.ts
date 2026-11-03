@@ -35,6 +35,11 @@ export interface ITermPolicyContentPresign {
     size: number;
 }
 
+export interface ITermPolicyAnalyticLatest {
+    type: EnumTermPolicyType;
+    version: number;
+}
+
 export interface ITermPolicyAcceptanceAnalytic {
     id: string;
     userId: string;
@@ -45,6 +50,17 @@ export interface ITermPolicyAcceptanceAnalytic {
 
 export interface ITermPolicyDeleteContentPayload {
     path: string;
+}
+
+export interface ITermPolicyCopyContentPayload {
+    termPolicyId: string;
+    contents: ITermPolicyContent[];
+    destination: string;
+}
+
+export interface ITermPolicyPublish {
+    termPolicy: TermPolicy;
+    copy: ITermPolicyCopyContentPayload;
 }
 
 export interface ITermPolicyAcceptanceCreate {

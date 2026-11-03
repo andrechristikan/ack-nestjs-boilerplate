@@ -18,6 +18,8 @@ import type { TermPolicy } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
+import type { ITermPolicyCopyContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import {
@@ -43,6 +45,7 @@ describe('TermPolicyHttpService', () => {
         mock<ActivityLogDomain>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -129,6 +132,7 @@ describe('TermPolicyHttpService', () => {
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: TermPolicyQueue, useValue: termPolicyQueue },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
@@ -362,13 +366,24 @@ describe('TermPolicyHttpService', () => {
     });
 
     describe('publishByAdmin', () => {
-        it('stages the publish activity log from the published row, then enqueues the notification', async () => {
+        const copy: ITermPolicyCopyContentPayload = {
+            termPolicyId: 'term-policy-1',
+            contents: [],
+            destination: 'public/term-policies/privacy/1',
+        };
+
+        it('stages the publish activity log from the published row, then enqueues the copy and the notification', async () => {
             const calls: string[] = [];
-            termPolicyDomain.publishByAdmin.mockResolvedValue(
-                publishedTermPolicy
-            );
+            termPolicyDomain.publishByAdmin.mockImplementation(async () => {
+                calls.push('publish');
+
+                return { termPolicy: publishedTermPolicy, copy };
+            });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 calls.push('stage');
+            });
+            termPolicyQueue.copyContent.mockImplementation(async () => {
+                calls.push('copy');
             });
             notificationQueue.sendPublishTermPolicy.mockImplementation(
                 async () => {
@@ -382,10 +397,11 @@ describe('TermPolicyHttpService', () => {
             );
 
             expect(result).toEqual({});
-            expect(calls).toEqual(['stage', 'enqueue']);
+            expect(calls).toEqual(['publish', 'stage', 'copy', 'enqueue']);
             expect(termPolicyDomain.publishByAdmin).toHaveBeenCalledWith(
                 'term-policy-1'
             );
+            expect(termPolicyQueue.copyContent).toHaveBeenCalledWith(copy);
             expect(termPolicyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 publishedTermPolicy,
                 updatedAt
@@ -419,6 +435,7 @@ describe('TermPolicyHttpService', () => {
                 service.publishByAdmin('term-policy-1', 'user-1')
             ).rejects.toBe(error);
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(termPolicyQueue.copyContent).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy
             ).not.toHaveBeenCalled();

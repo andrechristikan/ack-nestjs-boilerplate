@@ -167,20 +167,32 @@ export class WorkspaceMemberDomain {
         );
     }
 
-    async leaveWorkspace(
+    async removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        return this.workspaceMemberRepository.removeByUserInTx(tx, userId);
+    }
+
+    async leaveWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         member: WorkspaceMember
     ): Promise<void> {
         if (member.role === EnumWorkspaceMemberRole.owner) {
             // Sequential by design: gate before the work it guards
             const ownerCount =
-                await this.workspaceMemberRepository.countOwners(workspaceId);
+                await this.workspaceMemberRepository.countOwnersInTx(
+                    tx,
+                    workspaceId
+                );
             if (ownerCount <= 1) {
                 throw new WorkspaceLastOwnerException();
             }
         }
 
-        const removed = await this.workspaceMemberRepository.removeMember(
+        const removed = await this.workspaceMemberRepository.removeMemberInTx(
+            tx,
             member.id,
             member.role
         );
@@ -234,7 +246,8 @@ export class WorkspaceMemberDomain {
         return targetMember;
     }
 
-    async removeMember(
+    async removeMemberInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string
@@ -254,7 +267,8 @@ export class WorkspaceMemberDomain {
 
         this.assertPeerActionAllowed(actorMember, targetMember);
 
-        const removed = await this.workspaceMemberRepository.removeMember(
+        const removed = await this.workspaceMemberRepository.removeMemberInTx(
+            tx,
             targetMember.id,
             targetMember.role
         );

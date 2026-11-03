@@ -1,4 +1,5 @@
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { IAnalyticCountRange } from '@modules/analytic/interfaces/analytic.interface';
 
 /**
  * Activity actions that register an account from a client, counted per IP for mass registration.
@@ -21,3 +22,14 @@ export const AnalyticCacheEmptyToken = '_';
  */
 export const AnalyticDashboardPagedMetricPattern =
     '{metric}:page={page}:perPage={perPage}';
+
+/**
+ * Ranges a per-user count distribution (concurrent sessions, devices) is bucketed into; the last range is open-ended.
+ * @public
+ */
+export const AnalyticCountRanges: IAnalyticCountRange[] = [
+    { key: '1', min: 1, max: 1 },
+    { key: '2', min: 2, max: 2 },
+    { key: '3-5', min: 3, max: 5 },
+    { key: '6+', min: 6, max: null },
+];

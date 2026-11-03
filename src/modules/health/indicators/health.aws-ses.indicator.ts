@@ -1,5 +1,5 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
@@ -8,6 +8,8 @@ import type { HealthIndicatorResult } from '@nestjs/terminus';
  */
 @Injectable()
 export class HealthAwsSESIndicator {
+    private readonly logger = new Logger(HealthAwsSESIndicator.name);
+
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly healthIndicatorService: HealthIndicatorService
@@ -28,17 +30,14 @@ export class HealthAwsSESIndicator {
             const connection = await this.awsSESService.checkConnection();
 
             if (!connection) {
-                return indicator.down(
-                    `HealthAwsSESIndicator Failed - Connection to AWS SES failed`
-                );
+                return indicator.down('AWS SES connection failed');
             }
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'AWS SES health check failed');
 
-            return indicator.down(`HealthAwsSESIndicator Failed - ${message}`);
+            return indicator.down('AWS SES connection failed');
         }
     }
 }

@@ -257,7 +257,11 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceInvite
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -291,7 +295,8 @@ describe('NotificationWorkspaceDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -550,7 +555,11 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinRequest
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -584,7 +593,8 @@ describe('NotificationWorkspaceDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -835,7 +845,11 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinAccepted
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -869,7 +883,8 @@ describe('NotificationWorkspaceDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -1122,7 +1137,11 @@ describe('NotificationWorkspaceDomain', () => {
                 notificationPushQueue.sendWorkspaceJoinRejected
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -1156,7 +1175,8 @@ describe('NotificationWorkspaceDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });

@@ -2,12 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
 import { ObjectId } from 'bson';
 import {
+    DatabaseIdInvalidCode,
+    DatabaseTransactionExpiredCode,
     DatabaseUnavailableCodes,
     DatabaseUniqueConstraintCode,
     DatabaseUrlCensoredValue,
     DatabaseWriteConflictCode,
 } from '@common/database/constants/database.constant';
 import type { AppBaseException } from '@app/exceptions/app.base.exception';
+import { DatabaseIdInvalidException } from '@common/database/exceptions/database.id-invalid.exception';
+import { DatabaseTransactionExpiredException } from '@common/database/exceptions/database.transaction-expired.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 
@@ -82,7 +86,7 @@ export class DatabaseUtil {
     }
 
     /**
-     * Returns the exception for a Prisma write conflict (`P2034`) or a connection failure, or `null` for any other error.
+     * Returns the exception for a Prisma write conflict (`P2034`), malformed id (`P2023`), expired transaction (`P2028`), or a connection failure, or `null` for any other error.
      */
     toException(error: unknown): AppBaseException | null {
         if (error instanceof Prisma.PrismaClientInitializationError) {
@@ -95,6 +99,14 @@ export class DatabaseUtil {
 
         if (error.code === DatabaseWriteConflictCode) {
             return new DatabaseWriteConflictException();
+        }
+
+        if (error.code === DatabaseIdInvalidCode) {
+            return new DatabaseIdInvalidException();
+        }
+
+        if (error.code === DatabaseTransactionExpiredCode) {
+            return new DatabaseTransactionExpiredException();
         }
 
         if (DatabaseUnavailableCodes.includes(error.code)) {

@@ -37,7 +37,12 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
             secretOrKeyProvider: passportJwtSecret({
                 cache: true,
                 rateLimit: true,
-                jwksRequestsPerMinute: 5,
+                jwksRequestsPerMinute: configService.get<number>(
+                    'auth.jwks.requestsPerMinute'
+                )!,
+                cacheMaxAge: configService.get<number>(
+                    'auth.jwks.cacheMaxAgeInMs'
+                )!,
                 jwksUri: configService.get<string>(
                     'auth.jwt.accessToken.jwksUri'
                 )!,

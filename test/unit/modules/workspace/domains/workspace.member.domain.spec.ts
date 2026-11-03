@@ -56,7 +56,7 @@ describe('WorkspaceMemberDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         workspaceMemberRepository.updateRole.mockResolvedValue(true);
-        workspaceMemberRepository.removeMember.mockResolvedValue(true);
+        workspaceMemberRepository.removeMemberInTx.mockResolvedValue(true);
         workspaceMemberRepository.transferOwnership.mockResolvedValue(true);
         workspaceUtil.isPeerActionAllowed.mockReturnValue(true);
 
@@ -323,16 +323,33 @@ describe('WorkspaceMemberDomain', () => {
         });
     });
 
-    describe('leaveWorkspace', () => {
+    describe('removeByUserInTx', () => {
+        it('removes every membership of the user on the given transaction', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+            workspaceMemberRepository.removeByUserInTx.mockResolvedValue(3);
+
+            await expect(domain.removeByUserInTx(tx, 'user-1')).resolves.toBe(
+                3
+            );
+
+            expect(
+                workspaceMemberRepository.removeByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1');
+        });
+    });
+
+    describe('leaveWorkspaceInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+
         it('throws WorkspaceLastOwnerException when the owner is the only one left', async () => {
             const owner = {
                 ...baseMember,
                 role: EnumWorkspaceMemberRole.owner,
             };
-            workspaceMemberRepository.countOwners.mockResolvedValue(1);
+            workspaceMemberRepository.countOwnersInTx.mockResolvedValue(1);
 
             await expect(
-                domain.leaveWorkspace('workspace-1', owner)
+                domain.leaveWorkspaceInTx(tx, 'workspace-1', owner)
             ).rejects.toMatchObject({
                 constructor: WorkspaceLastOwnerException,
                 module: 'workspace',
@@ -344,45 +361,51 @@ describe('WorkspaceMemberDomain', () => {
                 messagePath: 'workspace.error.lastOwner',
             });
             expect(
-                workspaceMemberRepository.removeMember
+                workspaceMemberRepository.removeMemberInTx
             ).not.toHaveBeenCalled();
         });
 
-        it('lets an owner leave when another owner remains', async () => {
+        it('lets an owner leave when another owner remains, counting and deleting on tx', async () => {
             const owner = {
                 ...baseMember,
                 role: EnumWorkspaceMemberRole.owner,
             };
-            workspaceMemberRepository.countOwners.mockResolvedValue(2);
+            workspaceMemberRepository.countOwnersInTx.mockResolvedValue(2);
 
-            await domain.leaveWorkspace('workspace-1', owner);
+            await domain.leaveWorkspaceInTx(tx, 'workspace-1', owner);
 
-            expect(workspaceMemberRepository.countOwners).toHaveBeenCalledWith(
-                'workspace-1'
-            );
-            expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
+            expect(
+                workspaceMemberRepository.countOwnersInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1');
+            expect(
+                workspaceMemberRepository.removeMemberInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 'member-1',
                 EnumWorkspaceMemberRole.owner
             );
         });
 
         it('lets a non-owner leave without checking the owner count', async () => {
-            await domain.leaveWorkspace('workspace-1', baseMember);
+            await domain.leaveWorkspaceInTx(tx, 'workspace-1', baseMember);
 
             expect(
-                workspaceMemberRepository.countOwners
+                workspaceMemberRepository.countOwnersInTx
             ).not.toHaveBeenCalled();
-            expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
+            expect(
+                workspaceMemberRepository.removeMemberInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 'member-1',
                 EnumWorkspaceMemberRole.member
             );
         });
 
         it('throws WorkspaceMemberNotFoundException when the guarded delete matches no row', async () => {
-            workspaceMemberRepository.removeMember.mockResolvedValue(false);
+            workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             await expect(
-                domain.leaveWorkspace('workspace-1', baseMember)
+                domain.leaveWorkspaceInTx(tx, 'workspace-1', baseMember)
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
@@ -568,7 +591,8 @@ describe('WorkspaceMemberDomain', () => {
         });
     });
 
-    describe('removeMember', () => {
+    describe('removeMemberInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
         const actor = {
             ...baseMember,
             id: 'member-1',
@@ -588,7 +612,7 @@ describe('WorkspaceMemberDomain', () => {
             );
 
             await expect(
-                domain.removeMember('workspace-1', actor, 'member-2')
+                domain.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
@@ -596,7 +620,7 @@ describe('WorkspaceMemberDomain', () => {
                 messagePath: 'workspace.error.memberNotFound',
             });
             expect(
-                workspaceMemberRepository.removeMember
+                workspaceMemberRepository.removeMemberInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -607,12 +631,12 @@ describe('WorkspaceMemberDomain', () => {
             });
 
             await expect(
-                domain.removeMember('workspace-1', actor, 'member-2')
+                domain.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
             expect(
-                workspaceMemberRepository.removeMember
+                workspaceMemberRepository.removeMemberInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -623,7 +647,7 @@ describe('WorkspaceMemberDomain', () => {
             workspaceUtil.isPeerActionAllowed.mockReturnValue(false);
 
             await expect(
-                domain.removeMember('workspace-1', actor, 'member-2')
+                domain.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
@@ -631,7 +655,7 @@ describe('WorkspaceMemberDomain', () => {
                 messagePath: 'workspace.error.memberPeerForbidden',
             });
             expect(
-                workspaceMemberRepository.removeMember
+                workspaceMemberRepository.removeMemberInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -640,14 +664,18 @@ describe('WorkspaceMemberDomain', () => {
                 target
             );
 
-            const result = await domain.removeMember(
+            const result = await domain.removeMemberInTx(
+                tx,
                 'workspace-1',
                 actor,
                 'member-2'
             );
 
             expect(result).toBe(target);
-            expect(workspaceMemberRepository.removeMember).toHaveBeenCalledWith(
+            expect(
+                workspaceMemberRepository.removeMemberInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 'member-2',
                 EnumWorkspaceMemberRole.member
             );
@@ -657,10 +685,10 @@ describe('WorkspaceMemberDomain', () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
-            workspaceMemberRepository.removeMember.mockResolvedValue(false);
+            workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             await expect(
-                domain.removeMember('workspace-1', actor, 'member-2')
+                domain.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });

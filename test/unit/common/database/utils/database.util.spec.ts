@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Prisma } from '@generated/prisma-client/client';
 import { ObjectId } from 'bson';
+import { DatabaseIdInvalidException } from '@common/database/exceptions/database.id-invalid.exception';
+import { DatabaseTransactionExpiredException } from '@common/database/exceptions/database.transaction-expired.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -142,6 +144,28 @@ describe('DatabaseUtil', () => {
 
             expect(util.toException(error)).toBeInstanceOf(
                 DatabaseWriteConflictException
+            );
+        });
+
+        it('maps a P2023 inconsistent column data error to DatabaseIdInvalidException', () => {
+            const error = new Prisma.PrismaClientKnownRequestError('bad id', {
+                code: 'P2023',
+                clientVersion: '6.19.0',
+            });
+
+            expect(util.toException(error)).toBeInstanceOf(
+                DatabaseIdInvalidException
+            );
+        });
+
+        it('maps a P2028 transaction API error to DatabaseTransactionExpiredException', () => {
+            const error = new Prisma.PrismaClientKnownRequestError('expired', {
+                code: 'P2028',
+                clientVersion: '6.19.0',
+            });
+
+            expect(util.toException(error)).toBeInstanceOf(
+                DatabaseTransactionExpiredException
             );
         });
 

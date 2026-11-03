@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationCursorReturn,
@@ -35,6 +37,7 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 describe('RoleDomain', () => {
     const roleRepository: MockProxy<RoleRepository> = mock<RoleRepository>();
     const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const now = new Date('2026-01-15T00:00:00.000Z');
     const roleWithPolicies: IRoleWithPolicies = {
@@ -85,6 +88,7 @@ describe('RoleDomain', () => {
                 RoleDomain,
                 { provide: RoleRepository, useValue: roleRepository },
                 { provide: RoleUtil, useValue: roleUtil },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
@@ -299,8 +303,10 @@ describe('RoleDomain', () => {
             type: EnumRoleType.admin,
         };
 
-        it('throws RoleExistException when the role name is taken', async () => {
-            roleRepository.existsByName.mockResolvedValue(true);
+        it('throws RoleExistException when the create collides on the name index, with no read before the write', async () => {
+            const collision = new Error('name collision');
+            roleRepository.create.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 domain.createByAdmin(role.id, create, superAdminActor)
@@ -311,6 +317,23 @@ describe('RoleDomain', () => {
                     EnumRoleStatusCodeError[EnumRoleStatusCodeError.exist],
                 httpStatus: HttpStatus.CONFLICT,
                 messagePath: 'role.error.exist',
+            });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'name'
+            );
+        });
+
+        it('wraps a non-collision create error in AppUnknownException', async () => {
+            const otherError = new Error('unexpected');
+            roleRepository.create.mockRejectedValue(otherError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                domain.createByAdmin(role.id, create, superAdminActor)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
             });
         });
 
@@ -341,7 +364,6 @@ describe('RoleDomain', () => {
                 ...create,
                 type: EnumRoleType.user,
             };
-            roleRepository.existsByName.mockResolvedValue(false);
             roleRepository.create.mockResolvedValue(roleWithPolicies);
 
             const result = await domain.createByAdmin(
@@ -358,7 +380,6 @@ describe('RoleDomain', () => {
         });
 
         it('creates the role under the given id', async () => {
-            roleRepository.existsByName.mockResolvedValue(false);
             roleRepository.create.mockResolvedValue(roleWithPolicies);
 
             const result = await domain.createByAdmin(
@@ -515,7 +536,6 @@ describe('RoleDomain', () => {
     describe('deleteByAdmin', () => {
         it('throws RoleNotFoundException when the role does not exist', async () => {
             roleRepository.findOneById.mockResolvedValue(null);
-            roleRepository.isUsedById.mockResolvedValue(false);
 
             await expect(
                 domain.deleteByAdmin('missing', adminActor)
@@ -527,11 +547,12 @@ describe('RoleDomain', () => {
                 httpStatus: HttpStatus.NOT_FOUND,
                 messagePath: 'role.error.notFound',
             });
+            expect(roleRepository.deleteUnused).not.toHaveBeenCalled();
         });
 
-        it('throws RoleUsedException when the role is still assigned to users', async () => {
+        it('throws RoleUsedException when the guarded delete matches no unused role', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
-            roleRepository.isUsedById.mockResolvedValue(true);
+            roleRepository.deleteUnused.mockResolvedValue(false);
 
             await expect(
                 domain.deleteByAdmin(role.id, superAdminActor)
@@ -543,11 +564,11 @@ describe('RoleDomain', () => {
                 httpStatus: HttpStatus.CONFLICT,
                 messagePath: 'role.error.used',
             });
+            expect(roleRepository.deleteUnused).toHaveBeenCalledWith(role.id);
         });
 
         it('throws RoleSelfForbiddenException when the actor deletes the role they hold', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
-            roleRepository.isUsedById.mockResolvedValue(false);
 
             await expect(
                 domain.deleteByAdmin(role.id, {
@@ -564,12 +585,11 @@ describe('RoleDomain', () => {
                 httpStatus: HttpStatus.FORBIDDEN,
                 messagePath: 'role.error.selfForbidden',
             });
-            expect(roleRepository.delete).not.toHaveBeenCalled();
+            expect(roleRepository.deleteUnused).not.toHaveBeenCalled();
         });
 
         it('throws RoleRankForbiddenException when an admin deletes a superAdmin role', async () => {
             roleRepository.findOneById.mockResolvedValue(superAdminRole);
-            roleRepository.isUsedById.mockResolvedValue(false);
             roleUtil.outranks.mockReturnValue(false);
 
             await expect(
@@ -584,18 +604,17 @@ describe('RoleDomain', () => {
                 httpStatus: HttpStatus.FORBIDDEN,
                 messagePath: 'role.error.rankForbidden',
             });
-            expect(roleRepository.delete).not.toHaveBeenCalled();
+            expect(roleRepository.deleteUnused).not.toHaveBeenCalled();
         });
 
-        it('deletes the role and returns it', async () => {
+        it('deletes the unused role in one guarded statement and returns the role it read', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
-            roleRepository.isUsedById.mockResolvedValue(false);
-            roleRepository.delete.mockResolvedValue(role);
+            roleRepository.deleteUnused.mockResolvedValue(true);
 
             const result = await domain.deleteByAdmin(role.id, superAdminActor);
 
             expect(result).toBe(role);
-            expect(roleRepository.delete).toHaveBeenCalledWith(role.id);
+            expect(roleRepository.deleteUnused).toHaveBeenCalledWith(role.id);
         });
     });
 

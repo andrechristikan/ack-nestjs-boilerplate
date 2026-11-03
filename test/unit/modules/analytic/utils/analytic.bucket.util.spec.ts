@@ -85,4 +85,45 @@ describe('AnalyticBucketUtil', () => {
             expect(util.toBucketsByBrowser([])).toEqual([]);
         });
     });
+
+    describe('toBucketsByCountRange', () => {
+        it('counts each row into the range holding its count and keeps empty ranges', () => {
+            const rows = [
+                { userId: 'user-1', count: 1 },
+                { userId: 'user-2', count: 1 },
+                { userId: 'user-3', count: 2 },
+                { userId: 'user-4', count: 3 },
+                { userId: 'user-5', count: 5 },
+                { userId: 'user-6', count: 6 },
+                { userId: 'user-7', count: 40 },
+            ];
+
+            expect(util.toBucketsByCountRange(rows)).toEqual([
+                { key: '1', count: 2 },
+                { key: '2', count: 1 },
+                { key: '3-5', count: 2 },
+                { key: '6+', count: 2 },
+            ]);
+        });
+
+        it('returns every range with a zero count for no rows', () => {
+            expect(util.toBucketsByCountRange([])).toEqual([
+                { key: '1', count: 0 },
+                { key: '2', count: 0 },
+                { key: '3-5', count: 0 },
+                { key: '6+', count: 0 },
+            ]);
+        });
+
+        it('ignores a row whose count is below every range', () => {
+            expect(
+                util.toBucketsByCountRange([{ userId: 'user-1', count: 0 }])
+            ).toEqual([
+                { key: '1', count: 0 },
+                { key: '2', count: 0 },
+                { key: '3-5', count: 0 },
+                { key: '6+', count: 0 },
+            ]);
+        });
+    });
 });

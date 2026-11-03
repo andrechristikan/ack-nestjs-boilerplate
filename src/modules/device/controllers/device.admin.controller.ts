@@ -65,9 +65,9 @@ export class DeviceAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: DeviceAdminListRequestSchema })
@@ -97,9 +97,9 @@ export class DeviceAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @UserCurrent() user: IUser,

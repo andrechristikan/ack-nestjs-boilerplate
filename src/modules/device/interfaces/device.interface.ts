@@ -54,13 +54,6 @@ export interface IDeviceOwnershipAnalyticUserCount {
     count: number;
 }
 
-export interface IDeviceOwnershipAnalyticInactive {
-    id: string;
-    userId: string;
-    lastActiveAt: Date;
-    deviceId: string;
-}
-
 export interface IDeviceOwnershipAnalyticCreated {
     id: string;
     userId: string;

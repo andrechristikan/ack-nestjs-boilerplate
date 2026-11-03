@@ -5,6 +5,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -20,6 +21,7 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
+import { WorkspaceJoinRequestPendingKeyPattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
 import { WorkspaceJoinRequestDuplicateException } from '@modules/workspace/exceptions/workspace.join-request-duplicate.exception';
@@ -42,7 +44,8 @@ export class WorkspaceJoinRequestDomain {
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService
     ) {}
 
     async getJoinableWorkspace(
@@ -57,20 +60,13 @@ export class WorkspaceJoinRequestDomain {
             throw new WorkspaceNotPublicException();
         }
 
-        const [existingMember, duplicate] = await Promise.all([
-            this.workspaceMemberRepository.findOneByWorkspaceAndUser(
+        const existingMember =
+            await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
                 workspace.id,
                 userId
-            ),
-            this.workspaceJoinRequestRepository.existsPendingByWorkspaceAndUser(
-                workspace.id,
-                userId
-            ),
-        ]);
+            );
         if (existingMember) {
             throw new WorkspaceJoinRequestAlreadyMemberException();
-        } else if (duplicate) {
-            throw new WorkspaceJoinRequestDuplicateException();
         }
 
         return workspace;
@@ -80,11 +76,29 @@ export class WorkspaceJoinRequestDomain {
         userId: string,
         create: IWorkspaceJoinRequestCreate
     ): Promise<WorkspaceJoinRequest> {
-        return this.workspaceJoinRequestRepository.createPending({
-            workspaceId: create.workspaceId,
-            userId,
-            message: create.message,
-        });
+        const pendingKey = this.helperStringService.fillPattern(
+            WorkspaceJoinRequestPendingKeyPattern,
+            { workspaceId: create.workspaceId, userId }
+        );
+
+        try {
+            return await this.workspaceJoinRequestRepository.createPending({
+                workspaceId: create.workspaceId,
+                userId,
+                message: create.message,
+                pendingKey,
+            });
+        } catch (err: unknown) {
+            const isDuplicate = this.databaseUtil.isUniqueCollision(
+                err,
+                'pendingKey'
+            );
+            if (isDuplicate) {
+                throw new WorkspaceJoinRequestDuplicateException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 
     async getJoinRequestsList(
@@ -193,6 +207,18 @@ export class WorkspaceJoinRequestDomain {
         await this.workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx(
             tx,
             workspaceId
+        );
+    }
+
+    async cancelPendingByUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        userId: string
+    ): Promise<number> {
+        return this.workspaceJoinRequestRepository.cancelPendingByUserInTx(
+            tx,
+            workspaceId,
+            userId
         );
     }
 }

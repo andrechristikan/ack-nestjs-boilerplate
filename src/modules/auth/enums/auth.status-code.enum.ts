@@ -15,7 +15,7 @@ export enum EnumAuthStatusCodeError {
     twoFactorAlreadyEnabled = 50809,
     twoFactorRequiredSetup = 50810,
     twoFactorNotRequiredSetup = 50811,
-    twoFactorAttemptTemporaryLock = 50812,
+    twoFactorAttemptMax = 50812,
     twoFactorMethodRequired = 50813,
     twoFactorSetupRequired = 50814,
     twoFactorSecretUnavailable = 50815,

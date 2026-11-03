@@ -14,9 +14,13 @@ import {
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type {
+    IActivityLogMetadata,
+    IActivityLogStaged,
+} from '@modules/activity-log/interfaces/activity-log.interface';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyHttpService } from '@modules/policy/services/http/policy.http.service';
+import { PolicyUtil } from '@modules/policy/utils/policy.util';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -27,6 +31,7 @@ import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy
 describe('PolicyHttpService', () => {
     const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const policyUtil: MockProxy<PolicyUtil> = mock<PolicyUtil>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
 
@@ -93,6 +98,11 @@ describe('PolicyHttpService', () => {
         createdBy: null,
         workspaceId: null,
     };
+    const policyMetadata: IActivityLogMetadata = {
+        roleId: 'role-1',
+        subject: EnumPolicySubject.user,
+        action: EnumPolicyAction.manage,
+    };
     const actor: IUser = {
         ...baseUser,
         roleId: 'role-actor',
@@ -104,12 +114,14 @@ describe('PolicyHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
+        policyUtil.mapActivityLogMetadata.mockReturnValue(policyMetadata);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyHttpService,
                 { provide: PolicyDomain, useValue: policyDomain },
                 { provide: RoleDomain, useValue: roleDomain },
+                { provide: PolicyUtil, useValue: policyUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
@@ -173,19 +185,19 @@ describe('PolicyHttpService', () => {
             );
         });
 
-        it('prepares the create activity log before the write and stages it after', async () => {
+        it('prepares the create activity log with the metadata of the created policy and stages it after the write', async () => {
             roleDomain.assertWritableByActor.mockResolvedValue();
-            policyDomain.createByAdmin.mockImplementation(async () => {
-                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                    action: EnumActivityLogAction.adminPolicyCreate,
-                });
-                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-
-                return policy;
-            });
+            policyDomain.createByAdmin.mockResolvedValue(policy);
 
             await service.createByAdmin('role-1', body, actor);
 
+            expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                policy
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminPolicyCreate,
+                metadata: policyMetadata,
+            });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
@@ -198,6 +210,7 @@ describe('PolicyHttpService', () => {
             await expect(
                 service.createByAdmin('role-1', body, actor)
             ).rejects.toThrow('boom');
+            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
@@ -245,19 +258,19 @@ describe('PolicyHttpService', () => {
             );
         });
 
-        it('prepares the update activity log before the write and stages it after', async () => {
+        it('prepares the update activity log with the metadata of the updated policy and stages it after the write', async () => {
             roleDomain.assertWritableByActor.mockResolvedValue();
-            policyDomain.updateByAdmin.mockImplementation(async () => {
-                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                    action: EnumActivityLogAction.adminPolicyUpdate,
-                });
-                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-
-                return policy;
-            });
+            policyDomain.updateByAdmin.mockResolvedValue(policy);
 
             await service.updateByAdmin('role-1', 'policy-1', body, actor);
 
+            expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                policy
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminPolicyUpdate,
+                metadata: policyMetadata,
+            });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
@@ -296,19 +309,19 @@ describe('PolicyHttpService', () => {
             );
         });
 
-        it('prepares the delete activity log before the write and stages it after', async () => {
+        it('prepares the delete activity log with the metadata of the deleted policy and stages it after the write', async () => {
             roleDomain.assertWritableByActor.mockResolvedValue();
-            policyDomain.deleteByAdmin.mockImplementation(async () => {
-                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                    action: EnumActivityLogAction.adminPolicyDelete,
-                });
-                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-
-                return policy;
-            });
+            policyDomain.deleteByAdmin.mockResolvedValue(policy);
 
             await service.deleteByAdmin('role-1', 'policy-1', actor);
 
+            expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                policy
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminPolicyDelete,
+                metadata: policyMetadata,
+            });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);

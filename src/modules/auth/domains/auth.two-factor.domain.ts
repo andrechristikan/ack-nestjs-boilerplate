@@ -27,7 +27,15 @@ export class AuthTwoFactorDomain {
         return challenge;
     }
 
-    async deleteChallenge(token: string): Promise<void> {
-        await this.authCache.deleteTwoFactorChallenge(token);
+    /** Claims the challenge of a token; one caller receives it, any later caller finds none and fails. */
+    async consumeChallenge(
+        token: string
+    ): Promise<IAuthTwoFactorChallengeCache> {
+        const challenge = await this.authCache.consumeTwoFactorChallenge(token);
+        if (!challenge) {
+            throw new AuthTwoFactorChallengeInvalidException();
+        }
+
+        return challenge;
     }
 }

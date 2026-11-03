@@ -51,6 +51,15 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         };
     }
 
+    async deleteByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await tx.twoFactor.deleteMany({
+            where: { userId },
+        });
+    }
+
     async createDisabledInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -225,14 +234,45 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    async incrementAttempt(userId: string): Promise<number> {
-        const { attempt } = await this.databaseService.client.twoFactor.update({
-            where: { userId },
-            data: { attempt: { increment: 1 } },
-            select: { attempt: true },
-        });
+    /** Accepts a TOTP step once: writes it only while it is newer than the stored one; `false` means the step was already used. */
+    async markTotpUsed(userId: string, step: number): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.twoFactor.updateMany({
+                where: {
+                    userId,
+                    OR: [
+                        { lastUsedStep: { isSet: false } },
+                        { lastUsedStep: null },
+                        { lastUsedStep: { lt: step } },
+                    ],
+                },
+                data: { lastUsedStep: step },
+            });
 
-        return attempt;
+        return count > 0;
+    }
+
+    /** Counts one attempt only while the stored count is below `maxAttempt`; the new count, or `null` when the budget is spent. */
+    async incrementAttempt(
+        userId: string,
+        maxAttempt: number
+    ): Promise<number | null> {
+        const { count } =
+            await this.databaseService.client.twoFactor.updateMany({
+                where: { userId, attempt: { lt: maxAttempt } },
+                data: { attempt: { increment: 1 } },
+            });
+        if (count === 0) {
+            return null;
+        }
+
+        const twoFactor =
+            await this.databaseService.client.twoFactor.findUnique({
+                where: { userId },
+                select: { attempt: true },
+            });
+
+        return twoFactor?.attempt ?? null;
     }
 
     async resetTwoFactorAttempt(userId: string): Promise<TwoFactor> {

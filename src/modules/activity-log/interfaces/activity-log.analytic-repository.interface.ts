@@ -34,8 +34,8 @@ export interface IActivityLogAnalyticRepository {
     countByWorkspaceInRange(
         excludedActions: EnumActivityLogAction[],
         workspaceId: string,
-        startDate: Date,
-        endDate: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<number>;
     groupActivityByWorkspaceOffset(
         excludedActions: EnumActivityLogAction[],

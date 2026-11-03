@@ -48,28 +48,24 @@ describe('HealthRedisIndicator', () => {
             expect(session.up).toHaveBeenCalledWith();
         });
 
-        it('reports down with the error message when the probe read throws an Error', async () => {
+        it('reports down with a fixed message when the probe read throws an Error', async () => {
             cacheManager.get.mockRejectedValue(new Error('redis down'));
             session.down.mockReturnValue({ redis: { status: 'down' } });
 
             const result = await indicator.isHealthy('redis');
 
             expect(result).toEqual({ redis: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'HealthRedisIndicator Failed - redis down'
-            );
+            expect(session.down).toHaveBeenCalledWith('Redis is unreachable');
         });
 
-        it('reports down with an unknown-error message when a non-Error is thrown', async () => {
+        it('reports down with the same fixed message when a non-Error is thrown', async () => {
             cacheManager.get.mockRejectedValue('not-an-error');
             session.down.mockReturnValue({ redis: { status: 'down' } });
 
             const result = await indicator.isHealthy('redis');
 
             expect(result).toEqual({ redis: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'HealthRedisIndicator Failed - Unknown error'
-            );
+            expect(session.down).toHaveBeenCalledWith('Redis is unreachable');
         });
     });
 });

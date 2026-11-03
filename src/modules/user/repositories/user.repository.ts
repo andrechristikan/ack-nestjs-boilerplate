@@ -319,15 +319,21 @@ export class UserRepository implements IUserRepository {
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
+        currentStatus: EnumUserStatus,
         { status, passwordAttempt }: IUserUpdateStatus
-    ): Promise<User> {
-        return tx.user.update({
-            where: { id, deletedAt: null },
+    ): Promise<User | null> {
+        const { count } = await tx.user.updateMany({
+            where: { id, status: currentStatus, deletedAt: null },
             data: {
                 status,
                 passwordAttempt,
             },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.user.findUnique({ where: { id } });
     }
 
     async updateProfile(
@@ -405,6 +411,22 @@ export class UserRepository implements IUserRepository {
         });
     }
 
+    async clearLastWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        workspaceId: string
+    ): Promise<void> {
+        const today = this.helperDateService.create();
+
+        await tx.user.updateMany({
+            where: { id: userId, lastWorkspaceId: workspaceId },
+            data: {
+                lastWorkspaceId: null,
+                lastWorkspaceChangedAt: today,
+            },
+        });
+    }
+
     async updatePasswordInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -456,7 +478,7 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async deactivateForMaxPasswordAttemptInTx(
+    async deactivateForMaxAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<boolean> {

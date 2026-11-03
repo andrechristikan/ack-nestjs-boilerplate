@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { EnumUserStatus } from '@generated/prisma-client/client';
 
 /**
@@ -14,11 +15,11 @@ export const UserExportRequestSchema = z.strictObject({
             description: "value with ',' delimiter",
             example: Object.values(EnumUserStatus).join(','),
         }),
-    roleId: z.string().optional().meta({
+    roleId: RequestMongoIdSchema.optional().meta({
         description: 'Filter by roleId',
         example: faker.database.mongodbObjectId(),
     }),
-    countryId: z.string().optional().meta({
+    countryId: RequestMongoIdSchema.optional().meta({
         description: 'Filter by countryId',
         example: faker.database.mongodbObjectId(),
     }),

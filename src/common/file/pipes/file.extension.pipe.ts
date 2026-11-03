@@ -18,26 +18,7 @@ export function FileExtensionPipe(
             allowedExtensions
         );
 
-        private readonly signedExtensions: ReadonlySet<string>;
-
-        private readonly signaturelessExtensions: ReadonlySet<string>;
-
-        constructor(private readonly fileService: FileService) {
-            this.signedExtensions = new Set(
-                allowedExtensions.flatMap(extension => {
-                    const signatures = this.signaturesOf(extension);
-
-                    return signatures ?? [];
-                })
-            );
-            this.signaturelessExtensions = new Set(
-                allowedExtensions.filter(extension => {
-                    const signatures = this.signaturesOf(extension);
-
-                    return signatures !== null && signatures.length === 0;
-                })
-            );
-        }
+        constructor(private readonly fileService: FileService) {}
 
         private signaturesOf(
             extension: EnumFileExtension
@@ -86,18 +67,16 @@ export function FileExtensionPipe(
             const sniffed = await this.fileService.sniffExtensionFromBuffer(
                 file.buffer
             );
-            if (sniffed === null) {
-                const hasSignaturelessExtension =
-                    this.signaturelessExtensions.has(declared);
-                if (!hasSignaturelessExtension) {
-                    throw new FileExtensionInvalidException();
-                }
-
-                return;
+            const signatures = this.signaturesOf(declared as EnumFileExtension);
+            if (signatures === null) {
+                throw new FileExtensionInvalidException();
             }
 
-            const hasSignedExtension = this.signedExtensions.has(sniffed);
-            if (!hasSignedExtension) {
+            const isMatch =
+                sniffed === null
+                    ? signatures.length === 0
+                    : signatures.includes(sniffed);
+            if (!isMatch) {
                 throw new FileExtensionInvalidException();
             }
         }

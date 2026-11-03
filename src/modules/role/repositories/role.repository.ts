@@ -16,7 +16,6 @@ import type {
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
-import type { Role } from '@generated/prisma-client/client';
 
 @Injectable()
 export class RoleRepository implements IRoleRepository {
@@ -103,28 +102,6 @@ export class RoleRepository implements IRoleRepository {
         return count > 0;
     }
 
-    async existsByName(name: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
-            where: { name },
-        });
-
-        return count > 0;
-    }
-
-    async isUsedById(id: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
-            where: {
-                users: {
-                    some: {
-                        roleId: id,
-                    },
-                },
-            },
-        });
-
-        return count > 0;
-    }
-
     async create(
         roleId: string,
         data: IRoleCreate
@@ -149,7 +126,11 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
-    async delete(id: string): Promise<Role> {
-        return this.databaseService.client.role.delete({ where: { id } });
+    async deleteUnused(id: string): Promise<boolean> {
+        const { count } = await this.databaseService.client.role.deleteMany({
+            where: { id, users: { none: {} } },
+        });
+
+        return count > 0;
     }
 }

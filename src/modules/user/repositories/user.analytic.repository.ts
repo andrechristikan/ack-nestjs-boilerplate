@@ -1,5 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { UserAdminNearLockoutSelect } from '@modules/user/constants/user.constant';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -42,9 +43,12 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         });
     }
 
-    async countRegisteredUntil(endDate: Date): Promise<number> {
+    async countAliveAt(date: Date): Promise<number> {
         return this.databaseService.client.user.count({
-            where: { signUpAt: { lt: endDate } },
+            where: {
+                signUpAt: { lt: date },
+                OR: [{ deletedAt: null }, { deletedAt: { gte: date } }],
+            },
         });
     }
 
@@ -180,27 +184,40 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         });
     }
 
-    async findNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]> {
+    async findNearLockout(
+        minAttempt: number,
+        limit: number
+    ): Promise<IAnalyticNearLockout[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 deletedAt: null,
                 passwordAttempt: { gte: minAttempt },
             },
             select: UserAdminNearLockoutSelect,
+            orderBy: { passwordAttempt: EnumPaginationOrderDirectionType.desc },
+            take: limit,
+        });
+    }
+
+    async countNearLockout(minAttempt: number): Promise<number> {
+        return this.databaseService.client.user.count({
+            where: {
+                deletedAt: null,
+                passwordAttempt: { gte: minAttempt },
+            },
         });
     }
 
     async groupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]> {
-        const users = await this.databaseService.client.user.findMany({
+        const rows = await this.databaseService.client.user.groupBy({
+            by: ['passwordAttempt'],
             where: { deletedAt: null, passwordAttempt: { gt: 0 } },
-            select: { passwordAttempt: true },
+            _count: { _all: true },
         });
-        const buckets = new Map<string, number>();
-        for (const u of users) {
-            const key = String(u.passwordAttempt);
-            buckets.set(key, (buckets.get(key) ?? 0) + 1);
-        }
-        return [...buckets.entries()].map(([key, count]) => ({ key, count }));
+        return rows.map(row => ({
+            key: String(row.passwordAttempt),
+            count: row._count._all,
+        }));
     }
 
     async findOneById(id: string): Promise<IUserAnalyticRef | null> {

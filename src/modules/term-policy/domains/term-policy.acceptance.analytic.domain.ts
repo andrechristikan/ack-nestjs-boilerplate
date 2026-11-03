@@ -1,9 +1,9 @@
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import type {
-    IAnalyticTermPolicyAcceptanceCounts,
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
 } from '@modules/analytic/interfaces/analytic.interface';
+import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAnalyticDomain } from '@modules/term-policy/domains/term-policy.analytic.domain';
 import { TermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/repositories/term-policy.acceptance.analytic.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -18,26 +18,30 @@ export class TermPolicyAcceptanceAnalyticDomain {
         private readonly helperNumberService: HelperNumberService
     ) {}
 
-    async getAcceptanceCounts(
+    async getAcceptanceRate(
+        activeUserCount: number,
         startDate: Date | null,
         endDate: Date | null
-    ): Promise<IAnalyticTermPolicyAcceptanceCounts> {
-        const [acceptances, published] = await Promise.all([
-            this.termPolicyAcceptanceAnalyticRepository.countAcceptances(
-                startDate,
-                endDate
-            ),
-            this.termPolicyAnalyticDomain.getCountPublished(),
-        ]);
-        return { acceptances, published };
-    }
+    ): Promise<IAnalyticTermPolicyAcceptanceRate> {
+        const latest =
+            await this.termPolicyAnalyticDomain.getLatestPublishedByTypes(
+                TermPolicyDefaultRequiredTypes
+            );
+        const published = latest.length;
+        let acceptances = 0;
+        if (published > 0) {
+            acceptances =
+                await this.termPolicyAcceptanceAnalyticRepository.countAcceptances(
+                    latest,
+                    startDate,
+                    endDate
+                );
+        }
+        const rate = this.helperNumberService.percent(
+            acceptances,
+            activeUserCount * published
+        );
 
-    mapAcceptanceRate(
-        { acceptances, published }: IAnalyticTermPolicyAcceptanceCounts,
-        activeUserCount: number
-    ): IAnalyticTermPolicyAcceptanceRate {
-        const expected = activeUserCount * published;
-        const rate = this.helperNumberService.percent(acceptances, expected);
         return { acceptances, users: activeUserCount, published, rate };
     }
 

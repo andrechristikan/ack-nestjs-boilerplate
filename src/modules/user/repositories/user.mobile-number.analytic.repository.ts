@@ -13,6 +13,7 @@ export class UserMobileNumberAnalyticRepository implements IUserMobileNumberAnal
         return this.databaseService.client.userMobileNumber.count({
             where: {
                 isVerified: true,
+                user: { deletedAt: null },
                 ...(startDate &&
                     endDate && { createdAt: { gte: startDate, lt: endDate } }),
             },
@@ -25,6 +26,7 @@ export class UserMobileNumberAnalyticRepository implements IUserMobileNumberAnal
     ): Promise<number> {
         return this.databaseService.client.userMobileNumber.count({
             where: {
+                user: { deletedAt: null },
                 ...(startDate &&
                     endDate && { createdAt: { gte: startDate, lt: endDate } }),
             },

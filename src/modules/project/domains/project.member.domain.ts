@@ -1,6 +1,7 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
 import type {
@@ -8,13 +9,15 @@ import type {
     ProjectMember,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ProjectWorkspaceBypassStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import { ProjectRoleForbiddenException } from '@modules/project/exceptions/project.role-forbidden.exception';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type {
+    IProjectMember,
+    IProjectMemberActor,
+} from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -25,19 +28,11 @@ export class ProjectMemberDomain {
     constructor(
         private readonly projectMemberRepository: ProjectMemberRepository,
         private readonly projectUtil: ProjectUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    private currentActorHasWorkspaceBypass(): boolean {
-        const hasWorkspaceBypass = this.requestStoreService.get<boolean>(
-            ProjectWorkspaceBypassStoreKey
-        );
-
-        return hasWorkspaceBypass ?? false;
-    }
-
-    private assertProjectMemberPeerAllowed(
-        hasWorkspaceBypass: boolean,
+    assertPeerAllowed(
+        { hasWorkspaceBypass }: IProjectMemberActor,
         ...rolesInvolved: EnumProjectMemberRole[]
     ): void {
         if (
@@ -115,39 +110,60 @@ export class ProjectMemberDomain {
         );
     }
 
+    async removeByWorkspaceAndUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        userId: string
+    ): Promise<number> {
+        return this.projectMemberRepository.removeByWorkspaceAndUserInTx(
+            tx,
+            workspaceId,
+            userId
+        );
+    }
+
+    async removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        return this.projectMemberRepository.removeByUserInTx(tx, userId);
+    }
+
     async assignMember(
         project: Project,
-        actorId: string,
+        actor: IProjectMemberActor,
         targetMember: WorkspaceMember | null,
         role: EnumProjectMemberRole
     ): Promise<IProjectMember> {
-        const hasWorkspaceBypass = this.currentActorHasWorkspaceBypass();
-        this.assertProjectMemberPeerAllowed(hasWorkspaceBypass, role);
+        this.assertPeerAllowed(actor, role);
 
         if (!targetMember || targetMember.workspaceId !== project.workspaceId) {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        // Sequential by design: gate before the work it guards
-        const existing =
-            await this.projectMemberRepository.findOneByProjectAndUser(
+        try {
+            return await this.projectMemberRepository.create(
                 project.id,
-                targetMember.userId
+                targetMember.userId,
+                role,
+                actor.userId
             );
-        if (existing) {
-            throw new ProjectMemberAlreadyAssignedException();
-        }
+        } catch (err: unknown) {
+            const isAlreadyAssigned = this.databaseUtil.isUniqueCollision(
+                err,
+                'userId'
+            );
+            if (isAlreadyAssigned) {
+                throw new ProjectMemberAlreadyAssignedException();
+            }
 
-        return this.projectMemberRepository.create(
-            project.id,
-            targetMember.userId,
-            role,
-            actorId
-        );
+            throw new AppUnknownException(err);
+        }
     }
 
     async updateMemberRole(
         project: Project,
+        actor: IProjectMemberActor,
         targetMemberId: string,
         newRole: EnumProjectMemberRole
     ): Promise<ProjectMember> {
@@ -160,12 +176,7 @@ export class ProjectMemberDomain {
             throw new ProjectMemberNotFoundException();
         }
 
-        const hasWorkspaceBypass = this.currentActorHasWorkspaceBypass();
-        this.assertProjectMemberPeerAllowed(
-            hasWorkspaceBypass,
-            targetMember.role,
-            newRole
-        );
+        this.assertPeerAllowed(actor, targetMember.role, newRole);
 
         await this.projectMemberRepository.updateRole(targetMember.id, newRole);
 
@@ -174,7 +185,7 @@ export class ProjectMemberDomain {
 
     async removeMember(
         project: Project,
-        actorId: string,
+        actor: IProjectMemberActor,
         targetMemberId: string
     ): Promise<ProjectMember> {
         const targetMember =
@@ -186,15 +197,11 @@ export class ProjectMemberDomain {
             throw new ProjectMemberNotFoundException();
         }
 
-        if (targetMember.userId === actorId) {
+        if (targetMember.userId === actor.userId) {
             throw new ProjectMemberPeerForbiddenException();
         }
 
-        const hasWorkspaceBypass = this.currentActorHasWorkspaceBypass();
-        this.assertProjectMemberPeerAllowed(
-            hasWorkspaceBypass,
-            targetMember.role
-        );
+        this.assertPeerAllowed(actor, targetMember.role);
 
         await this.projectMemberRepository.removeMember(targetMember.id);
 

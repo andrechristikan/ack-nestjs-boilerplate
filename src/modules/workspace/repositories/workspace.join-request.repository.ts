@@ -23,22 +23,6 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         private readonly paginationService: PaginationService
     ) {}
 
-    async existsPendingByWorkspaceAndUser(
-        workspaceId: string,
-        userId: string
-    ): Promise<boolean> {
-        const count =
-            await this.databaseService.client.workspaceJoinRequest.count({
-                where: {
-                    workspaceId,
-                    userId,
-                    status: EnumWorkspaceJoinRequestStatus.pending,
-                },
-            });
-
-        return count > 0;
-    }
-
     async findByIdAndWorkspace(
         workspaceJoinRequestId: string,
         workspaceId: string
@@ -76,12 +60,14 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         workspaceId,
         userId,
         message,
+        pendingKey,
     }: IWorkspaceJoinRequestCreateData): Promise<WorkspaceJoinRequest> {
         return this.databaseService.client.workspaceJoinRequest.create({
             data: {
                 workspaceId,
                 userId,
                 message,
+                pendingKey,
             },
         });
     }
@@ -99,6 +85,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
             },
             data: {
                 status: EnumWorkspaceJoinRequestStatus.accepted,
+                pendingKey: workspaceJoinRequestId,
                 reviewedByUserId: reviewerId,
                 reviewedAt,
             },
@@ -121,6 +108,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 },
                 data: {
                     status: EnumWorkspaceJoinRequestStatus.rejected,
+                    pendingKey: workspaceJoinRequestId,
                     rejectReasonCode,
                     reviewedByUserId: reviewerId,
                     reviewedAt,
@@ -134,14 +122,57 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         tx: IDatabaseTransactionClient,
         workspaceId: string
     ): Promise<void> {
-        await tx.workspaceJoinRequest.updateMany({
+        const pending = await tx.workspaceJoinRequest.findMany({
             where: {
                 workspaceId,
                 status: EnumWorkspaceJoinRequestStatus.pending,
             },
-            data: {
-                status: EnumWorkspaceJoinRequestStatus.cancelled,
-            },
+            select: { id: true },
         });
+
+        for (const { id } of pending) {
+            await tx.workspaceJoinRequest.updateMany({
+                where: {
+                    id,
+                    status: EnumWorkspaceJoinRequestStatus.pending,
+                },
+                data: {
+                    status: EnumWorkspaceJoinRequestStatus.cancelled,
+                    pendingKey: id,
+                },
+            });
+        }
+    }
+
+    async cancelPendingByUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        userId: string
+    ): Promise<number> {
+        const pending = await tx.workspaceJoinRequest.findMany({
+            where: {
+                workspaceId,
+                userId,
+                status: EnumWorkspaceJoinRequestStatus.pending,
+            },
+            select: { id: true },
+        });
+
+        let cancelled = 0;
+        for (const { id } of pending) {
+            const { count } = await tx.workspaceJoinRequest.updateMany({
+                where: {
+                    id,
+                    status: EnumWorkspaceJoinRequestStatus.pending,
+                },
+                data: {
+                    status: EnumWorkspaceJoinRequestStatus.cancelled,
+                    pendingKey: id,
+                },
+            });
+            cancelled += count;
+        }
+
+        return cancelled;
     }
 }

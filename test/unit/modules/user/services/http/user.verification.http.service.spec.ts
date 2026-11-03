@@ -244,6 +244,25 @@ describe('UserVerificationHttpService', () => {
             });
         });
 
+        it('answers empty and sends nothing when the account is missing, inactive, or already verified', async () => {
+            userVerificationDomain.getOneForResendByEmail.mockResolvedValue(
+                null
+            );
+
+            await expect(service.sendVerificationEmail(dto)).resolves.toEqual(
+                {}
+            );
+
+            expect(
+                userVerificationDomain.persistVerificationEmail
+            ).not.toHaveBeenCalled();
+            expect(deviceDomain.getNotificationTokens).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendVerificationEmail
+            ).not.toHaveBeenCalled();
+        });
+
         it('writes nothing when the recipient read rejects', async () => {
             deviceDomain.getNotificationTokens.mockRejectedValue(
                 new Error('recipient-unavailable')

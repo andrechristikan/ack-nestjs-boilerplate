@@ -1,7 +1,4 @@
-import {
-    GUARDS_METADATA,
-    INTERCEPTORS_METADATA,
-} from '@nestjs/common/constants';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { mock } from 'vitest-mock-extended';
@@ -22,7 +19,7 @@ import {
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
-import { RequestThrottleUserInterceptor } from '@common/request/interceptors/request.throttle-user.interceptor';
+import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
@@ -84,7 +81,7 @@ describe('request.decorator', () => {
     });
 
     describe('RequestThrottle', () => {
-        it('sets the throttle options and mounts RequestThrottleUserInterceptor on the handler', () => {
+        it('sets the throttle options and mounts RequestThrottleUserGuard on the handler', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
             const options = { user: true };
@@ -98,8 +95,8 @@ describe('request.decorator', () => {
                 )
             ).toBe(options);
             expect(
-                Reflect.getMetadata(INTERCEPTORS_METADATA, descriptor.value)
-            ).toEqual([RequestThrottleUserInterceptor]);
+                Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
+            ).toEqual([RequestThrottleUserGuard]);
         });
     });
 

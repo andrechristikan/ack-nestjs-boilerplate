@@ -74,7 +74,7 @@ describe('HealthAwsS3BucketIndicator', () => {
             expect(session.up).toHaveBeenCalledWith();
         });
 
-        it('reports down with the error message when the bucket check throws an Error', async () => {
+        it('reports down with a fixed message when the bucket check throws an Error', async () => {
             awsS3Service.isInitialized.mockReturnValue(true);
             awsS3Service.checkBucket.mockRejectedValue(
                 new Error('bucket unreachable')
@@ -90,11 +90,11 @@ describe('HealthAwsS3BucketIndicator', () => {
 
             expect(result).toEqual({ s3PrivateBucket: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
-                'HealthAwsS3BucketIndicator Failed - bucket unreachable'
+                'AWS S3 bucket check failed'
             );
         });
 
-        it('reports down with an unknown-error message when a non-Error is thrown', async () => {
+        it('reports down with the same fixed message when a non-Error is thrown', async () => {
             awsS3Service.isInitialized.mockReturnValue(true);
             awsS3Service.checkBucket.mockRejectedValue('not-an-error');
             session.down.mockReturnValue({
@@ -108,7 +108,7 @@ describe('HealthAwsS3BucketIndicator', () => {
 
             expect(result).toEqual({ s3PrivateBucket: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
-                'HealthAwsS3BucketIndicator Failed - Unknown error'
+                'AWS S3 bucket check failed'
             );
         });
     });

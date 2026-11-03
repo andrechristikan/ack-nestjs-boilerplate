@@ -9,6 +9,7 @@ export interface IConfigTermPolicy {
     };
     jobId: {
         deleteContentPattern: string;
+        copyContentPattern: string;
     };
 }
 
@@ -20,5 +21,6 @@ export default registerAs('termPolicy', (): IConfigTermPolicy => ({
     },
     jobId: {
         deleteContentPattern: '{process}-{nonce}',
+        copyContentPattern: '{process}-{termPolicyId}',
     },
 }));

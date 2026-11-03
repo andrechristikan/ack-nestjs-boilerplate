@@ -13,7 +13,7 @@ import type {
     INotificationTermPolicyUser,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
+    INotificationVerifiedMobileNumberEncryptedPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWelcomeEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
@@ -62,7 +62,11 @@ export class NotificationProcessorService {
             const summary = this.notificationUtil.toStepSummary(
                 result.failedSteps
             );
-            throw new QueueException(summary, true);
+            throw new QueueException(
+                summary,
+                true,
+                result.failedSteps[0]!.rawError
+            );
         }
 
         return this.notificationUtil.toStepResponse(result);
@@ -210,7 +214,7 @@ export class NotificationProcessorService {
 
     async processVerifiedMobileNumber(
         job: Job<
-            INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
+            INotificationQueuePayload<INotificationVerifiedMobileNumberEncryptedPayload>,
             unknown,
             EnumNotificationProcess
         >

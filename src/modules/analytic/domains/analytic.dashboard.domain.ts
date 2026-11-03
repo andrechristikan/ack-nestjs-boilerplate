@@ -47,6 +47,7 @@ import { WorkspaceInviteAnalyticDomain } from '@modules/workspace/domains/worksp
 import { WorkspaceJoinRequestAnalyticDomain } from '@modules/workspace/domains/workspace.join-request.analytic.domain';
 import { WorkspaceMemberAnalyticDomain } from '@modules/workspace/domains/workspace.member.analytic.domain';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
@@ -58,7 +59,10 @@ import { Duration } from 'luxon';
 
 @Injectable()
 export class AnalyticDashboardDomain {
+    private readonly deviceInactivityInMs: number;
+
     constructor(
+        private readonly configService: ConfigService,
         private readonly analyticCache: AnalyticCache,
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticBucketUtil: AnalyticBucketUtil,
@@ -81,7 +85,11 @@ export class AnalyticDashboardDomain {
         private readonly workspaceMemberAnalyticDomain: WorkspaceMemberAnalyticDomain,
         private readonly projectAnalyticDomain: ProjectAnalyticDomain,
         private readonly projectMemberAnalyticDomain: ProjectMemberAnalyticDomain
-    ) {}
+    ) {
+        this.deviceInactivityInMs = this.configService.get<number>(
+            'analytic.device.inactivityInMs'
+        )!;
+    }
 
     private async readCache<T>(
         metric: string,
@@ -539,7 +547,10 @@ export class AnalyticDashboardDomain {
                 endDate
             ),
             this.activityLogAnalyticDomain.getCountByActionsInRange(
-                [EnumActivityLogAction.userReachMaxPasswordAttempt],
+                [
+                    EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                ],
                 startDate,
                 endDate
             ),
@@ -597,7 +608,7 @@ export class AnalyticDashboardDomain {
         const now = this.helperDateService.create();
         const rows = await this.sessionAnalyticDomain.getCountActiveByUser(now);
 
-        const buckets = this.analyticBucketUtil.toBuckets(rows, 'userId');
+        const buckets = this.analyticBucketUtil.toBucketsByCountRange(rows);
         const result = { buckets };
         await this.writeCache(metric, null, null, result);
 
@@ -646,12 +657,11 @@ export class AnalyticDashboardDomain {
         }
 
         const now = this.helperDateService.create();
-        const sessions =
-            await this.sessionAnalyticDomain.getActiveWithGeoInRange(
-                startDate,
-                endDate,
-                now
-            );
+        const sessions = await this.sessionAnalyticDomain.getActiveInRange(
+            startDate,
+            endDate,
+            now
+        );
 
         const buckets = this.analyticBucketUtil.toBucketsByBrowser(sessions);
         const result = { buckets };
@@ -1100,7 +1110,7 @@ export class AnalyticDashboardDomain {
 
         const rows = await this.deviceAnalyticDomain.getCountPerUser();
 
-        const buckets = this.analyticBucketUtil.toBuckets(rows, 'userId');
+        const buckets = this.analyticBucketUtil.toBucketsByCountRange(rows);
         const result = { buckets };
         await this.writeCache(metric, null, null, result);
 
@@ -1121,11 +1131,11 @@ export class AnalyticDashboardDomain {
         const now = this.helperDateService.create();
         const before = this.helperDateService.backward(
             now,
-            Duration.fromObject({ days: 30 })
+            Duration.fromMillis(this.deviceInactivityInMs)
         );
-        const rows = await this.deviceAnalyticDomain.getInactive(before);
+        const count = await this.deviceAnalyticDomain.getCountInactive(before);
 
-        const result = { count: rows.length };
+        const result = { count };
         await this.writeCache(metric, null, null, result);
 
         return result;
@@ -1189,7 +1199,8 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const result = await this.apiKeyAnalyticDomain.getActiveExpired();
+        const now = this.helperDateService.create();
+        const result = await this.apiKeyAnalyticDomain.getActiveExpired(now);
         await this.writeCache(metric, null, null, result);
 
         return result;
@@ -1228,17 +1239,12 @@ export class AnalyticDashboardDomain {
             return cached;
         }
 
-        const [activeUserCount, counts] = await Promise.all([
-            this.userAnalyticDomain.getCountActive(),
-            this.termPolicyAcceptanceAnalyticDomain.getAcceptanceCounts(
-                startDate ?? null,
-                endDate ?? null
-            ),
-        ]);
+        const activeUserCount = await this.userAnalyticDomain.getCountActive();
         const result =
-            this.termPolicyAcceptanceAnalyticDomain.mapAcceptanceRate(
-                counts,
-                activeUserCount
+            await this.termPolicyAcceptanceAnalyticDomain.getAcceptanceRate(
+                activeUserCount,
+                startDate,
+                endDate
             );
         await this.writeCache(metric, startDate, endDate, result);
 

@@ -23,9 +23,17 @@ describe('UserClaimUsernameRequestSchema', () => {
         ).toThrow();
     });
 
+    it('accepts the dash and underscore the username pattern allows', () => {
+        const result = UserClaimUsernameRequestSchema.parse({
+            username: 'john_doe-1',
+        });
+
+        expect(result).toEqual({ username: 'john_doe-1' });
+    });
+
     it('rejects a username with a character outside the allowed pattern', () => {
         expect(() =>
-            UserClaimUsernameRequestSchema.parse({ username: 'john-doe' })
+            UserClaimUsernameRequestSchema.parse({ username: 'john doe' })
         ).toThrow();
     });
 

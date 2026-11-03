@@ -179,9 +179,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/registrations')
     async usersRegistrations(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -201,9 +201,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/churn')
     async usersChurn(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -223,9 +223,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/blocked')
     async usersBlocked(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -245,9 +245,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/sign-up-with')
     async usersSignUpWith(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -267,9 +267,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/sign-up-from')
     async usersSignUpFrom(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -289,9 +289,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/email-verification')
     async usersEmailVerification(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -311,9 +311,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/mobile-verification')
     async usersMobileVerification(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -333,9 +333,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/status-distribution')
     async usersStatusDistribution(): Promise<
         IResponseReturn<IAnalyticBucketsResult>
@@ -354,9 +354,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/country-distribution')
     async usersCountryDistribution(): Promise<
         IResponseReturn<IAnalyticBucketsResult>
@@ -375,9 +375,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/role-distribution')
     async usersRoleDistribution(): Promise<
         IResponseReturn<IAnalyticBucketsResult>
@@ -396,9 +396,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/self-delete')
     async usersSelfDelete(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -418,9 +418,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/claim-username')
     async usersClaimUsername(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -440,9 +440,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/users/mobile-churn')
     async usersMobileChurn(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -462,9 +462,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/login-frequency')
     async authLoginFrequency(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -484,9 +484,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/login-method')
     async authLoginMethod(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -506,9 +506,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/login-source')
     async authLoginSource(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -528,9 +528,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/lockout')
     async authLockout(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -550,9 +550,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/session-revoke')
     async authSessionRevoke(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -572,9 +572,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/concurrent-sessions')
     async authConcurrentSessions(): Promise<
         IResponseReturn<IAnalyticBucketsResult>
@@ -593,9 +593,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/sessions-geo')
     async authSessionsGeo(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -615,9 +615,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/sessions-user-agent')
     async authSessionsUserAgent(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -637,9 +637,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/refresh-token-volume')
     async authRefreshTokenVolume(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -659,9 +659,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/logout-rate')
     async authLogoutRate(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -684,9 +684,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/verification-funnel')
     async authVerificationFunnel(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -706,9 +706,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/password-expiry')
     async authPasswordExpiry(): Promise<
         IResponseReturn<IAnalyticPasswordExpiry>
@@ -727,9 +727,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/password-change')
     async authPasswordChange(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -749,9 +749,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/forgot-password-conversion')
     async authForgotPasswordConversion(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -775,9 +775,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/admin-force-password')
     async authAdminForcePassword(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -797,9 +797,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/two-factor-adoption')
     async authTwoFactorAdoption(): Promise<
         IResponseReturn<IAnalyticTwoFactorAdoption>
@@ -818,9 +818,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/two-factor-admin-reset')
     async authTwoFactorAdminReset(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -840,9 +840,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/two-factor-verify-success')
     async authTwoFactorVerifySuccess(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -864,9 +864,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/backup-code-regeneration')
     async authBackupCodeRegeneration(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -888,9 +888,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/auth/two-factor-attempt')
     async authTwoFactorAttempt(): Promise<
         IResponseReturn<IAnalyticTwoFactorAttemptSnapshot>
@@ -909,9 +909,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/devices/registration')
     async devicesRegistration(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -931,9 +931,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/devices/platform')
     async devicesPlatform(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         return this.analyticDashboardHttpService.devicesPlatform();
@@ -950,9 +950,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/devices/push-token')
     async devicesPushToken(): Promise<IResponseReturn<IAnalyticMetricRate>> {
         return this.analyticDashboardHttpService.devicesPushToken();
@@ -969,9 +969,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/devices/info-refresh')
     async devicesInfoRefresh(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -991,9 +991,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/devices/session-ratio')
     async devicesSessionRatio(): Promise<
         IResponseReturn<IAnalyticSessionDeviceRatio>
@@ -1012,9 +1012,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/devices/per-user')
     async devicesPerUser(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         return this.analyticDashboardHttpService.devicesPerUser();
@@ -1031,9 +1031,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/devices/inactivity')
     async devicesInactivity(): Promise<IResponseReturn<IAnalyticMetricCount>> {
         return this.analyticDashboardHttpService.devicesInactivity();
@@ -1050,9 +1050,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/api-keys/lifecycle')
     async apiKeysLifecycle(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1072,9 +1072,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/api-keys/active-expired')
     async apiKeysActiveExpired(): Promise<
         IResponseReturn<IAnalyticApiKeyActiveExpired>
@@ -1093,9 +1093,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/api-keys/type-mix')
     async apiKeysTypeMix(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         return this.analyticDashboardHttpService.apiKeysTypeMix();
@@ -1112,9 +1112,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/term-policies/acceptance-rate')
     async termPoliciesAcceptanceRate(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -1136,9 +1136,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/term-policies/time-to-accept')
     async termPoliciesTimeToAccept(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -1160,9 +1160,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspaces/creation')
     async workspacesCreation(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1182,9 +1182,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspaces/visibility')
     async workspacesVisibility(): Promise<
         IResponseReturn<IAnalyticBucketsResult>
@@ -1203,9 +1203,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspaces/invite-funnel')
     async workspacesInviteFunnel(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1225,9 +1225,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspaces/join-outcomes')
     async workspacesJoinOutcomes(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1247,9 +1247,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspaces/membership')
     async workspacesMembership(
         @Query({ schema: AnalyticWorkspacesMembershipListRequestSchema })
@@ -1269,9 +1269,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspaces/activity-volume')
     async workspacesActivityVolume(
         @Query({ schema: AnalyticWorkspacesActivityVolumeListRequestSchema })
@@ -1293,9 +1293,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/projects/creation')
     async projectsCreation(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1315,9 +1315,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/projects/membership')
     async projectsMembership(
         @Query({ schema: AnalyticProjectsMembershipListRequestSchema })
@@ -1337,9 +1337,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/credential-stuffing')
     async credentialStuffing(
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1359,9 +1359,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/credential-stuffing/list')
     async credentialStuffingList(
         @Query({ schema: AnalyticCredentialStuffingListRequestSchema })
@@ -1381,9 +1381,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/account-takeover')
     async accountTakeover(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1403,9 +1403,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/account-takeover/list')
     async accountTakeoverList(
         @Query({ schema: AnalyticAccountTakeoverListRequestSchema })
@@ -1425,9 +1425,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/mass-registration')
     async massRegistration(
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1447,9 +1447,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/mass-registration/list')
     async massRegistrationList(
         @Query({ schema: AnalyticMassRegistrationListRequestSchema })
@@ -1469,9 +1469,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/password-reset-enumeration')
     async passwordResetEnumeration(
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1495,9 +1495,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/password-reset-enumeration/list')
     async passwordResetEnumerationList(
         @Query({ schema: AnalyticPasswordResetEnumerationListRequestSchema })
@@ -1519,9 +1519,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/shared-fingerprint')
     async sharedFingerprint(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         return this.analyticFraudHttpService.sharedFingerprintSummary();
@@ -1540,9 +1540,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/shared-fingerprint/list')
     async sharedFingerprintList(
         @Query({ schema: AnalyticSharedFingerprintListRequestSchema })
@@ -1562,9 +1562,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/session-after-admin')
     async sessionAfterAdmin(
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1586,9 +1586,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/session-after-admin/list')
     async sessionAfterAdminList(
         @Query({ schema: AnalyticSessionAfterAdminListRequestSchema })
@@ -1608,9 +1608,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/forgot-password-token-abuse')
     async forgotPasswordTokenAbuse(
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1634,9 +1634,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/forgot-password-token-abuse/list')
     async forgotPasswordTokenAbuseList(
         @Query({ schema: AnalyticForgotPasswordAbuseListRequestSchema })
@@ -1658,9 +1658,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/refresh-spike')
     async refreshSpike(
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1680,9 +1680,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/refresh-spike/list')
     async refreshSpikeList(
         @Query({ schema: AnalyticRefreshSpikeListRequestSchema })
@@ -1702,9 +1702,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/backup-code-new-device')
     async backupCodeNewDevice(
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1726,9 +1726,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/backup-code-new-device/list')
     async backupCodeNewDeviceList(
         @Query({ schema: AnalyticBackupCodeNewDeviceListRequestSchema })
@@ -1748,9 +1748,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/api-key-burst')
     async apiKeyBurst(
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1770,9 +1770,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/api-key-burst/list')
     async apiKeyBurstList(
         @Query({ schema: AnalyticApiKeyBurstListRequestSchema })
@@ -1792,9 +1792,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/risk-score/:userId')
     async riskScore(
         @Param('userId', { schema: RequestMongoIdSchema })
@@ -1814,9 +1814,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/fraud/risk-scores')
     async riskScores(
         @Query({ schema: AnalyticFraudRiskScoresListRequestSchema })
@@ -1836,9 +1836,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/impossible-travel')
     async impossibleTravel(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -1858,9 +1858,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/impossible-travel/list')
     async impossibleTravelList(
         @Query({ schema: AnalyticImpossibleTravelListRequestSchema })
@@ -1880,9 +1880,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/login-spike-ip')
     async loginSpikeIp(
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1902,9 +1902,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/login-spike-ip/list')
     async loginSpikeIpList(
         @Query({ schema: AnalyticLoginSpikeIpListRequestSchema })
@@ -1924,9 +1924,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/failed-login-spike')
     async failedLoginSpike(): Promise<
         IResponseReturn<IAnalyticAnomalyFailedLoginSpikeSummary>
@@ -1945,9 +1945,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/failed-login-spike/list')
     async failedLoginSpikeList(
         @Query({ schema: AnalyticNearLockoutListRequestSchema })
@@ -1967,9 +1967,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/device-proliferation')
     async deviceProliferation(): Promise<
         IResponseReturn<IAnalyticAnomalyDeviceProliferationSummary>
@@ -1988,9 +1988,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/device-proliferation/list')
     async deviceProliferationList(
         @Query({ schema: AnalyticDeviceProliferationListRequestSchema })
@@ -2010,9 +2010,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/login-time')
     async loginTime(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -2032,9 +2032,9 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/anomaly/login-time/list')
     async loginTimeList(
         @Query({ schema: AnalyticLoginTimeAnomalyListRequestSchema })

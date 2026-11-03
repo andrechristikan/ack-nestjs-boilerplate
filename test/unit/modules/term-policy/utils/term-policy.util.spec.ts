@@ -237,6 +237,48 @@ describe('TermPolicyUtil', () => {
         });
     });
 
+    describe('mapPublicContentKeys', () => {
+        it('maps each content to its public key under the public path with no S3 call', () => {
+            helperStringService.fillPattern.mockReturnValue(
+                'public/term-policies/privacy/1'
+            );
+            const contents: ITermPolicyContent[] = [
+                {
+                    language: EnumMessageLanguage.en,
+                    bucket: 'private-bucket',
+                    key: 'term-policies/privacy/1/en.hbs',
+                    cdnUrl: null,
+                    completedUrl: 'https://private.example.com/en.hbs',
+                    mime: 'text/plain',
+                    extension: 'hbs',
+                    access: EnumAwsS3Accessibility.private,
+                    size: 1024,
+                },
+            ];
+
+            const result = util.mapPublicContentKeys(
+                {
+                    id: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                },
+                contents
+            );
+
+            expect(result).toEqual([
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'public/term-policies/privacy/1/en.hbs',
+                },
+            ]);
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'public/term-policies/{type}/{version}',
+                { type: EnumTermPolicyType.privacy, version: '1' }
+            );
+        });
+    });
+
     describe('mapActivityLogMetadata', () => {
         it('maps the term policy identity and timestamp', () => {
             const termPolicy = {

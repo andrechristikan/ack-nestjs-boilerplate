@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
@@ -19,6 +20,7 @@ import type {
 describe('PaginationService', () => {
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const fixedFingerprint = 'aaaaaaaaaaaaaaaa';
 
@@ -32,11 +34,13 @@ describe('PaginationService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         helperHashService.sha256Hash.mockReturnValue(fixedFingerprint);
+        databaseUtil.checkIdIsValid.mockReturnValue(true);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PaginationService,
                 { provide: HelperHashService, useValue: helperHashService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
@@ -277,6 +281,27 @@ describe('PaginationService', () => {
             );
         });
 
+        it('rejects an id cursor that is not a valid id before querying', async () => {
+            databaseUtil.checkIdIsValid.mockReturnValue(false);
+            const token = service['encodeCursor']({
+                cursor: 'not-an-id',
+                fingerprint: fixedFingerprint,
+            });
+
+            const promise = service.cursor(repository, {
+                orderBy: [],
+                limit: 20,
+                cursor: token,
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'pagination',
+                statusCode: EnumPaginationStatusCodeError.invalidCursorData,
+                messagePath: 'pagination.error.invalidCursorData',
+            });
+            expect(repository.findMany).not.toHaveBeenCalled();
+        });
+
         it('rejects a cursor whose fingerprint does not match the current query', async () => {
             const token = service['encodeCursor']({
                 cursor: '1',
@@ -457,7 +482,7 @@ describe('PaginationService', () => {
         it('raises PaginationInvalidCursorFormatException for an empty cursor', () => {
             let error: unknown;
             try {
-                service['decodeCursor']('');
+                service['decodeCursor']('', 'id');
             } catch (caught) {
                 error = caught;
             }
@@ -482,7 +507,7 @@ describe('PaginationService', () => {
 
             let error: unknown;
             try {
-                service['decodeCursor'](notJson);
+                service['decodeCursor'](notJson, 'id');
             } catch (caught) {
                 error = caught;
             }
@@ -509,7 +534,7 @@ describe('PaginationService', () => {
 
             let error: unknown;
             try {
-                service['decodeCursor'](missingFingerprint);
+                service['decodeCursor'](missingFingerprint, 'id');
             } catch (caught) {
                 error = caught;
             }
@@ -525,6 +550,73 @@ describe('PaginationService', () => {
             });
         });
 
+        it('raises PaginationInvalidCursorDataException when the decoded cursor is not a string', () => {
+            const numericCursor = Buffer.from(
+                JSON.stringify({ cursor: 1, fingerprint: fixedFingerprint })
+            )
+                .toString('base64')
+                .replaceAll('+', '-')
+                .replaceAll('/', '_')
+                .replaceAll('=', '');
+
+            let error: unknown;
+            try {
+                service['decodeCursor'](numericCursor, 'slug');
+            } catch (caught) {
+                error = caught;
+            }
+
+            expect(error).toMatchObject({
+                module: 'pagination',
+                statusCode: EnumPaginationStatusCodeError.invalidCursorData,
+                statusCodeKey:
+                    EnumPaginationStatusCodeError[
+                        EnumPaginationStatusCodeError.invalidCursorData
+                    ],
+                messagePath: 'pagination.error.invalidCursorData',
+            });
+        });
+
+        it('raises PaginationInvalidCursorDataException when an id cursor is not a valid id', () => {
+            databaseUtil.checkIdIsValid.mockReturnValue(false);
+            const token = service['encodeCursor']({
+                cursor: 'not-an-id',
+                fingerprint: fixedFingerprint,
+            });
+
+            let error: unknown;
+            try {
+                service['decodeCursor'](token, 'id');
+            } catch (caught) {
+                error = caught;
+            }
+
+            expect(databaseUtil.checkIdIsValid).toHaveBeenCalledWith(
+                'not-an-id'
+            );
+            expect(error).toMatchObject({
+                module: 'pagination',
+                statusCode: EnumPaginationStatusCodeError.invalidCursorData,
+                statusCodeKey:
+                    EnumPaginationStatusCodeError[
+                        EnumPaginationStatusCodeError.invalidCursorData
+                    ],
+                messagePath: 'pagination.error.invalidCursorData',
+            });
+        });
+
+        it('skips the id check for a cursor on another field', () => {
+            databaseUtil.checkIdIsValid.mockReturnValue(false);
+            const value: IPaginationCursorValue = {
+                cursor: 'a-slug',
+                fingerprint: fixedFingerprint,
+            };
+            const token = service['encodeCursor'](value);
+
+            expect(service['decodeCursor'](token, 'slug')).toEqual(value);
+            expect(databaseUtil.checkIdIsValid).not.toHaveBeenCalled();
+        });
+
         it('decodes a value it encoded itself', () => {
             const value: IPaginationCursorValue = {
                 cursor: '1',
@@ -532,7 +624,7 @@ describe('PaginationService', () => {
             };
             const token = service['encodeCursor'](value);
 
-            expect(service['decodeCursor'](token)).toEqual(value);
+            expect(service['decodeCursor'](token, 'id')).toEqual(value);
         });
     });
 

@@ -179,6 +179,60 @@ describe('AppEnvSchema', () => {
     });
 
     describe('invalid variables', () => {
+        it.each([['true'], ['1'], ['loopbak'], ['10.0.0.0/33']])(
+            'rejects HTTP_TRUSTED_PROXY %s',
+            value => {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    HTTP_TRUSTED_PROXY: value,
+                });
+
+                expect(result.success).toBe(false);
+                expect(result.error?.issues).toContainEqual(
+                    expect.objectContaining({ path: ['HTTP_TRUSTED_PROXY'] })
+                );
+            }
+        );
+
+        it('accepts a preset and CIDR list in HTTP_TRUSTED_PROXY', () => {
+            const result = AppEnvSchema.parse({
+                ...validEnv,
+                HTTP_TRUSTED_PROXY: 'loopback,10.0.0.0/8',
+            });
+
+            expect(result.HTTP_TRUSTED_PROXY).toBe('loopback,10.0.0.0/8');
+        });
+
+        it.each([['not a url'], ['http://localhost:3000/']])(
+            'rejects HOME_URL %s',
+            value => {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    HOME_URL: value,
+                });
+
+                expect(result.success).toBe(false);
+                expect(result.error?.issues).toContainEqual(
+                    expect.objectContaining({ path: ['HOME_URL'] })
+                );
+            }
+        );
+
+        it.each([
+            ['AUTH_JWT_ACCESS_TOKEN_JWKS_URI'],
+            ['AUTH_JWT_REFRESH_TOKEN_JWKS_URI'],
+        ])('rejects a %s that is not a URL', key => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                [key]: 'not a url',
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toContainEqual(
+                expect.objectContaining({ path: [key] })
+            );
+        });
+
         it('rejects a missing required variable', () => {
             const withoutDatabaseUrl = { ...validEnv };
             delete withoutDatabaseUrl.DATABASE_URL;

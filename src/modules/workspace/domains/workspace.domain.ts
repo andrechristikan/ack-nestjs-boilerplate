@@ -129,22 +129,31 @@ export class WorkspaceDomain {
         userId: string,
         create: IWorkspaceCreate
     ): Promise<Workspace> {
-        // Sequential by design: gate before the work it guards
-        const ownedCount =
-            await this.workspaceMemberRepository.countOwnedActiveByUser(userId);
-        if (ownedCount >= this.maxWorkspacesPerUser) {
-            throw new WorkspaceCapReachedException();
-        }
-
         const slugCandidates = this.workspaceUtil.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
             const workspaceId = this.databaseUtil.createId();
 
             try {
-                return await this.databaseService.withTransaction(tx =>
-                    this.createInTx(tx, userId, create, slug, workspaceId)
-                );
+                return await this.databaseService.withTransaction(async tx => {
+                    // Sequential by design: gate before the work it guards
+                    const ownedCount =
+                        await this.workspaceRepository.countByOwnerInTx(
+                            tx,
+                            userId
+                        );
+                    if (ownedCount >= this.maxWorkspacesPerUser) {
+                        throw new WorkspaceCapReachedException();
+                    }
+
+                    return this.createInTx(
+                        tx,
+                        userId,
+                        create,
+                        slug,
+                        workspaceId
+                    );
+                });
             } catch (error: unknown) {
                 const isSlugCollision = this.databaseUtil.isUniqueCollision(
                     error,
@@ -186,16 +195,19 @@ export class WorkspaceDomain {
             throw new WorkspaceSlugInvalidException();
         }
 
-        // Sequential by design: gate before the work it guards
-        const slugTaken = await this.workspaceRepository.existsBySlug(
-            slug,
-            workspaceId
-        );
-        if (slugTaken) {
-            throw new WorkspaceSlugAlreadyExistsException();
-        }
+        try {
+            return await this.workspaceRepository.updateSlug(workspaceId, slug);
+        } catch (err: unknown) {
+            const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'slug'
+            );
+            if (isSlugCollision) {
+                throw new WorkspaceSlugAlreadyExistsException();
+            }
 
-        return this.workspaceRepository.updateSlug(workspaceId, slug);
+            throw new AppUnknownException(err);
+        }
     }
 
     async softDeleteInTx(
@@ -206,6 +218,19 @@ export class WorkspaceDomain {
         await this.workspaceRepository.softDeleteInTx(
             tx,
             workspaceId,
+            deletedAt
+        );
+    }
+
+    /** Soft-deletes every live workspace the user is the only owner of and answers their ids. */
+    async softDeleteSolelyOwnedByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deletedAt: Date
+    ): Promise<string[]> {
+        return this.workspaceRepository.softDeleteSolelyOwnedByUserInTx(
+            tx,
+            userId,
             deletedAt
         );
     }

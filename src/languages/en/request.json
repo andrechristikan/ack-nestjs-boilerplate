@@ -23,6 +23,9 @@
         "isAfterNow": {
             "invalid": "{property} must be a future date."
         },
+        "requiredWithOtherProperty": {
+            "invalid": "{property} is required together with the related property."
+        },
         "greaterThanOtherProperty": {
             "invalid": "{property} must be greater than the related property."
         },

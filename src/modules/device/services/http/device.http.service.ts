@@ -1,4 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
@@ -15,6 +19,7 @@ import type {
     IDeviceRemoveResult,
 } from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
@@ -38,6 +43,7 @@ export class DeviceHttpService {
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -46,29 +52,41 @@ export class DeviceHttpService {
         deviceOwnershipId: string,
         removedBy: string
     ): Promise<IDeviceRemoveResult> {
-        // Sequential by design: gate before the work it guards
-        await this.deviceDomain.assertActive(userId, deviceOwnershipId);
         const now = this.helperDateService.create();
 
-        return this.databaseService.withTransaction(async tx => {
-            const revokedSessions =
-                await this.sessionDomain.revokeByDeviceOwnershipInTx(
-                    tx,
-                    userId,
-                    deviceOwnershipId,
-                    removedBy,
-                    now
-                );
-            const deviceOwnership = await this.deviceDomain.removeOwnershipInTx(
-                tx,
-                userId,
-                deviceOwnershipId,
-                removedBy,
-                now
-            );
+        try {
+            return await this.databaseService.withTransaction(async tx => {
+                const revokedSessions =
+                    await this.sessionDomain.revokeByDeviceOwnershipInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        removedBy,
+                        now
+                    );
+                const deviceOwnership =
+                    await this.deviceDomain.removeOwnershipInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        removedBy,
+                        now
+                    );
 
-            return { deviceOwnership, revokedSessions };
-        });
+                return { deviceOwnership, revokedSessions };
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new DeviceNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 
     async getListOffsetByAdmin(

@@ -135,25 +135,29 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         deviceOwnershipId: string,
         removedBy: string,
         now: Date
-    ): Promise<IDeviceOwnership> {
-        const ownershipInclude = this.ownershipInclude(now);
-
-        return tx.deviceOwnership.update({
+    ): Promise<IDeviceOwnership | null> {
+        const { count } = await tx.deviceOwnership.updateMany({
             where: {
                 id: deviceOwnershipId,
                 userId,
+                isRevoked: false,
             },
             data: {
                 isRevoked: true,
                 revokedAt: now,
+                revokedById: removedBy,
                 notificationToken: null,
                 notificationProvider: null,
-                revokedBy: {
-                    connect: {
-                        id: removedBy,
-                    },
-                },
             },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        const ownershipInclude = this.ownershipInclude(now);
+
+        return tx.deviceOwnership.findUnique({
+            where: { id: deviceOwnershipId },
             include: ownershipInclude,
         });
     }
@@ -256,21 +260,6 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         );
     }
 
-    async existsActive(
-        userId: string,
-        deviceOwnershipId: string
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.deviceOwnership.count({
-            where: {
-                id: deviceOwnershipId,
-                userId,
-                isRevoked: false,
-            },
-        });
-
-        return count > 0;
-    }
-
     async refreshInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -278,21 +267,29 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         { notificationToken, platform }: IDeviceRefresh,
         notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
-    ): Promise<string> {
-        const ownership = await tx.deviceOwnership.update({
+    ): Promise<string | null> {
+        const { count } = await tx.deviceOwnership.updateMany({
             where: {
                 id: deviceOwnershipId,
                 userId,
+                isRevoked: false,
             },
             data: {
                 lastActiveAt: now,
                 ...(platform !== null && { notificationProvider }),
                 ...(notificationToken !== null && { notificationToken }),
             },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        const ownership = await tx.deviceOwnership.findUnique({
+            where: { id: deviceOwnershipId },
             select: DeviceOwnershipDeviceIdSelect,
         });
 
-        return ownership.deviceId;
+        return ownership?.deviceId ?? null;
     }
 
     async clearTokenFromOtherUsersInTx(

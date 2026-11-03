@@ -8,6 +8,7 @@ import type {
     IAnalyticProjectCount,
     IAnalyticRoleCount,
 } from '@modules/analytic/interfaces/analytic.interface';
+import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import type { IProjectMemberAnalyticRepository } from '@modules/project/interfaces/project.member-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -22,7 +23,10 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const { where, skip, limit } = params;
-        const scopedWhere = where ?? {};
+        const scopedWhere: Prisma.ProjectMemberWhereInput = {
+            ...where,
+            project: { OR: ProjectActiveFilter },
+        };
 
         const [rows, groups] = await Promise.all([
             this.databaseService.client.projectMember.groupBy({
@@ -60,6 +64,7 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
     async groupByRole(): Promise<IAnalyticRoleCount[]> {
         const rows = await this.databaseService.client.projectMember.groupBy({
             by: ['role'],
+            where: { project: { OR: ProjectActiveFilter } },
             _count: { _all: true },
         });
         return rows.map(r => ({ role: r.role, count: r._count._all }));

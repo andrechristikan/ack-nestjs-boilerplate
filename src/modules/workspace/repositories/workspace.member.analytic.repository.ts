@@ -8,6 +8,7 @@ import type {
     IAnalyticRoleCount,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceMemberAnalyticRepository } from '@modules/workspace/interfaces/workspace.member-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -23,7 +24,10 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
     ): Promise<IAnalyticRoleCount[]> {
         const rows = await this.databaseService.client.workspaceMember.groupBy({
             by: ['role'],
-            where: workspaceId ? { workspaceId } : {},
+            where: {
+                ...(workspaceId !== null && { workspaceId }),
+                workspace: { OR: WorkspaceActiveFilter },
+            },
             _count: { _all: true },
         });
         return rows.map(r => ({ role: r.role, count: r._count._all }));
@@ -39,7 +43,10 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const { where, skip, limit } = params;
-        const scopedWhere = where ?? {};
+        const scopedWhere: Prisma.WorkspaceMemberWhereInput = {
+            ...where,
+            workspace: { OR: WorkspaceActiveFilter },
+        };
 
         const [rows, groups] = await Promise.all([
             this.databaseService.client.workspaceMember.groupBy({

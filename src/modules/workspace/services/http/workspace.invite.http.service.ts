@@ -1,4 +1,7 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -26,6 +29,7 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceInviteDefaultAvailableOrderBy,
@@ -40,6 +44,7 @@ import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/r
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import type {
     IWorkspaceInviteCreate,
@@ -65,9 +70,11 @@ export class WorkspaceInviteHttpService {
         private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
+        private readonly projectUtil: ProjectUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -243,6 +250,20 @@ export class WorkspaceInviteHttpService {
         };
         this.workspaceInviteDomain.assertProjectRolePaired(create);
 
+        if (create.projectRole !== null) {
+            // Sequential by design: gate before the work it guards
+            const actorMember =
+                await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
+                    workspace.id,
+                    actorId
+                );
+            const actor = this.projectUtil.mapMemberActor(actorMember);
+            this.projectMemberDomain.assertPeerAllowed(
+                actor,
+                create.projectRole
+            );
+        }
+
         let projectLookup: Promise<Project | null> | null = null;
         if (create.projectId !== null) {
             projectLookup = this.projectDomain.getActiveByIdAndWorkspace(
@@ -251,31 +272,29 @@ export class WorkspaceInviteHttpService {
             );
         }
 
-        const [project, duplicate, existingUser] = await Promise.all([
+        const [project, existingUser] = await Promise.all([
             projectLookup,
-            this.workspaceInviteDomain.existsPendingByEmail(
-                workspace.id,
-                create.email
-            ),
             this.userDomain.getOneActiveByEmail(create.email),
         ]);
-        this.workspaceInviteDomain.assertCreatable(create, project, duplicate);
-
-        const tokenData = this.workspaceUtil.createInviteTokenData(
-            create.expiryDuration
-        );
+        this.workspaceInviteDomain.assertCreatable(create, project);
+        if (existingUser) {
+            await this.workspaceInviteDomain.assertInviteeNotMember(
+                workspace.id,
+                existingUser.id
+            );
+        }
 
         // Sequential by design: write must not run if an earlier step throws
         const [inviterName, recipient] = await Promise.all([
             this.getInviterName(workspace, actorId),
             this.getInviteeRecipient(existingUser),
         ]);
-        const invite = await this.workspaceInviteDomain.createInvite(
-            workspace.id,
-            actorId,
-            create,
-            tokenData
-        );
+        const { invite, tokenData } =
+            await this.workspaceInviteDomain.createInvite(
+                workspace.id,
+                actorId,
+                create
+            );
 
         const activityLogs = this.prepareInviteActivityLogs(
             EnumActivityLogAction.workspaceInviteCreated,
@@ -312,10 +331,6 @@ export class WorkspaceInviteHttpService {
             workspace.id
         );
 
-        const tokenData = this.workspaceUtil.createInviteTokenData(
-            expiryDuration ?? null
-        );
-
         const [inviterName, { existingUser, recipient }] = await Promise.all([
             this.getInviterName(workspace, actorId),
             this.getInviteeByEmail(existing.email),
@@ -331,10 +346,11 @@ export class WorkspaceInviteHttpService {
         );
 
         // Sequential by design: write must not run if an earlier step throws
-        const invite = await this.workspaceInviteDomain.resendInvite(
-            workspaceInviteId,
-            tokenData
-        );
+        const { invite, tokenData } =
+            await this.workspaceInviteDomain.resendInvite(
+                workspaceInviteId,
+                expiryDuration ?? null
+            );
 
         this.activityLogDomain.stagePrepared(activityLogs);
 
@@ -394,42 +410,6 @@ export class WorkspaceInviteHttpService {
             inviteToken,
             userEmail
         );
-        // Sequential by design: gate before the work it guards
-        await this.workspaceInviteDomain.assertInviteeNotMember(
-            invite.workspaceId,
-            userId
-        );
-
-        const acceptedAt = this.helperDateService.create();
-        await this.databaseService.withTransaction(async tx => {
-            await this.workspaceInviteDomain.acceptPendingInTx(
-                tx,
-                invite.id,
-                userId,
-                acceptedAt
-            );
-            await this.workspaceMemberDomain.createInTx(
-                tx,
-                invite.workspaceId,
-                userId,
-                invite.workspaceRole,
-                userId
-            );
-            await this.userDomain.setLastWorkspaceInTx(
-                tx,
-                userId,
-                invite.workspaceId
-            );
-            if (invite.projectId && invite.projectRole) {
-                await this.projectMemberDomain.createInTx(
-                    tx,
-                    invite.projectId,
-                    userId,
-                    invite.projectRole,
-                    userId
-                );
-            }
-        });
 
         const activityLogs = [
             this.activityLogDomain.prepare({
@@ -452,6 +432,54 @@ export class WorkspaceInviteHttpService {
             );
             activityLogs.push(acceptedByInviteeActivityLog);
         }
+
+        const acceptedAt = this.helperDateService.create();
+        try {
+            await this.databaseService.withTransaction(async tx => {
+                await this.workspaceInviteDomain.acceptPendingInTx(
+                    tx,
+                    invite.id,
+                    userId,
+                    acceptedAt
+                );
+                await this.workspaceMemberDomain.createInTx(
+                    tx,
+                    invite.workspaceId,
+                    userId,
+                    invite.workspaceRole,
+                    userId
+                );
+                await this.userDomain.setLastWorkspaceInTx(
+                    tx,
+                    userId,
+                    invite.workspaceId
+                );
+                if (invite.projectId && invite.projectRole) {
+                    await this.projectMemberDomain.createInTx(
+                        tx,
+                        invite.projectId,
+                        userId,
+                        invite.projectRole,
+                        userId
+                    );
+                }
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const isAlreadyMember = this.databaseUtil.isUniqueCollision(
+                err,
+                'userId'
+            );
+            if (isAlreadyMember) {
+                throw new WorkspaceInviteAlreadyProcessedException();
+            }
+
+            throw new AppUnknownException(err);
+        }
+
         this.activityLogDomain.stagePrepared(activityLogs);
 
         return {};

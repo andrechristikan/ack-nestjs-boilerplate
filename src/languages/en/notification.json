@@ -151,7 +151,8 @@
                 "firebaseNotInitialized": "Firebase not initialized, skipping {process} notification.",
                 "failed": "Notification {process} failed.",
                 "unknownProcess": "No {process} job handler exists.",
-                "deliveryNotFound": "Push delivery for {process} notification not found."
+                "deliveryNotFound": "Push delivery for {process} notification not found.",
+                "tokensPending": "{count} push tokens pending retry."
             },
             "newDeviceLogin": "New login notification processed.",
             "resetTwoFactorByAdmin": "Reset two-factor notification processed.",

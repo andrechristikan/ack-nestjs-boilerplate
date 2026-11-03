@@ -30,6 +30,17 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
             this.configService.get<string>('message.language')!;
     }
 
+    /**
+     * Reduces a header value to the lowercased primary subtag of its first listed language.
+     */
+    private normalizeLanguage(language: string): string {
+        return language
+            .split(/[,;]/)[0]!
+            .split(/[-_]/)[0]!
+            .trim()
+            .toLowerCase();
+    }
+
     private filterLanguage(customLanguage: string): string[] {
         return this.helperArrayService.intersection(
             [customLanguage],
@@ -48,10 +59,11 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
             RequestCustomLangHeaderName
         ] as string;
         if (reqLanguages) {
-            const language: string[] = this.filterLanguage(reqLanguages);
+            const normalized = this.normalizeLanguage(reqLanguages);
+            const language: string[] = this.filterLanguage(normalized);
 
             if (language.length > 0) {
-                customLang = reqLanguages;
+                customLang = normalized;
             }
         }
 

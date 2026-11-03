@@ -13,9 +13,13 @@ import type {
 
 export interface IWorkspaceInviteRepository {
     expireStalePending(): Promise<number>;
-    expirePendingByWorkspaceInTx(
+    revokePendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string
+    ): Promise<void>;
+    clearProjectInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string
     ): Promise<void>;
     findPendingByHashedToken(
         hashedToken: string
@@ -24,10 +28,6 @@ export interface IWorkspaceInviteRepository {
         workspaceInviteId: string,
         workspaceId: string
     ): Promise<WorkspaceInvite | null>;
-    existsPendingByWorkspaceAndEmail(
-        workspaceId: string,
-        email: string
-    ): Promise<boolean>;
     findWithPaginationCursor(
         workspaceId: string,
         {
@@ -47,6 +47,7 @@ export interface IWorkspaceInviteRepository {
         reference,
         expiredAt,
         invitedByUserId,
+        pendingKey,
     }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite>;
     rotateForResend(
         workspaceInviteId: string,

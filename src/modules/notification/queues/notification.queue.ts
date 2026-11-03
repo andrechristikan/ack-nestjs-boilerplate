@@ -21,6 +21,7 @@ import type {
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
+    INotificationVerifiedMobileNumberEncryptedPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWelcomeByAdminItem,
@@ -735,18 +736,23 @@ export class NotificationQueue extends QueueBase {
 
     async sendVerifiedMobileNumber(
         recipient: INotificationRecipient,
-        verifiedMobile: INotificationVerifiedMobileNumberPayload
+        {
+            mobileNumber,
+            reference,
+            resendInMinutes,
+        }: INotificationVerifiedMobileNumberPayload
     ): Promise<void> {
         const { userId } = recipient;
         const encryptedRecipient = this.encryptRecipient(recipient);
+        const encryptedMobileNumber = this.encryptValue(mobileNumber, userId);
         const notificationId = this.databaseUtil.createId();
-        const payload: INotificationQueuePayload<INotificationVerifiedMobileNumberPayload> =
+        const payload: INotificationQueuePayload<INotificationVerifiedMobileNumberEncryptedPayload> =
             {
                 userId,
                 notificationId,
                 completedSteps: [],
                 recipient: encryptedRecipient,
-                data: verifiedMobile,
+                data: { encryptedMobileNumber, reference, resendInMinutes },
                 proceedBy: userId,
             };
 
@@ -754,7 +760,7 @@ export class NotificationQueue extends QueueBase {
             this.referenceJobIdPattern,
             {
                 process: EnumNotificationProcess.verifiedMobileNumber,
-                reference: verifiedMobile.reference,
+                reference,
             }
         );
 

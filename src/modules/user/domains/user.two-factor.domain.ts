@@ -7,7 +7,7 @@ import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
 import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
-import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
+import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
@@ -16,12 +16,12 @@ import { AuthTwoFactorRequiredSetupException } from '@modules/auth/exceptions/au
 import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exceptions/auth.two-factor-secret-unavailable.exception';
 import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
-import { UserTwoFactorCache } from '@modules/user/caches/user.two-factor.cache';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
+    IUserTwoFactorChecked,
     IUserTwoFactorLoginSetup,
     IUserTwoFactorSetupSecret,
     IUserTwoFactorVerifyInput,
@@ -39,7 +39,6 @@ export class UserTwoFactorDomain {
     constructor(
         private readonly userTwoFactorRepository: UserTwoFactorRepository,
         private readonly userRepository: UserRepository,
-        private readonly userTwoFactorCache: UserTwoFactorCache,
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly sentryService: SentryService,
         private readonly configService: ConfigService
@@ -65,40 +64,6 @@ export class UserTwoFactorDomain {
         }
     }
 
-    private async assertUnlocked(user: IUser): Promise<void> {
-        const remainingMs =
-            await this.userTwoFactorCache.getTwoFactorLockTtlInMs(user);
-        if (remainingMs > 0) {
-            throw new AuthTwoFactorAttemptTemporaryLockException(
-                Math.ceil(remainingMs / 1000)
-            );
-        }
-    }
-
-    /** Counts one verification attempt and judges it before the code is checked: a count on a multiple of the max locks two-factor with the escalating TTL and any other count re-checks the lock a parallel request set; both answer the lock exception without verifying. */
-    private async countAttempt(user: IUser): Promise<void> {
-        const attempt = await this.userTwoFactorRepository.incrementAttempt(
-            user.id
-        );
-        if (attempt % this.maxAttempt !== 0) {
-            await this.assertUnlocked(user);
-
-            return;
-        }
-
-        const counted: IUser =
-            user.twoFactor === null
-                ? user
-                : { ...user, twoFactor: { ...user.twoFactor, attempt } };
-        await this.userTwoFactorCache.setTwoFactorLock(counted);
-        const remainingMs =
-            await this.userTwoFactorCache.getTwoFactorLockTtlInMs(counted);
-
-        throw new AuthTwoFactorAttemptTemporaryLockException(
-            Math.ceil(remainingMs / 1000)
-        );
-    }
-
     /** An absent secret is an expected account state; a secret that fails to decrypt is an operator fault and is reported. */
     private readSecret(encryptedSecret: string | null, userId: string): string {
         if (!encryptedSecret) {
@@ -120,12 +85,12 @@ export class UserTwoFactorDomain {
         }
     }
 
-    /** Checks a TOTP code against the confirmed secret, or a backup code against the stored hashes; null when it does not match, otherwise the backup codes left once a used one is removed. */
+    /** Checks a TOTP code against the confirmed secret, or a backup code against the stored hashes; null when it does not match, otherwise the verified result with the matched TOTP step (null for a backup code) and the backup codes left once a used one is removed. */
     private checkCode(
         twoFactor: TwoFactor,
         method: EnumAuthTwoFactorMethod,
         { code, backupCode }: IUserTwoFactorVerifyInput
-    ): IUserTwoFactorVerifyResult | null {
+    ): IUserTwoFactorChecked | null {
         const normalizedCode =
             method === EnumAuthTwoFactorMethod.code
                 ? code?.trim()
@@ -137,12 +102,14 @@ export class UserTwoFactorDomain {
         if (method === EnumAuthTwoFactorMethod.code) {
             const secret = this.readSecret(twoFactor.secret, twoFactor.userId);
 
-            const isValid = this.authTwoFactorUtil.verifyCode(
+            const totpStep = this.authTwoFactorUtil.verifyCode(
                 secret,
                 normalizedCode
             );
 
-            return isValid ? { method, newBackupCodes: null } : null;
+            return totpStep === null
+                ? null
+                : { verified: { method, newBackupCodes: null }, totpStep };
         }
 
         if (twoFactor.backupCodes.length === 0) {
@@ -160,7 +127,10 @@ export class UserTwoFactorDomain {
         const newBackupCodes = [...twoFactor.backupCodes];
         newBackupCodes.splice(backupValidation.index, 1);
 
-        return { method, newBackupCodes };
+        return {
+            verified: { method, newBackupCodes },
+            totpStep: null,
+        };
     }
 
     /** Resolves the active, verified user of a login challenge whose two-factor is enabled. */
@@ -204,43 +174,61 @@ export class UserTwoFactorDomain {
         return { user, pendingSecret };
     }
 
-    /** Counts one verification attempt, checks the code or backup code against the confirmed secret, and resets the counter on a match; a backup code is not consumed here. */
+    /** Counts one two-factor attempt before the code is checked; false when the attempt budget is spent. */
+    async countAttempt(user: IUser): Promise<boolean> {
+        const attempt = await this.userTwoFactorRepository.incrementAttempt(
+            user.id,
+            this.maxAttempt
+        );
+
+        return attempt !== null;
+    }
+
+    assertAttemptCounted(isAttemptCounted: boolean): void {
+        if (!isAttemptCounted) {
+            throw new AuthTwoFactorAttemptMaxException();
+        }
+    }
+
+    /** Checks the code or backup code against the confirmed secret, accepts each TOTP step once, and resets the counter on a match; the caller counts the attempt and a backup code is not consumed here. */
     async verify(
         user: IUser,
         input: IUserTwoFactorVerifyInput
     ): Promise<IUserTwoFactorVerifyResult> {
-        // Sequential by design: gate before the work it guards
-        await this.assertUnlocked(user);
         this.assertMethodProvided(input.method);
         const twoFactor = this.getEnabledTwoFactor(user);
 
-        // Sequential by design: gate before the work it guards
-        await this.countAttempt(user);
-
-        const verified = this.checkCode(twoFactor, input.method, input);
-        if (!verified) {
+        const checked = this.checkCode(twoFactor, input.method, input);
+        if (!checked) {
             throw new AuthTwoFactorInvalidException();
+        }
+
+        if (checked.totpStep !== null) {
+            // Sequential by design: the attempt resets only after the step is accepted
+            const isStepAccepted =
+                await this.userTwoFactorRepository.markTotpUsed(
+                    user.id,
+                    checked.totpStep
+                );
+            if (!isStepAccepted) {
+                throw new AuthTwoFactorInvalidException();
+            }
         }
 
         await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
 
-        return verified;
+        return checked.verified;
     }
 
-    /** Counts one verification attempt, checks a code from a newly set-up authenticator against the pending secret, and resets the counter on a match. */
+    /** Checks a code from a newly set-up authenticator against the pending secret and resets the counter on a match; the caller counts the attempt. */
     async verifySetupCode(
         user: IUser,
         pendingSecret: string,
         code: string
     ): Promise<void> {
-        // Sequential by design: gate before the work it guards
-        await this.assertUnlocked(user);
-        // Sequential by design: gate before the work it guards
-        await this.countAttempt(user);
-
         const secret = this.readSecret(pendingSecret, user.id);
-        const isValid = this.authTwoFactorUtil.verifyCode(secret, code.trim());
-        if (!isValid) {
+        const totpStep = this.authTwoFactorUtil.verifyCode(secret, code.trim());
+        if (totpStep === null) {
             throw new AuthTwoFactorInvalidException();
         }
 
@@ -260,10 +248,6 @@ export class UserTwoFactorDomain {
         );
 
         return { secret, otpauthUrl, encryptedSecret };
-    }
-
-    async clearLock(user: IUser): Promise<void> {
-        await this.userTwoFactorCache.deleteTwoFactorLock(user);
     }
 
     async saveSetup(userId: string, encryptedSecret: string): Promise<void> {
@@ -351,6 +335,13 @@ export class UserTwoFactorDomain {
         userId: string
     ): Promise<void> {
         await this.userTwoFactorRepository.disableTwoFactorInTx(tx, userId);
+    }
+
+    async removeInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.userTwoFactorRepository.deleteByUserInTx(tx, userId);
     }
 
     async resetByAdminInTx(

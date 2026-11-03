@@ -69,22 +69,31 @@ describe('NotificationPushProcessorService', () => {
         encryptedFailureTokens: ['bad'],
         encryptedPendingTokens: [],
     };
+    const failedRawError = new Error('redis');
     const failed: INotificationPushStepResult = {
         message: 'm',
         completedSteps: progress,
         failedSteps: [
-            { step: EnumNotificationStep.cleanupTokens, error: 'redis' },
+            {
+                step: EnumNotificationStep.cleanupTokens,
+                message: 'redis',
+                rawError: failedRawError,
+            },
         ],
         encryptedFailureTokens: ['bad'],
         encryptedPendingTokens: [],
     };
+    const outageRawError = new Error(
+        'notification.queue.push.error.tokensPending'
+    );
     const outage: INotificationPushStepResult = {
         message: 'm',
         completedSteps: [EnumNotificationStep.updateProcessAt],
         failedSteps: [
             {
                 step: EnumNotificationStep.sendMulticast,
-                error: '2 tokens pending retry',
+                message: 'notification.queue.push.error.tokensPending',
+                rawError: outageRawError,
             },
         ],
         encryptedFailureTokens: [],
@@ -221,6 +230,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -245,6 +255,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -312,6 +323,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -336,6 +348,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -408,6 +421,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -432,6 +446,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -499,6 +514,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -523,6 +539,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -590,6 +607,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -614,6 +632,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -690,6 +709,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -714,6 +734,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -787,6 +808,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -811,6 +833,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -880,6 +903,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -904,6 +928,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -977,6 +1002,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: failedRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
@@ -1001,6 +1027,7 @@ describe('NotificationPushProcessorService', () => {
             ).rejects.toMatchObject({
                 isFatal: true,
                 message: 'notification.queue.error.stepsFailed',
+                rawError: outageRawError,
             });
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,

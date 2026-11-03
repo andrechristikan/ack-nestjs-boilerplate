@@ -251,8 +251,9 @@ describe('AnalyticAnomalyUtil', () => {
     describe('findLoginTimeAnomalies', () => {
         const eightAm = new Date('2026-01-01T08:00:00.000Z');
         const threeAm = new Date('2026-01-01T03:00:00.000Z');
+        const minSample = 5;
 
-        it('skips users with fewer than five logins', () => {
+        it('skips users with fewer logins than the minimum sample', () => {
             const logs = [
                 buildAnalyticActivityLog('e1', 'user-1', null, eightAm),
                 buildAnalyticActivityLog('e2', 'user-1', null, eightAm),
@@ -260,10 +261,28 @@ describe('AnalyticAnomalyUtil', () => {
                 buildAnalyticActivityLog('e4', 'user-1', null, threeAm),
             ];
 
-            expect(util.findLoginTimeAnomalies(logs, 20)).toEqual([]);
+            expect(util.findLoginTimeAnomalies(logs, 20, minSample)).toEqual(
+                []
+            );
         });
 
-        it('flags a last hour whose historical frequency is below the threshold', () => {
+        it('honours a custom minimum sample', () => {
+            const logs = [
+                buildAnalyticActivityLog('e1', 'user-1', null, eightAm),
+                buildAnalyticActivityLog('e2', 'user-1', null, eightAm),
+                buildAnalyticActivityLog('e3', 'user-1', null, threeAm),
+            ];
+
+            expect(util.findLoginTimeAnomalies(logs, 20, 3)).toEqual([
+                {
+                    userId: 'user-1',
+                    lastHour: 3,
+                    historicalFrequencyPercent: 0,
+                },
+            ]);
+        });
+
+        it('flags a last hour absent from the prior logins using a histogram that excludes the last login', () => {
             const logs = [
                 buildAnalyticActivityLog('e0', 'user-1', null, eightAm),
                 buildAnalyticActivityLog('e1', 'user-1', null, eightAm),
@@ -273,19 +292,19 @@ describe('AnalyticAnomalyUtil', () => {
                 buildAnalyticActivityLog('e5', 'user-1', null, threeAm),
             ];
 
-            const result = util.findLoginTimeAnomalies(logs, 20);
+            const result = util.findLoginTimeAnomalies(logs, 20, minSample);
 
             expect(result).toEqual([
                 {
                     userId: 'user-1',
                     lastHour: 3,
-                    historicalFrequencyPercent: (1 / 6) * 100,
+                    historicalFrequencyPercent: 0,
                 },
             ]);
-            expect(helperNumberService.percent).toHaveBeenCalledWith(1, 6);
+            expect(helperNumberService.percent).toHaveBeenCalledWith(0, 5);
         });
 
-        it('does not flag a last hour at or above the threshold', () => {
+        it('does not flag a last hour whose prior frequency reaches the threshold', () => {
             const logs = [
                 buildAnalyticActivityLog('k0', 'user-keep', null, eightAm),
                 buildAnalyticActivityLog('k1', 'user-keep', null, eightAm),
@@ -294,7 +313,10 @@ describe('AnalyticAnomalyUtil', () => {
                 buildAnalyticActivityLog('k4', 'user-keep', null, eightAm),
             ];
 
-            expect(util.findLoginTimeAnomalies(logs, 20)).toEqual([]);
+            expect(util.findLoginTimeAnomalies(logs, 20, minSample)).toEqual(
+                []
+            );
+            expect(helperNumberService.percent).toHaveBeenCalledWith(4, 4);
         });
     });
 

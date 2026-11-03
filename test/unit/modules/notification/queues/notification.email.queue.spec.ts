@@ -278,9 +278,9 @@ describe('NotificationEmailQueue', () => {
     });
 
     describe('sendVerifiedMobileNumber', () => {
-        it('enqueues the verifiedMobileNumber job with a step job id, low priority', async () => {
+        it('forwards the encrypted mobile number unchanged and enqueues the verifiedMobileNumber job with a step job id, low priority', async () => {
             const data = {
-                mobileNumber: '+15551234567',
+                encryptedMobileNumber: 'cipher(+15551234567)',
                 reference: 'ref-1',
                 resendInMinutes: 5,
             };

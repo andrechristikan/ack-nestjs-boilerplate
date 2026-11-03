@@ -57,9 +57,9 @@ export class PolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Param('roleId', { schema: RequestMongoIdSchema })
@@ -85,9 +85,9 @@ export class PolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
         @Param('roleId', { schema: RequestMongoIdSchema })
@@ -116,9 +116,9 @@ export class PolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update/:policyId')
     async update(
         @Param('roleId', { schema: RequestMongoIdSchema })
@@ -154,9 +154,9 @@ export class PolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/delete/:policyId')
     async delete(
         @Param('roleId', { schema: RequestMongoIdSchema })

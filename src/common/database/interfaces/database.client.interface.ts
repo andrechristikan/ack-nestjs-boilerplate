@@ -49,3 +49,9 @@ export type IDatabaseTransactionClient = Parameters<
 export type IDatabaseTransactionOptions = NonNullable<
     Prisma.PrismaClientOptions['transactionOptions']
 >;
+
+export interface IDatabaseQueryLog {
+    model: string | null;
+    action: string | null;
+    duration: number;
+}

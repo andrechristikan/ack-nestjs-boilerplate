@@ -69,7 +69,13 @@ export abstract class QueueProcessorBase extends WorkerHost {
     }
 
     @OnWorkerEvent('failed')
-    onFailed(job: Job<unknown, null, string>, error: Error): void {
+    onFailed(job: Job<unknown, null, string> | undefined, error: Error): void {
+        if (!job) {
+            this.sentryService.captureException(error);
+
+            return;
+        }
+
         const maxAttempts = job.opts.attempts ?? 1;
         const isLastAttempt =
             error instanceof UnrecoverableError ||

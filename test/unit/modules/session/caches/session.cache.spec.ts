@@ -14,7 +14,8 @@ import { RedisClientCachedProvider } from '@common/redis/constants/redis.constan
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import type { ISessionCache } from '@modules/session/interfaces/session.interface';
-import { stubSessionCacheClient } from '@test/unit/helpers/test.unit.session.helper';
+import { SessionCacheUpdateLoginScript } from '@modules/session/constants/session.constant';
+import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
 
 describe('SessionCache', () => {
     const cacheManager: MockProxy<Cache> = mock<Cache>();
@@ -108,15 +109,22 @@ describe('SessionCache', () => {
     });
 
     describe('setLogin', () => {
-        it('stores a new login session for the access-token lifetime', async () => {
+        it('stores a new login session for the access-token lifetime with the jti digest, never the raw jti', async () => {
+            helperHashService.sha256Hash.mockImplementation(
+                value => `hash(${value})`
+            );
+
             await cache.setLogin('user-1', 'session-1', 'jti-value');
 
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'jti-value'
+            );
             expect(cacheManager.set).toHaveBeenCalledWith(
                 'user-1:session-1',
                 {
                     userId: 'user-1',
                     sessionId: 'session-1',
-                    jti: 'jti-value',
+                    jti: 'hash(jti-value)',
                 },
                 900000
             );
@@ -124,21 +132,18 @@ describe('SessionCache', () => {
     });
 
     describe('updateLogin', () => {
-        const session: ISessionCache = {
-            userId: 'user-1',
-            sessionId: 'session-1',
-            jti: 'old-jti',
-        };
+        const now = new Date('2026-01-01T00:00:00.000Z');
 
-        it('rotates the jti and resets the ttl when the stored jti matches, answering updated on a conditional write', async () => {
-            const now = new Date('2026-01-01T00:00:00.000Z');
+        beforeEach(() => {
             helperDateService.create.mockReturnValue(now);
-            keyvGet.mockResolvedValue(session);
             helperHashService.sha256Hash.mockImplementation(
                 value => `hash(${value})`
             );
-            helperHashService.sha256Compare.mockReturnValue(true);
-            const client = stubSessionCacheClient({ keyv, store }, 'OK');
+        });
+
+        it('sends one compare-and-set script holding the old jti digest and the rotated entry, answering updated when the script replies updated', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.eval.mockResolvedValue(EnumSessionCacheUpdate.updated);
 
             const result = await cache.updateLogin(
                 'user-1',
@@ -148,35 +153,31 @@ describe('SessionCache', () => {
             );
 
             expect(result).toBe(EnumSessionCacheUpdate.updated);
-            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
-                'hash(old-jti)',
-                'hash(old-jti)'
-            );
             expect(store.createKeyPrefix).toHaveBeenCalledWith(
                 'user-1:session-1',
-                'session'
+                'cache'
             );
             expect(keyv.serializeData).toHaveBeenCalledWith({
-                value: { ...session, jti: 'new-jti' },
+                value: {
+                    userId: 'user-1',
+                    sessionId: 'session-1',
+                    jti: 'hash(new-jti)',
+                },
                 expires: now.getTime() + 900000,
             });
-            expect(client.set).toHaveBeenCalledWith(
-                'prefixed-key',
-                'serialized-value',
+            expect(client.eval).toHaveBeenCalledWith(
+                SessionCacheUpdateLoginScript,
                 {
-                    expiration: { type: 'PX', value: 900000 },
-                    condition: 'XX',
+                    keys: ['prefixed-user-1:session-1'],
+                    arguments: ['hash(old-jti)', 'serialized-value', '900000'],
                 }
             );
+            expect(keyvGet).not.toHaveBeenCalled();
         });
 
-        it('answers mismatch without writing when the stored jti differs from the old jti', async () => {
-            keyvGet.mockResolvedValue(session);
-            helperHashService.sha256Hash.mockImplementation(
-                value => `hash(${value})`
-            );
-            helperHashService.sha256Compare.mockReturnValue(false);
-            const client = stubSessionCacheClient({ keyv, store }, 'OK');
+        it('answers mismatch when the script finds another jti digest', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.eval.mockResolvedValue(EnumSessionCacheUpdate.mismatch);
 
             const result = await cache.updateLogin(
                 'user-1',
@@ -186,34 +187,11 @@ describe('SessionCache', () => {
             );
 
             expect(result).toBe(EnumSessionCacheUpdate.mismatch);
-            expect(client.set).not.toHaveBeenCalled();
         });
 
-        it('answers absent without writing when no login is cached', async () => {
-            keyvGet.mockResolvedValue(undefined);
-            const client = stubSessionCacheClient({ keyv, store }, 'OK');
-
-            const result = await cache.updateLogin(
-                'user-1',
-                'session-1',
-                'old-jti',
-                'new-jti'
-            );
-
-            expect(result).toBe(EnumSessionCacheUpdate.absent);
-            expect(client.set).not.toHaveBeenCalled();
-        });
-
-        it('answers absent when the conditional write finds nothing to update', async () => {
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            keyvGet.mockResolvedValue(session);
-            helperHashService.sha256Hash.mockImplementation(
-                value => `hash(${value})`
-            );
-            helperHashService.sha256Compare.mockReturnValue(true);
-            stubSessionCacheClient({ keyv, store }, null);
+        it('answers absent when the script finds no entry', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.eval.mockResolvedValue(EnumSessionCacheUpdate.absent);
 
             const result = await cache.updateLogin(
                 'user-1',

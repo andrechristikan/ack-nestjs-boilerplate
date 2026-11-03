@@ -214,7 +214,10 @@ export class ApiKeyDomain {
         const today = this.helperDateService.create();
         const cached = await this.apiKeyCache.getApiKey(key);
         let apiKey = cached;
+        let leaseToken: string | null = null;
         if (!apiKey) {
+            // Sequential by design: the lease is taken before the read it guards
+            leaseToken = await this.apiKeyCache.takeApiKeyLease(key);
             const found = await this.apiKeyRepository.findOneByKey(key);
             apiKey = found;
         }
@@ -242,8 +245,8 @@ export class ApiKeyDomain {
             throw new ApiKeyExpiredException();
         }
 
-        if (!cached) {
-            await this.apiKeyCache.setApiKey(apiKey);
+        if (leaseToken !== null) {
+            await this.apiKeyCache.setApiKey(apiKey, leaseToken);
         }
 
         return apiKey;

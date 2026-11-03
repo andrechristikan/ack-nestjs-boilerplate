@@ -240,7 +240,6 @@ export interface IUserGeneratePhotoProfile {
 
 export interface IUserUpdatePhotoProfile {
     key: string;
-    size: number;
 }
 
 export type IUserMobileNumberSummary = Prisma.UserMobileNumberGetPayload<{
@@ -327,6 +326,11 @@ export interface IUserTwoFactorVerifyInput {
 export interface IUserTwoFactorVerifyResult {
     method: EnumAuthTwoFactorMethod;
     newBackupCodes: string[] | null;
+}
+
+export interface IUserTwoFactorChecked {
+    verified: IUserTwoFactorVerifyResult;
+    totpStep: number | null;
 }
 
 interface IUserLoginTwoFactorChallengeBase {

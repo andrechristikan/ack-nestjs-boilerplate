@@ -7,7 +7,7 @@ import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/use
  * @public
  */
 export const UserLoginSetupTwoFactorRequestSchema =
-    UserTwoFactorEnableRequestSchema.extend({
+    UserTwoFactorEnableRequestSchema.omit({ password: true }).extend({
         challengeToken:
             UserLoginVerifyTwoFactorRequestSchema.shape.challengeToken,
     });

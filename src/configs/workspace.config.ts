@@ -12,6 +12,8 @@ export interface IConfigWorkspace {
         tokenLength: number;
         referencePrefix: string;
         referenceRandomLength: number;
+        referenceMaxAttempts: number;
+        expireChunkSize: number;
         linkPattern: string;
         signUpLinkPattern: string;
         expirySweepCron: string;
@@ -33,6 +35,8 @@ export default registerAs('workspace', (): IConfigWorkspace => ({
         tokenLength: 100,
         referencePrefix: 'WIN',
         referenceRandomLength: 25,
+        referenceMaxAttempts: 5,
+        expireChunkSize: 100,
         linkPattern: '{homeUrl}/workspace/invites?inviteToken={token}',
         signUpLinkPattern: '{homeUrl}/sign-up?inviteToken={token}',
         expirySweepCron: '0 0 * * *',

@@ -144,6 +144,24 @@ describe('UserMobileNumberHttpService', () => {
             ).toHaveBeenCalledTimes(1);
         });
 
+        it('prepares the activity row before it reads the country and the duplicate number', async () => {
+            countryDomain.getOne.mockImplementation(async () => {
+                expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                    action: EnumActivityLogAction.userAddMobileNumber,
+                });
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+
+                return mobileNumber.country;
+            });
+            userMobileNumberDomain.addMobileNumber.mockResolvedValue(
+                mobileNumber
+            );
+
+            await service.addMobileNumber('user-swift', dto);
+
+            expect(countryDomain.getOne).toHaveBeenCalledTimes(1);
+        });
+
         it('writes and stages nothing when the country is missing', async () => {
             countryDomain.getOne.mockRejectedValue(
                 new CountryNotFoundException()
@@ -240,6 +258,34 @@ describe('UserMobileNumberHttpService', () => {
 
             expect(
                 userMobileNumberDomain.updateMobileNumber
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('prepares the activity row before it reads the stored mobile number', async () => {
+            userMobileNumberDomain.getOneMobileNumber.mockImplementation(
+                async () => {
+                    expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                        action: EnumActivityLogAction.userUpdateMobileNumber,
+                    });
+                    expect(
+                        activityLogDomain.stagePrepared
+                    ).not.toHaveBeenCalled();
+
+                    return mobileNumber;
+                }
+            );
+            userMobileNumberDomain.updateMobileNumber.mockResolvedValue(
+                mobileNumber
+            );
+
+            await service.updateMobileNumber(
+                'user-swift',
+                mobileNumber.id,
+                dto
+            );
+
+            expect(
+                userMobileNumberDomain.getOneMobileNumber
             ).toHaveBeenCalledTimes(1);
         });
 

@@ -1,13 +1,16 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -27,6 +30,7 @@ import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enu
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceInvitePendingKeyPattern } from '@modules/workspace/constants/workspace.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
@@ -34,6 +38,7 @@ import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/w
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
+import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import type {
     IWorkspaceInviteCreate,
     IWorkspaceInviteTokenData,
@@ -55,6 +60,16 @@ describe('WorkspaceInviteDomain', () => {
         mock<HelperDateService>();
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configGet = vi.fn<(key: string) => unknown>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+
+    const configValues: Record<string, unknown> = {
+        'workspace.invite.referenceMaxAttempts': 5,
+    };
 
     const workspace: Workspace = {
         id: 'workspace-1',
@@ -88,6 +103,7 @@ describe('WorkspaceInviteDomain', () => {
         invitedByUserId: 'user-1',
         acceptedAt: null,
         acceptedByUserId: null,
+        pendingKey: 'workspace-1:invitee@example.com',
     };
 
     const baseProject: Project = {
@@ -126,6 +142,10 @@ describe('WorkspaceInviteDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => configValues[key]);
+        helperStringService.fillPattern.mockReturnValue(
+            'workspace-1:invitee@example.com'
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -143,6 +163,8 @@ describe('WorkspaceInviteDomain', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: HelperHashService, useValue: helperHashService },
+                { provide: HelperStringService, useValue: helperStringService },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
@@ -269,7 +291,7 @@ describe('WorkspaceInviteDomain', () => {
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
         });
 
-        it('throws WorkspaceInviteInvalidException when the user already belongs to the workspace', async () => {
+        it('throws WorkspaceMemberAlreadyExistsException when the user already belongs to the workspace', async () => {
             workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
                 member
             );
@@ -277,10 +299,14 @@ describe('WorkspaceInviteDomain', () => {
             await expect(
                 domain.assertInviteeNotMember('workspace-1', 'user-2')
             ).rejects.toMatchObject({
-                constructor: WorkspaceInviteInvalidException,
+                constructor: WorkspaceMemberAlreadyExistsException,
                 module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                messagePath: 'workspace.error.inviteInvalid',
+                statusCode: EnumWorkspaceStatusCodeError.memberAlreadyExists,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.memberAlreadyExists
+                    ],
+                messagePath: 'workspace.error.memberAlreadyExists',
             });
         });
     });
@@ -295,15 +321,27 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
-    describe('expirePendingByWorkspaceInTx', () => {
-        it('expires the pending invites of the workspace on the given transaction', async () => {
+    describe('revokePendingByWorkspaceInTx', () => {
+        it('revokes the pending invites of the workspace on the given transaction', async () => {
             const tx = {} as IDatabaseTransactionClient;
 
-            await domain.expirePendingByWorkspaceInTx(tx, 'workspace-1');
+            await domain.revokePendingByWorkspaceInTx(tx, 'workspace-1');
 
             expect(
-                workspaceInviteRepository.expirePendingByWorkspaceInTx
+                workspaceInviteRepository.revokePendingByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1');
+        });
+    });
+
+    describe('clearProjectInTx', () => {
+        it('clears the project from the pending invites on the given transaction', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+
+            await domain.clearProjectInTx(tx, 'project-1');
+
+            expect(
+                workspaceInviteRepository.clearProjectInTx
+            ).toHaveBeenCalledWith(tx, 'project-1');
         });
     });
 
@@ -400,24 +438,6 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
-    describe('existsPendingByEmail', () => {
-        it('delegates the pending-invite existence read to the repository', async () => {
-            workspaceInviteRepository.existsPendingByWorkspaceAndEmail.mockResolvedValue(
-                true
-            );
-
-            await expect(
-                domain.existsPendingByEmail(
-                    'workspace-1',
-                    'invitee@example.com'
-                )
-            ).resolves.toBe(true);
-            expect(
-                workspaceInviteRepository.existsPendingByWorkspaceAndEmail
-            ).toHaveBeenCalledWith('workspace-1', 'invitee@example.com');
-        });
-    });
-
     describe('assertCreatable', () => {
         const pairedCreate = {
             ...baseCreate,
@@ -426,9 +446,7 @@ describe('WorkspaceInviteDomain', () => {
         };
 
         it('throws WorkspaceInviteProjectMismatchException when the project is not active in the workspace', () => {
-            expect(() =>
-                domain.assertCreatable(pairedCreate, null, true)
-            ).toThrow(
+            expect(() => domain.assertCreatable(pairedCreate, null)).toThrow(
                 expect.objectContaining({
                     constructor: WorkspaceInviteProjectMismatchException,
                     module: 'workspace',
@@ -443,55 +461,54 @@ describe('WorkspaceInviteDomain', () => {
             );
         });
 
-        it('throws WorkspaceInviteDuplicateException when a pending invite already exists', () => {
+        it('passes when no project is requested', () => {
             expect(() =>
-                domain.assertCreatable(baseCreate, null, true)
-            ).toThrow(
-                expect.objectContaining({
-                    constructor: WorkspaceInviteDuplicateException,
-                    module: 'workspace',
-                    statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
-                    statusCodeKey:
-                        EnumWorkspaceStatusCodeError[
-                            EnumWorkspaceStatusCodeError.inviteDuplicate
-                        ],
-                    messagePath: 'workspace.error.inviteDuplicate',
-                })
-            );
-        });
-
-        it('passes when no project is requested and no invite is pending', () => {
-            expect(() =>
-                domain.assertCreatable(baseCreate, null, false)
+                domain.assertCreatable(baseCreate, null)
             ).not.toThrow();
         });
 
         it('passes when the requested project is active in the workspace', () => {
             expect(() =>
-                domain.assertCreatable(pairedCreate, baseProject, false)
+                domain.assertCreatable(pairedCreate, baseProject)
             ).not.toThrow();
         });
     });
 
     describe('createInvite', () => {
-        it('creates the pending invite from the token data under a fresh id', async () => {
+        const pendingKeyCollision = new Error('pendingKey');
+        const tokenCollision = new Error('token');
+        const referenceCollision = new Error('reference');
+        const retriedTokenData: IWorkspaceInviteTokenData = {
+            ...tokenData,
+            hashedToken: 'hashed-token-2',
+            reference: 'WIN-def456',
+        };
+
+        beforeEach(() => {
             databaseUtil.createId.mockReturnValue('invite-new');
+            workspaceUtil.createInviteTokenData.mockReturnValue(tokenData);
+        });
+
+        it('draws the token data and creates the pending invite keyed by workspace and email', async () => {
             workspaceInviteRepository.createPending.mockResolvedValue(
                 baseInvite
             );
 
-            const result = await domain.createInvite(
-                'workspace-1',
-                'user-1',
-                {
-                    ...baseCreate,
-                    projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
-                },
-                tokenData
-            );
+            const result = await domain.createInvite('workspace-1', 'user-1', {
+                ...baseCreate,
+                projectId: 'project-1',
+                projectRole: EnumProjectMemberRole.member,
+                expiryDuration: 14,
+            });
 
-            expect(result).toBe(baseInvite);
+            expect(result).toEqual({ invite: baseInvite, tokenData });
+            expect(workspaceUtil.createInviteTokenData).toHaveBeenCalledWith(
+                14
+            );
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                WorkspaceInvitePendingKeyPattern,
+                { workspaceId: 'workspace-1', email: 'invitee@example.com' }
+            );
             expect(
                 workspaceInviteRepository.createPending
             ).toHaveBeenCalledWith({
@@ -505,7 +522,132 @@ describe('WorkspaceInviteDomain', () => {
                 reference: 'WIN-abc123',
                 expiredAt: tokenData.expiredAt,
                 invitedByUserId: 'user-1',
+                pendingKey: 'workspace-1:invitee@example.com',
             });
+        });
+
+        it('throws WorkspaceInviteDuplicateException when the pending key collides', async () => {
+            workspaceInviteRepository.createPending.mockRejectedValue(
+                pendingKeyCollision
+            );
+            databaseUtil.isUniqueCollision.mockImplementation(
+                (_error, target) => target === 'pendingKey'
+            );
+
+            await expect(
+                domain.createInvite('workspace-1', 'user-1', baseCreate)
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteDuplicateException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.inviteDuplicate
+                    ],
+                messagePath: 'workspace.error.inviteDuplicate',
+            });
+            expect(
+                workspaceInviteRepository.createPending
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('draws a fresh token and retries when the token collides, returning the stored token data', async () => {
+            workspaceUtil.createInviteTokenData
+                .mockReturnValueOnce(tokenData)
+                .mockReturnValueOnce(retriedTokenData);
+            workspaceInviteRepository.createPending
+                .mockRejectedValueOnce(tokenCollision)
+                .mockResolvedValueOnce(baseInvite);
+            databaseUtil.isUniqueCollision.mockImplementation(
+                (_error, target) => target === 'token'
+            );
+
+            const result = await domain.createInvite(
+                'workspace-1',
+                'user-1',
+                baseCreate
+            );
+
+            expect(result).toEqual({
+                invite: baseInvite,
+                tokenData: retriedTokenData,
+            });
+            expect(
+                workspaceInviteRepository.createPending
+            ).toHaveBeenNthCalledWith(
+                2,
+                expect.objectContaining({
+                    hashedToken: 'hashed-token-2',
+                    reference: 'WIN-def456',
+                })
+            );
+        });
+
+        it('draws a fresh reference and retries when the reference collides', async () => {
+            workspaceUtil.createInviteTokenData
+                .mockReturnValueOnce(tokenData)
+                .mockReturnValueOnce(retriedTokenData);
+            workspaceInviteRepository.createPending
+                .mockRejectedValueOnce(referenceCollision)
+                .mockResolvedValueOnce(baseInvite);
+            databaseUtil.isUniqueCollision.mockImplementation(
+                (_error, target) => target === 'reference'
+            );
+
+            const result = await domain.createInvite(
+                'workspace-1',
+                'user-1',
+                baseCreate
+            );
+
+            expect(result.tokenData).toBe(retriedTokenData);
+            expect(
+                workspaceInviteRepository.createPending
+            ).toHaveBeenCalledTimes(2);
+        });
+
+        it('throws DatabaseUniqueValueGenerationFailedException once the attempt budget is spent', async () => {
+            workspaceInviteRepository.createPending.mockRejectedValue(
+                tokenCollision
+            );
+            databaseUtil.isUniqueCollision.mockImplementation(
+                (_error, target) => target === 'token'
+            );
+
+            await expect(
+                domain.createInvite('workspace-1', 'user-1', baseCreate)
+            ).rejects.toBeInstanceOf(
+                DatabaseUniqueValueGenerationFailedException
+            );
+            expect(
+                workspaceInviteRepository.createPending
+            ).toHaveBeenCalledTimes(5);
+        });
+
+        it('rethrows an application exception unchanged', async () => {
+            const failure = new WorkspaceInviteInvalidException();
+            workspaceInviteRepository.createPending.mockRejectedValue(failure);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                domain.createInvite('workspace-1', 'user-1', baseCreate)
+            ).rejects.toBe(failure);
+        });
+
+        it('wraps another failure in AppUnknownException without retrying', async () => {
+            const cause = new Error('db-down');
+            workspaceInviteRepository.createPending.mockRejectedValue(cause);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                domain.createInvite('workspace-1', 'user-1', baseCreate)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
+            expect(
+                workspaceInviteRepository.createPending
+            ).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -563,14 +705,27 @@ describe('WorkspaceInviteDomain', () => {
     });
 
     describe('resendInvite', () => {
-        it('rotates the token and returns the rotated invite', async () => {
+        const retriedTokenData: IWorkspaceInviteTokenData = {
+            ...tokenData,
+            hashedToken: 'hashed-token-2',
+            reference: 'WIN-def456',
+        };
+
+        beforeEach(() => {
+            workspaceUtil.createInviteTokenData.mockReturnValue(tokenData);
+        });
+
+        it('draws the token data, rotates the token, and returns the rotated invite with the stored token data', async () => {
             workspaceInviteRepository.rotateForResend.mockResolvedValue(
                 baseInvite
             );
 
-            const result = await domain.resendInvite('invite-1', tokenData);
+            const result = await domain.resendInvite('invite-1', 14);
 
-            expect(result).toBe(baseInvite);
+            expect(result).toEqual({ invite: baseInvite, tokenData });
+            expect(workspaceUtil.createInviteTokenData).toHaveBeenCalledWith(
+                14
+            );
             expect(
                 workspaceInviteRepository.rotateForResend
             ).toHaveBeenCalledWith(
@@ -585,7 +740,7 @@ describe('WorkspaceInviteDomain', () => {
             workspaceInviteRepository.rotateForResend.mockResolvedValue(null);
 
             await expect(
-                domain.resendInvite('invite-1', tokenData)
+                domain.resendInvite('invite-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
@@ -594,17 +749,65 @@ describe('WorkspaceInviteDomain', () => {
             });
         });
 
+        it('draws a fresh token and retries when the token or reference collides, returning the stored token data', async () => {
+            const collision = new Error('token');
+            workspaceUtil.createInviteTokenData
+                .mockReturnValueOnce(tokenData)
+                .mockReturnValueOnce(retriedTokenData);
+            workspaceInviteRepository.rotateForResend
+                .mockRejectedValueOnce(collision)
+                .mockResolvedValueOnce(baseInvite);
+            databaseUtil.isUniqueCollision.mockImplementation(
+                (_error, target) => target === 'token'
+            );
+
+            const result = await domain.resendInvite('invite-1', null);
+
+            expect(result).toEqual({
+                invite: baseInvite,
+                tokenData: retriedTokenData,
+            });
+            expect(
+                workspaceInviteRepository.rotateForResend
+            ).toHaveBeenNthCalledWith(
+                2,
+                'invite-1',
+                'hashed-token-2',
+                'WIN-def456',
+                tokenData.expiredAt
+            );
+        });
+
+        it('throws DatabaseUniqueValueGenerationFailedException once the attempt budget is spent', async () => {
+            workspaceInviteRepository.rotateForResend.mockRejectedValue(
+                new Error('reference')
+            );
+            databaseUtil.isUniqueCollision.mockImplementation(
+                (_error, target) => target === 'reference'
+            );
+
+            await expect(
+                domain.resendInvite('invite-1', null)
+            ).rejects.toBeInstanceOf(
+                DatabaseUniqueValueGenerationFailedException
+            );
+            expect(
+                workspaceInviteRepository.rotateForResend
+            ).toHaveBeenCalledTimes(5);
+        });
+
         it('maps a write conflict on the rotation to WorkspaceInviteAlreadyProcessedException', async () => {
             const conflict = new Error('conflict');
             workspaceInviteRepository.rotateForResend.mockRejectedValue(
                 conflict
             );
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
 
             await expect(
-                domain.resendInvite('invite-1', tokenData)
+                domain.resendInvite('invite-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
             });
@@ -614,10 +817,11 @@ describe('WorkspaceInviteDomain', () => {
         it('wraps another rotation failure in AppUnknownException', async () => {
             const cause = new Error('db-down');
             workspaceInviteRepository.rotateForResend.mockRejectedValue(cause);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                domain.resendInvite('invite-1', tokenData)
+                domain.resendInvite('invite-1', null)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
@@ -745,7 +949,7 @@ describe('WorkspaceInviteDomain', () => {
             });
         });
 
-        it('creates the workspace membership, then accepts the invite on the same transaction', async () => {
+        it('accepts the invite, then creates the workspace membership on the same transaction', async () => {
             await domain.acceptOnSignUpInTx(tx, 'user-2', inviteContext);
 
             expect(workspaceMemberDomain.createInTx).toHaveBeenCalledWith(
@@ -761,8 +965,8 @@ describe('WorkspaceInviteDomain', () => {
                 'user-2',
                 new Date('2026-01-01T00:00:00.000Z')
             );
-            expect(workspaceMemberDomain.createInTx).toHaveBeenCalledBefore(
-                workspaceInviteRepository.acceptInTx
+            expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledBefore(
+                workspaceMemberDomain.createInTx
             );
         });
     });

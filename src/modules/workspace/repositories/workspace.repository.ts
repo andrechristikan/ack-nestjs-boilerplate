@@ -9,7 +9,10 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumWorkspaceMemberRole,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type {
@@ -57,21 +60,18 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    /** Counts slug holders across ALL rows including soft-deleted ones, matching the unique index, which has no `deletedAt` component. */
-    async existsBySlug(
-        slug: string,
-        excludeWorkspaceId?: string
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.workspace.count({
+    async countByOwnerInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        return tx.workspace.count({
             where: {
-                slug,
-                ...(excludeWorkspaceId
-                    ? { id: { not: excludeWorkspaceId } }
-                    : {}),
+                OR: WorkspaceActiveFilter,
+                members: {
+                    some: { userId, role: EnumWorkspaceMemberRole.owner },
+                },
             },
         });
-
-        return count > 0;
     }
 
     async findWithPaginationCursorByMember(
@@ -177,5 +177,34 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                 deletedAt,
             },
         });
+    }
+
+    async softDeleteSolelyOwnedByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deletedAt: Date
+    ): Promise<string[]> {
+        const where: Prisma.WorkspaceWhereInput = {
+            OR: WorkspaceActiveFilter,
+            members: {
+                some: { userId, role: EnumWorkspaceMemberRole.owner },
+                none: {
+                    userId: { not: userId },
+                    role: EnumWorkspaceMemberRole.owner,
+                },
+            },
+        };
+        const workspaces = await tx.workspace.findMany({
+            where,
+            select: { id: true },
+        });
+        const workspaceIds = workspaces.map(({ id }) => id);
+
+        await tx.workspace.updateMany({
+            where: { id: { in: workspaceIds } },
+            data: { deletedAt, deletedBy: userId },
+        });
+
+        return workspaceIds;
     }
 }

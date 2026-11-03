@@ -17,7 +17,6 @@ export class HelloPublicController {
 
     @Doc({ summary: 'hello test api' })
     @Response('hello.hello', {
-        cache: true,
         schema: HelloResponseSchema,
     })
     @Get('/')

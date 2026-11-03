@@ -12,6 +12,18 @@ export class SessionAnalyticDomain {
         private readonly sessionAnalyticRepository: SessionAnalyticRepository
     ) {}
 
+    getActiveInRange(
+        startDate: Date | null,
+        endDate: Date | null,
+        now: Date
+    ): Promise<ISessionAnalyticSession[]> {
+        return this.sessionAnalyticRepository.findActiveInRange(
+            startDate,
+            endDate,
+            now
+        );
+    }
+
     getActiveWithGeoInRange(
         startDate: Date | null,
         endDate: Date | null,

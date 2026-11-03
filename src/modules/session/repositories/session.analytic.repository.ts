@@ -1,5 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { SessionAnalyticSelect } from '@modules/session/constants/session.constant';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import type { ISessionAnalyticRepository } from '@modules/session/interfaces/session.analytic-repository.interface';
 import type {
@@ -7,33 +8,55 @@ import type {
     ISessionAnalyticUserCount,
 } from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class SessionAnalyticRepository implements ISessionAnalyticRepository {
     constructor(private readonly databaseService: DatabaseService) {}
+
+    private buildActiveWhere(
+        startDate: Date | null,
+        endDate: Date | null,
+        now: Date
+    ): Prisma.SessionWhereInput {
+        return {
+            isRevoked: false,
+            expiredAt: { gt: now },
+            ...(startDate &&
+                endDate && { createdAt: { gte: startDate, lt: endDate } }),
+        };
+    }
+
+    async findActiveInRange(
+        startDate: Date | null,
+        endDate: Date | null,
+        now: Date
+    ): Promise<ISessionAnalyticSession[]> {
+        const where = this.buildActiveWhere(startDate, endDate, now);
+
+        return this.databaseService.client.session.findMany({
+            where,
+            select: SessionAnalyticSelect,
+            orderBy: [
+                { userId: EnumPaginationOrderDirectionType.asc },
+                { createdAt: EnumPaginationOrderDirectionType.asc },
+            ],
+        });
+    }
 
     async findActiveWithGeoInRange(
         startDate: Date | null,
         endDate: Date | null,
         now: Date
     ): Promise<ISessionAnalyticSession[]> {
+        const activeWhere = this.buildActiveWhere(startDate, endDate, now);
+
         return this.databaseService.client.session.findMany({
             where: {
-                isRevoked: false,
-                expiredAt: { gt: now },
+                ...activeWhere,
                 geoLocation: { isSet: true },
-                ...(startDate && endDate
-                    ? { createdAt: { gte: startDate, lt: endDate } }
-                    : {}),
             },
-            select: {
-                id: true,
-                userId: true,
-                ipAddress: true,
-                createdAt: true,
-                geoLocation: true,
-                userAgent: true,
-            },
+            select: SessionAnalyticSelect,
             orderBy: [
                 { userId: EnumPaginationOrderDirectionType.asc },
                 { createdAt: EnumPaginationOrderDirectionType.asc },

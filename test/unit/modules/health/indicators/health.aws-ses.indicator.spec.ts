@@ -68,11 +68,11 @@ describe('HealthAwsSESIndicator', () => {
 
             expect(result).toEqual({ ses: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
-                'HealthAwsSESIndicator Failed - Connection to AWS SES failed'
+                'AWS SES connection failed'
             );
         });
 
-        it('reports down with the error message when the connection check throws an Error', async () => {
+        it('reports down with a fixed message when the connection check throws an Error', async () => {
             awsSESService.isInitialized.mockReturnValue(true);
             awsSESService.checkConnection.mockRejectedValue(
                 new Error('SES unreachable')
@@ -83,11 +83,11 @@ describe('HealthAwsSESIndicator', () => {
 
             expect(result).toEqual({ ses: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
-                'HealthAwsSESIndicator Failed - SES unreachable'
+                'AWS SES connection failed'
             );
         });
 
-        it('reports down with an unknown-error message when a non-Error is thrown', async () => {
+        it('reports down with the same fixed message when a non-Error is thrown', async () => {
             awsSESService.isInitialized.mockReturnValue(true);
             awsSESService.checkConnection.mockRejectedValue('not-an-error');
             session.down.mockReturnValue({ ses: { status: 'down' } });
@@ -96,7 +96,7 @@ describe('HealthAwsSESIndicator', () => {
 
             expect(result).toEqual({ ses: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
-                'HealthAwsSESIndicator Failed - Unknown error'
+                'AWS SES connection failed'
             );
         });
     });

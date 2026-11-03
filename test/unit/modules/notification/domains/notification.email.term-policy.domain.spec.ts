@@ -5,7 +5,6 @@ import type { SendBulkTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
@@ -583,7 +582,7 @@ describe('NotificationEmailTermPolicyDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('releases the rejected recipient and wraps the mark error in AppUnknownException when the mark fails', async () => {
+        it('releases the rejected recipient and throws the unknown-delivery exception chaining the mark error when the mark fails', async () => {
             notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
                 'user-1',
                 'user-2',
@@ -608,7 +607,9 @@ describe('NotificationEmailTermPolicyDomain', () => {
                     recipients
                 )
             ).rejects.toMatchObject({
-                constructor: AppUnknownException,
+                constructor: NotificationEmailDeliveryUnknownException,
+                batchId,
+                unknownCount: 1,
                 rawError: error,
             });
             expect(
@@ -616,7 +617,7 @@ describe('NotificationEmailTermPolicyDomain', () => {
             ).toHaveBeenCalledWith(claimNonce, ['user-2'], proceedBy);
         });
 
-        it('marks the delivered recipient and wraps the release error in AppUnknownException when the release fails', async () => {
+        it('marks the delivered recipient and throws the unknown-delivery exception chaining the release error when the release fails', async () => {
             notificationRepository.claimTermPolicyRecipients.mockResolvedValue([
                 'user-1',
                 'user-2',
@@ -641,7 +642,9 @@ describe('NotificationEmailTermPolicyDomain', () => {
                     recipients
                 )
             ).rejects.toMatchObject({
-                constructor: AppUnknownException,
+                constructor: NotificationEmailDeliveryUnknownException,
+                batchId,
+                unknownCount: 1,
                 rawError: error,
             });
             expect(

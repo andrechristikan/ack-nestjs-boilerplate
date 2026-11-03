@@ -17,7 +17,7 @@ import type {
 export interface IUserAnalyticRepository {
     countRegistrations(startDate: Date, endDate: Date): Promise<number>;
     countDeletedInRange(startDate: Date, endDate: Date): Promise<number>;
-    countRegisteredUntil(endDate: Date): Promise<number>;
+    countAliveAt(date: Date): Promise<number>;
     countByStatus(status: EnumUserStatus): Promise<number>;
     groupBySignUpWith(
         startDate: Date | null,
@@ -44,7 +44,11 @@ export interface IUserAnalyticRepository {
     ): Promise<number>;
     countActive(): Promise<number>;
     countPasswordExpired(now: Date): Promise<number>;
-    findNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]>;
+    findNearLockout(
+        minAttempt: number,
+        limit: number
+    ): Promise<IAnalyticNearLockout[]>;
+    countNearLockout(minAttempt: number): Promise<number>;
     groupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]>;
     findOneById(id: string): Promise<IUserAnalyticRef | null>;
     findManyByIds(ids: string[]): Promise<IUserAnalyticRef[]>;

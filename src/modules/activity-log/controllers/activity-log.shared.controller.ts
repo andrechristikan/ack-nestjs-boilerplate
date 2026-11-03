@@ -40,9 +40,9 @@ export class ActivityLogSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async listSelf(
         @Query({ schema: ActivityLogSharedListRequestSchema })
@@ -61,9 +61,9 @@ export class ActivityLogSharedController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/list')
     async listSelfByWorkspace(
         @Query({ schema: ActivityLogSharedListRequestSchema })

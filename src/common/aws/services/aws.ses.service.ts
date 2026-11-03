@@ -288,7 +288,7 @@ export class AwsSESService implements OnModuleInit {
                 },
                 Source: sender,
                 ...(this.identityArn ? { SourceArn: this.identityArn } : {}),
-                TemplateData: JSON.stringify(templateData ?? ''),
+                TemplateData: JSON.stringify(templateData ?? {}),
                 ReplyToAddresses: [replyTo ?? sender],
             });
 
@@ -332,7 +332,7 @@ export class AwsSESService implements OnModuleInit {
                         CcAddresses: cc ?? [],
                     },
                     ReplacementTemplateData: JSON.stringify(
-                        e.templateData ?? ''
+                        e.templateData ?? {}
                     ),
                 })),
                 Source: sender,

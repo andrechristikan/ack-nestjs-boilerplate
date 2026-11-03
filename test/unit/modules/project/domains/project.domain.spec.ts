@@ -9,7 +9,8 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumWorkspaceMemberRole,
     Prisma,
@@ -29,8 +30,7 @@ describe('ProjectDomain', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let domain: ProjectDomain;
 
     const baseProject: Project = {
@@ -67,7 +67,7 @@ describe('ProjectDomain', () => {
                 ProjectDomain,
                 { provide: ProjectRepository, useValue: projectRepository },
                 { provide: ProjectUtil, useValue: projectUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         domain = module.get(ProjectDomain);
@@ -287,15 +287,15 @@ describe('ProjectDomain', () => {
             expect(projectUtil.isSlugAllowed).toHaveBeenCalledWith(
                 'invalid slug!'
             );
-            expect(
-                projectRepository.existsBySlugInWorkspace
-            ).not.toHaveBeenCalled();
+            expect(projectRepository.updateSlug).not.toHaveBeenCalled();
         });
 
-        it('throws ProjectSlugAlreadyExistsException when the slug is taken in the workspace', async () => {
+        it('throws ProjectSlugAlreadyExistsException when the write collides on the slug index', async () => {
             const project = baseProject;
+            const collision = new Error('slug collision');
             projectUtil.isSlugAllowed.mockReturnValue(true);
-            projectRepository.existsBySlugInWorkspace.mockResolvedValue(true);
+            projectRepository.updateSlug.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 domain.updateProjectSlug(project, 'p-taken')
@@ -308,16 +308,31 @@ describe('ProjectDomain', () => {
                     ],
                 messagePath: 'project.error.slugAlreadyExists',
             });
-            expect(
-                projectRepository.existsBySlugInWorkspace
-            ).toHaveBeenCalledWith(project.workspaceId, 'p-taken', project.id);
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'slug'
+            );
         });
 
-        it('updates the slug when it is allowed and free', async () => {
+        it('wraps a non-collision write error in AppUnknownException', async () => {
+            const project = baseProject;
+            const otherError = new Error('unexpected');
+            projectUtil.isSlugAllowed.mockReturnValue(true);
+            projectRepository.updateSlug.mockRejectedValue(otherError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                domain.updateProjectSlug(project, 'p-new-slug')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
+        });
+
+        it('updates the slug when it is allowed', async () => {
             const project = baseProject;
             const updated = { ...baseProject, slug: 'p-new-slug' };
             projectUtil.isSlugAllowed.mockReturnValue(true);
-            projectRepository.existsBySlugInWorkspace.mockResolvedValue(false);
             projectRepository.updateSlug.mockResolvedValue(updated);
 
             const result = await domain.updateProjectSlug(
@@ -333,16 +348,17 @@ describe('ProjectDomain', () => {
         });
     });
 
-    describe('softDeleteProject', () => {
-        it('soft-deletes the project at the current date', async () => {
-            const project = baseProject;
+    describe('softDeleteProjectInTx', () => {
+        it('soft-deletes the project on the given transaction', async () => {
+            const tx: MockProxy<IDatabaseTransactionClient> =
+                mock<IDatabaseTransactionClient>();
             const deletedAt = new Date('2026-02-01T00:00:00.000Z');
-            helperDateService.create.mockReturnValue(deletedAt);
 
-            await domain.softDeleteProject(project);
+            await domain.softDeleteProjectInTx(tx, baseProject, deletedAt);
 
-            expect(projectRepository.softDelete).toHaveBeenCalledWith(
-                project.id,
+            expect(projectRepository.softDeleteInTx).toHaveBeenCalledWith(
+                tx,
+                baseProject.id,
                 deletedAt
             );
         });

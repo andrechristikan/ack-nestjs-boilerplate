@@ -4,9 +4,13 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
-import type { ITermPolicyDeleteContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyCopyContentPayload,
+    ITermPolicyDeleteContentPayload,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyProcessorService } from '@modules/term-policy/services/processor/term-policy.processor.service';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
+import { QueueException } from '@queues/exceptions/queue.exception';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('TermPolicyProcessorService', () => {
@@ -62,6 +66,53 @@ describe('TermPolicyProcessorService', () => {
             >(payload);
 
             const rejection = service.processDeleteContent(job);
+
+            await expect(rejection).rejects.toBe(failure);
+        });
+    });
+
+    describe('processCopyContent', () => {
+        const copyPayload: ITermPolicyCopyContentPayload = {
+            termPolicyId: 'term-policy-1',
+            contents: [],
+            destination: 'public/term-policies/privacy/1',
+        };
+
+        it('hands the payload to the term policy domain and reports the destination', async () => {
+            const job = buildQueueJob<
+                ITermPolicyCopyContentPayload,
+                unknown,
+                EnumTermPolicyProcess
+            >(copyPayload);
+
+            const result = await service.processCopyContent(job);
+
+            expect(termPolicyDomain.copyContent).toHaveBeenCalledWith(
+                copyPayload
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'termPolicy.queue.copyContent',
+                { properties: { termPolicyId: 'term-policy-1' } }
+            );
+            expect(result).toEqual({
+                message: 'termPolicy.queue.copyContent',
+                destination: 'public/term-policies/privacy/1',
+            });
+        });
+
+        it('rethrows the domain QueueException so BullMQ retries the job', async () => {
+            const failure = new QueueException(
+                'termPolicy.queue.error.copyContent',
+                true
+            );
+            termPolicyDomain.copyContent.mockRejectedValue(failure);
+            const job = buildQueueJob<
+                ITermPolicyCopyContentPayload,
+                unknown,
+                EnumTermPolicyProcess
+            >(copyPayload);
+
+            const rejection = service.processCopyContent(job);
 
             await expect(rejection).rejects.toBe(failure);
         });

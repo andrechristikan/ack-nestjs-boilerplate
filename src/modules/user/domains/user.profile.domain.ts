@@ -1,5 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { NotFound } from '@aws-sdk/client-s3';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type {
@@ -40,7 +42,8 @@ export class UserProfileDomain {
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
-        private readonly userQueue: UserQueue
+        private readonly userQueue: UserQueue,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     private async deletePreviousPhoto(
@@ -158,31 +161,25 @@ export class UserProfileDomain {
 
     async updatePhotoProfile(
         userId: string,
-        { key, size }: IUserUpdatePhotoProfile
+        { key }: IUserUpdatePhotoProfile
     ): Promise<void> {
-        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(size);
-        if (!isSizeAllowed) {
-            throw new UserPhotoSizeExceededException();
-        }
-
-        const isS3Initialized = this.awsS3Service.isInitialized();
-        if (!isS3Initialized) {
-            throw new AwsS3NotConfiguredException();
-        }
-
         const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, key);
         if (!isOwned) {
             throw new UserPhotoKeyInvalidException();
         }
 
         try {
-            const aws: IAwsS3 = this.awsS3Service.mapPresign(
-                {
-                    key,
-                    size,
-                },
-                { access: EnumAwsS3Accessibility.public }
-            );
+            const aws: IAwsS3 | null = await this.awsS3Service.checkItem(key, {
+                access: EnumAwsS3Accessibility.public,
+            });
+            if (!aws) {
+                throw new AwsS3NotConfiguredException();
+            }
+
+            const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(aws.size);
+            if (!isSizeAllowed) {
+                throw new UserPhotoSizeExceededException();
+            }
 
             // Sequential by design: gate before the work it guards
             const user = await this.userRepository.findOneById(userId);
@@ -198,6 +195,8 @@ export class UserProfileDomain {
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            } else if (err instanceof NotFound) {
+                throw new UserPhotoKeyInvalidException();
             }
 
             throw new AppUnknownException(err);
@@ -290,6 +289,14 @@ export class UserProfileDomain {
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const isUsernameCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'username'
+            );
+            if (isUsernameCollision) {
+                throw new UserUsernameExistException();
             }
 
             throw new AppUnknownException(err);

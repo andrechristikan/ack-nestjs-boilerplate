@@ -19,7 +19,8 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { FileService } from '@common/file/services/file.service';
+import { MessageService } from '@common/message/services/message.service';
+import { QueueException } from '@queues/exceptions/queue.exception';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
@@ -36,7 +37,10 @@ import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/ter
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyContent,
+    ITermPolicyContentUpload,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -46,7 +50,7 @@ describe('TermPolicyDomain', () => {
         mock<TermPolicyRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
-    const fileService: MockProxy<FileService> = mock<FileService>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
@@ -90,8 +94,15 @@ describe('TermPolicyDomain', () => {
         contents: [],
     };
 
+    const publicEnKey: ITermPolicyContentUpload = {
+        language: EnumMessageLanguage.en,
+        size: 1024,
+        key: 'public/term-policies/privacy/1/en.hbs',
+    };
+
     const publicEnItem: IAwsS3 = {
         ...contentEn,
+        key: publicEnKey.key,
         access: EnumAwsS3Accessibility.public,
     };
 
@@ -104,6 +115,7 @@ describe('TermPolicyDomain', () => {
         termPolicyQueue.deleteContent.mockResolvedValue();
         termPolicyUtil.toContents.mockReturnValue([contentEn]);
         termPolicyUtil.isContentSizeAllowed.mockReturnValue(true);
+        messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -114,7 +126,7 @@ describe('TermPolicyDomain', () => {
                 },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
-                { provide: FileService, useValue: fileService },
+                { provide: MessageService, useValue: messageService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: TermPolicyQueue, useValue: termPolicyQueue },
@@ -122,59 +134,6 @@ describe('TermPolicyDomain', () => {
         }).compile();
 
         domain = module.get(TermPolicyDomain);
-    });
-
-    describe('mapPublicContent', () => {
-        it('assigns the language of the content matching the filename', () => {
-            const newItem: IAwsS3 = {
-                ...contentEn,
-                access: EnumAwsS3Accessibility.public,
-            };
-            fileService.extractFilenameFromPath.mockImplementation(
-                (path: string) => path.split('/').pop() ?? ''
-            );
-
-            const result = domain.mapPublicContent([newItem], [contentEn]);
-
-            expect(result).toEqual([
-                { ...newItem, language: contentEn.language },
-            ]);
-        });
-
-        it('throws AppUnknownException with a description when a copied item matches no content', () => {
-            const newItem: IAwsS3 = {
-                ...contentEn,
-                key: 'term-policies/privacy/1/fr.hbs',
-                access: EnumAwsS3Accessibility.public,
-            };
-            fileService.extractFilenameFromPath.mockImplementation(
-                (path: string) => path.split('/').pop() ?? ''
-            );
-
-            expect(() =>
-                domain.mapPublicContent([newItem], [contentEn])
-            ).toThrow(
-                expect.objectContaining({
-                    constructor: AppUnknownException,
-                    statusCode: EnumAppStatusCodeError.unknown,
-                    description: `Term policy copy ${newItem.key} matches no content`,
-                })
-            );
-        });
-
-        it('throws AppUnknownException with a description when a content has no copied item', () => {
-            fileService.extractFilenameFromPath.mockImplementation(
-                (path: string) => path.split('/').pop() ?? ''
-            );
-
-            expect(() => domain.mapPublicContent([], [contentEn])).toThrow(
-                expect.objectContaining({
-                    constructor: AppUnknownException,
-                    statusCode: EnumAppStatusCodeError.unknown,
-                    description: `Term policy copy failed for language ${EnumMessageLanguage.en}`,
-                })
-            );
-        });
     });
 
     describe('getListByAdmin', () => {
@@ -579,15 +538,35 @@ describe('TermPolicyDomain', () => {
             });
         });
 
+        it('throws TermPolicyStatusInvalidException and enqueues nothing when the guarded delete removes no row', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
+            termPolicyRepository.deleteDraft.mockResolvedValue(false);
+
+            const promise = domain.deleteByAdmin('term-policy-1');
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyStatusInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.statusInvalid
+                    ],
+                messagePath: 'termPolicy.error.statusInvalid',
+            });
+            expect(termPolicyQueue.deleteContent).not.toHaveBeenCalled();
+        });
+
         it('deletes the draft term policy and enqueues the content delete', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.delete.mockResolvedValue(draftTermPolicy);
+            termPolicyRepository.deleteDraft.mockResolvedValue(true);
 
             const result = await domain.deleteByAdmin('term-policy-1');
 
             expect(result).toBe(draftTermPolicy);
-            expect(termPolicyRepository.delete).toHaveBeenCalledWith(
+            expect(termPolicyRepository.deleteDraft).toHaveBeenCalledWith(
                 'term-policy-1'
             );
             expect(termPolicyQueue.deleteContent).toHaveBeenCalledWith(
@@ -598,7 +577,7 @@ describe('TermPolicyDomain', () => {
         it('does not call S3 in the request', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.delete.mockResolvedValue(draftTermPolicy);
+            termPolicyRepository.deleteDraft.mockResolvedValue(true);
 
             await domain.deleteByAdmin('term-policy-1');
 
@@ -609,10 +588,10 @@ describe('TermPolicyDomain', () => {
             const calls: string[] = [];
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.delete.mockImplementation(async () => {
+            termPolicyRepository.deleteDraft.mockImplementation(async () => {
                 calls.push('delete');
 
-                return draftTermPolicy;
+                return true;
             });
             termPolicyQueue.deleteContent.mockImplementation(async () => {
                 calls.push('enqueue');
@@ -626,7 +605,7 @@ describe('TermPolicyDomain', () => {
         it('enqueues nothing when the repository delete rejects', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.delete.mockRejectedValue(
+            termPolicyRepository.deleteDraft.mockRejectedValue(
                 new Error('delete failed')
             );
 
@@ -662,7 +641,7 @@ describe('TermPolicyDomain', () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
             const cause = new Error('delete failed');
-            termPolicyRepository.delete.mockRejectedValue(cause);
+            termPolicyRepository.deleteDraft.mockRejectedValue(cause);
 
             await expect(
                 domain.deleteByAdmin('term-policy-1')
@@ -704,10 +683,10 @@ describe('TermPolicyDomain', () => {
                 termPolicyUtil.getContentPublicPath.mockReturnValue(
                     'public/term-policies/privacy/1'
                 );
-                awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
-                fileService.extractFilenameFromPath.mockImplementation(
-                    (path: string) => path.split('/').pop() ?? ''
-                );
+                termPolicyUtil.mapPublicContentKeys.mockReturnValue([
+                    publicEnKey,
+                ]);
+                awsS3Service.mapPresign.mockReturnValue(publicEnItem);
                 databaseService.withTransaction.mockImplementation(async fn =>
                     fn(tx)
                 );
@@ -839,14 +818,22 @@ describe('TermPolicyDomain', () => {
                 ).toHaveBeenCalled();
             });
 
-            it('publishes the term policy, archives the earlier published versions, and returns the published row', async () => {
+            it('publishes the public keys, archives the earlier published versions, and returns the row with the copy payload', async () => {
                 const result = await domain.publishByAdmin('term-policy-1');
 
-                expect(result).toBe(publishedTermPolicy);
-
-                expect(awsS3Service.copyItems).toHaveBeenCalledWith(
-                    [contentEn],
-                    'public/term-policies/privacy/1',
+                expect(result).toEqual({
+                    termPolicy: publishedTermPolicy,
+                    copy: {
+                        termPolicyId: 'term-policy-1',
+                        contents: [contentEn],
+                        destination: 'public/term-policies/privacy/1',
+                    },
+                });
+                expect(
+                    termPolicyUtil.mapPublicContentKeys
+                ).toHaveBeenCalledWith(draftTermPolicy, [contentEn]);
+                expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
+                    { key: publicEnKey.key, size: 1024 },
                     { access: EnumAwsS3Accessibility.public }
                 );
                 expect(termPolicyRepository.publishInTx).toHaveBeenCalledWith(
@@ -860,6 +847,14 @@ describe('TermPolicyDomain', () => {
                 expect(
                     termPolicyRepository.archivePublishedByTypeInTx
                 ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 1);
+            });
+
+            it('calls no S3 copy or enqueue while publishing', async () => {
+                await domain.publishByAdmin('term-policy-1');
+
+                expect(awsS3Service.copyItems).not.toHaveBeenCalled();
+                expect(awsS3Service.copyItem).not.toHaveBeenCalled();
+                expect(termPolicyQueue.copyContent).not.toHaveBeenCalled();
             });
         });
 
@@ -926,60 +921,13 @@ describe('TermPolicyDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws AppUnknownException and commits nothing when a language copy failed', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentPublicPath.mockReturnValue(
-                'public/term-policies/privacy/1'
-            );
-            awsS3Service.copyItems.mockResolvedValue([]);
-            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
-
-            await expect(
-                domain.publishByAdmin('term-policy-1')
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                statusCode: EnumAppStatusCodeError.unknown,
-                description: `Term policy copy failed for language ${EnumMessageLanguage.en}`,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(termPolicyRepository.publishInTx).not.toHaveBeenCalled();
-            expect(
-                termPolicyRepository.archivePublishedByTypeInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws AppUnknownException and commits nothing when a copied item matches no content', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentPublicPath.mockReturnValue(
-                'public/term-policies/privacy/1'
-            );
-            awsS3Service.copyItems.mockResolvedValue([
-                {
-                    ...publicEnItem,
-                    key: 'public/term-policies/privacy/1/fr.hbs',
-                },
-            ]);
-            fileService.extractFilenameFromPath.mockImplementation(
-                (path: string) => path.split('/').pop() ?? ''
-            );
-
-            await expect(
-                domain.publishByAdmin('term-policy-1')
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                description:
-                    'Term policy copy public/term-policies/privacy/1/fr.hbs matches no content',
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
         it('throws TermPolicyStatusInvalidException when the transaction hits a write conflict', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
-            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
+            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const conflict = new Prisma.PrismaClientKnownRequestError(
                 'write conflict',
                 { code: 'P2034', clientVersion: 'test' }
@@ -1009,8 +957,8 @@ describe('TermPolicyDomain', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
-            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
+            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const cause = new Prisma.PrismaClientKnownRequestError('other', {
                 code: 'P2002',
                 clientVersion: 'test',
@@ -1032,8 +980,8 @@ describe('TermPolicyDomain', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
-            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
+            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const cause = new Prisma.PrismaClientKnownRequestError(
                 'unavailable',
                 { code: 'P2024', clientVersion: 'test' }
@@ -1058,8 +1006,8 @@ describe('TermPolicyDomain', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
-            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
+            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
@@ -1110,8 +1058,8 @@ describe('TermPolicyDomain', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
-            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
+            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const cause = new Error('transaction failed');
             databaseService.withTransaction.mockRejectedValue(cause);
 
@@ -1126,6 +1074,44 @@ describe('TermPolicyDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: cause,
             });
+        });
+    });
+
+    describe('copyContent', () => {
+        it('copies every private content to the public destination', async () => {
+            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
+
+            await domain.copyContent({
+                termPolicyId: 'term-policy-1',
+                contents: [contentEn],
+                destination: 'public/term-policies/privacy/1',
+            });
+
+            expect(awsS3Service.copyItems).toHaveBeenCalledWith(
+                [contentEn],
+                'public/term-policies/privacy/1',
+                { access: EnumAwsS3Accessibility.public }
+            );
+        });
+
+        it('throws a fatal QueueException when a content copy failed', async () => {
+            awsS3Service.copyItems.mockResolvedValue([]);
+
+            await expect(
+                domain.copyContent({
+                    termPolicyId: 'term-policy-1',
+                    contents: [contentEn],
+                    destination: 'public/term-policies/privacy/1',
+                })
+            ).rejects.toMatchObject({
+                constructor: QueueException,
+                message: 'termPolicy.queue.error.copyContent',
+                isFatal: true,
+            });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'termPolicy.queue.error.copyContent',
+                { properties: { termPolicyId: 'term-policy-1' } }
+            );
         });
     });
 

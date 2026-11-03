@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -26,6 +28,7 @@ describe('PolicyDomain', () => {
         mock<PolicyAbilityFactory>();
     const policyRepository: MockProxy<PolicyRepository> =
         mock<PolicyRepository>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let domain: PolicyDomain;
 
@@ -96,6 +99,7 @@ describe('PolicyDomain', () => {
                     useValue: policyAbilityFactory,
                 },
                 { provide: PolicyRepository, useValue: policyRepository },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
@@ -190,8 +194,10 @@ describe('PolicyDomain', () => {
             action: [EnumPolicyAction.manage],
         };
 
-        it('throws PolicyExistException when the role already grants the subject', async () => {
-            policyRepository.existsByRoleIdAndSubject.mockResolvedValue(true);
+        it('throws PolicyExistException when the create collides on the subject index, with no read before the write', async () => {
+            const collision = new Error('subject collision');
+            policyRepository.create.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const promise = domain.createByAdmin('role-1', body);
 
@@ -203,14 +209,26 @@ describe('PolicyDomain', () => {
                 httpStatus: HttpStatus.CONFLICT,
                 messagePath: 'policy.error.exist',
             });
-            expect(
-                policyRepository.existsByRoleIdAndSubject
-            ).toHaveBeenCalledWith('role-1', body.subject);
-            expect(policyRepository.create).not.toHaveBeenCalled();
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'subject'
+            );
+        });
+
+        it('wraps a non-collision create error in AppUnknownException', async () => {
+            const otherError = new Error('unexpected');
+            policyRepository.create.mockRejectedValue(otherError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                domain.createByAdmin('role-1', body)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
         });
 
         it('creates the policy for the role', async () => {
-            policyRepository.existsByRoleIdAndSubject.mockResolvedValue(false);
             policyRepository.create.mockResolvedValue(policy);
 
             const result = await domain.createByAdmin('role-1', body);

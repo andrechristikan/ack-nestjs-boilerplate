@@ -1,20 +1,18 @@
+import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
 import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
 /** Manages the SES templates for the workspace invite and join-request emails. */
 @Injectable()
 export class NotificationTemplateWorkspaceDomain {
-    private readonly logger = new Logger(
-        NotificationTemplateWorkspaceDomain.name
-    );
-
     constructor(private readonly awsSESService: AwsSESService) {}
 
-    async emailImportWorkspaceInvite(): Promise<boolean> {
+    async emailImportWorkspaceInvite(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -27,15 +25,11 @@ export class NotificationTemplateWorkspaceDomain {
                 subject: `Workspace Invitation`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to import workspace invite template'
             );
-
-            return false;
         }
     }
 
@@ -46,30 +40,31 @@ export class NotificationTemplateWorkspaceDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err, 'Failed to get workspace invite template');
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
 
-            return null;
+            throw new AppUnknownException(
+                err,
+                'Failed to get workspace invite template'
+            );
         }
     }
 
-    async emailDeleteWorkspaceInvite(): Promise<boolean> {
+    async emailDeleteWorkspaceInvite(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.workspaceInvite,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to delete workspace invite template'
             );
-
-            return false;
         }
     }
 
-    async emailImportWorkspaceJoinRequest(): Promise<boolean> {
+    async emailImportWorkspaceJoinRequest(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -82,15 +77,11 @@ export class NotificationTemplateWorkspaceDomain {
                 subject: `New Workspace Join Request`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to import workspace join request template'
             );
-
-            return false;
         }
     }
 
@@ -101,33 +92,31 @@ export class NotificationTemplateWorkspaceDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
+
+            throw new AppUnknownException(
                 err,
                 'Failed to get workspace join request template'
             );
-
-            return null;
         }
     }
 
-    async emailDeleteWorkspaceJoinRequest(): Promise<boolean> {
+    async emailDeleteWorkspaceJoinRequest(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.workspaceJoinRequest,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to delete workspace join request template'
             );
-
-            return false;
         }
     }
 
-    async emailImportWorkspaceJoinAccepted(): Promise<boolean> {
+    async emailImportWorkspaceJoinAccepted(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -140,15 +129,11 @@ export class NotificationTemplateWorkspaceDomain {
                 subject: `Workspace Join Request Accepted`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to import workspace join accepted template'
             );
-
-            return false;
         }
     }
 
@@ -159,33 +144,31 @@ export class NotificationTemplateWorkspaceDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
+
+            throw new AppUnknownException(
                 err,
                 'Failed to get workspace join accepted template'
             );
-
-            return null;
         }
     }
 
-    async emailDeleteWorkspaceJoinAccepted(): Promise<boolean> {
+    async emailDeleteWorkspaceJoinAccepted(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.workspaceJoinAccepted,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to delete workspace join accepted template'
             );
-
-            return false;
         }
     }
 
-    async emailImportWorkspaceJoinRejected(): Promise<boolean> {
+    async emailImportWorkspaceJoinRejected(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -198,15 +181,11 @@ export class NotificationTemplateWorkspaceDomain {
                 subject: `Workspace Join Request Rejected`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to import workspace join rejected template'
             );
-
-            return false;
         }
     }
 
@@ -217,29 +196,27 @@ export class NotificationTemplateWorkspaceDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
+
+            throw new AppUnknownException(
                 err,
                 'Failed to get workspace join rejected template'
             );
-
-            return null;
         }
     }
 
-    async emailDeleteWorkspaceJoinRejected(): Promise<boolean> {
+    async emailDeleteWorkspaceJoinRejected(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.workspaceJoinRejected,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to delete workspace join rejected template'
             );
-
-            return false;
         }
     }
 }

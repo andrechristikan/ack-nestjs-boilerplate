@@ -4,6 +4,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import type KeyvRedis from '@keyv/redis';
+import { SessionCacheUpdateLoginScript } from '@modules/session/constants/session.constant';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import type {
     ISessionCache,
@@ -57,64 +58,56 @@ export class SessionCache {
         return cached ?? null;
     }
 
-    /** Stores a login session for the access-token lifetime. */
+    /** Stores a login session for the access-token lifetime; the entry holds the SHA-256 digest of the jti, never the jti. */
     async setLogin(
         userId: string,
         sessionId: string,
         jti: string
     ): Promise<void> {
         const key = this.buildLoginKey(userId, sessionId);
+        const jtiDigest = this.helperHashService.sha256Hash(jti);
         await this.cacheManager.set<ISessionCache>(
             key,
             {
                 userId,
                 sessionId,
-                jti,
+                jti: jtiDigest,
             },
             this.loginTtlInMs
         );
     }
 
-    /** Compare-and-set on the stored jti: rotates it and resets the access-token TTL only while the entry holds the old jti; answers the outcome: updated, absent (no entry, or it expired before the write), or mismatch. */
+    /** Compare-and-set in one Lua script: rotates the stored jti digest and resets the access-token TTL only while the entry holds the old digest; answers the outcome: updated, absent (no entry, or it expired before the write), or mismatch. */
     async updateLogin(
         userId: string,
         sessionId: string,
         oldJti: string,
         newJti: string
     ): Promise<EnumSessionCacheUpdate> {
-        const session = await this.getLogin(userId, sessionId);
-        if (!session) {
-            return EnumSessionCacheUpdate.absent;
-        }
-
-        const storedJtiHash = this.helperHashService.sha256Hash(session.jti);
-        const oldJtiHash = this.helperHashService.sha256Hash(oldJti);
-        const isJtiMatch = this.helperHashService.sha256Compare(
-            storedJtiHash,
-            oldJtiHash
-        );
-        if (!isJtiMatch) {
-            return EnumSessionCacheUpdate.mismatch;
-        }
-
         const store = this.getStore();
         const sessionKey = this.buildLoginKey(userId, sessionId);
         const key = store.createKeyPrefix(sessionKey, store.namespace);
         const now = this.helperDateService.create();
+        const oldJtiDigest = this.helperHashService.sha256Hash(oldJti);
+        const newJtiDigest = this.helperHashService.sha256Hash(newJti);
         const [value, client] = await Promise.all([
             this.keyv.serializeData<ISessionCache>({
-                value: { ...session, jti: newJti },
+                value: { userId, sessionId, jti: newJtiDigest },
                 expires: now.getTime() + this.loginTtlInMs,
             }),
             store.getClient(),
         ]);
-        const reply = await client.set(key, value as string, {
-            expiration: { type: 'PX', value: this.loginTtlInMs },
-            condition: 'XX',
+        const reply = await client.eval(SessionCacheUpdateLoginScript, {
+            keys: [key],
+            arguments: [oldJtiDigest, value as string, `${this.loginTtlInMs}`],
         });
 
-        return reply === 'OK'
-            ? EnumSessionCacheUpdate.updated
+        if (reply === EnumSessionCacheUpdate.updated) {
+            return EnumSessionCacheUpdate.updated;
+        }
+
+        return reply === EnumSessionCacheUpdate.mismatch
+            ? EnumSessionCacheUpdate.mismatch
             : EnumSessionCacheUpdate.absent;
     }
 

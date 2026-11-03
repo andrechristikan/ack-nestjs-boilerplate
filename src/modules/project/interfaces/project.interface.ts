@@ -9,6 +9,11 @@ export interface IProjectMember extends ProjectMember {
     user: IUserRef;
 }
 
+export interface IProjectMemberActor {
+    userId: string;
+    hasWorkspaceBypass: boolean;
+}
+
 export interface IProjectCreate {
     name: string;
     description: string | null;

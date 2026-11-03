@@ -191,26 +191,30 @@ describe('AuthUtil', () => {
     });
 
     describe('isJtiMatch', () => {
-        it('compares the SHA-256 hashes of the session jti and the token jti', () => {
+        it('compares the stored jti digest with the SHA-256 hash of the token jti', () => {
             helperHashService.sha256Hash.mockImplementation(
                 value => `hash-${value}`
             );
             helperHashService.sha256Compare.mockReturnValue(true);
 
-            const result = util.isJtiMatch('session-jti', 'token-jti');
+            const result = util.isJtiMatch('hash-token-jti', 'token-jti');
 
             expect(result).toBe(true);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledTimes(1);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'token-jti'
+            );
             expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
-                'hash-session-jti',
+                'hash-token-jti',
                 'hash-token-jti'
             );
         });
 
-        it('returns false when the hashes differ', () => {
+        it('returns false when the digests differ', () => {
             helperHashService.sha256Hash.mockReturnValue('hash');
             helperHashService.sha256Compare.mockReturnValue(false);
 
-            expect(util.isJtiMatch('session-jti', 'token-jti')).toBe(false);
+            expect(util.isJtiMatch('stored-digest', 'token-jti')).toBe(false);
         });
     });
 

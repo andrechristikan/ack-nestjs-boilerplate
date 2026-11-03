@@ -186,7 +186,8 @@ describe('NotificationPushWorkspaceDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.updateSentAt,
-                    error: 'notification.queue.push.error.deliveryNotFound',
+                    message: 'notification.queue.push.error.deliveryNotFound',
+                    rawError: expect.any(UnrecoverableError),
                 },
             ]);
         });
@@ -363,6 +364,10 @@ describe('NotificationPushWorkspaceDomain', () => {
                 null
             );
 
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.push.error.tokensPending',
+                { properties: { count: 2 } }
+            );
             expectPushOutagePending(doubles, result);
         });
 

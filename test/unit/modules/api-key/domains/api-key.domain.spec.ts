@@ -729,8 +729,9 @@ describe('ApiKeyDomain', () => {
             expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
         });
 
-        it('reads the repository and caches the validated key on a cache miss', async () => {
+        it('takes the lease, reads the repository, and caches the validated key with the lease token on a cache miss', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(null);
+            apiKeyCache.takeApiKeyLease.mockResolvedValue('lease-token');
             apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
             apiKeyUtil.isNotYetActive.mockReturnValue(false);
@@ -741,7 +742,43 @@ describe('ApiKeyDomain', () => {
             );
 
             expect(result).toBe(apiKey);
-            expect(apiKeyCache.setApiKey).toHaveBeenCalledWith(apiKey);
+            expect(apiKeyCache.takeApiKeyLease).toHaveBeenCalledWith(
+                'local_abc123'
+            );
+            expect(apiKeyCache.takeApiKeyLease).toHaveBeenCalledBefore(
+                apiKeyRepository.findOneByKey
+            );
+            expect(apiKeyCache.setApiKey).toHaveBeenCalledWith(
+                apiKey,
+                'lease-token'
+            );
+        });
+
+        it('serves the repository row without caching when another reader holds the lease', async () => {
+            apiKeyCache.getApiKey.mockResolvedValue(null);
+            apiKeyCache.takeApiKeyLease.mockResolvedValue(null);
+            apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
+            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
+            apiKeyUtil.isNotYetActive.mockReturnValue(false);
+            apiKeyUtil.isExpired.mockReturnValue(false);
+
+            const result = await domain.validateXApiKey(
+                'local_abc123:secret-1'
+            );
+
+            expect(result).toBe(apiKey);
+            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
+        });
+
+        it('takes no lease on a cache hit', async () => {
+            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
+            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
+            apiKeyUtil.isNotYetActive.mockReturnValue(false);
+            apiKeyUtil.isExpired.mockReturnValue(false);
+
+            await domain.validateXApiKey('local_abc123:secret-1');
+
+            expect(apiKeyCache.takeApiKeyLease).not.toHaveBeenCalled();
         });
     });
 

@@ -30,7 +30,7 @@ export interface ISessionRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePaginationReturn<ISessionList>>;
-    findOneActive(userId: string, sessionId: string): Promise<ISession | null>;
+    existsActiveById(userId: string, sessionId: string): Promise<boolean>;
     createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -60,10 +60,11 @@ export interface ISessionRepository {
         revokedAt: Date
     ): Promise<boolean>;
     revokeByAdmin(
+        userId: string,
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<boolean>;
+    ): Promise<ISession | null>;
     revokeActiveByUser(
         userId: string,
         revokedBy: string,

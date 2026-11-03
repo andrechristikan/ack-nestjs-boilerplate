@@ -30,9 +30,9 @@ import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.ema
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import { UserAccountNotFoundException } from '@modules/user/exceptions/user.account-not-found.exception';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
-import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
@@ -174,22 +174,27 @@ export class UserDomain {
         await this.userRepository.setLastWorkspaceInTx(tx, userId, workspaceId);
     }
 
+    async clearLastWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        workspaceId: string
+    ): Promise<void> {
+        await this.userRepository.clearLastWorkspaceInTx(
+            tx,
+            userId,
+            workspaceId
+        );
+    }
+
     async resetPasswordAttempt(userId: string): Promise<User> {
         return this.userRepository.resetPasswordAttempt(userId);
     }
 
-    async deactivateForMaxPasswordAttemptInTx(
+    async deactivateForMaxAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<void> {
-        const isDeactivated =
-            await this.userRepository.deactivateForMaxPasswordAttemptInTx(
-                tx,
-                userId
-            );
-        if (!isDeactivated) {
-            throw new UserPasswordAttemptMaxException();
-        }
+    ): Promise<boolean> {
+        return this.userRepository.deactivateForMaxAttemptInTx(tx, userId);
     }
 
     async updatePasswordInTx(
@@ -355,18 +360,31 @@ export class UserDomain {
         }
     }
 
-    /** Writes the status; activating a user resets its password attempt counter. */
+    /** Writes the status guarded on the target's current one; activating a user resets its password attempt counter. */
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
-        status: EnumUserStatus,
-        passwordAttempt: number | null
+        { id, status: currentStatus, passwordAttempt }: IUser,
+        status: EnumUserStatus
     ): Promise<User> {
-        return this.userRepository.updateStatusByAdminInTx(tx, userId, {
-            status,
-            passwordAttempt:
-                status === EnumUserStatus.active ? 0 : passwordAttempt,
-        });
+        if (currentStatus === status) {
+            throw new UserStatusInvalidException();
+        }
+
+        const row = await this.userRepository.updateStatusByAdminInTx(
+            tx,
+            id,
+            currentStatus,
+            {
+                status,
+                passwordAttempt:
+                    status === EnumUserStatus.active ? 0 : passwordAttempt,
+            }
+        );
+        if (!row) {
+            throw new UserStatusInvalidException();
+        }
+
+        return row;
     }
 
     async checkUsername(username: string): Promise<IUserCheckUsername> {

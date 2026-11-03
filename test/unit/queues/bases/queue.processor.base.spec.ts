@@ -118,6 +118,15 @@ describe('QueueProcessorBase', () => {
     });
 
     describe('onFailed', () => {
+        it('reports the error alone and returns when BullMQ hands over no job', () => {
+            const error = new Error('boom');
+
+            processor.onFailed(undefined, error);
+
+            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
+            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+        });
+
         it('reports to Sentry with the job tag and context when the error is an UnrecoverableError instance', () => {
             const job = buildProcessorJob({ opts: {}, attemptsMade: 0 });
             const error = new UnrecoverableError('unrecoverable');

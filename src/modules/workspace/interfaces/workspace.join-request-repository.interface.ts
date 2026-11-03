@@ -12,10 +12,6 @@ import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import type { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceJoinRequestRepository {
-    existsPendingByWorkspaceAndUser(
-        workspaceId: string,
-        userId: string
-    ): Promise<boolean>;
     findByIdAndWorkspace(
         workspaceJoinRequestId: string,
         workspaceId: string
@@ -32,6 +28,7 @@ export interface IWorkspaceJoinRequestRepository {
         workspaceId,
         userId,
         message,
+        pendingKey,
     }: IWorkspaceJoinRequestCreateData): Promise<WorkspaceJoinRequest>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
@@ -49,4 +46,9 @@ export interface IWorkspaceJoinRequestRepository {
         tx: IDatabaseTransactionClient,
         workspaceId: string
     ): Promise<void>;
+    cancelPendingByUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        userId: string
+    ): Promise<number>;
 }

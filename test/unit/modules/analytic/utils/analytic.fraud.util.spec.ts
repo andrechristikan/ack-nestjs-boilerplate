@@ -33,7 +33,7 @@ describe('AnalyticFraudUtil', () => {
         'analytic.fraud.weights.massRegistrationIp': 64,
         'analytic.fraud.weights.forgotPasswordAbuse': 128,
         'auth.password.maxAttempt': 5,
-        'analytic.anomaly.failedLoginSpike.nearLockoutOffset': 1,
+        'analytic.fraud.nearLockoutOffset': 1,
     };
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
     const emptySignals: IAnalyticFraudSignalUsers = {
@@ -141,6 +141,18 @@ describe('AnalyticFraudUtil', () => {
             expect(
                 util.score(user, emptySignals).contributingSignalCodes
             ).toEqual([]);
+        });
+    });
+
+    describe('nearLockoutThreshold', () => {
+        it('subtracts the near-lockout offset from the max attempt', () => {
+            expect(util.nearLockoutThreshold(5)).toBe(4);
+            expect(util.nearLockoutThreshold(10)).toBe(9);
+        });
+
+        it('floors the threshold at one attempt', () => {
+            expect(util.nearLockoutThreshold(1)).toBe(1);
+            expect(util.nearLockoutThreshold(0)).toBe(1);
         });
     });
 

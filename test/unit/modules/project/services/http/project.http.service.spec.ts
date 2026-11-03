@@ -2,6 +2,9 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -31,6 +34,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectHttpService } from '@modules/project/services/http/project.http.service';
+import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 
 describe('ProjectHttpService', () => {
     const projectDomain: MockProxy<ProjectDomain> = mock<ProjectDomain>();
@@ -40,6 +44,13 @@ describe('ProjectHttpService', () => {
         mock<RequestStoreService>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
+    const workspaceInviteDomain: MockProxy<WorkspaceInviteDomain> =
+        mock<WorkspaceInviteDomain>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
+    const deletedAt = new Date('2026-02-01T00:00:00.000Z');
 
     const paginationCursor: IPaginationQueryCursorParams<Prisma.ProjectWhereInput> =
         {
@@ -94,6 +105,8 @@ describe('ProjectHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
+        helperDateService.create.mockReturnValue(deletedAt);
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -108,6 +121,12 @@ describe('ProjectHttpService', () => {
                     useValue: requestStoreService,
                 },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
+                {
+                    provide: WorkspaceInviteDomain,
+                    useValue: workspaceInviteDomain,
+                },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
@@ -363,19 +382,38 @@ describe('ProjectHttpService', () => {
     });
 
     describe('softDeleteProject', () => {
-        it('delegates the soft delete to the domain', async () => {
-            await service.softDeleteProject(
+        it('soft-deletes the project and clears it from the pending invites in order on one transaction', async () => {
+            const callOrder: string[] = [];
+            projectDomain.softDeleteProjectInTx.mockImplementation(async () => {
+                callOrder.push('project');
+            });
+            workspaceInviteDomain.clearProjectInTx.mockImplementation(
+                async () => {
+                    callOrder.push('invites');
+                }
+            );
+
+            const result = await service.softDeleteProject(
                 project,
                 '507f1f77bcf86cd799439015'
             );
 
-            expect(projectDomain.softDeleteProject).toHaveBeenCalledWith(
-                project
+            expect(result).toEqual({});
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(projectDomain.softDeleteProjectInTx).toHaveBeenCalledWith(
+                tx,
+                project,
+                deletedAt
             );
+            expect(workspaceInviteDomain.clearProjectInTx).toHaveBeenCalledWith(
+                tx,
+                project.id
+            );
+            expect(callOrder).toEqual(['project', 'invites']);
         });
 
         it('prepares the deleted activity log before the write and stages it after', async () => {
-            projectDomain.softDeleteProject.mockImplementation(async () => {
+            projectDomain.softDeleteProjectInTx.mockImplementation(async () => {
                 expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                     action: EnumActivityLogAction.projectDeleted,
                     userId: '507f1f77bcf86cd799439015',
@@ -393,6 +431,20 @@ describe('ProjectHttpService', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
+        });
+
+        it('clears no invite and stages nothing when the soft delete rejects', async () => {
+            projectDomain.softDeleteProjectInTx.mockRejectedValue(
+                new Error('boom')
+            );
+
+            await expect(
+                service.softDeleteProject(project, '507f1f77bcf86cd799439015')
+            ).rejects.toThrow('boom');
+            expect(
+                workspaceInviteDomain.clearProjectInTx
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
 

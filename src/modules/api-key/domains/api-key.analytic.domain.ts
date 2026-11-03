@@ -12,12 +12,13 @@ export class ApiKeyAnalyticDomain {
         private readonly apiKeyAnalyticRepository: ApiKeyAnalyticRepository
     ) {}
 
-    async getActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
-        const [active, expired] = await Promise.all([
-            this.apiKeyAnalyticRepository.countActive(),
-            this.apiKeyAnalyticRepository.countExpired(),
+    async getActiveExpired(now: Date): Promise<IAnalyticApiKeyActiveExpired> {
+        const [active, expired, inactive] = await Promise.all([
+            this.apiKeyAnalyticRepository.countActive(now),
+            this.apiKeyAnalyticRepository.countExpired(now),
+            this.apiKeyAnalyticRepository.countInactive(),
         ]);
-        return { active, expired };
+        return { active, expired, inactive };
     }
 
     getTypeMix(): Promise<IAnalyticCountBucket[]> {

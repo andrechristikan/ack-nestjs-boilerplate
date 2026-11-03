@@ -9,7 +9,6 @@ import { UserImportDomain } from '@modules/user/domains/user.import.domain';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
-import { UserTwoFactorCache } from '@modules/user/caches/user.two-factor.cache';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
@@ -49,7 +48,6 @@ import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobil
         UserVerificationAnalyticDomain,
         UserMobileNumberAnalyticDomain,
         UserQueue,
-        UserTwoFactorCache,
     ],
     exports: [
         BullModule,

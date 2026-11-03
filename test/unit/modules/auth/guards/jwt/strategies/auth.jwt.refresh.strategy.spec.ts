@@ -12,9 +12,17 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 
+const { passportJwtSecretMock } = vi.hoisted(() => ({
+    passportJwtSecretMock: vi.fn(),
+}));
+
+vi.mock('jwks-rsa', () => ({
+    passportJwtSecret: passportJwtSecretMock,
+}));
+
 describe('AuthJwtRefreshStrategy', () => {
     const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
+    const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
@@ -23,8 +31,11 @@ describe('AuthJwtRefreshStrategy', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        passportJwtSecretMock.mockReturnValue(vi.fn());
         configGet.mockImplementation((key: string) => {
-            const values: Record<string, string> = {
+            const values: Record<string, string | number> = {
+                'auth.jwks.requestsPerMinute': 60,
+                'auth.jwks.cacheMaxAgeInMs': 600000,
                 'auth.jwt.audience': 'aud',
                 'auth.jwt.issuer': 'iss',
                 'auth.jwt.refreshToken.jwksUri':
@@ -43,6 +54,18 @@ describe('AuthJwtRefreshStrategy', () => {
         }).compile();
 
         strategy = module.get(AuthJwtRefreshStrategy);
+    });
+
+    describe('constructor', () => {
+        it('builds the JWKS client from the configured request budget and cache age', () => {
+            expect(passportJwtSecretMock).toHaveBeenCalledWith({
+                cache: true,
+                rateLimit: true,
+                jwksRequestsPerMinute: 60,
+                cacheMaxAge: 600000,
+                jwksUri: 'https://example.com/.well-known/jwks.json',
+            });
+        });
     });
 
     describe('jwtFromRequest', () => {

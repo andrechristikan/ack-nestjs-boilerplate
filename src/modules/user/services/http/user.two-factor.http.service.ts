@@ -1,4 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -12,8 +16,10 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import type { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
@@ -35,6 +41,7 @@ export class UserTwoFactorHttpService {
     constructor(
         private readonly userTwoFactorDomain: UserTwoFactorDomain,
         private readonly userDomain: UserDomain,
+        private readonly userPasswordDomain: UserPasswordDomain,
         private readonly roleDomain: RoleDomain,
         private readonly sessionDomain: SessionDomain,
         private readonly deviceDomain: DeviceDomain,
@@ -45,6 +52,7 @@ export class UserTwoFactorHttpService {
         private readonly notificationUtil: NotificationUtil,
         private readonly userUtil: UserUtil,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -60,6 +68,120 @@ export class UserTwoFactorHttpService {
         return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
+    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction; answers the revoked sessions, or null when the account was already deactivated or the write conflicted. */
+    private async reachMaxAttempt(
+        userId: string
+    ): Promise<ISessionRef[] | null> {
+        const now = this.helperDateService.create();
+
+        try {
+            return await this.databaseService.withTransaction(async tx => {
+                const isDeactivated =
+                    await this.userDomain.deactivateForMaxAttemptInTx(
+                        tx,
+                        userId
+                    );
+                if (!isDeactivated) {
+                    return null;
+                }
+
+                const sessions =
+                    await this.sessionDomain.revokeActiveByUserInTx(
+                        tx,
+                        userId,
+                        userId,
+                        now
+                    );
+                await this.deviceDomain.revokeAllByUserInTx(
+                    tx,
+                    userId,
+                    userId,
+                    now
+                );
+
+                return sessions;
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                return null;
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    /** Counts one two-factor attempt, locks the account out when the budget is spent, and answers the attempt limit. */
+    private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
+        const isAttemptCounted =
+            await this.userTwoFactorDomain.countAttempt(user);
+        if (!isAttemptCounted) {
+            const lockoutLogs = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+            ];
+            const revoked = await this.reachMaxAttempt(user.id);
+            if (revoked !== null) {
+                await this.sessionQueue.purgeLogins(user.id, revoked);
+
+                this.activityLogDomain.stagePrepared(lockoutLogs);
+            }
+        }
+
+        this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
+    }
+
+    /** Counts one password attempt, locks the account out when the budget is spent, and checks the current password of a user that has one. */
+    private async assertPasswordMatched(
+        user: IUser,
+        password: string
+    ): Promise<void> {
+        const hasPassword = this.userUtil.hasPassword(user);
+        if (!hasPassword) {
+            return;
+        }
+
+        const isAttemptCounted =
+            await this.userPasswordDomain.incrementPasswordAttempt(user.id);
+        if (!isAttemptCounted) {
+            const lockoutLogs = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+            ];
+            const revoked = await this.reachMaxAttempt(user.id);
+            if (revoked !== null) {
+                await this.sessionQueue.purgeLogins(user.id, revoked);
+
+                this.activityLogDomain.stagePrepared(lockoutLogs);
+            }
+        }
+
+        this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);
+        // Sequential by design: the attempt resets only after the password matches
+        await this.userPasswordDomain.assertOldPasswordMatch(user, password);
+        await this.userPasswordDomain.resetPasswordAttempt(user.id);
+    }
+
     getTwoFactorStatus(
         user: IUser
     ): IResponseReturn<UserTwoFactorStatusResponseDto> {
@@ -70,7 +192,7 @@ export class UserTwoFactorHttpService {
 
     async setupTwoFactor(
         user: IUser,
-        { backupCode }: UserTwoFactorSetupRequestDto
+        { backupCode, password }: UserTwoFactorSetupRequestDto
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
         const activityLogs = [
             this.activityLogDomain.prepare({
@@ -79,6 +201,8 @@ export class UserTwoFactorHttpService {
                 createdBy: user.id,
             }),
         ];
+        // Sequential by design: gate before the work it guards
+        await this.assertPasswordMatched(user, password);
         const backupCodeForSetup =
             this.userTwoFactorDomain.getBackupCodeForSetup(
                 user,
@@ -87,6 +211,8 @@ export class UserTwoFactorHttpService {
         let backupCodeVerified: IUserTwoFactorVerifyResult | null = null;
         if (backupCodeForSetup !== null) {
             // Sequential by design: gate before the work it guards
+            await this.assertTwoFactorAttemptCounted(user);
+            // Sequential by design: the attempt is counted before the code is checked
             backupCodeVerified = await this.userTwoFactorDomain.verify(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 code: null,
@@ -113,10 +239,14 @@ export class UserTwoFactorHttpService {
 
     async enableTwoFactor(
         user: IUser,
-        { code }: UserTwoFactorEnableRequestDto
+        { code, password }: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        // Sequential by design: gate before the work it guards
+        await this.assertPasswordMatched(user, password);
         const pendingSecret = this.userTwoFactorDomain.getPendingSecret(user);
         // Sequential by design: gate before the work it guards
+        await this.assertTwoFactorAttemptCounted(user);
+        // Sequential by design: the attempt is counted before the code is checked
         await this.userTwoFactorDomain.verifySetupCode(
             user,
             pendingSecret,
@@ -144,6 +274,8 @@ export class UserTwoFactorHttpService {
     ): Promise<IResponseReturn<void>> {
         this.userTwoFactorDomain.assertEnabled(user);
         // Sequential by design: gate before the work it guards
+        await this.assertTwoFactorAttemptCounted(user);
+        // Sequential by design: the attempt is counted before the code is checked
         await this.userTwoFactorDomain.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
@@ -181,6 +313,8 @@ export class UserTwoFactorHttpService {
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         this.userTwoFactorDomain.assertEnabled(user);
         // Sequential by design: gate before the work it guards
+        await this.assertTwoFactorAttemptCounted(user);
+        // Sequential by design: the attempt is counted before the code is checked
         await this.userTwoFactorDomain.verify(user, {
             method: EnumAuthTwoFactorMethod.code,
             code,
@@ -250,7 +384,6 @@ export class UserTwoFactorHttpService {
             );
         });
         await Promise.all([
-            this.userTwoFactorDomain.clearLock(target),
             this.sessionQueue.purgeLogins(userId, revoked),
             this.notificationQueue.sendResetTwoFactorByAdmin(
                 recipient,

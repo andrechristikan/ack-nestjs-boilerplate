@@ -16,6 +16,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { FileService } from '@common/file/services/file.service';
+import type { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
 import type {
     IResponseFileInterceptorOptions,
@@ -43,7 +44,7 @@ export interface IResponseFileInterceptorUnderTest {
     validateDataResponse(responseData: IResponseFileReturn | null): void;
     countDataRows(responseData: IResponseFileReturn): number;
     createTimestamp(): number;
-    createDefaultFilename(timestamp: number): string;
+    createDefaultFilename(extension: EnumFileExtensionDocument): string;
     createDisposition(filename: string, fallback: string): string;
 }
 

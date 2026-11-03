@@ -201,6 +201,25 @@ describe('UserVerificationDomain', () => {
             });
         });
 
+        it('throws UserEmailAlreadyVerifiedException when the user is already verified', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
+                verification
+            );
+            userRepository.findOneById.mockResolvedValue({
+                ...baseUser,
+                isVerified: true,
+            });
+
+            await expect(
+                domain.getOneActiveByEmailToken('raw-token')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.emailAlreadyVerified,
+                messagePath: 'user.error.emailAlreadyVerified',
+            });
+        });
+
         it('throws UserNotFoundException when the verified user is gone', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
@@ -322,31 +341,31 @@ describe('UserVerificationDomain', () => {
             );
         });
 
-        it('throws UserNotFoundException when the user is missing', async () => {
+        it('returns null when no active user holds the email', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(null);
 
-            const call = domain.getOneForResendByEmail('missing@example.com');
+            await expect(
+                domain.getOneForResendByEmail('missing@example.com')
+            ).resolves.toBeNull();
 
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
-            });
+            expect(
+                userVerificationRepository.findOneLatestByVerificationEmail
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws UserEmailAlreadyVerifiedException when the user is already verified', async () => {
+        it('returns null when the user is already verified', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue({
                 ...baseUser,
                 isVerified: true,
             });
 
-            const call = domain.getOneForResendByEmail('flint@example.com');
+            await expect(
+                domain.getOneForResendByEmail('flint@example.com')
+            ).resolves.toBeNull();
 
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.emailAlreadyVerified,
-                messagePath: 'user.error.emailAlreadyVerified',
-            });
+            expect(
+                userVerificationRepository.findOneLatestByVerificationEmail
+            ).not.toHaveBeenCalled();
         });
 
         it('throws UserVerificationEmailResendLimitExceededException when resent too soon', async () => {

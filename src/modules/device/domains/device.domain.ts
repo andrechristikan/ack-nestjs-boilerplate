@@ -163,20 +163,6 @@ export class DeviceDomain {
         );
     }
 
-    async assertActive(
-        userId: string,
-        deviceOwnershipId: string
-    ): Promise<void> {
-        const deviceOwnershipExists =
-            await this.deviceOwnershipRepository.existsActive(
-                userId,
-                deviceOwnershipId
-            );
-        if (!deviceOwnershipExists) {
-            throw new DeviceNotFoundException();
-        }
-    }
-
     async removeOwnershipInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -184,13 +170,19 @@ export class DeviceDomain {
         removedBy: string,
         now: Date
     ): Promise<IDeviceOwnership> {
-        return this.deviceOwnershipRepository.removeOwnershipInTx(
-            tx,
-            userId,
-            deviceOwnershipId,
-            removedBy,
-            now
-        );
+        const deviceOwnership =
+            await this.deviceOwnershipRepository.removeOwnershipInTx(
+                tx,
+                userId,
+                deviceOwnershipId,
+                removedBy,
+                now
+            );
+        if (deviceOwnership === null) {
+            throw new DeviceNotFoundException();
+        }
+
+        return deviceOwnership;
     }
 
     async refresh(
@@ -198,8 +190,6 @@ export class DeviceDomain {
         deviceOwnershipId: string,
         data: IDeviceRefresh
     ): Promise<void> {
-        // Sequential by design: gate before the work it guards
-        await this.assertActive(userId, deviceOwnershipId);
         const notificationProvider =
             this.deviceUtil.resolveNotificationProvider(data.platform);
         const now = this.helperDateService.create();
@@ -215,6 +205,9 @@ export class DeviceDomain {
                         notificationProvider,
                         now
                     );
+                if (deviceId === null) {
+                    throw new DeviceNotFoundException();
+                }
                 await this.deviceRepository.refreshInTx(
                     tx,
                     deviceId,

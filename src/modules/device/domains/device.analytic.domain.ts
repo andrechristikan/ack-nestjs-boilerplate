@@ -7,7 +7,6 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import type {
     IDeviceOwnershipAnalyticCreated,
-    IDeviceOwnershipAnalyticInactive,
     IDeviceOwnershipAnalyticUserCount,
 } from '@modules/device/interfaces/device.interface';
 import { DeviceAnalyticRepository } from '@modules/device/repositories/device.analytic.repository';
@@ -56,15 +55,17 @@ export class DeviceAnalyticDomain {
         return this.deviceOwnershipAnalyticRepository.countPerUser();
     }
 
-    getInactive(before: Date): Promise<IDeviceOwnershipAnalyticInactive[]> {
-        return this.deviceOwnershipAnalyticRepository.findInactive(before);
+    getCountInactive(before: Date): Promise<number> {
+        return this.deviceOwnershipAnalyticRepository.countInactive(before);
     }
 
-    getCreatedInRange(
+    getCreatedInRangeByUser(
+        userId: string,
         startDate: Date,
         endDate: Date
     ): Promise<IDeviceOwnershipAnalyticCreated[]> {
-        return this.deviceOwnershipAnalyticRepository.findCreatedInRange(
+        return this.deviceOwnershipAnalyticRepository.findCreatedInRangeByUser(
+            userId,
             startDate,
             endDate
         );

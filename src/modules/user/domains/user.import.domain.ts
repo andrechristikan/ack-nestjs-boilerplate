@@ -80,12 +80,20 @@ export class UserImportDomain {
         countryId: string,
         { existing, badWords }: IUserImportUsernameChecks
     ): Promise<IUserImportPrepared> {
+        const emails = data.map(item => item.email);
+        const duplicateEmails = emails.filter(
+            (email, index) => emails.indexOf(email) !== index
+        );
         const usernames = data.map(item => item.username);
         const duplicateUsernames = usernames.filter(
             (username, index) => usernames.indexOf(username) !== index
         );
 
-        if (existing.length > 0) {
+        if (duplicateEmails.length > 0) {
+            throw new UserImportEmailExistException(
+                [...new Set(duplicateEmails)].join(', ')
+            );
+        } else if (existing.length > 0) {
             throw new UserImportUsernameExistException(existing.join(', '));
         } else if (duplicateUsernames.length > 0) {
             throw new UserImportUsernameExistException(
@@ -104,7 +112,9 @@ export class UserImportDomain {
             .map(() => this.authPasswordUtil.createPasswordRandom());
         const passwordHasheds = await Promise.all(
             passwords.map(password =>
-                this.authPasswordUtil.createPassword(password)
+                this.authPasswordUtil.createPassword(password, {
+                    temporary: true,
+                })
             )
         );
         const workspaceContexts =

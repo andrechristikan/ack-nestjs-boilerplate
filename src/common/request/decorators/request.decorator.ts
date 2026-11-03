@@ -1,7 +1,6 @@
 import {
     SetMetadata,
     UseGuards,
-    UseInterceptors,
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
@@ -15,7 +14,7 @@ import {
 } from '@common/request/constants/request.constant';
 import ms from 'ms';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
-import { RequestThrottleUserInterceptor } from '@common/request/interceptors/request.throttle-user.interceptor';
+import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type {
@@ -62,7 +61,7 @@ export function RequestThrottle(
 ): MethodDecorator {
     return applyDecorators(
         SetMetadata(RequestThrottleOptionsMetaKey, options),
-        UseInterceptors(RequestThrottleUserInterceptor)
+        UseGuards(RequestThrottleUserGuard)
     );
 }
 

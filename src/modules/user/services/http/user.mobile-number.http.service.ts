@@ -19,6 +19,11 @@ export class UserMobileNumberHttpService {
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userAddMobileNumber,
+            }),
+        ];
         const [country, isDuplicate] = await Promise.all([
             this.countryDomain.getOne(countryId),
             this.userMobileNumberDomain.existsMobileNumber(
@@ -27,12 +32,6 @@ export class UserMobileNumberHttpService {
                 null
             ),
         ]);
-
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userAddMobileNumber,
-            }),
-        ];
         const mobileNumber = await this.userMobileNumberDomain.addMobileNumber(
             userId,
             {
@@ -54,6 +53,11 @@ export class UserMobileNumberHttpService {
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userUpdateMobileNumber,
+            }),
+        ];
         // Sequential by design: gate before the work it guards
         const current = await this.userMobileNumberDomain.getOneMobileNumber(
             userId,
@@ -67,12 +71,6 @@ export class UserMobileNumberHttpService {
                 current.id
             ),
         ]);
-
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userUpdateMobileNumber,
-            }),
-        ];
         const mobileNumber =
             await this.userMobileNumberDomain.updateMobileNumber(
                 userId,

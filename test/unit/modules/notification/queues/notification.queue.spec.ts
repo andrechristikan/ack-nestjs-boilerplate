@@ -690,7 +690,7 @@ describe('NotificationQueue', () => {
     });
 
     describe('sendVerifiedMobileNumber', () => {
-        it('enqueues the verifiedMobileNumber job, medium priority', async () => {
+        it('encrypts the mobile number and enqueues the verifiedMobileNumber job, medium priority', async () => {
             const verifiedMobile = {
                 reference: 'ref-1',
                 resendInMinutes: 5,
@@ -699,6 +699,12 @@ describe('NotificationQueue', () => {
 
             await queue.sendVerifiedMobileNumber(recipient, verifiedMobile);
 
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                verifiedMobile.mobileNumber,
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
             expectRecipientEncrypted(helperEncryptionService, recipient);
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.verifiedMobileNumber,
@@ -707,7 +713,11 @@ describe('NotificationQueue', () => {
                     notificationId: 'n-1',
                     completedSteps: [],
                     recipient: TestEncryptedRecipient,
-                    data: verifiedMobile,
+                    data: {
+                        encryptedMobileNumber: 'cipher(+15551234567)',
+                        reference: 'ref-1',
+                        resendInMinutes: 5,
+                    },
                     proceedBy: 'user-id',
                 },
                 {

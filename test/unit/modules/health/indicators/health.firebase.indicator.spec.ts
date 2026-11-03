@@ -59,7 +59,7 @@ describe('HealthFirebaseIndicator', () => {
             );
         });
 
-        it('reports down with the error message when the check throws an Error', async () => {
+        it('reports down with a fixed message when the check throws an Error', async () => {
             firebaseService.isInitialized.mockImplementation(() => {
                 throw new Error('sdk crashed');
             });
@@ -68,12 +68,10 @@ describe('HealthFirebaseIndicator', () => {
             const result = await indicator.isHealthy('firebase');
 
             expect(result).toEqual({ firebase: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'HealthFirebaseIndicator Failed - sdk crashed'
-            );
+            expect(session.down).toHaveBeenCalledWith('Firebase check failed');
         });
 
-        it('reports down with an unknown-error message when a non-Error is thrown', async () => {
+        it('reports down with the same fixed message when a non-Error is thrown', async () => {
             firebaseService.isInitialized.mockImplementation(() => {
                 throw 'not-an-error';
             });
@@ -82,9 +80,7 @@ describe('HealthFirebaseIndicator', () => {
             const result = await indicator.isHealthy('firebase');
 
             expect(result).toEqual({ firebase: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'HealthFirebaseIndicator Failed - Unknown error'
-            );
+            expect(session.down).toHaveBeenCalledWith('Firebase check failed');
         });
     });
 });

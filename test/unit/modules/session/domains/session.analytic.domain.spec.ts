@@ -80,6 +80,42 @@ describe('SessionAnalyticDomain', () => {
         });
     });
 
+    describe('getActiveInRange', () => {
+        it('delegates to the repository without a geo filter', async () => {
+            const startDate = new Date('2026-01-01T00:00:00.000Z');
+            const endDate = new Date('2026-01-31T00:00:00.000Z');
+            const rows: ISessionAnalyticSession[] = [
+                {
+                    id: 'session-1',
+                    userId: 'user-1',
+                    ipAddress: '127.0.0.1',
+                    createdAt: startDate,
+                    geoLocation: null,
+                    userAgent: {
+                        ua: null,
+                        browser: null,
+                        cpu: null,
+                        device: null,
+                        engine: null,
+                        os: null,
+                    },
+                },
+            ];
+            sessionAnalyticRepository.findActiveInRange.mockResolvedValue(rows);
+
+            const result = await domain.getActiveInRange(
+                startDate,
+                endDate,
+                now
+            );
+
+            expect(result).toBe(rows);
+            expect(
+                sessionAnalyticRepository.findActiveInRange
+            ).toHaveBeenCalledWith(startDate, endDate, now);
+        });
+    });
+
     describe('getCountActiveByUser', () => {
         it('delegates to the repository', async () => {
             const rows: ISessionAnalyticUserCount[] = [

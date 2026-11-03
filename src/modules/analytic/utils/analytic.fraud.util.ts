@@ -24,6 +24,7 @@ export class AnalyticFraudUtil {
     private readonly weightNearLockout: number;
     private readonly weightMassRegistrationIp: number;
     private readonly weightForgotPasswordAbuse: number;
+    private readonly nearLockoutOffset: number;
     private readonly nearLockoutAttempt: number;
     private readonly bandMonitorMax: number;
     private readonly bandReviewMax: number;
@@ -58,10 +59,10 @@ export class AnalyticFraudUtil {
         const passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
         )!;
-        const nearLockoutOffset = this.configService.get<number>(
-            'analytic.anomaly.failedLoginSpike.nearLockoutOffset'
+        this.nearLockoutOffset = this.configService.get<number>(
+            'analytic.fraud.nearLockoutOffset'
         )!;
-        this.nearLockoutAttempt = passwordMaxAttempt - nearLockoutOffset;
+        this.nearLockoutAttempt = this.nearLockoutThreshold(passwordMaxAttempt);
         this.bandMonitorMax = this.configService.get<number>(
             'analytic.fraud.bands.monitorMax'
         )!;
@@ -71,6 +72,10 @@ export class AnalyticFraudUtil {
         this.bandElevateMax = this.configService.get<number>(
             'analytic.fraud.bands.elevateMax'
         )!;
+    }
+
+    nearLockoutThreshold(maxAttempt: number): number {
+        return Math.max(1, maxAttempt - this.nearLockoutOffset);
     }
 
     resolveBand(score: number): EnumAnalyticFraudBand {

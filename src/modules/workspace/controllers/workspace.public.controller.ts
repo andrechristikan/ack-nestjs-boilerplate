@@ -44,8 +44,8 @@ export class WorkspacePublicController {
         schema: WorkspaceInvitePreviewResponseSchema,
     })
     @FeatureFlagProtected('workspace')
-    @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
+    @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/invite/preview')
     async invitePreview(
@@ -63,8 +63,8 @@ export class WorkspacePublicController {
         schema: WorkspacePreviewResponseSchema,
     })
     @FeatureFlagProtected('workspace')
-    @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
+    @ApiKeyProtected()
     @Get('/preview/:slug')
     async preview(
         @Param('slug', { schema: RequestRequiredStringSchema })

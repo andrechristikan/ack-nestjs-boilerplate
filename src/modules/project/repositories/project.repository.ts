@@ -51,23 +51,6 @@ export class ProjectRepository implements IProjectRepository {
         });
     }
 
-    /** Counts slug holders across ALL rows including soft-deleted ones, matching the unique index, which has no `deletedAt` component. */
-    async existsBySlugInWorkspace(
-        workspaceId: string,
-        slug: string,
-        excludeProjectId?: string
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.project.count({
-            where: {
-                workspaceId,
-                slug,
-                ...(excludeProjectId ? { id: { not: excludeProjectId } } : {}),
-            },
-        });
-
-        return count > 0;
-    }
-
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
@@ -162,8 +145,12 @@ export class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async softDelete(projectId: string, deletedAt: Date): Promise<void> {
-        await this.databaseService.client.project.softDelete({
+    async softDeleteInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        deletedAt: Date
+    ): Promise<void> {
+        await tx.project.softDelete({
             where: { id: projectId },
             data: {
                 deletedAt,

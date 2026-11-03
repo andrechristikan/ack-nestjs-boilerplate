@@ -6,6 +6,7 @@ import type {
     Prisma,
     User,
     Workspace,
+    WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -38,6 +39,11 @@ export interface IWorkspaceInviteTokenData {
     expiredAt: Date;
     claimLink: string;
     signUpLink: string;
+}
+
+export interface IWorkspaceInviteIssued {
+    invite: WorkspaceInvite;
+    tokenData: IWorkspaceInviteTokenData;
 }
 
 export interface IWorkspaceCreate {
@@ -77,6 +83,7 @@ export interface IWorkspaceInviteCreateData {
     reference: string;
     expiredAt: Date;
     invitedByUserId: string;
+    pendingKey: string;
 }
 
 export interface IWorkspaceInvitePreviewSummary {
@@ -95,6 +102,7 @@ export interface IWorkspaceJoinRequestCreateData {
     workspaceId: string;
     userId: string;
     message: string | null;
+    pendingKey: string;
 }
 
 export type IWorkspaceField = Extract<keyof Workspace, string>;

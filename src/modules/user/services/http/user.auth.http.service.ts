@@ -49,7 +49,6 @@ import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/requ
 import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import type { IUserCreated } from '@modules/user/interfaces/user.create.interface';
 import type { IUserLoginRefresh } from '@modules/user/interfaces/user.login.interface';
 import type {
@@ -164,25 +163,26 @@ export class UserAuthHttpService {
         loginWith: EnumUserLoginWith,
         loginSocial: IUserLoginSocial
     ): Promise<IUserCreated | null> {
-        // Sequential by design: gate before the work it guards
-        const workspaceContext = await this.resolveWorkspaceContext(
-            loginSocial.inviteToken,
-            email,
-            loginSocial.username
-        );
+        const normalizedEmail = email.trim().toLowerCase();
         const featureFlagKey =
             this.userCreateUtil.resolveSocialFeatureFlagKey(loginWith);
         const [featureFlag, existing] = await Promise.all([
             this.featureFlagDomain.getMetadataByKey<{
                 signUpAllowed: boolean;
             }>(featureFlagKey),
-            this.userAuthDomain.getOneByEmail(email),
+            this.userAuthDomain.getOneByEmail(normalizedEmail),
         ]);
         // Sequential by design: gate before the work it guards
         if (existing || !featureFlag?.signUpAllowed) {
             return null;
         }
 
+        // Sequential by design: gate before the work it guards
+        const workspaceContext = await this.resolveWorkspaceContext(
+            loginSocial.inviteToken,
+            normalizedEmail,
+            loginSocial.username
+        );
         const [role, , usernameCheck] = await Promise.all([
             this.roleDomain.getByName(this.userRoleName),
             this.countryDomain.getOne(loginSocial.countryId),
@@ -191,7 +191,7 @@ export class UserAuthHttpService {
         this.userDomain.assertUsernameAvailable(usernameCheck);
 
         const input = this.userAuthDomain.prepareSocialCreate(
-            email,
+            normalizedEmail,
             loginWith,
             loginSocial,
             { roleId: role.id, workspaceContext }
@@ -371,7 +371,7 @@ export class UserAuthHttpService {
             loginWith
         );
         const promises = [
-            this.sessionDomain.setLogin(user.id, sessionId, jti),
+            this.setLoginOrRevoke(user.id, sessionId, jti),
             this.sessionQueue.purgeLogins(user.id, revoked),
         ];
         if (isNewDevice) {
@@ -395,17 +395,45 @@ export class UserAuthHttpService {
         return tokens;
     }
 
-    /** Deactivates the user that spent its password attempts, revokes its sessions and devices on one transaction, and enqueues the session cache purge. */
-    private async reachMaxAttempt(userId: string): Promise<void> {
+    /** Writes the login entry of a committed session; when the write fails the session is revoked, its purge is enqueued, and the failure is rethrown, so no token outlives an entry that was never written. */
+    private async setLoginOrRevoke(
+        userId: string,
+        sessionId: string,
+        jti: string
+    ): Promise<void> {
+        try {
+            await this.sessionDomain.setLogin(userId, sessionId, jti);
+        } catch (error: unknown) {
+            const revoked = await this.sessionDomain.revokeOnReuse(
+                userId,
+                sessionId
+            );
+            await this.sessionQueue.purgeLogins(userId, revoked);
+
+            if (error instanceof AppBaseException) {
+                throw error;
+            }
+
+            throw new AppUnknownException(error);
+        }
+    }
+
+    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction; answers the revoked sessions, or null when the account was already deactivated or the write conflicted. */
+    private async reachMaxAttempt(
+        userId: string
+    ): Promise<ISessionRef[] | null> {
         const now = this.helperDateService.create();
-        let revoked: ISessionRef[];
 
         try {
-            revoked = await this.databaseService.withTransaction(async tx => {
-                await this.userDomain.deactivateForMaxPasswordAttemptInTx(
-                    tx,
-                    userId
-                );
+            return await this.databaseService.withTransaction(async tx => {
+                const isDeactivated =
+                    await this.userDomain.deactivateForMaxAttemptInTx(
+                        tx,
+                        userId
+                    );
+                if (!isDeactivated) {
+                    return null;
+                }
 
                 const sessions =
                     await this.sessionDomain.revokeActiveByUserInTx(
@@ -430,43 +458,39 @@ export class UserAuthHttpService {
 
             const mapped = this.databaseUtil.toException(err);
             if (mapped instanceof DatabaseWriteConflictException) {
-                throw new UserPasswordAttemptMaxException();
+                return null;
             }
 
             throw new AppUnknownException(err);
         }
-
-        await this.sessionQueue.purgeLogins(userId, revoked);
     }
 
-    /** Creates a fresh email verification, enqueues it, and stages its row; the caller answers the unverified gate. */
-    private async sendLoginVerification(user: IUser): Promise<void> {
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userSendVerificationEmail,
-                userId: user.id,
-                createdBy: user.id,
-            }),
-        ];
-        // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.getRecipient(
-            user,
-            EnumNotificationKind.verificationEmail
-        );
-        const emailVerification =
-            await this.userAuthDomain.persistLoginVerification(user);
+    /** Counts one two-factor attempt, locks the account out when the budget is spent, and answers the attempt limit. */
+    private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
+        const isAttemptCounted =
+            await this.userTwoFactorDomain.countAttempt(user);
+        if (!isAttemptCounted) {
+            const lockoutLogs = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+            ];
+            const revoked = await this.reachMaxAttempt(user.id);
+            if (revoked !== null) {
+                await this.sessionQueue.purgeLogins(user.id, revoked);
 
-        this.activityLogDomain.stagePrepared(activityLogs);
+                this.activityLogDomain.stagePrepared(lockoutLogs);
+            }
+        }
 
-        const expiredAt = this.helperDateService.formatToIso(
-            emailVerification.expiredAt
-        );
-        await this.notificationQueue.sendVerificationEmail(recipient, {
-            expiredAt,
-            reference: emailVerification.reference,
-            link: emailVerification.link,
-            expiredInMinutes: emailVerification.expiredInMinutes,
-        });
+        this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
     }
 
     /** Logs a verified user in: tokens directly, or the two-factor challenge (with a fresh setup when two-factor still requires one). */
@@ -550,10 +574,6 @@ export class UserAuthHttpService {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
     ): Promise<IUserLoginOutcome> {
-        const isUnverified = this.userUtil.isUnverified(user);
-        if (isUnverified) {
-            await this.sendLoginVerification(user);
-        }
         this.userAuthDomain.assertVerified(user);
 
         const loginAt = this.helperDateService.create();
@@ -602,9 +622,6 @@ export class UserAuthHttpService {
             );
         const oldJti = this.authJwtDomain.getRefreshJti(payload);
         const { sessionId, userId, loginFrom, loginWith } = payload;
-        // Sequential by design: gate before the work it guards
-        await this.sessionDomain.getOneActive(userId, sessionId);
-
         const { jti: newJti, tokens } = this.authJwtDomain.refreshToken(
             user,
             refreshToken
@@ -660,7 +677,7 @@ export class UserAuthHttpService {
         }
 
         if (cacheUpdate === EnumSessionCacheUpdate.absent) {
-            await this.sessionDomain.setLogin(userId, sessionId, newJti);
+            await this.setLoginOrRevoke(userId, sessionId, newJti);
         }
 
         return { tokens, revoked: [] };
@@ -767,9 +784,12 @@ export class UserAuthHttpService {
                     createdBy: userId,
                 }),
             ];
-            await this.reachMaxAttempt(userId);
+            const revoked = await this.reachMaxAttempt(userId);
+            if (revoked !== null) {
+                await this.sessionQueue.purgeLogins(userId, revoked);
 
-            this.activityLogDomain.stagePrepared(lockoutLogs);
+                this.activityLogDomain.stagePrepared(lockoutLogs);
+            }
         }
 
         this.userPasswordDomain.assertAttemptCounted(attempt.isAttemptCounted);
@@ -789,7 +809,7 @@ export class UserAuthHttpService {
 
             this.activityLogDomain.stagePrepared(failedLogs);
         }
-        this.userAuthDomain.assertPasswordMatched(isMatch);
+        this.userAuthDomain.assertCredentialMatched(isMatch);
 
         const outcome = await this.completeLogin(
             attempt.user,
@@ -816,11 +836,15 @@ export class UserAuthHttpService {
             challenge.userId
         );
         // Sequential by design: gate before the work it guards
+        await this.assertTwoFactorAttemptCounted(user);
+        // Sequential by design: the attempt is counted before the code is checked
         const verified = await this.userTwoFactorDomain.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
             method,
         });
+        // Sequential by design: the claim follows a successful verification and precedes the session it guards
+        await this.authTwoFactorDomain.consumeChallenge(challengeToken);
         const verifyLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userVerifyTwoFactor,
@@ -844,16 +868,13 @@ export class UserAuthHttpService {
             }),
         ];
         const loginAt = this.helperDateService.create();
-        const [tokens] = await Promise.all([
-            this.createTokenAndSession(
-                user,
-                challenge.device,
-                challenge.loginFrom,
-                challenge.loginWith,
-                loginAt
-            ),
-            this.authTwoFactorDomain.deleteChallenge(challengeToken),
-        ]);
+        const tokens = await this.createTokenAndSession(
+            user,
+            challenge.device,
+            challenge.loginFrom,
+            challenge.loginWith,
+            loginAt
+        );
 
         this.activityLogDomain.stagePrepared(loginLogs);
 
@@ -874,6 +895,8 @@ export class UserAuthHttpService {
                 challenge.userId
             );
         // Sequential by design: gate before the work it guards
+        await this.assertTwoFactorAttemptCounted(user);
+        // Sequential by design: the attempt is counted before the code is checked
         await this.userTwoFactorDomain.verifySetupCode(
             user,
             pendingSecret,
@@ -936,9 +959,6 @@ export class UserAuthHttpService {
                 action: EnumActivityLogAction.userLogout,
             }),
         ];
-        // Sequential by design: gate before the work it guards
-        await this.sessionDomain.validateActive(userId, sessionId);
-
         const now = this.helperDateService.create();
         await this.databaseService.withTransaction(async tx => {
             await this.sessionDomain.revokeInTx(

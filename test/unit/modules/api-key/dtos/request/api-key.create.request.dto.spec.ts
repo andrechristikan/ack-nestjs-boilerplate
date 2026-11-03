@@ -44,6 +44,25 @@ describe('ApiKeyCreateRequestSchema', () => {
         ).toThrow();
     });
 
+    it.each([
+        ['startAt without endAt', { startAt }, 'endAt'],
+        ['endAt without startAt', { endAt }, 'startAt'],
+    ])('rejects %s', (_label, window, missingPath) => {
+        const result = ApiKeyCreateRequestSchema.safeParse({
+            name: 'Acme Api Key',
+            type: EnumApiKeyType.default,
+            ...window,
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: [missingPath],
+                message: 'request.error.requiredWithOtherProperty.invalid',
+            }),
+        ]);
+    });
+
     it('rejects an undeclared key', () => {
         expect(() =>
             ApiKeyCreateRequestSchema.parse({

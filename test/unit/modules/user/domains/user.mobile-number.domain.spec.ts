@@ -6,6 +6,7 @@ import type { Country } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
@@ -20,6 +21,7 @@ describe('UserMobileNumberDomain', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let domain: UserMobileNumberDomain;
 
@@ -69,6 +71,7 @@ describe('UserMobileNumberDomain', () => {
                 { provide: UserDomain, useValue: userDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: UserUtil, useValue: userUtil },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         domain = module.get(UserMobileNumberDomain);
@@ -246,6 +249,34 @@ describe('UserMobileNumberDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
+        });
+
+        it('maps a unique collision to UserMobileNumberExistException', async () => {
+            userUtil.checkMobileNumber.mockReturnValue(true);
+            const collision = new Error('unique');
+            databaseService.withTransaction.mockRejectedValueOnce(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            const call = domain.addMobileNumber(
+                'user-marlin',
+                {
+                    number: '5551234',
+                    countryId: country.id,
+                    phoneCode: '+1',
+                },
+                country.phoneCode,
+                false
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberExist,
+                messagePath: 'user.error.mobileNumberExist',
+            });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'number'
+            );
         });
     });
 
@@ -451,6 +482,35 @@ describe('UserMobileNumberDomain', () => {
                 rawError: error,
             });
         });
+
+        it('maps a unique collision to UserMobileNumberExistException', async () => {
+            userUtil.checkMobileNumber.mockReturnValue(true);
+            const collision = new Error('unique');
+            databaseService.withTransaction.mockRejectedValueOnce(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            const call = domain.updateMobileNumber(
+                'user-marlin',
+                mobileNumber,
+                {
+                    number: '5559999',
+                    countryId: country.id,
+                    phoneCode: mobileNumber.phoneCode,
+                },
+                country.phoneCode,
+                false
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberExist,
+                messagePath: 'user.error.mobileNumberExist',
+            });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'number'
+            );
+        });
     });
 
     describe('deleteMobileNumber', () => {
@@ -540,6 +600,16 @@ describe('UserMobileNumberDomain', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
+        });
+    });
+
+    describe('removeByUserInTx', () => {
+        it('deletes every mobile number of the user on the given transaction', async () => {
+            await domain.removeByUserInTx(tx, 'user-marlin');
+
+            expect(
+                userMobileNumberRepository.deleteByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-marlin');
         });
     });
 });

@@ -90,6 +90,6 @@
     "workspaceMemberRoles": "Workspace member role breakdown retrieved successfully.",
     "workspaceActivity": "Workspace activity metrics retrieved successfully.",
     "error": {
-        "invalidDateRange": "The start date must be before the end date."
+        "invalidDateRange": "The start date must be before the end date and the range cannot exceed the maximum window."
     }
 }

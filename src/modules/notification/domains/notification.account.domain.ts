@@ -13,7 +13,7 @@ import type {
     INotificationStepResult,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
+    INotificationVerifiedMobileNumberEncryptedPayload,
     INotificationWelcomeByAdminEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -523,7 +523,7 @@ export class NotificationAccountDomain {
     async processVerifiedMobileNumber(
         userId: string,
         recipient: INotificationRecipientEncryptedPayload,
-        data: INotificationVerifiedMobileNumberPayload,
+        data: INotificationVerifiedMobileNumberEncryptedPayload,
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
@@ -536,9 +536,12 @@ export class NotificationAccountDomain {
         }
 
         if (!done.includes(EnumNotificationStep.createNotification)) {
-            const censoredMobileNumber = this.helperStringService.censor(
-                data.mobileNumber
+            const mobileNumber = this.notificationUtil.decryptPayload(
+                data.encryptedMobileNumber,
+                userId
             );
+            const censoredMobileNumber =
+                this.helperStringService.censor(mobileNumber);
 
             try {
                 // Sequential by design: gate before the work it guards

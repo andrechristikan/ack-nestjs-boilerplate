@@ -125,4 +125,27 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
             where: { id: targetMemberId },
         });
     }
+
+    async removeByWorkspaceAndUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        userId: string
+    ): Promise<number> {
+        const { count } = await tx.projectMember.deleteMany({
+            where: { userId, project: { workspaceId } },
+        });
+
+        return count;
+    }
+
+    async removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        const { count } = await tx.projectMember.deleteMany({
+            where: { userId },
+        });
+
+        return count;
+    }
 }

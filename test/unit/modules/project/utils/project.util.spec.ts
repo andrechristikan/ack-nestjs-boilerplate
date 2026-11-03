@@ -86,6 +86,29 @@ describe('ProjectUtil', () => {
         });
     });
 
+    describe('mapMemberActor', () => {
+        it('maps the workspace member to its user id and workspace bypass', () => {
+            const result = util.mapMemberActor({
+                ...member,
+                role: EnumWorkspaceMemberRole.admin,
+            });
+
+            expect(result).toEqual({
+                userId: '507f1f77bcf86cd799439013',
+                hasWorkspaceBypass: true,
+            });
+        });
+
+        it('maps a plain workspace member to no bypass', () => {
+            const result = util.mapMemberActor(member);
+
+            expect(result).toEqual({
+                userId: '507f1f77bcf86cd799439013',
+                hasWorkspaceBypass: false,
+            });
+        });
+    });
+
     describe('drawSlugCandidates', () => {
         it('draws slugMaxAttempts candidates from the prefix and max length', () => {
             const candidates = ['p-a', 'p-b', 'p-c', 'p-d', 'p-e'];

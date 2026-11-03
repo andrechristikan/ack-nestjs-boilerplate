@@ -71,8 +71,8 @@ export class ActivityLogAnalyticDomain {
 
     getCountByWorkspaceInRange(
         workspaceId: string,
-        startDate: Date,
-        endDate: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<number> {
         return this.activityLogAnalyticRepository.countByWorkspaceInRange(
             [...ActivityLogWorkspaceVolumeContract],

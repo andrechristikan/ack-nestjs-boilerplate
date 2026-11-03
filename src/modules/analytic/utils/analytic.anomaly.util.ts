@@ -91,7 +91,8 @@ export class AnalyticAnomalyUtil {
 
     findLoginTimeAnomalies(
         activityLogs: IActivityLogAnalyticList[],
-        thresholdPercent: number
+        thresholdPercent: number,
+        minSample: number
     ): IAnalyticLoginTimeAnomaly[] {
         const byUser = new Map<string, number[]>();
         for (const activityLog of activityLogs) {
@@ -102,17 +103,18 @@ export class AnalyticAnomalyUtil {
 
         const anomalous: IAnalyticLoginTimeAnomaly[] = [];
         for (const [userId, hours] of byUser) {
-            if (hours.length < 5) {
+            if (hours.length < minSample) {
                 continue;
             }
+            const lastHour = hours[hours.length - 1]!;
+            const history = hours.slice(0, -1);
             const histogram = new Array<number>(24).fill(0);
-            for (const hour of hours) {
+            for (const hour of history) {
                 histogram[hour]!++;
             }
-            const lastHour = hours[hours.length - 1]!;
             const frequency = this.helperNumberService.percent(
                 histogram[lastHour]!,
-                hours.length
+                history.length
             );
             if (frequency < thresholdPercent) {
                 anomalous.push({

@@ -28,7 +28,11 @@ import type {
     IActivityLogStageInput,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type {
+    IProjectMember,
+    IProjectMemberActor,
+} from '@modules/project/interfaces/project.interface';
+import { ProjectUtil } from '@modules/project/utils/project.util';
 import { ProjectMemberHttpService } from '@modules/project/services/http/project.member.http.service';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
@@ -44,6 +48,7 @@ describe('ProjectMemberHttpService', () => {
         mock<RequestStoreService>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
+    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
 
     const pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput> =
         {
@@ -53,6 +58,22 @@ describe('ProjectMemberHttpService', () => {
         };
 
     let service: ProjectMemberHttpService;
+
+    const actorMember: WorkspaceMember = {
+        id: '507f1f77bcf86cd799439034',
+        workspaceId: '507f1f77bcf86cd799439012',
+        userId: '507f1f77bcf86cd799439033',
+        role: EnumWorkspaceMemberRole.admin,
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+    const actor: IProjectMemberActor = {
+        userId: actorMember.userId,
+        hasWorkspaceBypass: true,
+    };
 
     const project: Project = {
         id: '507f1f77bcf86cd799439011',
@@ -94,6 +115,7 @@ describe('ProjectMemberHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        projectUtil.mapMemberActor.mockReturnValue(actor);
         activityLogDomain.prepare.mockImplementation(
             <A extends EnumActivityLogAction>(
                 input: IActivityLogStageInput<A>
@@ -117,6 +139,7 @@ describe('ProjectMemberHttpService', () => {
                     provide: WorkspaceMemberDomain,
                     useValue: workspaceMemberDomain,
                 },
+                { provide: ProjectUtil, useValue: projectUtil },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -189,7 +212,7 @@ describe('ProjectMemberHttpService', () => {
 
             const result = await service.assignMember(
                 project,
-                '507f1f77bcf86cd799439033',
+                actorMember,
                 body
             );
 
@@ -197,9 +220,12 @@ describe('ProjectMemberHttpService', () => {
             expect(
                 workspaceMemberDomain.getOneByWorkspaceAndUser
             ).toHaveBeenCalledWith(project.workspaceId, body.userId);
+            expect(projectUtil.mapMemberActor).toHaveBeenCalledWith(
+                actorMember
+            );
             expect(projectMemberDomain.assignMember).toHaveBeenCalledWith(
                 project,
-                '507f1f77bcf86cd799439033',
+                actor,
                 targetMember,
                 body.role
             );
@@ -216,18 +242,40 @@ describe('ProjectMemberHttpService', () => {
             const created = { ...projectMemberRow, userId: body.userId };
             projectMemberDomain.assignMember.mockResolvedValue(created);
 
-            await service.assignMember(
-                project,
-                '507f1f77bcf86cd799439033',
-                body
-            );
+            await service.assignMember(project, actorMember, body);
 
             expect(projectMemberDomain.assignMember).toHaveBeenCalledWith(
                 project,
-                '507f1f77bcf86cd799439033',
+                actor,
                 null,
                 body.role
             );
+        });
+
+        it('prepares both assigned activity logs before it reads the target workspace member', async () => {
+            const body: ProjectMemberAssignRequestDto = {
+                userId: '507f1f77bcf86cd799439022',
+                role: EnumProjectMemberRole.member,
+            };
+            workspaceMemberDomain.getOneByWorkspaceAndUser.mockImplementation(
+                async () => {
+                    expect(activityLogDomain.prepare).toHaveBeenCalledTimes(2);
+                    expect(
+                        activityLogDomain.stagePrepared
+                    ).not.toHaveBeenCalled();
+
+                    return null;
+                }
+            );
+            projectMemberDomain.assignMember.mockResolvedValue(
+                projectMemberRow
+            );
+
+            await service.assignMember(project, actorMember, body);
+
+            expect(
+                workspaceMemberDomain.getOneByWorkspaceAndUser
+            ).toHaveBeenCalledTimes(1);
         });
 
         it('prepares both assigned activity logs before the write and stages them after when the actor differs from the target', async () => {
@@ -245,7 +293,7 @@ describe('ProjectMemberHttpService', () => {
                 return projectMemberRow;
             });
 
-            await service.assignMember(project, actorId, body);
+            await service.assignMember(project, actorMember, body);
 
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 {
@@ -278,7 +326,7 @@ describe('ProjectMemberHttpService', () => {
                 projectMemberRow
             );
 
-            await service.assignMember(project, actorId, body);
+            await service.assignMember(project, actorMember, body);
 
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 {
@@ -304,7 +352,7 @@ describe('ProjectMemberHttpService', () => {
             );
 
             await expect(
-                service.assignMember(project, '507f1f77bcf86cd799439033', body)
+                service.assignMember(project, actorMember, body)
             ).rejects.toThrow('boom');
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
@@ -321,13 +369,17 @@ describe('ProjectMemberHttpService', () => {
 
             await service.updateMemberRole(
                 project,
-                '507f1f77bcf86cd799439033',
+                actorMember,
                 '507f1f77bcf86cd799439021',
                 body
             );
 
+            expect(projectUtil.mapMemberActor).toHaveBeenCalledWith(
+                actorMember
+            );
             expect(projectMemberDomain.updateMemberRole).toHaveBeenCalledWith(
                 project,
+                actor,
                 '507f1f77bcf86cd799439021',
                 body.role
             );
@@ -344,7 +396,7 @@ describe('ProjectMemberHttpService', () => {
 
             await service.updateMemberRole(
                 project,
-                actorId,
+                actorMember,
                 projectMemberRow.id,
                 body
             );
@@ -375,9 +427,14 @@ describe('ProjectMemberHttpService', () => {
                 projectMemberRow
             );
 
+            projectUtil.mapMemberActor.mockReturnValue({
+                userId: projectMemberRow.userId,
+                hasWorkspaceBypass: true,
+            });
+
             await service.updateMemberRole(
                 project,
-                projectMemberRow.userId,
+                { ...actorMember, userId: projectMemberRow.userId },
                 projectMemberRow.id,
                 body
             );
@@ -402,13 +459,16 @@ describe('ProjectMemberHttpService', () => {
 
             await service.removeMember(
                 project,
-                '507f1f77bcf86cd799439033',
+                actorMember,
                 '507f1f77bcf86cd799439021'
             );
 
+            expect(projectUtil.mapMemberActor).toHaveBeenCalledWith(
+                actorMember
+            );
             expect(projectMemberDomain.removeMember).toHaveBeenCalledWith(
                 project,
-                '507f1f77bcf86cd799439033',
+                actor,
                 '507f1f77bcf86cd799439021'
             );
         });
@@ -419,7 +479,11 @@ describe('ProjectMemberHttpService', () => {
                 projectMemberRow
             );
 
-            await service.removeMember(project, actorId, projectMemberRow.id);
+            await service.removeMember(
+                project,
+                actorMember,
+                projectMemberRow.id
+            );
 
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 {

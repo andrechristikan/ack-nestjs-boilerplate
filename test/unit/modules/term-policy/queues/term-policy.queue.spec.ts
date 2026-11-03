@@ -11,6 +11,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
+import type { ITermPolicyCopyContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('TermPolicyQueue', () => {
@@ -29,6 +30,8 @@ describe('TermPolicyQueue', () => {
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, unknown> = {
                 'termPolicy.jobId.deleteContentPattern': '{process}-{nonce}',
+                'termPolicy.jobId.copyContentPattern':
+                    '{process}-{termPolicyId}',
             };
 
             return values[key];
@@ -90,6 +93,52 @@ describe('TermPolicyQueue', () => {
                 expect.objectContaining({
                     rawError: error,
                     message: 'termPolicy.queue.error.enqueueDeleteContent',
+                })
+            );
+        });
+    });
+
+    describe('copyContent', () => {
+        const payload: ITermPolicyCopyContentPayload = {
+            termPolicyId: 'term-policy-1',
+            contents: [],
+            destination: 'public/term-policies/privacy/1',
+        };
+
+        it('adds a copy job under a job id per term policy', async () => {
+            helperStringService.fillPattern.mockReturnValue(
+                'copyContent-term-policy-1'
+            );
+
+            await queue.copyContent(payload);
+
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{process}-{termPolicyId}',
+                {
+                    process: EnumTermPolicyProcess.copyContent,
+                    termPolicyId: 'term-policy-1',
+                }
+            );
+            expect(termPolicyQueue.add).toHaveBeenCalledWith(
+                EnumTermPolicyProcess.copyContent,
+                payload,
+                {
+                    priority: EnumQueuePriority.high,
+                    jobId: 'copyContent-term-policy-1',
+                }
+            );
+        });
+
+        it('resolves and reports the failure when the add rejects', async () => {
+            const error = new Error('redis down');
+            termPolicyQueue.add.mockRejectedValue(error);
+
+            await expect(queue.copyContent(payload)).resolves.toBeUndefined();
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    rawError: error,
+                    message: 'termPolicy.queue.error.enqueueCopyContent',
                 })
             );
         });

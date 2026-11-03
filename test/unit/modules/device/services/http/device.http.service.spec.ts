@@ -6,7 +6,9 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -20,6 +22,7 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceUtil } from '@modules/device/utils/device.util';
@@ -46,6 +49,7 @@ describe('DeviceHttpService', () => {
     const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -163,6 +167,7 @@ describe('DeviceHttpService', () => {
                 { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: SessionDomain, useValue: sessionDomain },
                 { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: RoleDomain, useValue: roleDomain },
@@ -420,7 +425,6 @@ describe('DeviceHttpService', () => {
 
         it('revokes the sessions then removes the ownership on one transaction attributed to the owner, purges after commit, and stages the owner activity', async () => {
             const calls: string[] = [];
-            deviceDomain.assertActive.mockResolvedValue(undefined);
             helperDateService.create.mockReturnValue(updatedAt);
             sessionDomain.revokeByDeviceOwnershipInTx.mockImplementation(
                 async () => {
@@ -450,10 +454,6 @@ describe('DeviceHttpService', () => {
             const result = await service.remove('user-1', 'device-ownership-1');
 
             expect(result).toEqual({});
-            expect(deviceDomain.assertActive).toHaveBeenCalledWith(
-                'user-1',
-                'device-ownership-1'
-            );
             expect(
                 sessionDomain.revokeByDeviceOwnershipInTx
             ).toHaveBeenCalledWith(
@@ -496,27 +496,54 @@ describe('DeviceHttpService', () => {
             ]);
         });
 
-        it('opens no transaction when the ownership is not active', async () => {
+        it('answers DeviceNotFoundException from the guarded removal of an already removed ownership, purging and staging nothing', async () => {
             const notFound = new DeviceNotFoundException();
-            deviceDomain.assertActive.mockRejectedValue(notFound);
+            helperDateService.create.mockReturnValue(updatedAt);
+            sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
+            deviceDomain.removeOwnershipInTx.mockRejectedValue(notFound);
+            databaseService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
 
             await expect(
                 service.remove('user-1', 'device-ownership-1')
             ).rejects.toBe(notFound);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('answers DeviceNotFoundException when a concurrent removal wins the write', async () => {
+            const conflict = new Error('write conflict');
+            helperDateService.create.mockReturnValue(updatedAt);
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.remove('user-1', 'device-ownership-1')
+            ).rejects.toMatchObject({
+                constructor: DeviceNotFoundException,
+                module: 'device',
+                messagePath: 'device.error.notFound',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('purges and stages nothing when the transaction fails', async () => {
             const cause = new Error('database exploded');
-            deviceDomain.assertActive.mockResolvedValue(undefined);
             helperDateService.create.mockReturnValue(updatedAt);
             databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.remove('user-1', 'device-ownership-1')
-            ).rejects.toBe(cause);
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
@@ -560,7 +587,6 @@ describe('DeviceHttpService', () => {
         };
 
         beforeEach(() => {
-            deviceDomain.assertActive.mockResolvedValue(undefined);
             helperDateService.create.mockReturnValue(updatedAt);
             sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue(
                 revokedSessions
@@ -594,10 +620,6 @@ describe('DeviceHttpService', () => {
             expect(roleDomain.assertActorOutranks).toHaveBeenCalledWith(
                 EnumRoleType.admin,
                 EnumRoleType.user
-            );
-            expect(deviceDomain.assertActive).toHaveBeenCalledWith(
-                'user-1',
-                'device-ownership-1'
             );
             expect(
                 sessionDomain.revokeByDeviceOwnershipInTx
@@ -659,15 +681,14 @@ describe('DeviceHttpService', () => {
             ]);
         });
 
-        it('opens no transaction when the ownership is not active', async () => {
+        it('answers DeviceNotFoundException from the guarded removal, purging and staging nothing', async () => {
             const notFound = new DeviceNotFoundException();
             roleDomain.getOneByUserId.mockResolvedValue(userRole);
-            deviceDomain.assertActive.mockRejectedValue(notFound);
+            deviceDomain.removeOwnershipInTx.mockRejectedValue(notFound);
 
             await expect(
                 service.removeByAdmin('user-1', 'device-ownership-1', admin)
             ).rejects.toBe(notFound);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });

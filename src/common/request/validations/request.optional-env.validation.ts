@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
 import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
 import { RequestSesIdentityArnSchema } from '@common/request/validations/request.ses-identity-arn.validation';
+import { RequestTrustedProxySchema } from '@common/request/validations/request.trusted-proxy.validation';
 import { RequestUrlNoTrailingSlashSchema } from '@common/request/validations/request.url-no-trailing-slash.validation';
 
 /**
@@ -50,3 +51,10 @@ export const RequestOptionalEnvUrlNoTrailingSlashSchema =
 export const RequestOptionalEnvUrlSchema = RequestOptionalEnvSchema.pipe(
     z.url().nullable()
 );
+
+/**
+ * Optional env trusted proxy list: blank or absent parses to `null`, a set value must be presets, IPs, or CIDRs.
+ * @public
+ */
+export const RequestOptionalEnvTrustedProxySchema =
+    RequestOptionalEnvSchema.pipe(RequestTrustedProxySchema.nullable());

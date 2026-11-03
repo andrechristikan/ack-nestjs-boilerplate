@@ -4,7 +4,6 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import type {
@@ -12,7 +11,8 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { FileService } from '@common/file/services/file.service';
+import { MessageService } from '@common/message/services/message.service';
+import { QueueException } from '@queues/exceptions/queue.exception';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
@@ -24,7 +24,9 @@ import { TermPolicyStatusInvalidException } from '@modules/term-policy/exception
 import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
+    ITermPolicyCopyContentPayload,
     ITermPolicyCreate,
+    ITermPolicyPublish,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
@@ -39,48 +41,11 @@ export class TermPolicyDomain {
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly fileService: FileService,
+        private readonly messageService: MessageService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly termPolicyQueue: TermPolicyQueue
     ) {}
-
-    mapPublicContent(
-        newItems: IAwsS3[],
-        contents: ITermPolicyContent[]
-    ): ITermPolicyContent[] {
-        const mapped = newItems.map(item => {
-            const content = contents.find(c => {
-                const contentFilename =
-                    this.fileService.extractFilenameFromPath(c.key);
-                const itemFilename = this.fileService.extractFilenameFromPath(
-                    item.key
-                );
-
-                return contentFilename === itemFilename;
-            });
-            if (!content) {
-                throw new AppUnknownException(
-                    null,
-                    `Term policy copy ${item.key} matches no content`
-                );
-            }
-
-            return { ...item, language: content.language };
-        });
-
-        const missing = contents.find(
-            c => !mapped.some(m => m.language === c.language)
-        );
-        if (missing) {
-            throw new AppUnknownException(
-                null,
-                `Term policy copy failed for language ${missing.language}`
-            );
-        }
-
-        return mapped;
-    }
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
@@ -185,12 +150,15 @@ export class TermPolicyDomain {
         try {
             const contentPath = this.termPolicyUtil.getPath(termPolicy);
             // Sequential by design: write must not run if an earlier step throws
-            const deleted =
-                await this.termPolicyRepository.delete(termPolicyId);
+            const isDeleted =
+                await this.termPolicyRepository.deleteDraft(termPolicyId);
+            if (!isDeleted) {
+                throw new TermPolicyStatusInvalidException();
+            }
 
             await this.termPolicyQueue.deleteContent(contentPath);
 
-            return deleted;
+            return termPolicy;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -200,7 +168,7 @@ export class TermPolicyDomain {
         }
     }
 
-    async publishByAdmin(termPolicyId: string): Promise<TermPolicy> {
+    async publishByAdmin(termPolicyId: string): Promise<ITermPolicyPublish> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -224,57 +192,70 @@ export class TermPolicyDomain {
         }
 
         try {
-            const contentPublicPath = this.termPolicyUtil.getContentPublicPath(
+            const destination = this.termPolicyUtil.getContentPublicPath(
                 termPolicy.type,
                 termPolicy.version
             );
-            const newItems = await this.awsS3Service.copyItems(
-                contents,
-                contentPublicPath,
-                { access: EnumAwsS3Accessibility.public }
+            const publicKeys = this.termPolicyUtil.mapPublicContentKeys(
+                termPolicy,
+                contents
+            );
+            const publicContents: ITermPolicyContent[] = publicKeys.map(
+                ({ language, key, size }: ITermPolicyContentUpload) => {
+                    const presign = this.awsS3Service.mapPresign(
+                        { key, size },
+                        { access: EnumAwsS3Accessibility.public }
+                    );
+
+                    return { language, ...presign };
+                }
             );
 
-            const newContents = this.mapPublicContent(newItems, contents);
+            const published =
+                await this.databaseService.withTransaction<TermPolicy>(
+                    async tx => {
+                        const isPublished =
+                            await this.termPolicyRepository.publishInTx(
+                                tx,
+                                termPolicyId,
+                                publicContents
+                            );
+                        if (!isPublished) {
+                            throw new TermPolicyStatusInvalidException();
+                        }
 
-            // Sequential by design: write must not run if an earlier step throws
-            return await this.databaseService.withTransaction<TermPolicy>(
-                async tx => {
-                    const isPublished =
-                        await this.termPolicyRepository.publishInTx(
-                            tx,
-                            termPolicyId,
-                            newContents
-                        );
-                    if (!isPublished) {
-                        throw new TermPolicyStatusInvalidException();
-                    }
+                        const row =
+                            await this.termPolicyRepository.findOneByIdInTx(
+                                tx,
+                                termPolicyId
+                            );
+                        if (!row) {
+                            throw new TermPolicyNotFoundException();
+                        }
 
-                    const row = await this.termPolicyRepository.findOneByIdInTx(
-                        tx,
-                        termPolicyId
-                    );
-                    if (!row) {
-                        throw new TermPolicyNotFoundException();
-                    }
-
-                    await this.termPolicyRepository.archivePublishedByTypeInTx(
-                        tx,
-                        row.type,
-                        row.version
-                    );
-                    const hasNewerPublished =
-                        await this.termPolicyRepository.existsNewerPublishedInTx(
+                        await this.termPolicyRepository.archivePublishedByTypeInTx(
                             tx,
                             row.type,
                             row.version
                         );
-                    if (hasNewerPublished) {
-                        throw new TermPolicyStatusInvalidException();
-                    }
+                        const hasNewerPublished =
+                            await this.termPolicyRepository.existsNewerPublishedInTx(
+                                tx,
+                                row.type,
+                                row.version
+                            );
+                        if (hasNewerPublished) {
+                            throw new TermPolicyStatusInvalidException();
+                        }
 
-                    return row;
-                }
-            );
+                        return row;
+                    }
+                );
+
+            return {
+                termPolicy: published,
+                copy: { termPolicyId, contents, destination },
+            };
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -286,6 +267,26 @@ export class TermPolicyDomain {
             }
 
             throw new AppUnknownException(err);
+        }
+    }
+
+    async copyContent({
+        termPolicyId,
+        contents,
+        destination,
+    }: ITermPolicyCopyContentPayload): Promise<void> {
+        const copied = await this.awsS3Service.copyItems(
+            contents,
+            destination,
+            { access: EnumAwsS3Accessibility.public }
+        );
+        if (copied.length !== contents.length) {
+            const message = this.messageService.setMessage(
+                'termPolicy.queue.error.copyContent',
+                { properties: { termPolicyId } }
+            );
+
+            throw new QueueException(message, true);
         }
     }
 

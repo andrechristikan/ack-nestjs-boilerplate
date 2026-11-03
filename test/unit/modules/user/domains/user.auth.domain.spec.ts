@@ -164,21 +164,26 @@ describe('UserAuthDomain', () => {
             });
         });
 
-        it('throws UserNotFoundException when the user does not exist', async () => {
+        it('throws UserCredentialInvalidException when the user does not exist', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
             await expect(
                 domain.incrementCredentialAttempt('missing@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
+                statusCode: EnumUserStatusCodeError.credentialInvalid,
                 statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.credentialInvalid
+                    ],
+                messagePath: 'user.error.credentialInvalid',
             });
+            expect(
+                userPasswordDomain.incrementPasswordAttempt
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws UserInactiveForbiddenException when the user is not active', async () => {
+        it('throws UserCredentialInvalidException when the user is not active', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue({
                 ...baseUser,
                 status: EnumUserStatus.inactive,
@@ -188,19 +193,15 @@ describe('UserAuthDomain', () => {
                 domain.incrementCredentialAttempt('halcyon@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.inactiveForbidden
-                    ],
-                messagePath: 'user.error.inactive',
+                statusCode: EnumUserStatusCodeError.credentialInvalid,
+                messagePath: 'user.error.credentialInvalid',
             });
             expect(
                 userPasswordDomain.incrementPasswordAttempt
             ).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordNotSetException when the user has no password', async () => {
+        it('throws UserCredentialInvalidException when the user has no password', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue({
                 ...baseUser,
                 password: null,
@@ -210,13 +211,12 @@ describe('UserAuthDomain', () => {
                 domain.incrementCredentialAttempt('halcyon@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordNotSet,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordNotSet
-                    ],
-                messagePath: 'user.error.passwordNotSet',
+                statusCode: EnumUserStatusCodeError.credentialInvalid,
+                messagePath: 'user.error.credentialInvalid',
             });
+            expect(
+                userPasswordDomain.incrementPasswordAttempt
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -288,12 +288,38 @@ describe('UserAuthDomain', () => {
         });
     });
 
+    describe('assertCredentialMatched', () => {
+        it('passes when the password matched', () => {
+            expect(() => domain.assertCredentialMatched(true)).not.toThrow();
+        });
+
+        it('throws UserCredentialInvalidException when the password did not match', () => {
+            expect(() => domain.assertCredentialMatched(false)).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.credentialInvalid,
+                    messagePath: 'user.error.credentialInvalid',
+                })
+            );
+        });
+    });
+
     describe('getOneByEmail', () => {
         it('returns the live user of the email', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
 
             await expect(domain.getOneByEmail(baseUser.email)).resolves.toBe(
                 baseUser
+            );
+        });
+
+        it('looks the email up trimmed and lowercased', async () => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
+
+            await domain.getOneByEmail('  Halcyon@Example.COM ');
+
+            expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
+                'halcyon@example.com'
             );
         });
 
@@ -320,6 +346,17 @@ describe('UserAuthDomain', () => {
 
         beforeEach(() => {
             databaseUtil.createId.mockReturnValue('user-id-halcyon');
+        });
+
+        it('stores the email trimmed and lowercased', () => {
+            const result = domain.prepareSocialCreate(
+                '  Halcyon@Example.COM ',
+                EnumUserLoginWith.socialGoogle,
+                socialInput,
+                resolved
+            );
+
+            expect(result.email).toBe('halcyon@example.com');
         });
 
         it('prepares a Google social create input from the resolved ids without re-reading the username', () => {
@@ -394,6 +431,16 @@ describe('UserAuthDomain', () => {
             ).resolves.toBe(baseUser);
         });
 
+        it('looks the email up trimmed and lowercased', async () => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
+
+            await domain.getOneForSocialLogin('  Halcyon@Example.COM ');
+
+            expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
+                'halcyon@example.com'
+            );
+        });
+
         it('throws UserNotFoundException when the user does not exist', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
@@ -438,24 +485,6 @@ describe('UserAuthDomain', () => {
             });
             expect(userVerificationDomain.markVerified).toHaveBeenCalledWith(
                 user.id
-            );
-        });
-    });
-
-    describe('persistLoginVerification', () => {
-        it('creates a fresh email verification and stores it replacing the active one', async () => {
-            const emailVerification = { reference: 'ref' } as never;
-            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
-
-            await expect(
-                domain.persistLoginVerification(baseUser)
-            ).resolves.toBe(emailVerification);
-            expect(
-                userVerificationDomain.persistVerificationEmail
-            ).toHaveBeenCalledWith(
-                baseUser.id,
-                baseUser.email,
-                emailVerification
             );
         });
     });

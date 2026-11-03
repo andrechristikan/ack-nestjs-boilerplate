@@ -1,4 +1,3 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
 import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
@@ -7,7 +6,7 @@ import type { HealthResponseDto } from '@modules/health/dtos/response/health.res
 import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
 import { HealthDomain } from '@modules/health/domains/health.domain';
 import { HealthUtil } from '@modules/health/utils/health.util';
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { HealthCheckResult } from '@nestjs/terminus';
 
 @Injectable()
@@ -16,26 +15,6 @@ export class HealthHttpService {
         private readonly healthDomain: HealthDomain,
         private readonly healthUtil: HealthUtil
     ) {}
-
-    /**
-     * Unwraps the health result Terminus reports through `ServiceUnavailableException`, re-throws a
-     * `ServiceUnavailableException` carrying no health result, and wraps any other error.
-     */
-    private resolveFailure(error: unknown): HealthResponseDto {
-        if (error instanceof ServiceUnavailableException) {
-            const response = error.getResponse();
-
-            const isHealthCheckResult =
-                this.healthUtil.isHealthCheckResult(response);
-            if (isHealthCheckResult) {
-                return this.mapResponse(response);
-            }
-
-            throw error;
-        }
-
-        throw new AppUnknownException(error);
-    }
 
     private mapResponse(result: HealthCheckResult): HealthResponseDto {
         const status = this.healthUtil.mapStatus(result.status);
@@ -49,56 +28,32 @@ export class HealthHttpService {
     }
 
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
-        try {
-            const result = await this.healthDomain.checkAws();
-            const data = this.mapResponse(result);
+        const result = await this.healthDomain.checkAws();
+        const data = this.mapResponse(result);
 
-            return { data };
-        } catch (error: unknown) {
-            const data = this.resolveFailure(error);
-
-            return { data };
-        }
+        return { data };
     }
 
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
-        try {
-            const result = await this.healthDomain.checkDatabase();
-            const data = this.mapResponse(result);
+        const result = await this.healthDomain.checkDatabase();
+        const data = this.mapResponse(result);
 
-            return { data };
-        } catch (error: unknown) {
-            const data = this.resolveFailure(error);
-
-            return { data };
-        }
+        return { data };
     }
 
     async checkThirdParty(): Promise<
         IResponseReturn<HealthThirdPartyResponseDto>
     > {
-        try {
-            const result = await this.healthDomain.checkThirdParty();
-            const data = this.mapResponse(result);
+        const result = await this.healthDomain.checkThirdParty();
+        const data = this.mapResponse(result);
 
-            return { data };
-        } catch (error: unknown) {
-            const data = this.resolveFailure(error);
-
-            return { data };
-        }
+        return { data };
     }
 
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
-        try {
-            const result = await this.healthDomain.checkInstance();
-            const data = this.mapResponse(result);
+        const result = await this.healthDomain.checkInstance();
+        const data = this.mapResponse(result);
 
-            return { data };
-        } catch (error: unknown) {
-            const data = this.resolveFailure(error);
-
-            return { data };
-        }
+        return { data };
     }
 }

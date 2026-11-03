@@ -1,6 +1,6 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
@@ -9,6 +9,8 @@ import type { HealthIndicatorResult } from '@nestjs/terminus';
  */
 @Injectable()
 export class HealthAwsS3BucketIndicator {
+    private readonly logger = new Logger(HealthAwsS3BucketIndicator.name);
+
     constructor(
         private readonly awsS3Service: AwsS3Service,
         private readonly healthIndicatorService: HealthIndicatorService
@@ -36,12 +38,9 @@ export class HealthAwsS3BucketIndicator {
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'AWS S3 bucket health check failed');
 
-            return indicator.down(
-                `HealthAwsS3BucketIndicator Failed - ${message}`
-            );
+            return indicator.down('AWS S3 bucket check failed');
         }
     }
 }

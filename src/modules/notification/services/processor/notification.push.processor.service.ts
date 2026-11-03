@@ -53,7 +53,11 @@ export class NotificationPushProcessorService implements OnModuleInit {
             const summary = this.notificationUtil.toStepSummary(
                 result.failedSteps
             );
-            throw new QueueException(summary, true);
+            throw new QueueException(
+                summary,
+                true,
+                result.failedSteps[0]!.rawError
+            );
         }
 
         return this.notificationUtil.toStepResponse(result);

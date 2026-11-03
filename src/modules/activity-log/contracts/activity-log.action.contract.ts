@@ -8,6 +8,7 @@ import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activ
 import { ActivityLogImportMetadataSchema } from '@modules/activity-log/dtos/activity-log.import-metadata.dto';
 import { ActivityLogInviteMetadataSchema } from '@modules/activity-log/dtos/activity-log.invite-metadata.dto';
 import { ActivityLogNotificationSettingMetadataSchema } from '@modules/activity-log/dtos/activity-log.notification-setting-metadata.dto';
+import { ActivityLogPolicyMetadataSchema } from '@modules/activity-log/dtos/activity-log.policy-metadata.dto';
 import { ActivityLogRoleMetadataSchema } from '@modules/activity-log/dtos/activity-log.role-metadata.dto';
 import { ActivityLogSessionActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-actor-metadata.dto';
 import { ActivityLogSessionAllActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-all-actor-metadata.dto';
@@ -100,6 +101,11 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         metadata: ActivityLogEmptyMetadataSchema,
     },
     [EnumActivityLogAction.userReachMaxPasswordAttempt]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userReachMaxTwoFactorAttempt]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
@@ -286,17 +292,17 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
     [EnumActivityLogAction.adminPolicyCreate]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogPolicyMetadataSchema,
     },
     [EnumActivityLogAction.adminPolicyUpdate]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogPolicyMetadataSchema,
     },
     [EnumActivityLogAction.adminPolicyDelete]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogPolicyMetadataSchema,
     },
     [EnumActivityLogAction.adminTermPolicyCreate]: {
         user: EnumActivityLogUser.payload,

@@ -1,6 +1,9 @@
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
-import type { ITermPolicyDeleteContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyCopyContentPayload,
+    ITermPolicyDeleteContentPayload,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { Job } from 'bullmq';
@@ -33,6 +36,24 @@ export class TermPolicyProcessorService {
             path,
         };
     }
+
+    async processCopyContent(
+        job: Job<ITermPolicyCopyContentPayload, unknown, EnumTermPolicyProcess>
+    ): Promise<IQueueResponse> {
+        const { termPolicyId, destination } = job.data;
+        await this.termPolicyDomain.copyContent(job.data);
+
+        const message = this.messageService.setMessage(
+            'termPolicy.queue.copyContent',
+            { properties: { termPolicyId } }
+        );
+
+        return {
+            message,
+            destination,
+        };
+    }
+
     processUnknown(process: string): never {
         const message = this.messageService.setMessage(
             'termPolicy.queue.error.unknownProcess',

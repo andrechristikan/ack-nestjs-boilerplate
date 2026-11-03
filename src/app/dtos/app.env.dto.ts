@@ -5,10 +5,12 @@ import { EnumRequestTimezone } from '@common/request/enums/request.enum';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
 import { RequestEncryptionSecretSchema } from '@common/request/validations/request.encryption-secret.validation';
+import { RequestUrlNoTrailingSlashSchema } from '@common/request/validations/request.url-no-trailing-slash.validation';
 import {
     RequestOptionalEnvEmailSchema,
     RequestOptionalEnvSesIdentityArnSchema,
     RequestOptionalEnvStringSchema,
+    RequestOptionalEnvTrustedProxySchema,
     RequestOptionalEnvUrlNoTrailingSlashSchema,
     RequestOptionalEnvUrlSchema,
 } from '@common/request/validations/request.optional-env.validation';
@@ -29,11 +31,11 @@ export const AppEnvSchema = z
         EMAIL_SUPPORT: RequestOptionalEnvEmailSchema,
 
         HOME_NAME: z.string().min(1),
-        HOME_URL: z.string().min(1),
+        HOME_URL: RequestUrlNoTrailingSlashSchema,
 
         HTTP_HOST: z.string().min(1),
         HTTP_PORT: z.coerce.number().int(),
-        HTTP_TRUSTED_PROXY: RequestOptionalEnvStringSchema,
+        HTTP_TRUSTED_PROXY: RequestOptionalEnvTrustedProxySchema,
 
         LOGGER_ENABLE: RequestBooleanStringSchema,
         LOGGER_LEVEL: z.enum(EnumLoggerLevel),
@@ -51,12 +53,12 @@ export const AppEnvSchema = z
 
         AUTH_JWT_AUDIENCE: z.string().min(1),
         AUTH_JWT_ISSUER: z.string().min(1),
-        AUTH_JWT_ACCESS_TOKEN_JWKS_URI: z.string().min(1),
+        AUTH_JWT_ACCESS_TOKEN_JWKS_URI: z.url(),
         AUTH_JWT_ACCESS_TOKEN_KID: z.string().min(1),
         AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: z.string().min(1),
         AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: z.string().min(1),
         AUTH_JWT_ACCESS_TOKEN_EXPIRED: z.string().regex(/^\d+[smhd]$/),
-        AUTH_JWT_REFRESH_TOKEN_JWKS_URI: z.string().min(1),
+        AUTH_JWT_REFRESH_TOKEN_JWKS_URI: z.url(),
         AUTH_JWT_REFRESH_TOKEN_KID: z.string().min(1),
         AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: z.string().min(1),
         AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: z.string().min(1),

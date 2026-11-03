@@ -8,6 +8,7 @@ export interface IConfigHealth {
     diskThresholdPercent: number;
     diskPath: string;
     gracefulShutdownTimeoutInMs: number;
+    jwksTimeoutInMs: number;
 }
 
 export default registerAs('health', (): IConfigHealth => ({
@@ -16,4 +17,5 @@ export default registerAs('health', (): IConfigHealth => ({
     diskThresholdPercent: 0.75,
     diskPath: '/',
     gracefulShutdownTimeoutInMs: ms('30s'),
+    jwksTimeoutInMs: ms('3s'),
 }));

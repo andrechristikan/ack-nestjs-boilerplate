@@ -89,13 +89,38 @@ describe('AuthTwoFactorDomain', () => {
         });
     });
 
-    describe('deleteChallenge', () => {
-        it('deletes the challenge of a token', async () => {
-            await domain.deleteChallenge('token-1');
+    describe('consumeChallenge', () => {
+        it('claims the challenge of a token', async () => {
+            const challenge = {
+                userId: 'user-1',
+                device: {
+                    fingerprint: 'device-1',
+                    name: null,
+                    platform: null,
+                    notificationToken: null,
+                },
+                loginFrom: EnumUserLoginFrom.website,
+                loginWith: EnumUserLoginWith.credential,
+            };
+            authCache.consumeTwoFactorChallenge.mockResolvedValue(challenge);
 
-            expect(authCache.deleteTwoFactorChallenge).toHaveBeenCalledWith(
+            await expect(domain.consumeChallenge('token-1')).resolves.toBe(
+                challenge
+            );
+            expect(authCache.consumeTwoFactorChallenge).toHaveBeenCalledWith(
                 'token-1'
             );
+        });
+
+        it('throws AuthTwoFactorChallengeInvalidException when another caller already claimed the challenge', async () => {
+            authCache.consumeTwoFactorChallenge.mockResolvedValue(null);
+
+            await expect(
+                domain.consumeChallenge('token-1')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
+            });
         });
     });
 });

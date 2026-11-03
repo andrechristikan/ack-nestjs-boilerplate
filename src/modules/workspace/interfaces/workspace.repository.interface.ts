@@ -17,7 +17,10 @@ export interface IWorkspaceRepository {
     findActiveById(workspaceId: string): Promise<Workspace | null>;
     findActivePublicBySlug(slug: string): Promise<Workspace | null>;
     findByIdByAdmin(workspaceId: string): Promise<Workspace | null>;
-    existsBySlug(slug: string, excludeWorkspaceId?: string): Promise<boolean>;
+    countByOwnerInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number>;
     findWithPaginationCursorByMember(
         userId: string,
         {
@@ -50,4 +53,9 @@ export interface IWorkspaceRepository {
         workspaceId: string,
         deletedAt: Date
     ): Promise<void>;
+    softDeleteSolelyOwnedByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deletedAt: Date
+    ): Promise<string[]>;
 }

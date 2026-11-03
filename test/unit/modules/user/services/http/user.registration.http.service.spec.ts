@@ -149,6 +149,7 @@ describe('UserRegistrationHttpService', () => {
         requiredSetup: false,
         confirmedAt: null,
         lastUsedAt: null,
+        lastUsedStep: null,
         attempt: 0,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -320,6 +321,7 @@ describe('UserRegistrationHttpService', () => {
         invitedByUserId: 'user-inviter',
         acceptedAt: null,
         acceptedByUserId: null,
+        pendingKey: 'workspace-invite:bramble@example.com',
     };
 
     beforeEach(async () => {

@@ -60,6 +60,8 @@ export class SessionRepository implements ISessionRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePaginationReturn<ISessionList>> {
+        const now = this.helperDateService.create();
+
         return this.paginationService.cursor<
             ISessionList,
             Prisma.SessionWhereInput
@@ -69,35 +71,22 @@ export class SessionRepository implements ISessionRepository {
                 ...where,
                 userId,
                 isRevoked: false,
+                expiredAt: { gte: now },
             },
             select: SessionListSelect,
         });
     }
 
-    async findOneActive(
+    async existsActiveById(
         userId: string,
         sessionId: string
-    ): Promise<ISession | null> {
-        const today = this.helperDateService.create();
-
-        return this.databaseService.client.session.findFirst({
-            where: {
-                id: sessionId,
-                userId,
-                expiredAt: {
-                    gte: today,
-                },
-                isRevoked: false,
-            },
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-                revokedBy: {
-                    select: UserRefSelect,
-                },
-            },
+    ): Promise<boolean> {
+        const session = await this.databaseService.client.session.findFirst({
+            where: { id: sessionId, userId, isRevoked: false },
+            select: { id: true },
         });
+
+        return session !== null;
     }
 
     async createInTx(
@@ -196,23 +185,40 @@ export class SessionRepository implements ISessionRepository {
     }
 
     async revokeByAdmin(
+        userId: string,
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<boolean> {
-        const { count } = await this.databaseService.client.session.updateMany({
-            where: {
-                id: sessionId,
-                isRevoked: false,
-            },
-            data: {
-                isRevoked: true,
-                revokedAt,
-                revokedById: revokedBy,
-            },
-        });
+    ): Promise<ISession | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.session.updateMany({
+                where: {
+                    id: sessionId,
+                    userId,
+                    isRevoked: false,
+                },
+                data: {
+                    isRevoked: true,
+                    revokedAt,
+                    revokedById: revokedBy,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
 
-        return count > 0;
+            return tx.session.findFirst({
+                where: { id: sessionId, userId },
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
+                    revokedBy: {
+                        select: UserRefSelect,
+                    },
+                },
+            });
+        });
     }
 
     async revokeActiveByUser(
@@ -242,6 +248,8 @@ export class SessionRepository implements ISessionRepository {
         await tx.session.updateMany({
             where: {
                 id: { in: sessions.map(session => session.id) },
+                userId,
+                isRevoked: false,
             },
             data: {
                 isRevoked: true,
@@ -273,6 +281,8 @@ export class SessionRepository implements ISessionRepository {
         await tx.session.updateMany({
             where: {
                 id: { in: sessions.map(session => session.id) },
+                userId,
+                isRevoked: false,
             },
             data: {
                 isRevoked: true,

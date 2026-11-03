@@ -8,6 +8,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -22,6 +23,7 @@ import type {
     WorkspaceJoinRequest,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import { WorkspaceJoinRequestPendingKeyPattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -49,6 +51,8 @@ describe('WorkspaceJoinRequestDomain', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
 
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const reviewedAt = new Date('2026-01-02T00:00:00.000Z');
@@ -80,6 +84,7 @@ describe('WorkspaceJoinRequestDomain', () => {
         rejectReasonCode: null,
         reviewedByUserId: null,
         reviewedAt: null,
+        pendingKey: 'workspace-1:user-2',
     };
 
     const workspaceMember: WorkspaceMember = {
@@ -99,6 +104,7 @@ describe('WorkspaceJoinRequestDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(reviewedAt);
+        helperStringService.fillPattern.mockReturnValue('workspace-1:user-2');
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
@@ -120,6 +126,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: HelperStringService, useValue: helperStringService },
             ],
         }).compile();
 
@@ -172,9 +179,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 workspaceMember
             );
-            workspaceJoinRequestRepository.existsPendingByWorkspaceAndUser.mockResolvedValue(
-                true
-            );
 
             await expect(
                 domain.getJoinableWorkspace('user-2', 'workspace-1')
@@ -191,36 +195,10 @@ describe('WorkspaceJoinRequestDomain', () => {
             });
         });
 
-        it('throws WorkspaceJoinRequestDuplicateException when a pending request already exists', async () => {
+        it('returns the public workspace when the caller is not a member', async () => {
             workspaceRepository.findActiveById.mockResolvedValue(workspace);
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 null
-            );
-            workspaceJoinRequestRepository.existsPendingByWorkspaceAndUser.mockResolvedValue(
-                true
-            );
-
-            await expect(
-                domain.getJoinableWorkspace('user-2', 'workspace-1')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceJoinRequestDuplicateException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.joinRequestDuplicate
-                    ],
-                messagePath: 'workspace.error.joinRequestDuplicate',
-            });
-        });
-
-        it('returns the public workspace when the caller is not a member and has no pending request', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(workspace);
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                null
-            );
-            workspaceJoinRequestRepository.existsPendingByWorkspaceAndUser.mockResolvedValue(
-                false
             );
 
             const result = await domain.getJoinableWorkspace(
@@ -235,14 +213,11 @@ describe('WorkspaceJoinRequestDomain', () => {
             expect(
                 workspaceMemberRepository.findOneByWorkspaceAndUser
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
-            expect(
-                workspaceJoinRequestRepository.existsPendingByWorkspaceAndUser
-            ).toHaveBeenCalledWith('workspace-1', 'user-2');
         });
     });
 
     describe('createJoinRequest', () => {
-        it('creates the pending join request', async () => {
+        it('creates the pending join request keyed by workspace and user', async () => {
             const create: IWorkspaceJoinRequestCreate = {
                 workspaceId: 'workspace-1',
                 message: 'Please let me in',
@@ -260,6 +235,57 @@ describe('WorkspaceJoinRequestDomain', () => {
                 workspaceId: 'workspace-1',
                 userId: 'user-2',
                 message: 'Please let me in',
+                pendingKey: 'workspace-1:user-2',
+            });
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                WorkspaceJoinRequestPendingKeyPattern,
+                { workspaceId: 'workspace-1', userId: 'user-2' }
+            );
+        });
+
+        it('throws WorkspaceJoinRequestDuplicateException when the pending key collides', async () => {
+            const collision = new Error('pendingKey');
+            workspaceJoinRequestRepository.createPending.mockRejectedValue(
+                collision
+            );
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await expect(
+                domain.createJoinRequest('user-2', {
+                    workspaceId: 'workspace-1',
+                    message: null,
+                })
+            ).rejects.toMatchObject({
+                constructor: WorkspaceJoinRequestDuplicateException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.joinRequestDuplicate
+                    ],
+                messagePath: 'workspace.error.joinRequestDuplicate',
+            });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'pendingKey'
+            );
+        });
+
+        it('wraps another create failure in AppUnknownException', async () => {
+            const cause = new Error('db-down');
+            workspaceJoinRequestRepository.createPending.mockRejectedValue(
+                cause
+            );
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                domain.createJoinRequest('user-2', {
+                    workspaceId: 'workspace-1',
+                    message: null,
+                })
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
             });
         });
     });
@@ -516,6 +542,25 @@ describe('WorkspaceJoinRequestDomain', () => {
             expect(
                 workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1');
+        });
+    });
+
+    describe('cancelPendingByUserInTx', () => {
+        it('cancels the pending request of the user in the workspace on the given transaction and returns the count', async () => {
+            workspaceJoinRequestRepository.cancelPendingByUserInTx.mockResolvedValue(
+                1
+            );
+
+            const result = await domain.cancelPendingByUserInTx(
+                tx,
+                'workspace-1',
+                'user-1'
+            );
+
+            expect(result).toBe(1);
+            expect(
+                workspaceJoinRequestRepository.cancelPendingByUserInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
         });
     });
 });

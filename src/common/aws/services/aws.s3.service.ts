@@ -294,10 +294,14 @@ export class AwsS3Service implements OnModuleInit {
         const configFrom = this.getConfig(options.accessFrom);
 
         const destinationKey = `${destination}/${source.key.split('/').pop()}`;
+        const encodedSourceKey = source.key
+            .split('/')
+            .map(segment => encodeURIComponent(segment))
+            .join('/');
         const copyCommand = new CopyObjectCommand({
             Bucket: configTo.bucket,
             Key: destinationKey,
-            CopySource: `${configFrom.bucket}/${source.key}`,
+            CopySource: `${configFrom.bucket}/${encodedSourceKey}`,
             MetadataDirective: 'COPY',
             ServerSideEncryption: 'AES256',
         });

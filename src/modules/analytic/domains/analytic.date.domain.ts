@@ -4,14 +4,34 @@ import type {
     IAnalyticOptionalDateRange,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AnalyticDateDomain {
+    private readonly maxWindowInMs: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.maxWindowInMs = this.configService.get<number>(
+            'analytic.maxWindowInMs'
+        )!;
+    }
+
     requireRange(startDate: Date, endDate: Date): IAnalyticDateRange {
-        if (startDate.getTime() >= endDate.getTime()) {
+        const spanInMs = endDate.getTime() - startDate.getTime();
+        if (spanInMs <= 0 || spanInMs > this.maxWindowInMs) {
             throw new AnalyticInvalidDateRangeException();
         }
         return { startDate, endDate };
+    }
+
+    resolveWindow(windowMs: number | null, defaultInMs: number): number {
+        if (windowMs === null) {
+            return defaultInMs;
+        }
+        if (windowMs > this.maxWindowInMs) {
+            throw new AnalyticInvalidDateRangeException();
+        }
+        return windowMs;
     }
 
     optionalRange(

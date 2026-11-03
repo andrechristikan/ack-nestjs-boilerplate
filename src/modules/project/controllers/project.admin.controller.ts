@@ -50,9 +50,9 @@ export class ProjectAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: ProjectAdminListRequestSchema })
@@ -74,9 +74,9 @@ export class ProjectAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/get/:projectId')
     async get(
         @Param('projectId', { schema: RequestMongoIdSchema })

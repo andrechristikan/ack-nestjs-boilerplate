@@ -19,6 +19,7 @@ import type {
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserStatus,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
@@ -74,8 +75,9 @@ export interface IUserRepository {
     updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
+        currentStatus: EnumUserStatus,
         { status, passwordAttempt }: IUserUpdateStatus
-    ): Promise<User>;
+    ): Promise<User | null>;
     updateProfile(
         userId: string,
         { countryId, ...data }: IUserUpdateProfile
@@ -96,6 +98,11 @@ export interface IUserRepository {
         userId: string,
         workspaceId: string
     ): Promise<void>;
+    clearLastWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        workspaceId: string
+    ): Promise<void>;
     updatePasswordInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -107,7 +114,7 @@ export interface IUserRepository {
         maxAttempt: number
     ): Promise<number | null>;
     resetPasswordAttempt(userId: string): Promise<User>;
-    deactivateForMaxPasswordAttemptInTx(
+    deactivateForMaxAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<boolean>;

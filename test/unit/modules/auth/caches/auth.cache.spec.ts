@@ -4,6 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Cache } from 'cache-manager';
+import type Keyv from 'keyv';
+import type KeyvRedis from '@keyv/redis';
+import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
+import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -22,6 +27,8 @@ describe('AuthCache', () => {
     });
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const keyv: MockProxy<Keyv> = mock<Keyv>();
+    const store: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
 
     let cache: AuthCache;
 
@@ -34,6 +41,7 @@ describe('AuthCache', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        (keyv as unknown as { store: KeyvRedis<string> }).store = store;
 
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string | number> = {
@@ -48,6 +56,7 @@ describe('AuthCache', () => {
             providers: [
                 AuthCache,
                 { provide: CacheMainProvider, useValue: cacheManager },
+                { provide: RedisClientCachedProvider, useValue: keyv },
                 { provide: ConfigService, useValue: configService },
                 {
                     provide: HelperStringService,
@@ -110,23 +119,61 @@ describe('AuthCache', () => {
         });
     });
 
-    describe('deleteTwoFactorChallenge', () => {
-        it('deletes the challenge cache entry', async () => {
-            await cache.deleteTwoFactorChallenge('token-value');
+    describe('consumeTwoFactorChallenge', () => {
+        const cachePayload: IAuthTwoFactorChallengeCache = {
+            userId: 'user-1',
+            device,
+            loginFrom: EnumUserLoginFrom.website,
+            loginWith: EnumUserLoginWith.credential,
+        };
 
-            expect(cacheManager.del).toHaveBeenCalledWith(
-                'TwoFactorChallenge:token-value'
+        it('claims the challenge with GETDEL on the prefixed key and returns the deserialized payload', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.getDel.mockResolvedValue('serialized-challenge');
+            keyv.deserializeData.mockResolvedValue({
+                value: cachePayload,
+            });
+
+            const result = await cache.consumeTwoFactorChallenge('token-value');
+
+            expect(result).toEqual(cachePayload);
+            expect(store.createKeyPrefix).toHaveBeenCalledWith(
+                'TwoFactorChallenge:token-value',
+                'cache'
+            );
+            expect(client.getDel).toHaveBeenCalledWith(
+                'prefixed-TwoFactorChallenge:token-value'
+            );
+            expect(keyv.deserializeData).toHaveBeenCalledWith(
+                'serialized-challenge'
             );
         });
 
-        it('swallows a thrown store delete', async () => {
-            cacheManager.del.mockImplementation(() => {
-                throw new Error('redis down');
-            });
+        it('returns null when no challenge is stored', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.getDel.mockResolvedValue(null);
+
+            const result = await cache.consumeTwoFactorChallenge('token-value');
+
+            expect(result).toBeNull();
+            expect(keyv.deserializeData).not.toHaveBeenCalled();
+        });
+
+        it('throws RedisUnavailableException when the store fails, not the invalid-challenge exception', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.getDel.mockRejectedValue(new Error('redis down'));
 
             await expect(
-                cache.deleteTwoFactorChallenge('token-value')
-            ).resolves.toBeUndefined();
+                cache.consumeTwoFactorChallenge('token-value')
+            ).rejects.toMatchObject({
+                module: 'redis',
+                statusCode: EnumRedisStatusCodeError.unavailable,
+                statusCodeKey:
+                    EnumRedisStatusCodeError[
+                        EnumRedisStatusCodeError.unavailable
+                    ],
+                messagePath: 'redis.error.unavailable',
+            });
         });
     });
 });

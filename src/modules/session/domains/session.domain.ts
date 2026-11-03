@@ -66,13 +66,22 @@ export class SessionDomain {
         return this.sessionCache.getLogin(userId, sessionId);
     }
 
-    /** Stores the login entry for the access-token lifetime; a store failure throws. */
+    /** Stores the login entry for the access-token lifetime, then re-reads the session row and deletes the entry when the row was revoked meanwhile; a store failure throws. */
     async setLogin(
         userId: string,
         sessionId: string,
         jti: string
     ): Promise<void> {
         await this.sessionCache.setLogin(userId, sessionId, jti);
+
+        // Sequential by design: the re-read follows the write it checks
+        const isActive = await this.sessionRepository.existsActiveById(
+            userId,
+            sessionId
+        );
+        if (!isActive) {
+            await this.sessionCache.deleteLogins(userId, [{ id: sessionId }]);
+        }
     }
 
     /** Rotates the cached jti by compare-and-set and answers the outcome. */
@@ -87,18 +96,6 @@ export class SessionDomain {
 
     async deleteLogins(userId: string, sessions: ISessionRef[]): Promise<void> {
         await this.sessionCache.deleteLogins(userId, sessions);
-    }
-
-    async validateActive(userId: string, sessionId: string): Promise<ISession> {
-        const session = await this.sessionRepository.findOneActive(
-            userId,
-            sessionId
-        );
-        if (!session) {
-            throw new SessionNotFoundException();
-        }
-
-        return session;
     }
 
     async createInTx(
@@ -119,18 +116,6 @@ export class SessionDomain {
             expiredAt,
             requestLog
         );
-    }
-
-    async getOneActive(userId: string, sessionId: string): Promise<ISession> {
-        const session = await this.sessionRepository.findOneActive(
-            userId,
-            sessionId
-        );
-        if (!session) {
-            throw new SessionRevokedException();
-        }
-
-        return session;
     }
 
     getRefreshedTokens(tokens: IAuthToken | null): IAuthToken {
@@ -165,7 +150,7 @@ export class SessionDomain {
         );
     }
 
-    /** Revokes a session whose refresh token was replayed, as its own user; returns the ref to purge, none when it was already revoked. */
+    /** Revokes a session as its own user when its token cannot be honoured (a replayed refresh token, a login entry that could not be written); returns the ref to purge, none when it was already revoked. */
     async revokeOnReuse(
         userId: string,
         sessionId: string
@@ -231,9 +216,6 @@ export class SessionDomain {
     }
 
     async revoke(userId: string, sessionId: string): Promise<void> {
-        // Sequential by design: gate before the work it guards
-        await this.validateActive(userId, sessionId);
-
         const revokedAt = this.helperDateService.create();
         const isRevoked = await this.sessionRepository.revoke(
             userId,
@@ -252,15 +234,13 @@ export class SessionDomain {
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISession> {
-        // Sequential by design: gate before the work it guards
-        const session = await this.validateActive(userId, sessionId);
-
-        const isRevoked = await this.sessionRepository.revokeByAdmin(
+        const session = await this.sessionRepository.revokeByAdmin(
+            userId,
             sessionId,
             revokedBy,
             revokedAt
         );
-        if (!isRevoked) {
+        if (session === null) {
             throw new SessionNotFoundException();
         }
 

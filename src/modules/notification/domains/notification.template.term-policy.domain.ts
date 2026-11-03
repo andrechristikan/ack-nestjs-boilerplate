@@ -1,20 +1,18 @@
+import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
 import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
 /** Manages the SES template for the term-policy publication email. */
 @Injectable()
 export class NotificationTemplateTermPolicyDomain {
-    private readonly logger = new Logger(
-        NotificationTemplateTermPolicyDomain.name
-    );
-
     constructor(private readonly awsSESService: AwsSESService) {}
 
-    async emailImportPublishTermPolicy(): Promise<boolean> {
+    async emailImportPublishTermPolicy(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -27,15 +25,11 @@ export class NotificationTemplateTermPolicyDomain {
                 subject: `Publish Term Policy`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to import publish term policy template'
             );
-
-            return false;
         }
     }
 
@@ -46,26 +40,27 @@ export class NotificationTemplateTermPolicyDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err, 'Failed to get publish term policy template');
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
 
-            return null;
+            throw new AppUnknownException(
+                err,
+                'Failed to get publish term policy template'
+            );
         }
     }
 
-    async emailDeletePublishTermPolicy(): Promise<boolean> {
+    async emailDeletePublishTermPolicy(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.publishTermPolicy,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to delete publish term policy template'
             );
-
-            return false;
         }
     }
 }

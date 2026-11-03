@@ -42,16 +42,23 @@ export class FeatureFlagDomain {
         }
     }
 
-    /** Read-through: the cached flag, or the row loaded from the database and cached. */
+    /** Read-through: the cached flag, or the row loaded from the database and cached while this reader holds the lease. */
     async getByKey(key: string): Promise<FeatureFlag | null> {
         const cached = await this.featureFlagCache.getFeatureFlag(key);
         if (cached) {
             return cached;
         }
 
+        // Sequential by design: the lease is taken before the read it guards
+        const leaseToken =
+            await this.featureFlagCache.takeFeatureFlagLease(key);
         const featureFlag = await this.featureFlagRepository.findOneByKey(key);
-        if (featureFlag) {
-            await this.featureFlagCache.setFeatureFlag(key, featureFlag);
+        if (featureFlag && leaseToken !== null) {
+            await this.featureFlagCache.setFeatureFlag(
+                key,
+                featureFlag,
+                leaseToken
+            );
         }
 
         return featureFlag;

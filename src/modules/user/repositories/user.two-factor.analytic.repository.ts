@@ -9,7 +9,7 @@ export class UserTwoFactorAnalyticRepository implements IUserTwoFactorAnalyticRe
 
     async countEnabled(): Promise<number> {
         return this.databaseService.client.twoFactor.count({
-            where: { enabled: true },
+            where: { enabled: true, user: { deletedAt: null } },
         });
     }
 
@@ -18,13 +18,14 @@ export class UserTwoFactorAnalyticRepository implements IUserTwoFactorAnalyticRe
     }
 
     async findAttemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
-        const rows = await this.databaseService.client.twoFactor.findMany({
+        const result = await this.databaseService.client.twoFactor.aggregate({
             where: { attempt: { gt: 0 } },
-            select: { userId: true, attempt: true },
+            _count: { _all: true },
+            _sum: { attempt: true },
         });
         return {
-            usersWithAttempts: rows.length,
-            totalAttempts: rows.reduce((s, r) => s + r.attempt, 0),
+            usersWithAttempts: result._count._all,
+            totalAttempts: result._sum.attempt ?? 0,
         };
     }
 }

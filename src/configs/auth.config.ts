@@ -42,6 +42,12 @@ export interface IConfigAuth {
     xApiKey: {
         keyPattern: string;
         cacheTtlInMs: number;
+        leaseKeyPattern: string;
+        leaseTtlInMs: number;
+    };
+    jwks: {
+        requestsPerMinute: number;
+        cacheMaxAgeInMs: number;
     };
     twoFactor: {
         strategy: OTPStrategy;
@@ -53,9 +59,7 @@ export interface IConfigAuth {
         secretLength: number;
         challengeTtlInMs: number;
         challengeKeyPattern: string;
-        lockKeyPattern: string;
         maxAttempt: number;
-        lockAttemptDurationInMs: number;
         backupCodes: {
             count: number;
             length: number;
@@ -127,6 +131,12 @@ export default registerAs('auth', (): IConfigAuth => {
         xApiKey: {
             keyPattern: 'ApiKey:{key}',
             cacheTtlInMs: ms('5m'),
+            leaseKeyPattern: 'ApiKey:Lease:{key}',
+            leaseTtlInMs: ms('10s'),
+        },
+        jwks: {
+            requestsPerMinute: 60,
+            cacheMaxAgeInMs: ms('10m'),
         },
         twoFactor: {
             strategy: 'totp',
@@ -138,13 +148,11 @@ export default registerAs('auth', (): IConfigAuth => {
             secretLength: 32,
             challengeTtlInMs: ms('5m'),
             challengeKeyPattern: 'TwoFactor:Challenge:{token}',
-            lockKeyPattern: 'TwoFactor:Lock:{userId}',
             backupCodes: {
                 count: 8,
                 length: 10,
             },
             maxAttempt: 5,
-            lockAttemptDurationInMs: ms('2m'),
             encryption: {
                 key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY!,
             },

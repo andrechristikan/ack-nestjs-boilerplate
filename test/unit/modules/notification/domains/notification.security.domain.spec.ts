@@ -257,7 +257,11 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendTemporaryPasswordByAdmin
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -291,7 +295,8 @@ describe('NotificationSecurityDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -500,7 +505,11 @@ describe('NotificationSecurityDomain', () => {
             );
 
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -525,7 +534,8 @@ describe('NotificationSecurityDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.createNotification,
-                    error: 'mongo',
+                    message: 'mongo',
+                    rawError: new Error('mongo'),
                 },
             ]);
         });
@@ -725,7 +735,11 @@ describe('NotificationSecurityDomain', () => {
                 notificationEmailQueue.sendForgotPassword
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendPush, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendPush,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -755,7 +769,8 @@ describe('NotificationSecurityDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.createNotification,
-                    error: 'mongo',
+                    message: 'mongo',
+                    rawError: new Error('mongo'),
                 },
             ]);
         });
@@ -978,7 +993,11 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendResetPassword
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -1007,7 +1026,8 @@ describe('NotificationSecurityDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.createNotification,
-                    error: 'mongo',
+                    message: 'mongo',
+                    rawError: new Error('mongo'),
                 },
             ]);
         });
@@ -1230,7 +1250,11 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendResetTwoFactorByAdmin
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -1260,7 +1284,8 @@ describe('NotificationSecurityDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.createNotification,
-                    error: 'mongo',
+                    message: 'mongo',
+                    rawError: new Error('mongo'),
                 },
             ]);
         });
@@ -1533,7 +1558,11 @@ describe('NotificationSecurityDomain', () => {
                 notificationPushQueue.sendNewDeviceLogin
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -1563,7 +1592,8 @@ describe('NotificationSecurityDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.createNotification,
-                    error: 'mongo',
+                    message: 'mongo',
+                    rawError: new Error('mongo'),
                 },
             ]);
         });

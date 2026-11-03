@@ -529,11 +529,11 @@ describe('NotificationEmailAccountDomain', () => {
     describe('processVerifiedMobileNumber', () => {
         const data = {
             reference: 'ref-1',
-            mobileNumber: '+1555****567',
+            encryptedMobileNumber: 'cipher(+15551234567)',
             resendInMinutes: 5,
         };
 
-        it('sends the verified mobile number email with cc and bcc when present', async () => {
+        it('decrypts the mobile number with the user id and sends the email with cc and bcc when present', async () => {
             awsSESService.send.mockResolvedValue({
                 $metadata: {},
                 MessageId: 'message-1',
@@ -554,11 +554,17 @@ describe('NotificationEmailAccountDomain', () => {
                     homeUrl: 'https://home.example.com',
                     username: sendWithCcBcc.username,
                     reference: data.reference,
-                    mobileNumber: data.mobileNumber,
+                    mobileNumber: '+15551234567',
                 },
                 cc: sendWithCcBcc.cc,
                 bcc: sendWithCcBcc.bcc,
             });
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                data.encryptedMobileNumber,
+                'secret-key',
+                'notification.payload',
+                sendWithCcBcc.userId
+            );
             expect(result).toMatchObject({
                 message: 'notification.queue.email.verifiedMobileNumber',
             });

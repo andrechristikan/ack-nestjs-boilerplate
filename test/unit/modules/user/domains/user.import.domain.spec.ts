@@ -197,6 +197,63 @@ describe('UserImportDomain', () => {
             ]);
         });
 
+        it('hashes every generated password as a temporary one', async () => {
+            await domain.prepareImportByAdmin(
+                rows,
+                'admin-thistle',
+                role,
+                'country-thistle',
+                clearChecks
+            );
+
+            expect(authPasswordUtil.createPassword).toHaveBeenCalledTimes(2);
+            expect(authPasswordUtil.createPassword).toHaveBeenNthCalledWith(
+                1,
+                'password-one',
+                { temporary: true }
+            );
+            expect(authPasswordUtil.createPassword).toHaveBeenNthCalledWith(
+                2,
+                'password-two',
+                { temporary: true }
+            );
+        });
+
+        it('throws UserImportEmailExistException when two rows repeat the same email', async () => {
+            const duplicateRows = [
+                {
+                    username: 'thistleRowe',
+                    email: 'thistle@example.com',
+                    name: null,
+                },
+                {
+                    username: 'marigoldFinch',
+                    email: 'thistle@example.com',
+                    name: null,
+                },
+            ];
+
+            const call = domain.prepareImportByAdmin(
+                duplicateRows,
+                'admin-thistle',
+                role,
+                'country-thistle',
+                clearChecks
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.importEmailExist,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.importEmailExist
+                    ],
+                messagePath: 'user.error.importEmailExist',
+                messageProperties: { emails: 'thistle@example.com' },
+            });
+            expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
+        });
+
         it('marks accounts verified when the default role is not plain user', async () => {
             const result = await domain.prepareImportByAdmin(
                 rows,

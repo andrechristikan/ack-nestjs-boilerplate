@@ -19,7 +19,10 @@ import { NotificationKindContract } from '@modules/notification/contracts/notifi
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
+import {
+    stubCipherDecryption,
+    TestEncryptedRecipient,
+} from '@test/unit/helpers/test.unit.notification-push.helper';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationAccountDomain', () => {
@@ -70,6 +73,7 @@ describe('NotificationAccountDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
+        vi.mocked(configService.get).mockReturnValue('secret-key');
         notificationRepository.createMany.mockResolvedValue([notification]);
         const module = await Test.createTestingModule({
             providers: [
@@ -220,7 +224,11 @@ describe('NotificationAccountDomain', () => {
             );
 
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -250,7 +258,8 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -489,7 +498,11 @@ describe('NotificationAccountDomain', () => {
                 notificationEmailQueue.sendVerificationEmail
             ).toHaveBeenCalledTimes(1);
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendWelcomeEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendWelcomeEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -521,7 +534,8 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -757,7 +771,11 @@ describe('NotificationAccountDomain', () => {
             );
 
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -785,7 +803,8 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -985,7 +1004,11 @@ describe('NotificationAccountDomain', () => {
             );
 
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -1014,7 +1037,8 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -1225,7 +1249,8 @@ describe('NotificationAccountDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendVerificationEmail,
-                    error: 'redis',
+                    message: 'redis',
+                    rawError: new Error('redis'),
                 },
             ]);
             expect(result.completedSteps).toEqual([
@@ -1255,7 +1280,8 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -1350,10 +1376,11 @@ describe('NotificationAccountDomain', () => {
         const data = {
             reference: 'ref-1',
             resendInMinutes: 5,
-            mobileNumber: '+15551234567',
+            encryptedMobileNumber: 'cipher(+15551234567)',
         };
 
         beforeEach(() => {
+            stubCipherDecryption(helperEncryptionService);
             helperStringService.censor.mockReturnValue('+1555****567');
         });
 
@@ -1366,6 +1393,15 @@ describe('NotificationAccountDomain', () => {
                 []
             );
 
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                data.encryptedMobileNumber,
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+            expect(helperStringService.censor).toHaveBeenCalledWith(
+                '+15551234567'
+            );
             expect(notificationRepository.createMany).toHaveBeenCalledWith([
                 {
                     kind: EnumNotificationKind.verifiedMobileNumber,
@@ -1470,7 +1506,11 @@ describe('NotificationAccountDomain', () => {
             );
 
             expect(result.failedSteps).toEqual([
-                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+                {
+                    step: EnumNotificationStep.sendEmail,
+                    message: 'redis',
+                    rawError: new Error('redis'),
+                },
             ]);
             expect(result.completedSteps).toEqual([
                 EnumNotificationStep.createNotification,
@@ -1499,7 +1539,8 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });
@@ -1534,6 +1575,15 @@ describe('NotificationAccountDomain', () => {
                 []
             );
 
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                data.encryptedMobileNumber,
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+            expect(helperStringService.censor).toHaveBeenCalledWith(
+                '+15551234567'
+            );
             expect(notificationRepository.createMany).toHaveBeenCalledWith([
                 {
                     kind: EnumNotificationKind.verifiedMobileNumber,

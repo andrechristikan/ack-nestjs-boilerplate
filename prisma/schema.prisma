@@ -347,6 +347,7 @@ model TwoFactor {
   requiredSetup Boolean   @default(false)
   confirmedAt   DateTime?
   lastUsedAt    DateTime?
+  lastUsedStep  Int?
   attempt       Int       @default(0)
 
   createdAt DateTime @default(now())
@@ -586,6 +587,7 @@ model WorkspaceInvite {
   invitedByUserId  String                    @db.ObjectId
   acceptedAt       DateTime?
   acceptedByUserId String?                   @db.ObjectId
+  pendingKey       String
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   project   Project?  @relation(fields: [projectId], references: [id])
@@ -597,6 +599,7 @@ model WorkspaceInvite {
 
   @@unique(fields: [token])
   @@unique(fields: [reference])
+  @@unique(fields: [pendingKey])
   @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [email, status])
@@ -614,6 +617,7 @@ model WorkspaceJoinRequest {
   rejectReasonCode EnumWorkspaceJoinRejectReason?
   reviewedByUserId String?                        @db.ObjectId
   reviewedAt       DateTime?
+  pendingKey       String
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   user      User      @relation("UserWorkspaceJoinRequests", fields: [userId], references: [id])
@@ -623,6 +627,7 @@ model WorkspaceJoinRequest {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
+  @@unique(fields: [pendingKey])
   @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, status])
@@ -868,6 +873,7 @@ enum EnumActivityLogAction {
   userAcceptTermPolicy
   userForgotPassword
   userReachMaxPasswordAttempt
+  userReachMaxTwoFactorAttempt
   userSetupTwoFactor
   userEnableTwoFactor
   userDisableTwoFactor

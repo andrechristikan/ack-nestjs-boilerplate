@@ -86,6 +86,7 @@ describe('UserDomain', () => {
         requiredSetup: false,
         confirmedAt: null,
         lastUsedAt: null,
+        lastUsedStep: null,
         attempt: 0,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -579,6 +580,22 @@ describe('UserDomain', () => {
         });
     });
 
+    describe('clearLastWorkspaceInTx', () => {
+        it('delegates to the repository', async () => {
+            await domain.clearLastWorkspaceInTx(
+                tx,
+                'user-cobalt',
+                'workspace-cobalt'
+            );
+
+            expect(userRepository.clearLastWorkspaceInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt',
+                'workspace-cobalt'
+            );
+        });
+    });
+
     describe('resetPasswordAttempt', () => {
         it('delegates to the repository', async () => {
             const user = baseUser;
@@ -590,31 +607,24 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('deactivateForMaxPasswordAttemptInTx', () => {
-        it('resolves when the repository deactivated the still-active account', async () => {
-            userRepository.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
-                true
-            );
+    describe('deactivateForMaxAttemptInTx', () => {
+        it('answers true when the repository deactivated the still-active account', async () => {
+            userRepository.deactivateForMaxAttemptInTx.mockResolvedValue(true);
 
             await expect(
-                domain.deactivateForMaxPasswordAttemptInTx(tx, 'user-cobalt')
-            ).resolves.toBeUndefined();
+                domain.deactivateForMaxAttemptInTx(tx, 'user-cobalt')
+            ).resolves.toBe(true);
             expect(
-                userRepository.deactivateForMaxPasswordAttemptInTx
+                userRepository.deactivateForMaxAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-cobalt');
         });
 
-        it('throws the password-attempt-max error when the account was no longer active', async () => {
-            userRepository.deactivateForMaxPasswordAttemptInTx.mockResolvedValue(
-                false
-            );
+        it('answers false when the account was no longer active', async () => {
+            userRepository.deactivateForMaxAttemptInTx.mockResolvedValue(false);
 
             await expect(
-                domain.deactivateForMaxPasswordAttemptInTx(tx, 'user-cobalt')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-            });
+                domain.deactivateForMaxAttemptInTx(tx, 'user-cobalt')
+            ).resolves.toBe(false);
         });
     });
 
@@ -1010,21 +1020,23 @@ describe('UserDomain', () => {
     });
 
     describe('updateStatusByAdminInTx', () => {
-        it('writes the status and resets the attempt counter when the user is activated', async () => {
+        const target: IUser = { ...baseUser, passwordAttempt: 4 };
+
+        it('writes the status guarded on the current one and resets the attempt counter when the user is activated', async () => {
             userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
 
             await expect(
                 domain.updateStatusByAdminInTx(
                     tx,
-                    'user-cobalt',
-                    EnumUserStatus.active,
-                    4
+                    { ...target, status: EnumUserStatus.inactive },
+                    EnumUserStatus.active
                 )
             ).resolves.toBe(baseUser);
 
             expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                'user-cobalt',
+                target.id,
+                EnumUserStatus.inactive,
                 { status: EnumUserStatus.active, passwordAttempt: 0 }
             );
         });
@@ -1034,16 +1046,54 @@ describe('UserDomain', () => {
 
             await domain.updateStatusByAdminInTx(
                 tx,
-                'user-cobalt',
-                EnumUserStatus.inactive,
-                4
+                { ...target, status: EnumUserStatus.active },
+                EnumUserStatus.inactive
             );
 
             expect(userRepository.updateStatusByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                'user-cobalt',
+                target.id,
+                EnumUserStatus.active,
                 { status: EnumUserStatus.inactive, passwordAttempt: 4 }
             );
+        });
+
+        it('throws UserStatusInvalidException without writing when the status is unchanged', async () => {
+            const call = domain.updateStatusByAdminInTx(
+                tx,
+                { ...target, status: EnumUserStatus.active },
+                EnumUserStatus.active
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.statusInvalid,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.statusInvalid
+                    ],
+                messagePath: 'user.error.statusInvalid',
+                httpStatus: 400,
+            });
+            expect(
+                userRepository.updateStatusByAdminInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws UserStatusInvalidException when the current status no longer holds', async () => {
+            userRepository.updateStatusByAdminInTx.mockResolvedValue(null);
+
+            const call = domain.updateStatusByAdminInTx(
+                tx,
+                { ...target, status: EnumUserStatus.active },
+                EnumUserStatus.inactive
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.statusInvalid,
+                messagePath: 'user.error.statusInvalid',
+            });
         });
     });
 

@@ -8,6 +8,10 @@ export interface IUserTwoFactorRepository {
         userId: string,
         createdBy: string
     ): Promise<TwoFactor>;
+    deleteByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void>;
     verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -46,6 +50,10 @@ export interface IUserTwoFactorRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<TwoFactor>;
-    incrementAttempt(userId: string): Promise<number>;
+    markTotpUsed(userId: string, step: number): Promise<boolean>;
+    incrementAttempt(
+        userId: string,
+        maxAttempt: number
+    ): Promise<number | null>;
     resetTwoFactorAttempt(userId: string): Promise<TwoFactor>;
 }

@@ -1,6 +1,8 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
@@ -20,6 +22,7 @@ export class UserMobileNumberDomain {
         private readonly userMobileNumberRepository: UserMobileNumberRepository,
         private readonly userDomain: UserDomain,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly userUtil: UserUtil
     ) {}
 
@@ -70,6 +73,14 @@ export class UserMobileNumberDomain {
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const isDuplicate = this.databaseUtil.isUniqueCollision(
+                err,
+                'number'
+            );
+            if (isDuplicate) {
+                throw new UserMobileNumberExistException();
             }
 
             throw new AppUnknownException(err);
@@ -140,6 +151,14 @@ export class UserMobileNumberDomain {
                 throw err;
             }
 
+            const isDuplicate = this.databaseUtil.isUniqueCollision(
+                err,
+                'number'
+            );
+            if (isDuplicate) {
+                throw new UserMobileNumberExistException();
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -171,5 +190,12 @@ export class UserMobileNumberDomain {
 
             throw new AppUnknownException(err);
         }
+    }
+
+    async removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.userMobileNumberRepository.deleteByUserInTx(tx, userId);
     }
 }

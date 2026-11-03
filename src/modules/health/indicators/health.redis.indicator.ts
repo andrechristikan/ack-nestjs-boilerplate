@@ -1,5 +1,5 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 import { HealthRedisProbeKey } from '@modules/health/constants/health.constant';
@@ -10,6 +10,8 @@ import type { Cache } from 'cache-manager';
  */
 @Injectable()
 export class HealthRedisIndicator {
+    private readonly logger = new Logger(HealthRedisIndicator.name);
+
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly healthIndicatorService: HealthIndicatorService
@@ -26,10 +28,9 @@ export class HealthRedisIndicator {
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'Redis health check failed');
 
-            return indicator.down(`HealthRedisIndicator Failed - ${message}`);
+            return indicator.down('Redis is unreachable');
         }
     }
 }

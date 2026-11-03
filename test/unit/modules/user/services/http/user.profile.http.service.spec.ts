@@ -232,7 +232,7 @@ describe('UserProfileHttpService', () => {
 
             expect(userProfileDomain.updatePhotoProfile).toHaveBeenCalledWith(
                 'user-sable',
-                { key: dto.key, size: dto.size }
+                { key: dto.key }
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userUpdatePhotoProfile,

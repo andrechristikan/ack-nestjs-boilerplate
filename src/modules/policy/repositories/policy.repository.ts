@@ -1,5 +1,4 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumPolicySubject } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
@@ -14,17 +13,6 @@ export class PolicyRepository implements IPolicyRepository {
         return this.databaseService.client.policy.findMany({
             where: { roleId },
         });
-    }
-
-    async existsByRoleIdAndSubject(
-        roleId: string,
-        subject: EnumPolicySubject
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.policy.count({
-            where: { roleId, subject },
-        });
-
-        return count > 0;
     }
 
     async existsByRoleIdAndId(roleId: string, id: string): Promise<boolean> {

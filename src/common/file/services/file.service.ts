@@ -12,6 +12,7 @@ export class FileService {
     writeCsv<T = Record<string, string | number | Date>>(rows: T[]): string {
         return Papa.unparse(rows, {
             delimiter: ';',
+            escapeFormulae: true,
         });
     }
 

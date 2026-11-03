@@ -31,6 +31,17 @@ describe('FileService', () => {
 
             expect(result).toBe('name;age\r\na;1\r\nb;2');
         });
+
+        it('prefixes a cell starting with a formula character with a quote', () => {
+            const result = service.writeCsv([
+                { name: '=1+1', note: '@SUM(A1)' },
+                { name: '+1', note: '-2' },
+            ]);
+
+            expect(result).toBe(
+                'name;note\r\n"\'=1+1";"\'@SUM(A1)"\r\n"\'+1";"\'-2"'
+            );
+        });
     });
 
     describe('readCsv', () => {

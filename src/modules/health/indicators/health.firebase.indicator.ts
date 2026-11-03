@@ -1,5 +1,5 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
@@ -8,6 +8,8 @@ import type { HealthIndicatorResult } from '@nestjs/terminus';
  */
 @Injectable()
 export class HealthFirebaseIndicator {
+    private readonly logger = new Logger(HealthFirebaseIndicator.name);
+
     constructor(
         private readonly firebaseService: FirebaseService,
         private readonly healthIndicatorService: HealthIndicatorService
@@ -27,12 +29,9 @@ export class HealthFirebaseIndicator {
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'Firebase health check failed');
 
-            return indicator.down(
-                `HealthFirebaseIndicator Failed - ${message}`
-            );
+            return indicator.down('Firebase check failed');
         }
     }
 }

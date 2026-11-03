@@ -220,7 +220,7 @@ export class WorkspaceHttpService {
                 deletedAt,
                 actorId
             );
-            await this.workspaceInviteDomain.expirePendingByWorkspaceInTx(
+            await this.workspaceInviteDomain.revokePendingByWorkspaceInTx(
                 tx,
                 workspaceId
             );

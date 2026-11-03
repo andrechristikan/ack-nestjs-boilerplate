@@ -29,7 +29,6 @@ import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domai
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
     IUser,
@@ -85,20 +84,50 @@ export class UserPasswordHttpService {
             return null;
         }
 
+        const isAttemptCounted =
+            await this.userTwoFactorDomain.countAttempt(user);
+        if (!isAttemptCounted) {
+            const lockoutLogs = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+            ];
+            const revoked = await this.reachMaxAttempt(user.id);
+            if (revoked !== null) {
+                await this.sessionQueue.purgeLogins(user.id, revoked);
+
+                this.activityLogDomain.stagePrepared(lockoutLogs);
+            }
+        }
+
+        this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
+
         return this.userTwoFactorDomain.verify(user, input);
     }
 
-    /** Deactivates the user that spent its password attempts, revokes its sessions and devices on one transaction, and enqueues the session cache purge. */
-    private async reachMaxAttempt(userId: string): Promise<void> {
+    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction; answers the revoked sessions, or null when the account was already deactivated or the write conflicted. */
+    private async reachMaxAttempt(
+        userId: string
+    ): Promise<ISessionRef[] | null> {
         const now = this.helperDateService.create();
-        let revoked: ISessionRef[];
 
         try {
-            revoked = await this.databaseService.withTransaction(async tx => {
-                await this.userDomain.deactivateForMaxPasswordAttemptInTx(
-                    tx,
-                    userId
-                );
+            return await this.databaseService.withTransaction(async tx => {
+                const isDeactivated =
+                    await this.userDomain.deactivateForMaxAttemptInTx(
+                        tx,
+                        userId
+                    );
+                if (!isDeactivated) {
+                    return null;
+                }
 
                 const sessions =
                     await this.sessionDomain.revokeActiveByUserInTx(
@@ -123,13 +152,11 @@ export class UserPasswordHttpService {
 
             const mapped = this.databaseUtil.toException(err);
             if (mapped instanceof DatabaseWriteConflictException) {
-                throw new UserPasswordAttemptMaxException();
+                return null;
             }
 
             throw new AppUnknownException(err);
         }
-
-        await this.sessionQueue.purgeLogins(userId, revoked);
     }
 
     async updatePasswordByAdmin(
@@ -232,6 +259,11 @@ export class UserPasswordHttpService {
             method,
         }: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userChangePassword,
+            }),
+        ];
         const hasPassword = this.userUtil.hasPassword(user);
         if (hasPassword) {
             // Sequential by design: gate before the work it guards
@@ -250,9 +282,12 @@ export class UserPasswordHttpService {
                         createdBy: user.id,
                     }),
                 ];
-                await this.reachMaxAttempt(user.id);
+                const revoked = await this.reachMaxAttempt(user.id);
+                if (revoked !== null) {
+                    await this.sessionQueue.purgeLogins(user.id, revoked);
 
-                this.activityLogDomain.stagePrepared(lockoutLogs);
+                    this.activityLogDomain.stagePrepared(lockoutLogs);
+                }
             }
 
             this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);
@@ -276,11 +311,6 @@ export class UserPasswordHttpService {
             this.authPasswordUtil.createPassword(newPassword),
             this.getRecipient(user, EnumNotificationKind.changePassword),
         ]);
-        const activityLogs = [
-            this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userChangePassword,
-            }),
-        ];
         if (twoFactorVerified) {
             const verifyTwoFactorActivityLog = this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userVerifyTwoFactor,
@@ -347,8 +377,13 @@ export class UserPasswordHttpService {
             'forgotAllowed'
         );
 
-        const { user, forgot } =
+        const prepared =
             await this.userPasswordDomain.prepareForgotPassword(email);
+        if (prepared === null) {
+            return {};
+        }
+
+        const { user, forgot } = prepared;
         const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userForgotPassword,

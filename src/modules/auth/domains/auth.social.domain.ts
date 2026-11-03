@@ -4,6 +4,7 @@ import { LoginTicket, OAuth2Client } from 'google-auth-library';
 import type { TokenPayload } from 'google-auth-library';
 import verifyAppleToken from 'verify-apple-id-token';
 import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
+import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
@@ -77,9 +78,23 @@ export class AuthSocialDomain {
             throw new AuthSocialAppleNotConfiguredException();
         }
 
-        return verifyAppleToken.default({
+        const payload = await verifyAppleToken.default({
             idToken: token,
             clientId: this.appleClientIds,
         });
+        if (!payload.email) {
+            throw new AuthSocialAppleInvalidException(
+                'Apple token payload does not contain email'
+            );
+        }
+
+        // Apple sends email_verified as a boolean or as the string "true"
+        if (String(payload.email_verified) !== 'true') {
+            throw new AuthSocialAppleInvalidException(
+                'Apple token payload does not contain verified email'
+            );
+        }
+
+        return payload;
     }
 }

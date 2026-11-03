@@ -55,9 +55,9 @@ export class WorkspaceAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: WorkspaceAdminListRequestSchema })
@@ -80,9 +80,9 @@ export class WorkspaceAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/get/:workspaceId')
     async get(
         @Param('workspaceId', { schema: RequestMongoIdSchema })
@@ -102,9 +102,9 @@ export class WorkspaceAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/get/:workspaceId/members')
     async membersList(
         @Query({ schema: WorkspaceAdminMemberListRequestSchema })

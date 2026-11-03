@@ -64,17 +64,14 @@ export class UserProfileHttpService {
 
     async updatePhotoProfile(
         userId: string,
-        { key, size }: UserUpdateProfilePhotoRequestDto
+        { key }: UserUpdateProfilePhotoRequestDto
     ): Promise<IResponseReturn<void>> {
         const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userUpdatePhotoProfile,
             }),
         ];
-        await this.userProfileDomain.updatePhotoProfile(userId, {
-            key,
-            size,
-        });
+        await this.userProfileDomain.updatePhotoProfile(userId, { key });
 
         this.activityLogDomain.stagePrepared(activityLogs);
 

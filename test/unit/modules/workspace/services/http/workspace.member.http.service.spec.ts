@@ -2,6 +2,11 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -19,8 +24,12 @@ import {
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
+import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
+import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
@@ -43,6 +52,14 @@ describe('WorkspaceMemberHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const projectMemberDomain: MockProxy<ProjectMemberDomain> =
+        mock<ProjectMemberDomain>();
+    const workspaceJoinRequestDomain: MockProxy<WorkspaceJoinRequestDomain> =
+        mock<WorkspaceJoinRequestDomain>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
 
     const member: WorkspaceMember = {
         id: 'member-1',
@@ -74,6 +91,7 @@ describe('WorkspaceMemberHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -96,6 +114,14 @@ describe('WorkspaceMemberHttpService', () => {
                     useValue: paginationQueryUtil,
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: ProjectMemberDomain, useValue: projectMemberDomain },
+                {
+                    provide: WorkspaceJoinRequestDomain,
+                    useValue: workspaceJoinRequestDomain,
+                },
+                { provide: UserDomain, useValue: userDomain },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
@@ -173,18 +199,35 @@ describe('WorkspaceMemberHttpService', () => {
     });
 
     describe('leaveWorkspace', () => {
-        it('prepares the left row, removes the member, and stages it after', async () => {
+        it('prepares the left row, leaves and cascades on one transaction, and stages it after', async () => {
             const callOrder: string[] = [];
             activityLogDomain.prepare.mockImplementation(() => {
                 callOrder.push('prepare');
 
                 return stagedActivityLog;
             });
-            workspaceMemberDomain.leaveWorkspace.mockImplementation(
+            workspaceMemberDomain.leaveWorkspaceInTx.mockImplementation(
                 async () => {
                     callOrder.push('leave');
                 }
             );
+            projectMemberDomain.removeByWorkspaceAndUserInTx.mockImplementation(
+                async () => {
+                    callOrder.push('projectMembers');
+
+                    return 2;
+                }
+            );
+            workspaceJoinRequestDomain.cancelPendingByUserInTx.mockImplementation(
+                async () => {
+                    callOrder.push('joinRequests');
+
+                    return 1;
+                }
+            );
+            userDomain.clearLastWorkspaceInTx.mockImplementation(async () => {
+                callOrder.push('lastWorkspace');
+            });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stage');
             });
@@ -192,9 +235,20 @@ describe('WorkspaceMemberHttpService', () => {
             const result = await service.leaveWorkspace('workspace-1', member);
 
             expect(result).toEqual({});
-            expect(workspaceMemberDomain.leaveWorkspace).toHaveBeenCalledWith(
-                'workspace-1',
-                member
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceMemberDomain.leaveWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', member);
+            expect(
+                projectMemberDomain.removeByWorkspaceAndUserInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+            expect(
+                workspaceJoinRequestDomain.cancelPendingByUserInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+            expect(userDomain.clearLastWorkspaceInTx).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'workspace-1'
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.workspaceMemberLeft,
@@ -202,18 +256,59 @@ describe('WorkspaceMemberHttpService', () => {
                 createdBy: 'user-1',
                 workspaceId: 'workspace-1',
             });
-            expect(callOrder).toEqual(['prepare', 'leave', 'stage']);
+            expect(callOrder).toEqual([
+                'prepare',
+                'leave',
+                'projectMembers',
+                'joinRequests',
+                'lastWorkspace',
+                'stage',
+            ]);
         });
 
-        it('stages nothing when leaving rejects', async () => {
-            workspaceMemberDomain.leaveWorkspace.mockRejectedValue(
+        it('runs no cascade and stages nothing when leaving rejects', async () => {
+            workspaceMemberDomain.leaveWorkspaceInTx.mockRejectedValue(
                 new WorkspaceLastOwnerException()
             );
 
             await expect(
                 service.leaveWorkspace('workspace-1', member)
             ).rejects.toBeInstanceOf(WorkspaceLastOwnerException);
+            expect(
+                projectMemberDomain.removeByWorkspaceAndUserInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                workspaceJoinRequestDomain.cancelPendingByUserInTx
+            ).not.toHaveBeenCalled();
+            expect(userDomain.clearLastWorkspaceInTx).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to WorkspaceMemberNotFoundException', async () => {
+            const conflict = new Error('conflict');
+            workspaceMemberDomain.leaveWorkspaceInTx.mockRejectedValue(
+                conflict
+            );
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.leaveWorkspace('workspace-1', member)
+            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other transaction error in AppUnknownException', async () => {
+            workspaceMemberDomain.leaveWorkspaceInTx.mockRejectedValue(
+                new Error('boom')
+            );
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.leaveWorkspace('workspace-1', member)
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 
@@ -337,14 +432,39 @@ describe('WorkspaceMemberHttpService', () => {
     });
 
     describe('removeMember', () => {
-        it('removes the member then stages the actor row and the target row from the returned target', async () => {
-            const target: WorkspaceMember = {
-                ...member,
-                id: 'member-2',
-                userId: 'user-2',
-                role: EnumWorkspaceMemberRole.member,
-            };
-            workspaceMemberDomain.removeMember.mockResolvedValue(target);
+        const target: WorkspaceMember = {
+            ...member,
+            id: 'member-2',
+            userId: 'user-2',
+            role: EnumWorkspaceMemberRole.member,
+        };
+
+        it('removes the member and cascades on one transaction for the returned target, then stages the actor row and the target row', async () => {
+            const callOrder: string[] = [];
+            workspaceMemberDomain.removeMemberInTx.mockImplementation(
+                async () => {
+                    callOrder.push('remove');
+
+                    return target;
+                }
+            );
+            projectMemberDomain.removeByWorkspaceAndUserInTx.mockImplementation(
+                async () => {
+                    callOrder.push('projectMembers');
+
+                    return 1;
+                }
+            );
+            workspaceJoinRequestDomain.cancelPendingByUserInTx.mockImplementation(
+                async () => {
+                    callOrder.push('joinRequests');
+
+                    return 0;
+                }
+            );
+            userDomain.clearLastWorkspaceInTx.mockImplementation(async () => {
+                callOrder.push('lastWorkspace');
+            });
 
             const result = await service.removeMember(
                 'workspace-1',
@@ -353,11 +473,30 @@ describe('WorkspaceMemberHttpService', () => {
             );
 
             expect(result).toEqual({});
-            expect(workspaceMemberDomain.removeMember).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(workspaceMemberDomain.removeMemberInTx).toHaveBeenCalledWith(
+                tx,
                 'workspace-1',
                 member,
                 'member-2'
             );
+            expect(
+                projectMemberDomain.removeByWorkspaceAndUserInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2');
+            expect(
+                workspaceJoinRequestDomain.cancelPendingByUserInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2');
+            expect(userDomain.clearLastWorkspaceInTx).toHaveBeenCalledWith(
+                tx,
+                'user-2',
+                'workspace-1'
+            );
+            expect(callOrder).toEqual([
+                'remove',
+                'projectMembers',
+                'joinRequests',
+                'lastWorkspace',
+            ]);
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.workspaceMemberRemoved,
                 userId: 'user-1',
@@ -378,15 +517,47 @@ describe('WorkspaceMemberHttpService', () => {
             ]);
         });
 
-        it('stages nothing when the removal rejects', async () => {
-            workspaceMemberDomain.removeMember.mockRejectedValue(
+        it('runs no cascade and stages nothing when the removal rejects', async () => {
+            workspaceMemberDomain.removeMemberInTx.mockRejectedValue(
                 new WorkspaceMemberNotFoundException()
             );
 
             await expect(
                 service.removeMember('workspace-1', member, 'member-2')
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
+            expect(
+                projectMemberDomain.removeByWorkspaceAndUserInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                workspaceJoinRequestDomain.cancelPendingByUserInTx
+            ).not.toHaveBeenCalled();
+            expect(userDomain.clearLastWorkspaceInTx).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to WorkspaceMemberPeerForbiddenException', async () => {
+            const conflict = new Error('conflict');
+            workspaceMemberDomain.removeMemberInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.removeMember('workspace-1', member, 'member-2')
+            ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other transaction error in AppUnknownException', async () => {
+            workspaceMemberDomain.removeMemberInTx.mockRejectedValue(
+                new Error('boom')
+            );
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.removeMember('workspace-1', member, 'member-2')
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 

@@ -89,12 +89,11 @@ export class AuthUtil {
         );
     }
 
-    /** Compares the session jti with the token jti by SHA-256 hash. */
-    isJtiMatch(sessionJti: string, jti: string): boolean {
-        const sessionJtiHash = this.helperHashService.sha256Hash(sessionJti);
+    /** Compares the session's stored jti digest with the SHA-256 hash of the token jti. */
+    isJtiMatch(sessionJtiDigest: string, jti: string): boolean {
         const jtiHash = this.helperHashService.sha256Hash(jti);
 
-        return this.helperHashService.sha256Compare(sessionJtiHash, jtiHash);
+        return this.helperHashService.sha256Compare(sessionJtiDigest, jtiHash);
     }
 
     /** Whole seconds left until the token's `exp` (epoch seconds); a missing `exp` counts as the epoch. */

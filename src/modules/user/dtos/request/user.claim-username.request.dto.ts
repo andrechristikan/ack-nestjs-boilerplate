@@ -11,7 +11,7 @@ export const UserClaimUsernameRequestSchema = z.strictObject({
         .toLowerCase()
         .min(3)
         .max(50)
-        .regex(/^[a-zA-Z0-9]+$/)
+        .regex(/^[a-zA-Z0-9-_]+$/)
         .meta({
             description: 'username to claim',
             example: 'john_doe123',

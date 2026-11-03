@@ -53,7 +53,7 @@ describe('HealthDatabaseIndicator', () => {
             expect(session.up).toHaveBeenCalledWith();
         });
 
-        it('reports down with the error message when the ping command throws an Error', async () => {
+        it('reports down with a fixed message when the ping command throws an Error', async () => {
             databaseService.client.$runCommandRaw.mockRejectedValue(
                 new Error('connection refused')
             );
@@ -63,11 +63,11 @@ describe('HealthDatabaseIndicator', () => {
 
             expect(result).toEqual({ database: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
-                'HealthDatabaseIndicator Failed - connection refused'
+                'Database is unreachable'
             );
         });
 
-        it('reports down with an unknown-error message when a non-Error is thrown', async () => {
+        it('reports down with the same fixed message when a non-Error is thrown', async () => {
             databaseService.client.$runCommandRaw.mockRejectedValue(
                 'not-an-error'
             );
@@ -77,7 +77,7 @@ describe('HealthDatabaseIndicator', () => {
 
             expect(result).toEqual({ database: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
-                'HealthDatabaseIndicator Failed - Unknown error'
+                'Database is unreachable'
             );
         });
     });

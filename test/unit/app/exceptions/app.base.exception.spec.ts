@@ -1,7 +1,7 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
-import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
+import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
 
 describe('AppBaseException', () => {
     describe('constructor', () => {
@@ -34,13 +34,10 @@ describe('AppBaseException', () => {
         });
 
         it('assigns messageProperties from the options', () => {
-            const exception = new AuthTwoFactorAttemptTemporaryLockException(
-                30
-            );
+            const exception =
+                new UserForgotPasswordRequestLimitExceededException(30);
 
-            expect(exception.messageProperties).toEqual({
-                retryAfterSeconds: 30,
-            });
+            expect(exception.messageProperties).toEqual({ minutes: 30 });
             expect(exception.rawError).toBeNull();
         });
 

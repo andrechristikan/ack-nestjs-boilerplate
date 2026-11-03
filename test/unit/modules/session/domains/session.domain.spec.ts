@@ -242,32 +242,6 @@ describe('SessionDomain', () => {
         });
     });
 
-    describe('validateActive', () => {
-        it('returns the active session', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(session);
-
-            const result = await domain.validateActive('user-1', 'session-1');
-
-            expect(result).toBe(session);
-        });
-
-        it('throws SessionNotFoundException when no active session is found', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(null);
-
-            const rejection = domain.validateActive('user-1', 'session-1');
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.notFound
-                    ],
-                messagePath: 'session.error.notFound',
-            });
-        });
-    });
-
     describe('createInTx', () => {
         it('delegates to the repository', async () => {
             const requestLog = {
@@ -342,7 +316,9 @@ describe('SessionDomain', () => {
     });
 
     describe('setLogin', () => {
-        it('stores the login entry in the cache', async () => {
+        it('stores the login entry in the cache and keeps it while the session row is live', async () => {
+            sessionRepository.existsActiveById.mockResolvedValue(true);
+
             await domain.setLogin('user-1', 'session-1', 'jti-value');
 
             expect(sessionCache.setLogin).toHaveBeenCalledWith(
@@ -350,6 +326,24 @@ describe('SessionDomain', () => {
                 'session-1',
                 'jti-value'
             );
+            expect(sessionRepository.existsActiveById).toHaveBeenCalledWith(
+                'user-1',
+                'session-1'
+            );
+            expect(sessionCache.setLogin).toHaveBeenCalledBefore(
+                sessionRepository.existsActiveById
+            );
+            expect(sessionCache.deleteLogins).not.toHaveBeenCalled();
+        });
+
+        it('deletes the entry when the session row was revoked before the entry landed', async () => {
+            sessionRepository.existsActiveById.mockResolvedValue(false);
+
+            await domain.setLogin('user-1', 'session-1', 'jti-value');
+
+            expect(sessionCache.deleteLogins).toHaveBeenCalledWith('user-1', [
+                { id: 'session-1' },
+            ]);
         });
 
         it('rethrows the cache failure', async () => {
@@ -359,6 +353,7 @@ describe('SessionDomain', () => {
             await expect(
                 domain.setLogin('user-1', 'session-1', 'jti-value')
             ).rejects.toBe(failure);
+            expect(sessionRepository.existsActiveById).not.toHaveBeenCalled();
         });
     });
 
@@ -406,28 +401,6 @@ describe('SessionDomain', () => {
             const result = await domain.revokeOnReuse('user-1', 'session-1');
 
             expect(result).toEqual([]);
-        });
-    });
-
-    describe('getOneActive', () => {
-        it('returns the active session row', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(session);
-
-            await expect(
-                domain.getOneActive('user-1', 'session-1')
-            ).resolves.toBe(session);
-        });
-
-        it('throws SessionRevokedException when the session is revoked or expired', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(null);
-
-            await expect(
-                domain.getOneActive('user-1', 'session-1')
-            ).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                messagePath: 'session.error.revoked',
-            });
         });
     });
 
@@ -565,8 +538,7 @@ describe('SessionDomain', () => {
     });
 
     describe('revoke', () => {
-        it('revokes the session as its own user', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(session);
+        it('revokes the session as its own user without reading it first', async () => {
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
             sessionRepository.revoke.mockResolvedValue(true);
@@ -581,20 +553,7 @@ describe('SessionDomain', () => {
             );
         });
 
-        it('throws SessionNotFoundException when the session is not active', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(null);
-
-            const rejection = domain.revoke('user-1', 'session-1');
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.notFound,
-            });
-            expect(sessionRepository.revoke).not.toHaveBeenCalled();
-        });
-
-        it('throws SessionNotFoundException when the repository finds nothing to revoke', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(session);
+        it('throws SessionNotFoundException when the guarded revoke matches no active session', async () => {
             helperDateService.create.mockReturnValue(
                 new Date('2026-01-05T00:00:00.000Z')
             );
@@ -615,10 +574,9 @@ describe('SessionDomain', () => {
     });
 
     describe('revokeByAdmin', () => {
-        it('revokes the active session and returns it', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(session);
+        it('returns the session the guarded revoke wrote, without reading it first', async () => {
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
-            sessionRepository.revokeByAdmin.mockResolvedValue(true);
+            sessionRepository.revokeByAdmin.mockResolvedValue(session);
 
             const result = await domain.revokeByAdmin(
                 'user-1',
@@ -628,37 +586,16 @@ describe('SessionDomain', () => {
             );
 
             expect(result).toBe(session);
-            expect(sessionRepository.findOneActive).toHaveBeenCalledWith(
-                'user-1',
-                'session-1'
-            );
             expect(sessionRepository.revokeByAdmin).toHaveBeenCalledWith(
+                'user-1',
                 'session-1',
                 'admin-1',
                 revokedAt
             );
         });
 
-        it('throws SessionNotFoundException without writing when the session is not active', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(null);
-
-            const rejection = domain.revokeByAdmin(
-                'user-1',
-                'session-1',
-                'admin-1',
-                new Date('2026-01-05T00:00:00.000Z')
-            );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.notFound,
-            });
-            expect(sessionRepository.revokeByAdmin).not.toHaveBeenCalled();
-        });
-
-        it('throws SessionNotFoundException when the repository finds nothing to revoke', async () => {
-            sessionRepository.findOneActive.mockResolvedValue(session);
-            sessionRepository.revokeByAdmin.mockResolvedValue(false);
+        it('throws SessionNotFoundException when the guarded revoke matches no active session', async () => {
+            sessionRepository.revokeByAdmin.mockResolvedValue(null);
 
             const rejection = domain.revokeByAdmin(
                 'user-1',

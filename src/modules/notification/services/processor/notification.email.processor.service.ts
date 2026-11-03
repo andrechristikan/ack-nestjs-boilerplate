@@ -9,7 +9,7 @@ import type {
     INotificationTemporaryPasswordEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
+    INotificationVerifiedMobileNumberEncryptedPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceInviteUnregisteredEncryptedPayload,
@@ -152,7 +152,7 @@ export class NotificationEmailProcessorService {
 
     async processVerifiedMobileNumber(
         job: Job<
-            INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload>,
+            INotificationEmailQueuePayload<INotificationVerifiedMobileNumberEncryptedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >

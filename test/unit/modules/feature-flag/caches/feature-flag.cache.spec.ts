@@ -4,6 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Cache } from 'cache-manager';
+import type Keyv from 'keyv';
+import type KeyvRedis from '@keyv/redis';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import {
+    RedisClientCachedProvider,
+    RedisLeaseSetScript,
+} from '@common/redis/constants/redis.constant';
+import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
@@ -14,6 +23,13 @@ describe('FeatureFlagCache', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
+
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const keyv: MockProxy<Keyv> = mock<Keyv>();
+    const store: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
 
     let cache: FeatureFlagCache;
 
@@ -33,10 +49,13 @@ describe('FeatureFlagCache', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        (keyv as unknown as { store: KeyvRedis<string> }).store = store;
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string | number> = {
                 'featureFlag.keyPattern': 'FeatureFlag:{key}',
                 'featureFlag.cacheTtlInMs': 3600000,
+                'featureFlag.leaseKeyPattern': 'FeatureFlag:Lease:{key}',
+                'featureFlag.leaseTtlInMs': 10000,
             };
             return values[key];
         });
@@ -45,7 +64,13 @@ describe('FeatureFlagCache', () => {
             providers: [
                 FeatureFlagCache,
                 { provide: CacheMainProvider, useValue: cacheManager },
+                { provide: RedisClientCachedProvider, useValue: keyv },
                 { provide: ConfigService, useValue: configService },
+                { provide: HelperDateService, useValue: helperDateService },
+                {
+                    provide: HelperStringService,
+                    useValue: helperStringService,
+                },
             ],
         }).compile();
 
@@ -55,6 +80,8 @@ describe('FeatureFlagCache', () => {
     it('reads the key pattern and ttl config once, in the constructor', () => {
         expect(configGet).toHaveBeenCalledWith('featureFlag.keyPattern');
         expect(configGet).toHaveBeenCalledWith('featureFlag.cacheTtlInMs');
+        expect(configGet).toHaveBeenCalledWith('featureFlag.leaseKeyPattern');
+        expect(configGet).toHaveBeenCalledWith('featureFlag.leaseTtlInMs');
     });
 
     describe('getFeatureFlag', () => {
@@ -88,45 +115,104 @@ describe('FeatureFlagCache', () => {
         });
     });
 
-    describe('setFeatureFlag', () => {
-        it('writes the feature flag with the configured ttl', async () => {
-            await cache.setFeatureFlag('loginWithGoogle', featureFlag);
+    describe('takeFeatureFlagLease', () => {
+        it('takes the lease with SET NX PX and returns its random token', async () => {
+            helperStringService.random.mockReturnValue('lease-token');
+            const client = stubStoreClient({ keyv, store });
+            client.set.mockResolvedValue('OK');
 
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'FeatureFlag:loginWithGoogle',
-                featureFlag,
-                3600000
+            const result = await cache.takeFeatureFlagLease('loginWithGoogle');
+
+            expect(result).toBe('lease-token');
+            expect(client.set).toHaveBeenCalledWith(
+                'prefixed-FeatureFlag:Lease:loginWithGoogle',
+                'lease-token',
+                { expiration: { type: 'PX', value: 10000 }, condition: 'NX' }
             );
         });
 
-        it('swallows a thrown store write', async () => {
-            cacheManager.set.mockImplementation(() => {
-                throw new Error('redis down');
+        it('returns null when another reader holds the lease', async () => {
+            helperStringService.random.mockReturnValue('lease-token');
+            const client = stubStoreClient({ keyv, store });
+            client.set.mockResolvedValue(null);
+
+            const result = await cache.takeFeatureFlagLease('loginWithGoogle');
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null when the store fails', async () => {
+            helperStringService.random.mockReturnValue('lease-token');
+            const client = stubStoreClient({ keyv, store });
+            client.set.mockRejectedValue(new Error('redis down'));
+
+            const result = await cache.takeFeatureFlagLease('loginWithGoogle');
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('setFeatureFlag', () => {
+        it('runs the lease-held set script with the serialized flag and the configured ttl', async () => {
+            const now = new Date('2026-01-03T00:00:00.000Z');
+            helperDateService.create.mockReturnValue(now);
+            const client = stubStoreClient({ keyv, store });
+            client.eval.mockResolvedValue(1);
+
+            await cache.setFeatureFlag(
+                'loginWithGoogle',
+                featureFlag,
+                'lease-token'
+            );
+
+            expect(keyv.serializeData).toHaveBeenCalledWith({
+                value: featureFlag,
+                expires: now.getTime() + 3600000,
             });
+            expect(client.eval).toHaveBeenCalledWith(RedisLeaseSetScript, {
+                keys: [
+                    'prefixed-FeatureFlag:loginWithGoogle',
+                    'prefixed-FeatureFlag:Lease:loginWithGoogle',
+                ],
+                arguments: ['lease-token', 'serialized-value', '3600000'],
+            });
+            expect(cacheManager.set).not.toHaveBeenCalled();
+        });
+
+        it('swallows a failed script', async () => {
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-03T00:00:00.000Z')
+            );
+            const client = stubStoreClient({ keyv, store });
+            client.eval.mockRejectedValue(new Error('redis down'));
 
             await expect(
-                cache.setFeatureFlag('loginWithGoogle', featureFlag)
+                cache.setFeatureFlag(
+                    'loginWithGoogle',
+                    featureFlag,
+                    'lease-token'
+                )
             ).resolves.toBeUndefined();
         });
     });
 
     describe('deleteFeatureFlag', () => {
-        it('deletes the key built from the key pattern', async () => {
+        it('deletes the key built from the key pattern and its lease', async () => {
             await cache.deleteFeatureFlag('loginWithGoogle');
 
-            expect(cacheManager.del).toHaveBeenCalledWith(
-                'FeatureFlag:loginWithGoogle'
-            );
+            expect(cacheManager.mdel).toHaveBeenCalledWith([
+                'FeatureFlag:loginWithGoogle',
+                'FeatureFlag:Lease:loginWithGoogle',
+            ]);
         });
 
-        it('swallows a thrown store delete', async () => {
-            cacheManager.del.mockImplementation(() => {
-                throw new Error('redis down');
-            });
+        it('rethrows a store failure so the admin request fails', async () => {
+            const failure = new Error('redis down');
+            cacheManager.mdel.mockRejectedValue(failure);
 
             await expect(
                 cache.deleteFeatureFlag('loginWithGoogle')
-            ).resolves.toBeUndefined();
+            ).rejects.toBe(failure);
         });
     });
 });

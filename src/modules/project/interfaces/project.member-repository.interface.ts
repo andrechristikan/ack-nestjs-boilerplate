@@ -39,4 +39,13 @@ export interface IProjectMemberRepository {
         newRole: EnumProjectMemberRole
     ): Promise<void>;
     removeMember(targetMemberId: string): Promise<void>;
+    removeByWorkspaceAndUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        userId: string
+    ): Promise<number>;
+    removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number>;
 }

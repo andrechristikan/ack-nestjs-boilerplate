@@ -1,20 +1,18 @@
+import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
 import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
 /** Manages the SES templates for the sign-up, welcome and verification emails. */
 @Injectable()
 export class NotificationTemplateAccountDomain {
-    private readonly logger = new Logger(
-        NotificationTemplateAccountDomain.name
-    );
-
     constructor(private readonly awsSESService: AwsSESService) {}
 
-    async emailImportWelcome(): Promise<boolean> {
+    async emailImportWelcome(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -27,12 +25,11 @@ export class NotificationTemplateAccountDomain {
                 subject: `Welcome`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(err, 'Failed to import welcome template');
-
-            return false;
+            throw new AppUnknownException(
+                err,
+                'Failed to import welcome template'
+            );
         }
     }
 
@@ -43,27 +40,31 @@ export class NotificationTemplateAccountDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err, 'Failed to get welcome template');
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
 
-            return null;
+            throw new AppUnknownException(
+                err,
+                'Failed to get welcome template'
+            );
         }
     }
 
-    async emailDeleteWelcome(): Promise<boolean> {
+    async emailDeleteWelcome(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.welcome,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(err, 'Failed to delete welcome template');
-
-            return false;
+            throw new AppUnknownException(
+                err,
+                'Failed to delete welcome template'
+            );
         }
     }
 
-    async emailImportWelcomeSocial(): Promise<boolean> {
+    async emailImportWelcomeSocial(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -76,12 +77,11 @@ export class NotificationTemplateAccountDomain {
                 subject: `Welcome Social`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(err, 'Failed to import welcome social template');
-
-            return false;
+            throw new AppUnknownException(
+                err,
+                'Failed to import welcome social template'
+            );
         }
     }
 
@@ -92,27 +92,31 @@ export class NotificationTemplateAccountDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err, 'Failed to get welcome social template');
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
 
-            return null;
+            throw new AppUnknownException(
+                err,
+                'Failed to get welcome social template'
+            );
         }
     }
 
-    async emailDeleteWelcomeSocial(): Promise<boolean> {
+    async emailDeleteWelcomeSocial(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.welcomeSocial,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(err, 'Failed to delete welcome social template');
-
-            return false;
+            throw new AppUnknownException(
+                err,
+                'Failed to delete welcome social template'
+            );
         }
     }
 
-    async emailImportWelcomeByAdmin(): Promise<boolean> {
+    async emailImportWelcomeByAdmin(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -125,15 +129,11 @@ export class NotificationTemplateAccountDomain {
                 subject: `Welcome By Admin`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to import welcome by admin template'
             );
-
-            return false;
         }
     }
 
@@ -144,30 +144,31 @@ export class NotificationTemplateAccountDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err, 'Failed to get welcome by admin template');
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
 
-            return null;
+            throw new AppUnknownException(
+                err,
+                'Failed to get welcome by admin template'
+            );
         }
     }
 
-    async emailDeleteWelcomeByAdmin(): Promise<boolean> {
+    async emailDeleteWelcomeByAdmin(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.welcomeByAdmin,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to delete welcome by admin template'
             );
-
-            return false;
         }
     }
 
-    async emailImportVerificationEmail(): Promise<boolean> {
+    async emailImportVerificationEmail(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -180,15 +181,11 @@ export class NotificationTemplateAccountDomain {
                 subject: `Email Verification`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to import verification email template'
             );
-
-            return false;
         }
     }
 
@@ -199,30 +196,31 @@ export class NotificationTemplateAccountDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err, 'Failed to get verification email template');
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
 
-            return null;
+            throw new AppUnknownException(
+                err,
+                'Failed to get verification email template'
+            );
         }
     }
 
-    async emailDeleteVerificationEmail(): Promise<boolean> {
+    async emailDeleteVerificationEmail(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.verificationEmail,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to delete verification email template'
             );
-
-            return false;
         }
     }
 
-    async emailImportVerifiedEmail(): Promise<boolean> {
+    async emailImportVerifiedEmail(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -235,12 +233,11 @@ export class NotificationTemplateAccountDomain {
                 subject: `Email Verified`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(err, 'Failed to import verified email template');
-
-            return false;
+            throw new AppUnknownException(
+                err,
+                'Failed to import verified email template'
+            );
         }
     }
 
@@ -251,27 +248,31 @@ export class NotificationTemplateAccountDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err, 'Failed to get verified email template');
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
 
-            return null;
+            throw new AppUnknownException(
+                err,
+                'Failed to get verified email template'
+            );
         }
     }
 
-    async emailDeleteVerifiedEmail(): Promise<boolean> {
+    async emailDeleteVerifiedEmail(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.verifiedEmail,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(err, 'Failed to delete verified email template');
-
-            return false;
+            throw new AppUnknownException(
+                err,
+                'Failed to delete verified email template'
+            );
         }
     }
 
-    async emailImportVerifiedMobileNumber(): Promise<boolean> {
+    async emailImportVerifiedMobileNumber(): Promise<void> {
         try {
             const templatePath = join(
                 import.meta.dirname,
@@ -284,15 +285,11 @@ export class NotificationTemplateAccountDomain {
                 subject: `MobileNumber Verified`,
                 htmlBody: readFileSync(templatePath, 'utf8'),
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to import verified mobile number template'
             );
-
-            return false;
         }
     }
 
@@ -303,29 +300,27 @@ export class NotificationTemplateAccountDomain {
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(
+            if (err instanceof TemplateDoesNotExistException) {
+                return null;
+            }
+
+            throw new AppUnknownException(
                 err,
                 'Failed to get verified mobile number template'
             );
-
-            return null;
         }
     }
 
-    async emailDeleteVerifiedMobileNumber(): Promise<boolean> {
+    async emailDeleteVerifiedMobileNumber(): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
                 name: EnumNotificationProcess.verifiedMobileNumber,
             });
-
-            return true;
         } catch (err: unknown) {
-            this.logger.error(
+            throw new AppUnknownException(
                 err,
                 'Failed to delete verified mobile number template'
             );
-
-            return false;
         }
     }
 }

@@ -385,6 +385,11 @@ describe('AwsSESService', () => {
             });
 
             expect(send).toHaveBeenCalledTimes(1);
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({ TemplateData: '{}' }),
+                })
+            );
         });
 
         it('passes the configured ARN as the sending-authorization source ARN', async () => {
@@ -482,6 +487,17 @@ describe('AwsSESService', () => {
             });
 
             expect(send).toHaveBeenCalledTimes(1);
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        Destinations: [
+                            expect.objectContaining({
+                                ReplacementTemplateData: '{}',
+                            }),
+                        ],
+                    }),
+                })
+            );
         });
 
         it('passes the configured ARN as the sending-authorization source ARN', async () => {

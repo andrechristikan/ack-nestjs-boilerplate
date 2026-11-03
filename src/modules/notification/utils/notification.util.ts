@@ -47,17 +47,18 @@ export class NotificationUtil {
         step: EnumNotificationStep,
         reason: unknown
     ): INotificationStepFailure {
-        const error = reason instanceof Error ? reason.message : String(reason);
+        const rawError =
+            reason instanceof Error ? reason : new Error(String(reason));
 
-        return { step, error };
+        return { step, message: rawError.message, rawError };
     }
 
     toStepSummary(failedSteps: INotificationStepFailure[]): string {
-        const pairs = failedSteps.map(({ step, error }) => `${step}:${error}`);
+        const steps = failedSteps.map(({ step }) => step);
 
         return this.messageService.setMessage(
             'notification.queue.error.stepsFailed',
-            { properties: { steps: pairs.join(', ') } }
+            { properties: { steps: steps.join(', ') } }
         );
     }
 

@@ -61,9 +61,9 @@ export class FeatureFlagAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: FeatureFlagAdminListRequestSchema })
@@ -83,9 +83,9 @@ export class FeatureFlagAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/:featureFlagId/status')
     async updateStatus(
         @Param('featureFlagId', { schema: RequestMongoIdSchema })
@@ -110,9 +110,9 @@ export class FeatureFlagAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update/:featureFlagId/metadata')
     async update(
         @Param('featureFlagId', { schema: RequestMongoIdSchema })

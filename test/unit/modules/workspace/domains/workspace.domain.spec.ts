@@ -280,10 +280,9 @@ describe('WorkspaceDomain', () => {
             databaseUtil.createId.mockReturnValue('workspace-1');
         });
 
-        it('throws WorkspaceCapReachedException when the owner already meets the cap', async () => {
-            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
-                5
-            );
+        it('throws WorkspaceCapReachedException from inside the transaction when the owner already meets the cap', async () => {
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(5);
 
             await expect(
                 domain.createWorkspace('user-1', create)
@@ -297,20 +296,29 @@ describe('WorkspaceDomain', () => {
                     ],
                 messagePath: 'workspace.error.capReached',
             });
-            expect(workspaceUtil.drawSlugCandidates).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
+                tx,
+                'user-1'
+            );
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
+            expect(
+                workspaceMemberRepository.createOwnerInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('creates the workspace on the first slug candidate', async () => {
-            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
-                1
-            );
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
             databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
             const result = await domain.createWorkspace('user-1', create);
 
             expect(result).toBe(workspace);
+            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
+                tx,
+                'user-1'
+            );
             expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -324,9 +332,7 @@ describe('WorkspaceDomain', () => {
         });
 
         it('retries with the next slug candidate after a collision and creates on the second attempt', async () => {
-            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
-                1
-            );
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
             const collision = new Error('slug collision');
             databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
@@ -348,9 +354,7 @@ describe('WorkspaceDomain', () => {
         });
 
         it('wraps a non-collision transaction error in AppUnknownException without retrying', async () => {
-            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
-                1
-            );
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
             const otherError = new Error('unexpected');
             databaseService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
@@ -365,9 +369,7 @@ describe('WorkspaceDomain', () => {
         });
 
         it('propagates an AppBaseException raised in the transaction without retrying', async () => {
-            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
-                1
-            );
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
             const typedError = new WorkspaceNotFoundException();
             databaseService.withTransaction.mockRejectedValue(typedError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
@@ -379,9 +381,7 @@ describe('WorkspaceDomain', () => {
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
-                1
-            );
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
             const collision = new Error('slug collision');
             databaseService.withTransaction.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -432,7 +432,7 @@ describe('WorkspaceDomain', () => {
     });
 
     describe('updateWorkspaceSlug', () => {
-        it('throws WorkspaceSlugInvalidException before checking availability when the util rejects the slug', async () => {
+        it('throws WorkspaceSlugInvalidException before writing when the util rejects the slug', async () => {
             workspaceUtil.isSlugAllowed.mockReturnValue(false);
 
             await expect(
@@ -450,13 +450,14 @@ describe('WorkspaceDomain', () => {
             expect(workspaceUtil.isSlugAllowed).toHaveBeenCalledWith(
                 'Not Allowed!'
             );
-            expect(workspaceRepository.existsBySlug).not.toHaveBeenCalled();
             expect(workspaceRepository.updateSlug).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceSlugAlreadyExistsException when the slug is taken', async () => {
+        it('throws WorkspaceSlugAlreadyExistsException when the write collides on the slug index', async () => {
             workspaceUtil.isSlugAllowed.mockReturnValue(true);
-            workspaceRepository.existsBySlug.mockResolvedValue(true);
+            const collision = new Error('slug collision');
+            workspaceRepository.updateSlug.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 domain.updateWorkspaceSlug('workspace-1', 'taken-slug')
@@ -470,16 +471,28 @@ describe('WorkspaceDomain', () => {
                     ],
                 messagePath: 'workspace.error.slugAlreadyExists',
             });
-            expect(workspaceRepository.existsBySlug).toHaveBeenCalledWith(
-                'taken-slug',
-                'workspace-1'
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'slug'
             );
-            expect(workspaceRepository.updateSlug).not.toHaveBeenCalled();
         });
 
-        it('writes the slug when it is allowed and free', async () => {
+        it('wraps a non-collision write error in AppUnknownException', async () => {
             workspaceUtil.isSlugAllowed.mockReturnValue(true);
-            workspaceRepository.existsBySlug.mockResolvedValue(false);
+            const otherError = new Error('unexpected');
+            workspaceRepository.updateSlug.mockRejectedValue(otherError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                domain.updateWorkspaceSlug('workspace-1', 'new-slug')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
+        });
+
+        it('writes the slug when it is allowed', async () => {
+            workspaceUtil.isSlugAllowed.mockReturnValue(true);
             workspaceRepository.updateSlug.mockResolvedValue(workspace);
 
             const result = await domain.updateWorkspaceSlug(
@@ -507,6 +520,24 @@ describe('WorkspaceDomain', () => {
                 'workspace-1',
                 deletedAt
             );
+        });
+    });
+
+    describe('softDeleteSolelyOwnedByUserInTx', () => {
+        it('soft-deletes the workspaces the user solely owns on the given transaction and returns their ids', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+            const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+            workspaceRepository.softDeleteSolelyOwnedByUserInTx.mockResolvedValue(
+                ['workspace-1', 'workspace-2']
+            );
+
+            await expect(
+                domain.softDeleteSolelyOwnedByUserInTx(tx, 'user-1', deletedAt)
+            ).resolves.toEqual(['workspace-1', 'workspace-2']);
+
+            expect(
+                workspaceRepository.softDeleteSolelyOwnedByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', deletedAt);
         });
     });
 

@@ -38,7 +38,7 @@ export interface IDeviceOwnershipRepository {
         deviceOwnershipId: string,
         removedBy: string,
         now: Date
-    ): Promise<IDeviceOwnership>;
+    ): Promise<IDeviceOwnership | null>;
     revokeAllByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -62,7 +62,6 @@ export interface IDeviceOwnershipRepository {
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>>;
     findTokensByUserId(userId: string): Promise<string[]>;
-    existsActive(userId: string, deviceOwnershipId: string): Promise<boolean>;
     refreshInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -70,7 +69,7 @@ export interface IDeviceOwnershipRepository {
         { notificationToken, platform }: IDeviceRefresh,
         notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
-    ): Promise<string>;
+    ): Promise<string | null>;
     clearTokenFromOtherUsersInTx(
         tx: IDatabaseTransactionClient,
         notificationToken: string,

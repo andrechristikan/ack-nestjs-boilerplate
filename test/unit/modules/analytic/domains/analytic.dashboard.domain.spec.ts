@@ -1,5 +1,6 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -39,6 +40,7 @@ import { WorkspaceAnalyticDomain } from '@modules/workspace/domains/workspace.an
 import { WorkspaceInviteAnalyticDomain } from '@modules/workspace/domains/workspace.invite.analytic.domain';
 import { WorkspaceJoinRequestAnalyticDomain } from '@modules/workspace/domains/workspace.join-request.analytic.domain';
 import { WorkspaceMemberAnalyticDomain } from '@modules/workspace/domains/workspace.member.analytic.domain';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('AnalyticDashboardDomain', () => {
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
@@ -106,10 +108,17 @@ describe('AnalyticDashboardDomain', () => {
 
     const cachedValue = { count: 99 };
 
+    const inactivityInMs = 2592000000;
+
+    let configService: MockProxy<ConfigService>;
     let domain: AnalyticDashboardDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+
+        configService = buildConfigService({
+            'analytic.device.inactivityInMs': inactivityInMs,
+        });
 
         analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
             date ? date.toISOString() : '_'
@@ -122,6 +131,7 @@ describe('AnalyticDashboardDomain', () => {
             providers: [
                 AnalyticDashboardDomain,
                 { provide: AnalyticCache, useValue: analyticCache },
+                { provide: ConfigService, useValue: configService },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: AnalyticBucketUtil, useValue: analyticBucketUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -687,7 +697,7 @@ describe('AnalyticDashboardDomain', () => {
     });
 
     describe('authLockout', () => {
-        it('counts failed logins and max-attempt lockouts in the range', async () => {
+        it('counts failed logins and password and two-factor max-attempt lockouts in the range', async () => {
             activityLogAnalyticDomain.getCountByActionsInRange
                 .mockResolvedValueOnce(6)
                 .mockResolvedValueOnce(3);
@@ -707,7 +717,10 @@ describe('AnalyticDashboardDomain', () => {
                 activityLogAnalyticDomain.getCountByActionsInRange
             ).toHaveBeenNthCalledWith(
                 2,
-                [EnumActivityLogAction.userReachMaxPasswordAttempt],
+                [
+                    EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                ],
                 startDate,
                 endDate
             );
@@ -757,11 +770,11 @@ describe('AnalyticDashboardDomain', () => {
     });
 
     describe('authConcurrentSessions', () => {
-        it('maps active sessions per user into buckets', async () => {
+        it('buckets active sessions per user by count range', async () => {
             const rows = [{ userId: 'user-1', count: 2 }];
-            const buckets = [{ key: 'user-1', count: 2 }];
+            const buckets = [{ key: '2', count: 1 }];
             sessionAnalyticDomain.getCountActiveByUser.mockResolvedValue(rows);
-            analyticBucketUtil.toBuckets.mockReturnValue(buckets);
+            analyticBucketUtil.toBucketsByCountRange.mockReturnValue(buckets);
 
             const result = await domain.authConcurrentSessions();
 
@@ -769,10 +782,9 @@ describe('AnalyticDashboardDomain', () => {
             expect(
                 sessionAnalyticDomain.getCountActiveByUser
             ).toHaveBeenCalledWith(now);
-            expect(analyticBucketUtil.toBuckets).toHaveBeenCalledWith(
-                rows,
-                'userId'
-            );
+            expect(
+                analyticBucketUtil.toBucketsByCountRange
+            ).toHaveBeenCalledWith(rows);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -835,9 +847,7 @@ describe('AnalyticDashboardDomain', () => {
                 },
             ];
             const buckets = [{ key: 'Chrome', count: 1 }];
-            sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue(
-                sessions
-            );
+            sessionAnalyticDomain.getActiveInRange.mockResolvedValue(sessions);
             analyticBucketUtil.toBucketsByBrowser.mockReturnValue(buckets);
 
             const result = await domain.authSessionsUserAgent(
@@ -846,9 +856,14 @@ describe('AnalyticDashboardDomain', () => {
             );
 
             expect(result).toEqual({ buckets });
+            expect(sessionAnalyticDomain.getActiveInRange).toHaveBeenCalledWith(
+                startDate,
+                endDate,
+                now
+            );
             expect(
                 sessionAnalyticDomain.getActiveWithGeoInRange
-            ).toHaveBeenCalledWith(startDate, endDate, now);
+            ).not.toHaveBeenCalled();
             expect(analyticBucketUtil.toBucketsByBrowser).toHaveBeenCalledWith(
                 sessions
             );
@@ -1383,19 +1398,18 @@ describe('AnalyticDashboardDomain', () => {
     });
 
     describe('devicesPerUser', () => {
-        it('maps per-user device counts into buckets', async () => {
+        it('buckets per-user device counts by count range', async () => {
             const rows = [{ userId: 'user-1', count: 3 }];
-            const buckets = [{ key: 'bucket-key', count: 7 }];
+            const buckets = [{ key: '3-5', count: 1 }];
             deviceAnalyticDomain.getCountPerUser.mockResolvedValue(rows);
-            analyticBucketUtil.toBuckets.mockReturnValue(buckets);
+            analyticBucketUtil.toBucketsByCountRange.mockReturnValue(buckets);
 
             const result = await domain.devicesPerUser();
 
             expect(result).toEqual({ buckets });
-            expect(analyticBucketUtil.toBuckets).toHaveBeenCalledWith(
-                rows,
-                'userId'
-            );
+            expect(
+                analyticBucketUtil.toBucketsByCountRange
+            ).toHaveBeenCalledWith(rows);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -1409,28 +1423,21 @@ describe('AnalyticDashboardDomain', () => {
     });
 
     describe('devicesInactivity', () => {
-        it('counts devices inactive for thirty days', async () => {
+        it('counts devices inactive for the configured inactivity window', async () => {
             const now = new Date('2026-03-01T00:00:00.000Z');
             const before = new Date('2026-01-30T00:00:00.000Z');
             helperDateService.create.mockReturnValue(now);
             helperDateService.backward.mockReturnValue(before);
-            deviceAnalyticDomain.getInactive.mockResolvedValue([
-                {
-                    id: 'ownership-1',
-                    userId: 'user-1',
-                    lastActiveAt: before,
-                    deviceId: 'device-1',
-                },
-            ]);
+            deviceAnalyticDomain.getCountInactive.mockResolvedValue(1);
 
             const result = await domain.devicesInactivity();
 
             expect(result).toEqual({ count: 1 });
             expect(helperDateService.backward).toHaveBeenCalledWith(
                 now,
-                Duration.fromObject({ days: 30 })
+                Duration.fromMillis(inactivityInMs)
             );
-            expect(deviceAnalyticDomain.getInactive).toHaveBeenCalledWith(
+            expect(deviceAnalyticDomain.getCountInactive).toHaveBeenCalledWith(
                 before
             );
         });
@@ -1510,13 +1517,16 @@ describe('AnalyticDashboardDomain', () => {
     });
 
     describe('apiKeysActiveExpired', () => {
-        it('returns active versus expired API key counts', async () => {
-            const counts = { active: 6, expired: 1 };
+        it('returns active, expired, and inactive API key counts', async () => {
+            const counts = { active: 6, expired: 1, inactive: 2 };
             apiKeyAnalyticDomain.getActiveExpired.mockResolvedValue(counts);
 
             const result = await domain.apiKeysActiveExpired();
 
             expect(result).toEqual(counts);
+            expect(apiKeyAnalyticDomain.getActiveExpired).toHaveBeenCalledWith(
+                now
+            );
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -1550,26 +1560,15 @@ describe('AnalyticDashboardDomain', () => {
     });
 
     describe('termPoliciesAcceptanceRate', () => {
-        it('reads the counts together with omitted dates as null, then maps the rate', async () => {
+        it('reads the active user count first, then the acceptance rate with omitted dates as null', async () => {
             const rate = {
                 acceptances: 4,
                 users: 8,
                 published: 2,
                 rate: 0.5,
             };
-            const counts = { acceptances: 4, published: 2 };
-            const deferredActive = Promise.withResolvers<number>();
-            userAnalyticDomain.getCountActive.mockReturnValue(
-                deferredActive.promise
-            );
-            termPolicyAcceptanceAnalyticDomain.getAcceptanceCounts.mockImplementation(
-                async () => {
-                    deferredActive.resolve(8);
-
-                    return counts;
-                }
-            );
-            termPolicyAcceptanceAnalyticDomain.mapAcceptanceRate.mockReturnValue(
+            userAnalyticDomain.getCountActive.mockResolvedValue(8);
+            termPolicyAcceptanceAnalyticDomain.getAcceptanceRate.mockResolvedValue(
                 rate
             );
 
@@ -1577,27 +1576,21 @@ describe('AnalyticDashboardDomain', () => {
 
             expect(result).toEqual(rate);
             expect(
-                termPolicyAcceptanceAnalyticDomain.getAcceptanceCounts
-            ).toHaveBeenCalledWith(null, null);
-            expect(
-                termPolicyAcceptanceAnalyticDomain.mapAcceptanceRate
-            ).toHaveBeenCalledWith(counts, 8);
+                termPolicyAcceptanceAnalyticDomain.getAcceptanceRate
+            ).toHaveBeenCalledWith(8, null, null);
         });
 
-        it('forwards present dates into the counts read', async () => {
+        it('forwards present dates into the rate read', async () => {
             userAnalyticDomain.getCountActive.mockResolvedValue(3);
-            termPolicyAcceptanceAnalyticDomain.getAcceptanceCounts.mockResolvedValue(
-                { acceptances: 0, published: 0 }
-            );
-            termPolicyAcceptanceAnalyticDomain.mapAcceptanceRate.mockReturnValue(
+            termPolicyAcceptanceAnalyticDomain.getAcceptanceRate.mockResolvedValue(
                 { acceptances: 0, users: 3, published: 0, rate: 0 }
             );
 
             await domain.termPoliciesAcceptanceRate(startDate, endDate);
 
             expect(
-                termPolicyAcceptanceAnalyticDomain.getAcceptanceCounts
-            ).toHaveBeenCalledWith(startDate, endDate);
+                termPolicyAcceptanceAnalyticDomain.getAcceptanceRate
+            ).toHaveBeenCalledWith(3, startDate, endDate);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {

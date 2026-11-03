@@ -22,6 +22,24 @@ describe('UserAddMobileNumberRequestSchema', () => {
         ).toThrow();
     });
 
+    it('rejects a number with a non-digit character', () => {
+        expect(() =>
+            UserAddMobileNumberRequestSchema.parse({
+                ...payload,
+                number: 'abcdefgh',
+            })
+        ).toThrow();
+    });
+
+    it('rejects a phone code with a non-digit character', () => {
+        expect(() =>
+            UserAddMobileNumberRequestSchema.parse({
+                ...payload,
+                phoneCode: '+62',
+            })
+        ).toThrow();
+    });
+
     it('rejects an undeclared key', () => {
         expect(() =>
             UserAddMobileNumberRequestSchema.parse({

@@ -1,12 +1,12 @@
 import { Global, Module } from '@nestjs/common';
-import { RequestThrottleUserInterceptor } from '@common/request/interceptors/request.throttle-user.interceptor';
+import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
 
 @Global()
 @Module({
     controllers: [],
-    providers: [RequestThrottleStorageService, RequestThrottleUserInterceptor],
-    exports: [RequestThrottleStorageService, RequestThrottleUserInterceptor],
+    providers: [RequestThrottleStorageService, RequestThrottleUserGuard],
+    exports: [RequestThrottleStorageService, RequestThrottleUserGuard],
     imports: [],
 })
 export class RequestThrottleModule {}

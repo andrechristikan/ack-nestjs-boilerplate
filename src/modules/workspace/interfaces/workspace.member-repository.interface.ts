@@ -22,8 +22,10 @@ export interface IWorkspaceMemberRepository {
         workspaceMemberId: string,
         workspaceId: string
     ): Promise<WorkspaceMember | null>;
-    countOwnedActiveByUser(userId: string): Promise<number>;
-    countOwners(workspaceId: string): Promise<number>;
+    countOwnersInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string
+    ): Promise<number>;
     findReviewersByWorkspace(
         workspaceId: string
     ): Promise<{ userId: string }[]>;
@@ -60,10 +62,15 @@ export interface IWorkspaceMemberRepository {
         expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole
     ): Promise<boolean>;
-    removeMember(
+    removeMemberInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumWorkspaceMemberRole
     ): Promise<boolean>;
+    removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number>;
     transferOwnership(
         workspaceId: string,
         fromMemberId: string,

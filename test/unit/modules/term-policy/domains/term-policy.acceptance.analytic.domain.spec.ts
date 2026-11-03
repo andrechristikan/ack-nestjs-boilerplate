@@ -1,11 +1,13 @@
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains/term-policy.acceptance.analytic.domain';
 import { TermPolicyAnalyticDomain } from '@modules/term-policy/domains/term-policy.analytic.domain';
 import { TermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/repositories/term-policy.acceptance.analytic.repository';
+import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import type { ITermPolicyAcceptanceAnalytic } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
@@ -48,42 +50,25 @@ describe('TermPolicyAcceptanceAnalyticDomain', () => {
         domain = module.get(TermPolicyAcceptanceAnalyticDomain);
     });
 
-    describe('getAcceptanceCounts', () => {
-        it('reads the acceptances in range together with the published count', async () => {
+    describe('getAcceptanceRate', () => {
+        const latest = [
+            { type: EnumTermPolicyType.termsOfService, version: 2 },
+            { type: EnumTermPolicyType.privacy, version: 3 },
+        ];
+
+        it('counts acceptances of the latest published required versions against active users times those types', async () => {
+            termPolicyAnalyticDomain.getLatestPublishedByTypes.mockResolvedValue(
+                latest
+            );
             termPolicyAcceptanceAnalyticRepository.countAcceptances.mockResolvedValue(
                 40
             );
-            termPolicyAnalyticDomain.getCountPublished.mockResolvedValue(2);
-
-            const result = await domain.getAcceptanceCounts(startDate, endDate);
-
-            expect(result).toEqual({ acceptances: 40, published: 2 });
-            expect(
-                termPolicyAcceptanceAnalyticRepository.countAcceptances
-            ).toHaveBeenCalledWith(startDate, endDate);
-        });
-
-        it('passes open date bounds through', async () => {
-            termPolicyAcceptanceAnalyticRepository.countAcceptances.mockResolvedValue(
-                0
-            );
-            termPolicyAnalyticDomain.getCountPublished.mockResolvedValue(2);
-
-            await domain.getAcceptanceCounts(null, null);
-
-            expect(
-                termPolicyAcceptanceAnalyticRepository.countAcceptances
-            ).toHaveBeenCalledWith(null, null);
-        });
-    });
-
-    describe('mapAcceptanceRate', () => {
-        it('computes the rate against active users times published policies', () => {
             helperNumberService.percent.mockReturnValue(100);
 
-            const result = domain.mapAcceptanceRate(
-                { acceptances: 40, published: 2 },
-                20
+            const result = await domain.getAcceptanceRate(
+                20,
+                startDate,
+                endDate
             );
 
             expect(result).toEqual({
@@ -92,23 +77,51 @@ describe('TermPolicyAcceptanceAnalyticDomain', () => {
                 published: 2,
                 rate: 100,
             });
+            expect(
+                termPolicyAnalyticDomain.getLatestPublishedByTypes
+            ).toHaveBeenCalledWith(TermPolicyDefaultRequiredTypes);
+            expect(
+                termPolicyAcceptanceAnalyticRepository.countAcceptances
+            ).toHaveBeenCalledWith(latest, startDate, endDate);
             expect(helperNumberService.percent).toHaveBeenCalledWith(40, 40);
         });
 
-        it('passes a zero user count through', () => {
+        it('passes open date bounds through', async () => {
+            termPolicyAnalyticDomain.getLatestPublishedByTypes.mockResolvedValue(
+                latest
+            );
+            termPolicyAcceptanceAnalyticRepository.countAcceptances.mockResolvedValue(
+                0
+            );
+
+            await domain.getAcceptanceRate(20, null, null);
+
+            expect(
+                termPolicyAcceptanceAnalyticRepository.countAcceptances
+            ).toHaveBeenCalledWith(latest, null, null);
+        });
+
+        it('skips the acceptance count when no required type is published', async () => {
+            termPolicyAnalyticDomain.getLatestPublishedByTypes.mockResolvedValue(
+                []
+            );
             helperNumberService.percent.mockReturnValue(0);
 
-            const result = domain.mapAcceptanceRate(
-                { acceptances: 0, published: 2 },
-                0
+            const result = await domain.getAcceptanceRate(
+                20,
+                startDate,
+                endDate
             );
 
             expect(result).toEqual({
                 acceptances: 0,
-                users: 0,
-                published: 2,
+                users: 20,
+                published: 0,
                 rate: 0,
             });
+            expect(
+                termPolicyAcceptanceAnalyticRepository.countAcceptances
+            ).not.toHaveBeenCalled();
             expect(helperNumberService.percent).toHaveBeenCalledWith(0, 0);
         });
     });

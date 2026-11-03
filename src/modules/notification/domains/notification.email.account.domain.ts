@@ -8,7 +8,7 @@ import type {
     INotificationEmailSendEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
+    INotificationVerifiedMobileNumberEncryptedPayload,
     INotificationWelcomeByAdminEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
@@ -295,10 +295,17 @@ export class NotificationEmailAccountDomain {
             userId,
             notificationId,
         }: INotificationEmailSendEncryptedPayload,
-        { reference, mobileNumber }: INotificationVerifiedMobileNumberPayload
+        {
+            reference,
+            encryptedMobileNumber,
+        }: INotificationVerifiedMobileNumberEncryptedPayload
     ): Promise<INotificationEmailResult> {
         const email = this.notificationUtil.decryptPayload(
             encryptedEmail,
+            userId
+        );
+        const mobileNumber = this.notificationUtil.decryptPayload(
+            encryptedMobileNumber,
             userId
         );
         // Sequential by design: processedAt is stamped before the SES call and sentAt after its success

@@ -1,3 +1,5 @@
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -19,15 +21,19 @@ import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ProjectHttpService {
     constructor(
         private readonly projectDomain: ProjectDomain,
+        private readonly workspaceInviteDomain: WorkspaceInviteDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
-        private readonly activityLogDomain: ActivityLogDomain
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly databaseService: DatabaseService,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async getListCursorByMember(
@@ -144,7 +150,15 @@ export class ProjectHttpService {
             }),
         ];
 
-        await this.projectDomain.softDeleteProject(project);
+        const deletedAt = this.helperDateService.create();
+        await this.databaseService.withTransaction(async tx => {
+            await this.projectDomain.softDeleteProjectInTx(
+                tx,
+                project,
+                deletedAt
+            );
+            await this.workspaceInviteDomain.clearProjectInTx(tx, project.id);
+        });
 
         this.activityLogDomain.stagePrepared(activityLogs);
 

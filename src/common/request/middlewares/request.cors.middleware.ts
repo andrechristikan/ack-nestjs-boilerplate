@@ -80,7 +80,8 @@ export class RequestCorsMiddleware implements NestMiddleware {
     }
 
     /**
-     * Matches an origin against patterns by exact hostname/port or wildcard subdomain.
+     * Matches an origin against patterns by scheme (when the pattern names one), hostname, and
+     * port, with the default port of the scheme normalised, or by wildcard subdomain.
      */
     private isOriginAllowed(origin: string, patterns: string[]): boolean {
         const isValidOrigin = this.isValidOrigin(origin);
@@ -88,21 +89,33 @@ export class RequestCorsMiddleware implements NestMiddleware {
             return false;
         }
 
-        const { hostname, port } = this.parseOrigin(origin);
-
-        for (const pattern of patterns) {
-            const exactMatch = this.parsePattern(pattern);
-            if (hostname === exactMatch.hostname && port === exactMatch.port) {
-                return true;
-            }
-        }
+        const parsedOrigin = this.parseOrigin(origin);
 
         return patterns.some(pattern => {
-            if (!pattern.includes('*')) {
+            const parsedPattern = this.parsePattern(pattern);
+            if (
+                parsedPattern.protocol !== null &&
+                parsedPattern.protocol !== parsedOrigin.protocol
+            ) {
                 return false;
             }
 
-            return this.matchWildcardOrigin(hostname, port, pattern);
+            const port = this.normalizePort(
+                parsedPattern.protocol ?? parsedOrigin.protocol,
+                parsedPattern.port
+            );
+            if (port !== parsedOrigin.port) {
+                return false;
+            }
+
+            if (!parsedPattern.hostname.includes('*')) {
+                return parsedPattern.hostname === parsedOrigin.hostname;
+            }
+
+            return this.matchWildcardHostname(
+                parsedOrigin.hostname,
+                parsedPattern.hostname
+            );
         });
     }
 
@@ -127,54 +140,71 @@ export class RequestCorsMiddleware implements NestMiddleware {
         }
     }
 
-    private parseOrigin(origin: string): { hostname: string; port: string } {
+    private parseOrigin(origin: string): {
+        protocol: string;
+        hostname: string;
+        port: string;
+    } {
         try {
             const url = new URL(origin);
             return {
+                protocol: url.protocol,
                 hostname: url.hostname,
                 port: url.port,
             };
         } catch {
-            return { hostname: '', port: '' };
+            return { protocol: '', hostname: '', port: '' };
         }
     }
 
-    private parsePattern(pattern: string): { hostname: string; port: string } {
-        const parts = pattern.split(':');
+    /**
+     * Splits a pattern into its optional scheme, lowercased hostname, and port.
+     */
+    private parsePattern(pattern: string): {
+        protocol: string | null;
+        hostname: string;
+        port: string;
+    } {
+        const scheme = /^(https?):\/\//i.exec(pattern);
+        const authority =
+            scheme === null ? pattern : pattern.slice(scheme[0].length);
+        const parts = authority.split(':');
+
         return {
-            hostname: parts[0]!,
+            protocol: scheme === null ? null : `${scheme[1]!.toLowerCase()}:`,
+            hostname: parts[0]!.toLowerCase(),
             port: parts[1] ?? '',
         };
     }
 
     /**
-     * Matches `*.example.com`-style wildcards; port must match exactly (no port wildcard).
+     * Empties the default port of its scheme, the form `URL` reports for an origin.
      */
-    private matchWildcardOrigin(
+    private normalizePort(protocol: string, port: string): string {
+        if (
+            (protocol === 'http:' && port === '80') ||
+            (protocol === 'https:' && port === '443')
+        ) {
+            return '';
+        }
+
+        return port;
+    }
+
+    /**
+     * Matches `*.example.com`-style wildcards against a hostname; the base domain matches too.
+     */
+    private matchWildcardHostname(
         hostname: string,
-        port: string,
-        pattern: string
+        patternHostname: string
     ): boolean {
-        const { hostname: patternHostname, port: patternPort } =
-            this.parsePattern(pattern);
-
-        if (port !== patternPort) {
+        if (!patternHostname.startsWith('*.')) {
             return false;
         }
 
-        if (patternHostname.startsWith('*.')) {
-            const baseDomain = patternHostname.slice(2);
+        const baseDomain = patternHostname.slice(2);
 
-            return (
-                hostname.endsWith(`.${baseDomain}`) || hostname === baseDomain
-            );
-        }
-
-        if (patternHostname.includes('*')) {
-            return false;
-        }
-
-        return false;
+        return hostname.endsWith(`.${baseDomain}`) || hostname === baseDomain;
     }
 
     use(req: Request, res: Response, next: NextFunction): void {

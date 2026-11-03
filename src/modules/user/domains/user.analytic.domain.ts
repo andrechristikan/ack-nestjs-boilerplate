@@ -40,7 +40,7 @@ export class UserAnalyticDomain {
     ): Promise<IAnalyticMetricRate> {
         const [deleted, total] = await Promise.all([
             this.userAnalyticRepository.countDeletedInRange(startDate, endDate),
-            this.userAnalyticRepository.countRegisteredUntil(endDate),
+            this.userAnalyticRepository.countAliveAt(startDate),
         ]);
         const rate = this.helperNumberService.percent(deleted, total);
         return { count: deleted, total, rate };
@@ -109,8 +109,15 @@ export class UserAnalyticDomain {
         return this.userAnalyticRepository.countActive();
     }
 
-    getNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]> {
-        return this.userAnalyticRepository.findNearLockout(minAttempt);
+    getNearLockout(
+        minAttempt: number,
+        limit: number
+    ): Promise<IAnalyticNearLockout[]> {
+        return this.userAnalyticRepository.findNearLockout(minAttempt, limit);
+    }
+
+    getCountNearLockout(minAttempt: number): Promise<number> {
+        return this.userAnalyticRepository.countNearLockout(minAttempt);
     }
 
     getGroupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]> {

@@ -79,8 +79,8 @@ export class AuthTwoFactorUtil {
         });
     }
 
-    /** Verifies a TOTP code against the secret, allowing a configurable time-step window. */
-    verifyCode(secret: string, code: string): boolean {
+    /** Verifies a TOTP code against the secret, allowing a configurable time-step window; answers the matched time step, or null when the code does not match. */
+    verifyCode(secret: string, code: string): number | null {
         const verified = verifySync({
             token: code,
             secret,
@@ -91,7 +91,11 @@ export class AuthTwoFactorUtil {
             epochTolerance: [this.window * this.periodInSeconds, 0],
         });
 
-        return verified.valid;
+        if (!verified.valid || !('timeStep' in verified)) {
+            return null;
+        }
+
+        return verified.timeStep;
     }
 
     /** Generates uppercase alphanumeric recovery backup codes plus their SHA-256 hashes for storage. */

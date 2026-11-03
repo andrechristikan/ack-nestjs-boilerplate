@@ -101,6 +101,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
         rejectReasonCode: null,
         reviewedByUserId: null,
         reviewedAt: null,
+        pendingKey: 'workspace-1:user-2',
     };
 
     const reviewer: User = {

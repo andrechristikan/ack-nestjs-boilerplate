@@ -11,6 +11,7 @@ import {
     AnalyticLoginSpikeIpAvailableOrderBy,
     AnalyticLoginTimeAnomalyAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticAnomalyDeviceProliferationSummary,
@@ -26,6 +27,7 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
+import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
@@ -43,14 +45,18 @@ export class AnalyticAnomalyDomain {
     private readonly loginSpikeIpMinUniqueAccounts: number;
     private readonly loginSpikeIpWindowInMs: number;
     private readonly loginTimeAnomalyHistoricalFrequencyPercent: number;
+    private readonly loginTimeAnomalyMinSample: number;
+    private readonly loginTimeAnomalyLookbackInMs: number;
     private readonly nearLockoutMinAttempt: number;
     private readonly deviceProliferationZScoreThreshold: number;
 
     constructor(
         private readonly analyticCache: AnalyticCache,
+        private readonly analyticDateDomain: AnalyticDateDomain,
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticAnomalyUtil: AnalyticAnomalyUtil,
         private readonly analyticSortUtil: AnalyticSortUtil,
+        private readonly analyticFraudUtil: AnalyticFraudUtil,
         private readonly paginationService: PaginationService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
@@ -75,16 +81,17 @@ export class AnalyticAnomalyDomain {
             this.configService.get<number>(
                 'analytic.anomaly.loginTimeAnomaly.historicalFrequencyPercent'
             )!;
+        this.loginTimeAnomalyMinSample = this.configService.get<number>(
+            'analytic.anomaly.minSample'
+        )!;
+        this.loginTimeAnomalyLookbackInMs = this.configService.get<number>(
+            'analytic.anomaly.lookbackInMs'
+        )!;
         const passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
         )!;
-        const nearLockoutOffset = this.configService.get<number>(
-            'analytic.anomaly.failedLoginSpike.nearLockoutOffset'
-        )!;
-        this.nearLockoutMinAttempt = Math.max(
-            1,
-            passwordMaxAttempt - nearLockoutOffset
-        );
+        this.nearLockoutMinAttempt =
+            this.analyticFraudUtil.nearLockoutThreshold(passwordMaxAttempt);
         this.deviceProliferationZScoreThreshold =
             this.configService.get<number>(
                 'analytic.anomaly.deviceProliferation.zScoreThreshold'
@@ -144,7 +151,7 @@ export class AnalyticAnomalyDomain {
         const end = endDate ?? now;
         const defaultStart = this.helperDateService.backward(
             end,
-            Duration.fromObject({ days: 30 })
+            Duration.fromMillis(this.loginTimeAnomalyLookbackInMs)
         );
         const start = startDate ?? defaultStart;
         const activityLogs =
@@ -156,7 +163,8 @@ export class AnalyticAnomalyDomain {
 
         return this.analyticAnomalyUtil.findLoginTimeAnomalies(
             activityLogs,
-            this.loginTimeAnomalyHistoricalFrequencyPercent
+            this.loginTimeAnomalyHistoricalFrequencyPercent,
+            this.loginTimeAnomalyMinSample
         );
     }
 
@@ -220,7 +228,10 @@ export class AnalyticAnomalyDomain {
     async loginSpikeIpSummary(
         windowMs: number | null
     ): Promise<IAnalyticAnomalyLoginSpikeIpSummary> {
-        const window = windowMs ?? this.loginSpikeIpWindowInMs;
+        const window = this.analyticDateDomain.resolveWindow(
+            windowMs,
+            this.loginSpikeIpWindowInMs
+        );
         const cached =
             await this.analyticCache.getAnomalySummary<IAnalyticAnomalyLoginSpikeIpSummary>(
                 EnumAnalyticAnomalySignal.loginSpikeIp,
@@ -250,7 +261,10 @@ export class AnalyticAnomalyDomain {
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
-        const window = windowMs ?? this.loginSpikeIpWindowInMs;
+        const window = this.analyticDateDomain.resolveWindow(
+            windowMs,
+            this.loginSpikeIpWindowInMs
+        );
         const rows = await this.computeLoginSpikeIp(window);
         const { data, total } = this.analyticSortUtil.sortPage(
             rows,
@@ -274,12 +288,14 @@ export class AnalyticAnomalyDomain {
             return cached;
         }
 
-        const [buckets, near] = await Promise.all([
+        const [buckets, nearCount] = await Promise.all([
             this.userAnalyticDomain.getGroupPasswordAttemptBuckets(),
-            this.userAnalyticDomain.getNearLockout(this.nearLockoutMinAttempt),
+            this.userAnalyticDomain.getCountNearLockout(
+                this.nearLockoutMinAttempt
+            ),
         ]);
         const summary: IAnalyticAnomalyFailedLoginSpikeSummary = {
-            count: near.length,
+            count: nearCount,
             window: null,
             meta: {
                 nearLockoutMinAttempt: this.nearLockoutMinAttempt,

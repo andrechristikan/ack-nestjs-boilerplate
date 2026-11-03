@@ -13,6 +13,7 @@ describe('ApiKeyAnalyticDomain', () => {
 
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-02-01T00:00:00.000Z');
+    const now = new Date('2026-03-01T00:00:00.000Z');
 
     let domain: ApiKeyAnalyticDomain;
 
@@ -33,13 +34,23 @@ describe('ApiKeyAnalyticDomain', () => {
     });
 
     describe('getActiveExpired', () => {
-        it('counts active and expired api keys', async () => {
+        it('counts active, expired, and inactive api keys against the supplied time', async () => {
             apiKeyAnalyticRepository.countActive.mockResolvedValue(6);
             apiKeyAnalyticRepository.countExpired.mockResolvedValue(1);
+            apiKeyAnalyticRepository.countInactive.mockResolvedValue(2);
 
-            const result = await domain.getActiveExpired();
+            const result = await domain.getActiveExpired(now);
 
-            expect(result).toEqual({ active: 6, expired: 1 });
+            expect(result).toEqual({ active: 6, expired: 1, inactive: 2 });
+            expect(apiKeyAnalyticRepository.countActive).toHaveBeenCalledWith(
+                now
+            );
+            expect(apiKeyAnalyticRepository.countExpired).toHaveBeenCalledWith(
+                now
+            );
+            expect(
+                apiKeyAnalyticRepository.countInactive
+            ).toHaveBeenCalledWith();
         });
     });
 

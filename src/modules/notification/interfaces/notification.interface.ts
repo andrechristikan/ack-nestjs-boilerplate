@@ -176,6 +176,13 @@ export interface INotificationVerifiedMobileNumberPayload extends INotificationV
     mobileNumber: string;
 }
 
+export interface INotificationVerifiedMobileNumberEncryptedPayload extends Omit<
+    INotificationVerifiedMobileNumberPayload,
+    'mobileNumber'
+> {
+    encryptedMobileNumber: string;
+}
+
 export interface INotificationNewDeviceLoginPayload {
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
@@ -325,7 +332,8 @@ export interface INotificationEmailUnregisteredQueuePayload<T = null> {
 
 export interface INotificationStepFailure {
     step: EnumNotificationStep;
-    error: string;
+    message: string;
+    rawError: Error;
 }
 
 export type INotificationStepOutcomes = Pick<

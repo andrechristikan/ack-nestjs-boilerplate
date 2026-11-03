@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
@@ -8,6 +8,8 @@ import type { HealthIndicatorResult } from '@nestjs/terminus';
  */
 @Injectable()
 export class HealthDatabaseIndicator {
+    private readonly logger = new Logger(HealthDatabaseIndicator.name);
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly healthIndicatorService: HealthIndicatorService
@@ -24,12 +26,9 @@ export class HealthDatabaseIndicator {
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'Database health check failed');
 
-            return indicator.down(
-                `HealthDatabaseIndicator Failed - ${message}`
-            );
+            return indicator.down('Database is unreachable');
         }
     }
 }

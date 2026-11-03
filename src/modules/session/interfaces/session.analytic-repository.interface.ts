@@ -5,6 +5,11 @@ import type {
 } from '@modules/session/interfaces/session.interface';
 
 export interface ISessionAnalyticRepository {
+    findActiveInRange(
+        startDate: Date | null,
+        endDate: Date | null,
+        now: Date
+    ): Promise<ISessionAnalyticSession[]>;
     findActiveWithGeoInRange(
         startDate: Date | null,
         endDate: Date | null,

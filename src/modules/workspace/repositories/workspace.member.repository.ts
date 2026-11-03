@@ -14,7 +14,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -62,20 +61,11 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
-    async countOwnedActiveByUser(userId: string): Promise<number> {
-        return this.databaseService.client.workspaceMember.count({
-            where: {
-                userId,
-                role: EnumWorkspaceMemberRole.owner,
-                workspace: {
-                    OR: WorkspaceActiveFilter,
-                },
-            },
-        });
-    }
-
-    async countOwners(workspaceId: string): Promise<number> {
-        return this.databaseService.client.workspaceMember.count({
+    async countOwnersInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string
+    ): Promise<number> {
+        return tx.workspaceMember.count({
             where: {
                 workspaceId,
                 role: EnumWorkspaceMemberRole.owner,
@@ -206,16 +196,27 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         return count > 0;
     }
 
-    async removeMember(
+    async removeMemberInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumWorkspaceMemberRole
     ): Promise<boolean> {
-        const { count } =
-            await this.databaseService.client.workspaceMember.deleteMany({
-                where: { id: targetMemberId, role: expectedRole },
-            });
+        const { count } = await tx.workspaceMember.deleteMany({
+            where: { id: targetMemberId, role: expectedRole },
+        });
 
         return count > 0;
+    }
+
+    async removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        const { count } = await tx.workspaceMember.deleteMany({
+            where: { userId },
+        });
+
+        return count;
     }
 
     async transferOwnership(

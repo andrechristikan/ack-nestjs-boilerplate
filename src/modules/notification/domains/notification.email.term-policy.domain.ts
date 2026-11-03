@@ -1,6 +1,5 @@
 import { BulkEmailStatus } from '@aws-sdk/client-ses';
 import type { BulkEmailDestinationStatus } from '@aws-sdk/client-ses';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -188,10 +187,18 @@ export class NotificationEmailTermPolicyDomain {
             this.releaseFailed(claimNonce, failedUserIds, proceedBy),
         ]);
         if (markOutcome.status === 'rejected') {
-            throw new AppUnknownException(markOutcome.reason);
+            throw new NotificationEmailDeliveryUnknownException(
+                batchId,
+                sentUserIds.length,
+                markOutcome.reason
+            );
         }
         if (releaseOutcome.status === 'rejected') {
-            throw new AppUnknownException(releaseOutcome.reason);
+            throw new NotificationEmailDeliveryUnknownException(
+                batchId,
+                failedUserIds.length,
+                releaseOutcome.reason
+            );
         }
 
         if (failedUserIds.length > 0) {

@@ -55,9 +55,9 @@ export class NotificationSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: NotificationListRequestSchema })
@@ -73,9 +73,9 @@ export class NotificationSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/setting/list')
     async listUserSetting(
         @AuthJwtPayload('userId') userId: string
@@ -87,9 +87,9 @@ export class NotificationSharedController {
     @Response('notification.markAsRead')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/:notificationId/read')
     async markAsRead(
         @AuthJwtPayload('userId') userId: string,
@@ -103,9 +103,9 @@ export class NotificationSharedController {
     @Response('notification.markAllAsRead')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/update/read')
     async markAllAsRead(
@@ -118,9 +118,9 @@ export class NotificationSharedController {
     @Response('notification.updateUserSetting')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/setting/update')
     async updateUserSetting(
         @AuthJwtPayload('userId')

@@ -3,15 +3,18 @@ import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserCurrent,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import { UserDeleteSelfRequestSchema } from '@modules/user/dtos/request/user.delete-self.request.dto';
+import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserHttpService } from '@modules/user/services/http/user.http.service';
-import { Controller, Delete } from '@nestjs/common';
+import { Body, Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client/client';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -29,13 +32,15 @@ export class UserUserController {
     @TermPolicyAcceptanceProtected()
     @RoleProtected(EnumRoleType.user)
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Delete('/self/delete')
     async deleteSelf(
-        @AuthJwtPayload('userId') userId: string
+        @UserCurrent() user: IUser,
+        @Body({ schema: UserDeleteSelfRequestSchema })
+        body: UserDeleteSelfRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userHttpService.deleteSelf(userId);
+        return this.userHttpService.deleteSelf(user, body);
     }
 }

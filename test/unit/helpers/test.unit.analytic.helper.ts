@@ -14,8 +14,10 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import type { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
+import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
@@ -23,9 +25,11 @@ import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 
 export interface IAnalyticAnomalyDomainDoubles {
     analyticCache: MockProxy<AnalyticCache>;
+    analyticDateDomain: MockProxy<AnalyticDateDomain>;
     analyticDateUtil: MockProxy<AnalyticDateUtil>;
     analyticAnomalyUtil: MockProxy<AnalyticAnomalyUtil>;
     analyticSortUtil: MockProxy<AnalyticSortUtil>;
+    analyticFraudUtil: MockProxy<AnalyticFraudUtil>;
     paginationService: MockProxy<PaginationService>;
     configService: MockProxy<ConfigService>;
     helperDateService: MockProxy<HelperDateService>;
@@ -45,12 +49,20 @@ export async function createAnalyticAnomalyDomain(
         providers: [
             AnalyticAnomalyDomainClass,
             { provide: AnalyticCache, useValue: doubles.analyticCache },
+            {
+                provide: AnalyticDateDomain,
+                useValue: doubles.analyticDateDomain,
+            },
             { provide: AnalyticDateUtil, useValue: doubles.analyticDateUtil },
             {
                 provide: AnalyticAnomalyUtil,
                 useValue: doubles.analyticAnomalyUtil,
             },
             { provide: AnalyticSortUtil, useValue: doubles.analyticSortUtil },
+            {
+                provide: AnalyticFraudUtil,
+                useValue: doubles.analyticFraudUtil,
+            },
             { provide: PaginationService, useValue: doubles.paginationService },
             { provide: ConfigService, useValue: doubles.configService },
             { provide: HelperDateService, useValue: doubles.helperDateService },

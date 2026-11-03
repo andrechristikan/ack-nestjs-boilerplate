@@ -580,7 +580,8 @@ describe('NotificationTermPolicyDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        error: 'mongo',
+                        message: 'mongo',
+                        rawError: new Error('mongo'),
                     },
                 ],
             });

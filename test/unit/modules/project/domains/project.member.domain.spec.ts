@@ -5,9 +5,10 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
@@ -18,10 +19,12 @@ import type {
     ProjectMember,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ProjectWorkspaceBypassStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type {
+    IProjectMember,
+    IProjectMemberActor,
+} from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -30,8 +33,7 @@ describe('ProjectMemberDomain', () => {
     const projectMemberRepository: MockProxy<ProjectMemberRepository> =
         mock<ProjectMemberRepository>();
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
-    const requestStoreService: MockProxy<RequestStoreService> =
-        mock<RequestStoreService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let domain: ProjectMemberDomain;
 
     const baseProject: Project = {
@@ -88,6 +90,15 @@ describe('ProjectMemberDomain', () => {
         updatedBy: null,
     };
 
+    const bypassActor: IProjectMemberActor = {
+        userId: '507f1f77bcf86cd799439033',
+        hasWorkspaceBypass: true,
+    };
+    const plainActor: IProjectMemberActor = {
+        userId: '507f1f77bcf86cd799439033',
+        hasWorkspaceBypass: false,
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
 
@@ -99,10 +110,7 @@ describe('ProjectMemberDomain', () => {
                     useValue: projectMemberRepository,
                 },
                 { provide: ProjectUtil, useValue: projectUtil },
-                {
-                    provide: RequestStoreService,
-                    useValue: requestStoreService,
-                },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         domain = module.get(ProjectMemberDomain);
@@ -286,9 +294,51 @@ describe('ProjectMemberDomain', () => {
         });
     });
 
+    describe('removeByWorkspaceAndUserInTx', () => {
+        it('removes the user project memberships of the workspace on the given transaction and returns the count', async () => {
+            const tx: MockProxy<IDatabaseTransactionClient> =
+                mock<IDatabaseTransactionClient>();
+            projectMemberRepository.removeByWorkspaceAndUserInTx.mockResolvedValue(
+                3
+            );
+
+            const result = await domain.removeByWorkspaceAndUserInTx(
+                tx,
+                '507f1f77bcf86cd799439012',
+                '507f1f77bcf86cd799439022'
+            );
+
+            expect(result).toBe(3);
+            expect(
+                projectMemberRepository.removeByWorkspaceAndUserInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                '507f1f77bcf86cd799439012',
+                '507f1f77bcf86cd799439022'
+            );
+        });
+    });
+
+    describe('removeByUserInTx', () => {
+        it('removes every project membership of the user on the given transaction and returns the count', async () => {
+            const tx: MockProxy<IDatabaseTransactionClient> =
+                mock<IDatabaseTransactionClient>();
+            projectMemberRepository.removeByUserInTx.mockResolvedValue(4);
+
+            const result = await domain.removeByUserInTx(
+                tx,
+                '507f1f77bcf86cd799439022'
+            );
+
+            expect(result).toBe(4);
+            expect(
+                projectMemberRepository.removeByUserInTx
+            ).toHaveBeenCalledWith(tx, '507f1f77bcf86cd799439022');
+        });
+    });
+
     describe('assignMember', () => {
-        it('throws ProjectMemberPeerForbiddenException when a non-owner assigns the admin role', async () => {
-            requestStoreService.get.mockReturnValue(false);
+        it('throws ProjectMemberPeerForbiddenException when an actor without workspace bypass assigns the admin role', async () => {
             const project = baseProject;
             const targetMember = {
                 ...baseWorkspaceMember,
@@ -298,7 +348,7 @@ describe('ProjectMemberDomain', () => {
             await expect(
                 domain.assignMember(
                     project,
-                    '507f1f77bcf86cd799439033',
+                    plainActor,
                     targetMember,
                     EnumProjectMemberRole.admin
                 )
@@ -311,19 +361,16 @@ describe('ProjectMemberDomain', () => {
                     ],
                 messagePath: 'project.error.memberPeerForbidden',
             });
-            expect(
-                projectMemberRepository.findOneByProjectAndUser
-            ).not.toHaveBeenCalled();
+            expect(projectMemberRepository.create).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberNotFoundException when targetMember is null', async () => {
-            requestStoreService.get.mockReturnValue(true);
             const project = baseProject;
 
             await expect(
                 domain.assignMember(
                     project,
-                    '507f1f77bcf86cd799439033',
+                    bypassActor,
                     null,
                     EnumProjectMemberRole.member
                 )
@@ -339,7 +386,6 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('throws WorkspaceMemberNotFoundException when targetMember belongs to another workspace', async () => {
-            requestStoreService.get.mockReturnValue(true);
             const project = baseProject;
             const targetMember = {
                 ...baseWorkspaceMember,
@@ -348,7 +394,7 @@ describe('ProjectMemberDomain', () => {
 
             const rejection = domain.assignMember(
                 project,
-                '507f1f77bcf86cd799439033',
+                bypassActor,
                 targetMember,
                 EnumProjectMemberRole.member
             );
@@ -364,22 +410,20 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('throws ProjectMemberAlreadyAssignedException when the target already has a project member row', async () => {
-            requestStoreService.get.mockReturnValue(true);
+        it('throws ProjectMemberAlreadyAssignedException when the create collides on the member unique index, with no read before the write', async () => {
             const project = baseProject;
             const targetMember = {
                 ...baseWorkspaceMember,
                 workspaceId: project.workspaceId,
             };
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue({
-                ...baseProjectMember,
-                userId: targetMember.userId,
-            });
+            const collision = new Error('member collision');
+            projectMemberRepository.create.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 domain.assignMember(
                     project,
-                    '507f1f77bcf86cd799439033',
+                    bypassActor,
                     targetMember,
                     EnumProjectMemberRole.member
                 )
@@ -392,20 +436,45 @@ describe('ProjectMemberDomain', () => {
                     ],
                 messagePath: 'project.error.memberAlreadyAssigned',
             });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'userId'
+            );
+            expect(
+                projectMemberRepository.findOneByProjectAndUser
+            ).not.toHaveBeenCalled();
+        });
+
+        it('wraps a non-collision create error in AppUnknownException', async () => {
+            const project = baseProject;
+            const targetMember = {
+                ...baseWorkspaceMember,
+                workspaceId: project.workspaceId,
+            };
+            const otherError = new Error('unexpected');
+            projectMemberRepository.create.mockRejectedValue(otherError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                domain.assignMember(
+                    project,
+                    bypassActor,
+                    targetMember,
+                    EnumProjectMemberRole.member
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
         });
 
         it('assigns the target member and returns the created row', async () => {
-            requestStoreService.get.mockReturnValue(true);
             const project = baseProject;
-            const actorId = '507f1f77bcf86cd799439033';
             const targetMember = {
                 ...baseWorkspaceMember,
                 workspaceId: project.workspaceId,
                 userId: '507f1f77bcf86cd799439044',
             };
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                null
-            );
             const created = {
                 ...baseProjectMemberRow,
                 userId: targetMember.userId,
@@ -414,7 +483,7 @@ describe('ProjectMemberDomain', () => {
 
             const result = await domain.assignMember(
                 project,
-                actorId,
+                bypassActor,
                 targetMember,
                 EnumProjectMemberRole.member
             );
@@ -424,7 +493,7 @@ describe('ProjectMemberDomain', () => {
                 project.id,
                 targetMember.userId,
                 EnumProjectMemberRole.member,
-                actorId
+                bypassActor.userId
             );
         });
     });
@@ -436,6 +505,7 @@ describe('ProjectMemberDomain', () => {
 
             const rejection = domain.updateMemberRole(
                 project,
+                bypassActor,
                 '507f1f77bcf86cd799439021',
                 EnumProjectMemberRole.admin
             );
@@ -451,7 +521,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('throws ProjectMemberPeerForbiddenException when a non-owner touches an admin role', async () => {
+        it('throws ProjectMemberPeerForbiddenException when an actor without workspace bypass touches an admin role', async () => {
             const project = baseProject;
             const targetMember = {
                 ...baseProjectMember,
@@ -460,10 +530,10 @@ describe('ProjectMemberDomain', () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
-            requestStoreService.get.mockReturnValue(false);
 
             const rejection = domain.updateMemberRole(
                 project,
+                plainActor,
                 targetMember.id,
                 EnumProjectMemberRole.viewer
             );
@@ -477,6 +547,7 @@ describe('ProjectMemberDomain', () => {
                     ],
                 messagePath: 'project.error.memberPeerForbidden',
             });
+            expect(projectMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
         it('updates the role and returns the member it changed', async () => {
@@ -489,10 +560,10 @@ describe('ProjectMemberDomain', () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
-            requestStoreService.get.mockReturnValue(true);
 
             const result = await domain.updateMemberRole(
                 project,
+                bypassActor,
                 targetMember.id,
                 EnumProjectMemberRole.admin
             );
@@ -512,7 +583,7 @@ describe('ProjectMemberDomain', () => {
 
             const rejection = domain.removeMember(
                 project,
-                '507f1f77bcf86cd799439033',
+                bypassActor,
                 '507f1f77bcf86cd799439021'
             );
 
@@ -529,15 +600,17 @@ describe('ProjectMemberDomain', () => {
 
         it('throws ProjectMemberPeerForbiddenException when the actor targets themselves', async () => {
             const project = baseProject;
-            const actorId = '507f1f77bcf86cd799439033';
-            const targetMember = { ...baseProjectMember, userId: actorId };
+            const targetMember = {
+                ...baseProjectMember,
+                userId: bypassActor.userId,
+            };
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
 
             const rejection = domain.removeMember(
                 project,
-                actorId,
+                bypassActor,
                 targetMember.id
             );
 
@@ -552,7 +625,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('throws ProjectMemberPeerForbiddenException when a non-owner removes an admin', async () => {
+        it('throws ProjectMemberPeerForbiddenException when an actor without workspace bypass removes an admin', async () => {
             const project = baseProject;
             const targetMember = {
                 ...baseProjectMember,
@@ -561,11 +634,10 @@ describe('ProjectMemberDomain', () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
-            requestStoreService.get.mockReturnValue(false);
 
             const rejection = domain.removeMember(
                 project,
-                '507f1f77bcf86cd799439033',
+                plainActor,
                 targetMember.id
             );
 
@@ -578,11 +650,11 @@ describe('ProjectMemberDomain', () => {
                     ],
                 messagePath: 'project.error.memberPeerForbidden',
             });
+            expect(projectMemberRepository.removeMember).not.toHaveBeenCalled();
         });
 
         it('removes the member and returns the member it removed', async () => {
             const project = baseProject;
-            const actorId = '507f1f77bcf86cd799439033';
             const targetMember = {
                 ...baseProjectMember,
                 userId: '507f1f77bcf86cd799439044',
@@ -591,11 +663,10 @@ describe('ProjectMemberDomain', () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
-            requestStoreService.get.mockReturnValue(true);
 
             const result = await domain.removeMember(
                 project,
-                actorId,
+                bypassActor,
                 targetMember.id
             );
 
@@ -618,36 +689,11 @@ describe('ProjectMemberDomain', () => {
         });
     });
 
-    describe('currentActorHasWorkspaceBypass', () => {
-        it('returns true when the store holds true', () => {
-            requestStoreService.get.mockReturnValue(true);
-
-            const result = domain['currentActorHasWorkspaceBypass']();
-
-            expect(result).toBe(true);
-            expect(requestStoreService.get).toHaveBeenCalledWith(
-                ProjectWorkspaceBypassStoreKey
-            );
-        });
-
-        it('returns false when the store holds false', () => {
-            requestStoreService.get.mockReturnValue(false);
-
-            expect(domain['currentActorHasWorkspaceBypass']()).toBe(false);
-        });
-
-        it('returns false when the store holds nothing', () => {
-            requestStoreService.get.mockReturnValue(null);
-
-            expect(domain['currentActorHasWorkspaceBypass']()).toBe(false);
-        });
-    });
-
-    describe('assertProjectMemberPeerAllowed', () => {
-        it('does not throw when the actor is the workspace owner', () => {
+    describe('assertPeerAllowed', () => {
+        it('does not throw when the actor has workspace bypass', () => {
             expect(() =>
-                domain['assertProjectMemberPeerAllowed'](
-                    true,
+                domain.assertPeerAllowed(
+                    bypassActor,
                     EnumProjectMemberRole.admin
                 )
             ).not.toThrow();
@@ -655,19 +701,19 @@ describe('ProjectMemberDomain', () => {
 
         it('does not throw when no role involved is admin', () => {
             expect(() =>
-                domain['assertProjectMemberPeerAllowed'](
-                    false,
+                domain.assertPeerAllowed(
+                    plainActor,
                     EnumProjectMemberRole.member,
                     EnumProjectMemberRole.viewer
                 )
             ).not.toThrow();
         });
 
-        it('throws ProjectMemberPeerForbiddenException when a non-owner touches an admin role', () => {
+        it('throws ProjectMemberPeerForbiddenException when an actor without workspace bypass touches an admin role', () => {
             let captured: unknown;
             try {
-                domain['assertProjectMemberPeerAllowed'](
-                    false,
+                domain.assertPeerAllowed(
+                    plainActor,
                     EnumProjectMemberRole.member,
                     EnumProjectMemberRole.admin
                 );

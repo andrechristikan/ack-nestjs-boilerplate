@@ -1,4 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -14,13 +18,27 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
+import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
+import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
+import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
+import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
+import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
+import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
+import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
 import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
@@ -39,6 +57,16 @@ import { Injectable } from '@nestjs/common';
 export class UserHttpService {
     constructor(
         private readonly userDomain: UserDomain,
+        private readonly userAuthDomain: UserAuthDomain,
+        private readonly userPasswordDomain: UserPasswordDomain,
+        private readonly userTwoFactorDomain: UserTwoFactorDomain,
+        private readonly userMobileNumberDomain: UserMobileNumberDomain,
+        private readonly workspaceDomain: WorkspaceDomain,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly workspaceInviteDomain: WorkspaceInviteDomain,
+        private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
+        private readonly projectDomain: ProjectDomain,
+        private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly roleDomain: RoleDomain,
         private readonly sessionDomain: SessionDomain,
         private readonly deviceDomain: DeviceDomain,
@@ -50,8 +78,102 @@ export class UserHttpService {
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
+
+    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction; answers the revoked sessions, or null when the account was already deactivated or the write conflicted. */
+    private async reachMaxAttempt(
+        userId: string
+    ): Promise<ISessionRef[] | null> {
+        const now = this.helperDateService.create();
+
+        try {
+            return await this.databaseService.withTransaction(async tx => {
+                const isDeactivated =
+                    await this.userDomain.deactivateForMaxAttemptInTx(
+                        tx,
+                        userId
+                    );
+                if (!isDeactivated) {
+                    return null;
+                }
+
+                const sessions =
+                    await this.sessionDomain.revokeActiveByUserInTx(
+                        tx,
+                        userId,
+                        userId,
+                        now
+                    );
+                await this.deviceDomain.revokeAllByUserInTx(
+                    tx,
+                    userId,
+                    userId,
+                    now
+                );
+
+                return sessions;
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                return null;
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    /** Counts one password attempt, locks the account out when the budget is spent, and checks the current password of a user that has one. */
+    private async assertPasswordMatched(
+        user: IUser,
+        password: string
+    ): Promise<void> {
+        const hasPassword = this.userUtil.hasPassword(user);
+        if (!hasPassword) {
+            return;
+        }
+
+        const isAttemptCounted =
+            await this.userPasswordDomain.incrementPasswordAttempt(user.id);
+        if (!isAttemptCounted) {
+            const lockoutLogs = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: user.id,
+                    createdBy: user.id,
+                }),
+            ];
+            const revoked = await this.reachMaxAttempt(user.id);
+            if (revoked !== null) {
+                await this.sessionQueue.purgeLogins(user.id, revoked);
+
+                this.activityLogDomain.stagePrepared(lockoutLogs);
+            }
+        }
+
+        this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);
+        // Sequential by design: the attempt resets only after the password matches
+        const isMatch = await this.userAuthDomain.verifyCredential(
+            {
+                user,
+                hashedPassword: user.password,
+                isAttemptCounted,
+            },
+            password
+        );
+        this.userAuthDomain.assertPasswordMatched(isMatch);
+    }
 
     async getListOffsetByAdmin(
         query: UserListRequestDto
@@ -112,28 +234,44 @@ export class UserHttpService {
 
         const now = this.helperDateService.create();
         const revokesSessions = this.userUtil.revokesSessionsOn(status);
-        const { row, revoked } = await this.databaseService.withTransaction(
-            async tx => {
-                const row = await this.userDomain.updateStatusByAdminInTx(
-                    tx,
-                    userId,
-                    status,
-                    target.passwordAttempt
-                );
-                if (!revokesSessions) {
-                    return { row, revoked: null };
+        let row: User;
+        let revoked: ISessionRef[] | null;
+        try {
+            ({ row, revoked } = await this.databaseService.withTransaction(
+                async tx => {
+                    const updated =
+                        await this.userDomain.updateStatusByAdminInTx(
+                            tx,
+                            target,
+                            status
+                        );
+                    if (!revokesSessions) {
+                        return { row: updated, revoked: null };
+                    }
+
+                    const sessions =
+                        await this.sessionDomain.revokeActiveByUserInTx(
+                            tx,
+                            userId,
+                            user.id,
+                            now
+                        );
+
+                    return { row: updated, revoked: sessions };
                 }
-
-                const revoked = await this.sessionDomain.revokeActiveByUserInTx(
-                    tx,
-                    userId,
-                    user.id,
-                    now
-                );
-
-                return { row, revoked };
+            ));
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
             }
-        );
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new UserStatusInvalidException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         const action = this.userUtil.resolveStatusActivityLogAction(status);
         const actorMetadata = this.userUtil.mapActivityLogActorMetadata(row);
@@ -206,7 +344,11 @@ export class UserHttpService {
         return { data: checkEmail };
     }
 
-    async deleteSelf(userId: string): Promise<IResponseReturn<void>> {
+    async deleteSelf(
+        user: IUser,
+        { password }: UserDeleteSelfRequestDto
+    ): Promise<IResponseReturn<void>> {
+        const userId = user.id;
         const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userRevokeAllSessions,
@@ -218,14 +360,39 @@ export class UserHttpService {
             }),
         ];
 
+        // Sequential by design: gate before the work it guards
+        await this.assertPasswordMatched(user, password);
+
         const now = this.helperDateService.create();
         const { deleted, revoked } = await this.databaseService.withTransaction(
             async tx => {
-                const deleted = await this.userDomain.deleteSelfInTx(
-                    tx,
-                    userId,
-                    now
-                );
+                const workspaceIds =
+                    await this.workspaceDomain.softDeleteSolelyOwnedByUserInTx(
+                        tx,
+                        userId,
+                        now
+                    );
+                for (const workspaceId of workspaceIds) {
+                    await this.projectDomain.softDeleteByWorkspaceInTx(
+                        tx,
+                        workspaceId,
+                        now,
+                        userId
+                    );
+                    await this.workspaceInviteDomain.revokePendingByWorkspaceInTx(
+                        tx,
+                        workspaceId
+                    );
+                    await this.workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx(
+                        tx,
+                        workspaceId
+                    );
+                }
+
+                await this.workspaceMemberDomain.removeByUserInTx(tx, userId);
+                await this.projectMemberDomain.removeByUserInTx(tx, userId);
+                await this.userMobileNumberDomain.removeByUserInTx(tx, userId);
+                await this.userTwoFactorDomain.removeInTx(tx, userId);
                 const revoked = await this.sessionDomain.revokeActiveByUserInTx(
                     tx,
                     userId,
@@ -235,6 +402,11 @@ export class UserHttpService {
                 await this.deviceDomain.revokeAllByUserInTx(
                     tx,
                     userId,
+                    userId,
+                    now
+                );
+                const deleted = await this.userDomain.deleteSelfInTx(
+                    tx,
                     userId,
                     now
                 );

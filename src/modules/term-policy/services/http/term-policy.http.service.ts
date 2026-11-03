@@ -12,6 +12,7 @@ import type { TermPolicy } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import type { ITermPolicyActivityLogSubject } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import {
@@ -34,6 +35,7 @@ export class TermPolicyHttpService {
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly notificationQueue: NotificationQueue,
+        private readonly termPolicyQueue: TermPolicyQueue,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -164,7 +166,7 @@ export class TermPolicyHttpService {
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        const published =
+        const { termPolicy: published, copy } =
             await this.termPolicyDomain.publishByAdmin(termPolicyId);
         const activityLogs = [
             this.prepareActivityLog(
@@ -174,6 +176,8 @@ export class TermPolicyHttpService {
             ),
         ];
         this.activityLogDomain.stagePrepared(activityLogs);
+
+        await this.termPolicyQueue.copyContent(copy);
 
         const recipientCutoffAt = this.helperDateService.formatToIso(
             published.publishedAt!

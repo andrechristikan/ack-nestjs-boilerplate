@@ -71,8 +71,11 @@ describe('FeatureFlagDomain', () => {
             expect(featureFlagRepository.findOneByKey).not.toHaveBeenCalled();
         });
 
-        it('loads from the repository and caches it on a cache miss', async () => {
+        it('takes the lease, loads from the repository, and caches it with the lease token on a cache miss', async () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue(null);
+            featureFlagCache.takeFeatureFlagLease.mockResolvedValue(
+                'lease-token'
+            );
             featureFlagRepository.findOneByKey.mockResolvedValue(baseFlag);
 
             const result = await domain.getByKey('loginWithGoogle');
@@ -81,14 +84,45 @@ describe('FeatureFlagDomain', () => {
             expect(featureFlagRepository.findOneByKey).toHaveBeenCalledWith(
                 'loginWithGoogle'
             );
+            expect(featureFlagCache.takeFeatureFlagLease).toHaveBeenCalledWith(
+                'loginWithGoogle'
+            );
+            expect(
+                featureFlagCache.takeFeatureFlagLease
+            ).toHaveBeenCalledBefore(featureFlagRepository.findOneByKey);
             expect(featureFlagCache.setFeatureFlag).toHaveBeenCalledWith(
                 'loginWithGoogle',
-                baseFlag
+                baseFlag,
+                'lease-token'
             );
+        });
+
+        it('serves the repository row without caching when another reader holds the lease', async () => {
+            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
+            featureFlagCache.takeFeatureFlagLease.mockResolvedValue(null);
+            featureFlagRepository.findOneByKey.mockResolvedValue(baseFlag);
+
+            const result = await domain.getByKey('loginWithGoogle');
+
+            expect(result).toEqual(baseFlag);
+            expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
+        });
+
+        it('takes no lease on a cache hit', async () => {
+            featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
+
+            await domain.getByKey('loginWithGoogle');
+
+            expect(
+                featureFlagCache.takeFeatureFlagLease
+            ).not.toHaveBeenCalled();
         });
 
         it('returns null with no cache write when the repository finds nothing', async () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue(null);
+            featureFlagCache.takeFeatureFlagLease.mockResolvedValue(
+                'lease-token'
+            );
             featureFlagRepository.findOneByKey.mockResolvedValue(null);
 
             const result = await domain.getByKey('loginWithGoogle');

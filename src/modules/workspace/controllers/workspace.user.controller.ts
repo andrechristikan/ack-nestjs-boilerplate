@@ -109,9 +109,9 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: WorkspaceUserListRequestSchema })
@@ -126,9 +126,9 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
         @AuthJwtPayload('userId') userId: string,
@@ -147,9 +147,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/get')
     async get(
         @WorkspaceCurrent() workspace: Workspace
@@ -166,9 +166,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update')
     async update(
         @WorkspaceCurrent() workspace: Workspace,
@@ -195,9 +195,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/is-public')
     async updateIsPublic(
         @WorkspaceCurrent() workspace: Workspace,
@@ -221,9 +221,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/slug')
     async updateSlug(
         @WorkspaceCurrent() workspace: Workspace,
@@ -246,9 +246,9 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/switch')
     async switch(
@@ -266,9 +266,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/ownership/transfer')
     async ownershipTransfer(
@@ -291,9 +291,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/leave')
     async leave(
@@ -313,9 +313,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/delete')
     async softDelete(
         @WorkspaceCurrent() workspace: Workspace,
@@ -336,9 +336,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/member/list')
     async memberList(
         @Query({ schema: WorkspaceMemberListRequestSchema })
@@ -358,9 +358,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/member/:workspaceMemberId/role/update')
     async memberUpdateRole(
         @WorkspaceCurrent() workspace: Workspace,
@@ -385,9 +385,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/member/:workspaceMemberId/remove')
     async memberRemove(
         @WorkspaceCurrent() workspace: Workspace,
@@ -411,9 +411,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/invite/list')
     async inviteList(
         @Query({ schema: WorkspaceInviteListRequestSchema })
@@ -438,9 +438,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/invite/create')
     async inviteCreate(
         @WorkspaceCurrent() workspace: Workspace,
@@ -467,9 +467,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/invite/:workspaceInviteId/resend')
     async inviteResend(
@@ -495,9 +495,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/invite/:workspaceInviteId/revoke')
     async inviteRevoke(
         @WorkspaceCurrent() workspace: Workspace,
@@ -520,9 +520,9 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/invite/claim')
     async inviteClaim(
@@ -544,9 +544,9 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/join-request/create')
     async joinRequestCreate(
         @AuthJwtPayload('userId') userId: string,
@@ -568,9 +568,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/join-request/list')
     async joinRequestList(
         @Query({ schema: WorkspaceJoinRequestListRequestSchema })
@@ -593,9 +593,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/join-request/:workspaceJoinRequestId/accept')
     async joinRequestAccept(
@@ -618,9 +618,9 @@ export class WorkspaceUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/join-request/:workspaceJoinRequestId/reject')
     async joinRequestReject(

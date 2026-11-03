@@ -17,11 +17,6 @@ export interface IProjectRepository {
         workspaceId: string
     ): Promise<Project | null>;
     findByIdByAdmin(projectId: string): Promise<Project | null>;
-    existsBySlugInWorkspace(
-        workspaceId: string,
-        slug: string,
-        excludeProjectId?: string
-    ): Promise<boolean>;
     findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
@@ -47,7 +42,11 @@ export interface IProjectRepository {
         { name, description }: IProjectUpdate
     ): Promise<Project>;
     updateSlug(projectId: string, slug: string): Promise<Project>;
-    softDelete(projectId: string, deletedAt: Date): Promise<void>;
+    softDeleteInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        deletedAt: Date
+    ): Promise<void>;
     softDeleteByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,

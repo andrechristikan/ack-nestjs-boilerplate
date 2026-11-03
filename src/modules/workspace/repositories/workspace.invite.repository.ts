@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationCursorReturn,
@@ -22,46 +23,104 @@ import type {
     IWorkspaceInviteList,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
+    private readonly expireChunkSize: number;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
-        private readonly paginationService: PaginationService
-    ) {}
+        private readonly helperArrayService: HelperArrayService,
+        private readonly paginationService: PaginationService,
+        private readonly configService: ConfigService
+    ) {
+        this.expireChunkSize = this.configService.get<number>(
+            'workspace.invite.expireChunkSize'
+        )!;
+    }
 
-    /** Flips truly-expired `pending` invites to `expired`; returns the count updated. */
+    /** Flips truly-expired `pending` invites to `expired`, each row's `pendingKey` becoming its own id; returns the count updated. */
     async expireStalePending(): Promise<number> {
         const today = this.helperDateService.create();
 
-        const { count } =
-            await this.databaseService.client.workspaceInvite.updateMany({
+        const stale =
+            await this.databaseService.client.workspaceInvite.findMany({
                 where: {
                     status: EnumWorkspaceInviteStatus.pending,
                     expiredAt: {
                         lt: today,
                     },
                 },
-                data: {
-                    status: EnumWorkspaceInviteStatus.expired,
-                },
+                select: { id: true },
             });
+        const chunks = this.helperArrayService.chunk(
+            stale,
+            this.expireChunkSize
+        );
 
-        return count;
+        let total = 0;
+        for (const chunk of chunks) {
+            // Sequential by design: fan-out over an unbounded collection runs in bounded chunks
+            const results = await Promise.all(
+                chunk.map(({ id }) =>
+                    this.databaseService.client.workspaceInvite.updateMany({
+                        where: {
+                            id,
+                            status: EnumWorkspaceInviteStatus.pending,
+                        },
+                        data: {
+                            status: EnumWorkspaceInviteStatus.expired,
+                            pendingKey: id,
+                        },
+                    })
+                )
+            );
+            total += results.reduce((sum, { count }) => sum + count, 0);
+        }
+
+        return total;
     }
 
-    async expirePendingByWorkspaceInTx(
+    async revokePendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string
     ): Promise<void> {
-        await tx.workspaceInvite.updateMany({
+        const pending = await tx.workspaceInvite.findMany({
             where: {
                 workspaceId,
                 status: EnumWorkspaceInviteStatus.pending,
             },
+            select: { id: true },
+        });
+
+        for (const { id } of pending) {
+            await tx.workspaceInvite.updateMany({
+                where: {
+                    id,
+                    status: EnumWorkspaceInviteStatus.pending,
+                },
+                data: {
+                    status: EnumWorkspaceInviteStatus.revoked,
+                    pendingKey: id,
+                },
+            });
+        }
+    }
+
+    async clearProjectInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string
+    ): Promise<void> {
+        await tx.workspaceInvite.updateMany({
+            where: {
+                projectId,
+                status: EnumWorkspaceInviteStatus.pending,
+            },
             data: {
-                status: EnumWorkspaceInviteStatus.expired,
+                projectId: null,
+                projectRole: null,
             },
         });
     }
@@ -97,21 +156,6 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         });
     }
 
-    async existsPendingByWorkspaceAndEmail(
-        workspaceId: string,
-        email: string
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.workspaceInvite.count({
-            where: {
-                workspaceId,
-                email,
-                status: EnumWorkspaceInviteStatus.pending,
-            },
-        });
-
-        return count > 0;
-    }
-
     async findWithPaginationCursor(
         workspaceId: string,
         {
@@ -145,6 +189,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         reference,
         expiredAt,
         invitedByUserId,
+        pendingKey,
     }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite> {
         return this.databaseService.client.workspaceInvite.create({
             data: {
@@ -158,6 +203,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 reference,
                 expiredAt,
                 invitedByUserId,
+                pendingKey,
             },
         });
     }
@@ -199,6 +245,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 },
                 data: {
                     status: EnumWorkspaceInviteStatus.revoked,
+                    pendingKey: workspaceInviteId,
                 },
             });
 
@@ -215,9 +262,13 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             where: {
                 id: workspaceInviteId,
                 status: EnumWorkspaceInviteStatus.pending,
+                expiredAt: {
+                    gt: acceptedAt,
+                },
             },
             data: {
                 status: EnumWorkspaceInviteStatus.accepted,
+                pendingKey: workspaceInviteId,
                 acceptedAt,
                 acceptedByUserId: userId,
                 updatedBy: userId,

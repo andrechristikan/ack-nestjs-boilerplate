@@ -1,3 +1,5 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -5,7 +7,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
-import type { Policy, Role } from '@generated/prisma-client/client';
+import type { Policy } from '@generated/prisma-client/client';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -30,7 +32,8 @@ import { Injectable } from '@nestjs/common';
 export class RoleDomain {
     constructor(
         private readonly roleRepository: RoleRepository,
-        private readonly roleUtil: RoleUtil
+        private readonly roleUtil: RoleUtil,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async getListOffsetByAdmin(
@@ -133,13 +136,19 @@ export class RoleDomain {
     ): Promise<IRoleWithPolicies> {
         this.assertActorOutranks(actor.roleType, data.type);
 
-        // Sequential by design: gate before the work it guards
-        const exist = await this.roleRepository.existsByName(data.name);
-        if (exist) {
-            throw new RoleExistException();
-        }
+        try {
+            return await this.roleRepository.create(roleId, data);
+        } catch (err: unknown) {
+            const isNameCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'name'
+            );
+            if (isNameCollision) {
+                throw new RoleExistException();
+            }
 
-        return this.roleRepository.create(roleId, data);
+            throw new AppUnknownException(err);
+        }
     }
 
     async updateByAdmin(
@@ -154,12 +163,9 @@ export class RoleDomain {
         return this.roleRepository.update(id, data);
     }
 
-    async deleteByAdmin(id: string, actor: IRoleActor): Promise<Role> {
+    async deleteByAdmin(id: string, actor: IRoleActor): Promise<IRole> {
         // Sequential by design: gate before the work it guards
-        const [role, roleUsed] = await Promise.all([
-            this.roleRepository.findOneById(id),
-            this.roleRepository.isUsedById(id),
-        ]);
+        const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new RoleNotFoundException();
         }
@@ -167,11 +173,12 @@ export class RoleDomain {
         this.assertNotSelf(actor.roleId, role.id);
         this.assertActorOutranks(actor.roleType, role.type);
 
-        if (roleUsed) {
+        const deleted = await this.roleRepository.deleteUnused(id);
+        if (!deleted) {
             throw new RoleUsedException();
         }
 
-        return this.roleRepository.delete(id);
+        return role;
     }
 
     async validateRoleGuard(

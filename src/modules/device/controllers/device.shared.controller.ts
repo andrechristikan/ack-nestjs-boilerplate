@@ -50,9 +50,9 @@ export class DeviceSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: DeviceSharedListRequestSchema })
@@ -67,9 +67,9 @@ export class DeviceSharedController {
     @Response('device.refresh')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
@@ -85,9 +85,9 @@ export class DeviceSharedController {
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') userId: string,

@@ -14,6 +14,8 @@ import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
+import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
+import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
@@ -506,6 +508,20 @@ describe('AuthDomain', () => {
             await expect(rejection).rejects.toBe(notConfigured);
         });
 
+        it('rethrows AuthSocialAppleInvalidException unwrapped', async () => {
+            const invalid = new AuthSocialAppleInvalidException(
+                'Apple token payload does not contain email'
+            );
+            authSocialDomain.verifyApple.mockRejectedValue(invalid);
+
+            const rejection = domain.validateOAuthApple('id-token');
+
+            await expect(rejection).rejects.toBe(invalid);
+            expect(
+                authUtil.toProviderUnavailableException
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws AuthProviderUnavailableException when the Apple endpoint is unreachable', async () => {
             const cause = new Error('network down');
             const unavailable = new AuthProviderUnavailableException(cause);
@@ -574,6 +590,20 @@ describe('AuthDomain', () => {
             const rejection = domain.validateOAuthGoogle('id-token');
 
             await expect(rejection).rejects.toBe(notConfigured);
+        });
+
+        it('rethrows AuthSocialGoogleInvalidException unwrapped', async () => {
+            const invalid = new AuthSocialGoogleInvalidException(
+                'Google token payload does not contain email'
+            );
+            authSocialDomain.verifyGoogle.mockRejectedValue(invalid);
+
+            const rejection = domain.validateOAuthGoogle('id-token');
+
+            await expect(rejection).rejects.toBe(invalid);
+            expect(
+                authUtil.toProviderUnavailableException
+            ).not.toHaveBeenCalled();
         });
 
         it('throws AuthProviderUnavailableException when the Google endpoint is unreachable', async () => {

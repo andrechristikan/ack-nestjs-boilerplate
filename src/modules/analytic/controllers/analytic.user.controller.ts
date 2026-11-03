@@ -47,13 +47,13 @@ export class AnalyticUserController {
         schema: AnalyticWorkspaceSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected()
+    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/summary')
     async workspaceSummary(
         @WorkspaceCurrent() workspace: Workspace,
@@ -75,9 +75,9 @@ export class AnalyticUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/invite-funnel')
     async inviteFunnel(
         @WorkspaceCurrent() workspace: Workspace,
@@ -101,9 +101,9 @@ export class AnalyticUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/join-outcomes')
     async joinOutcomes(
         @WorkspaceCurrent() workspace: Workspace,
@@ -125,9 +125,9 @@ export class AnalyticUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/member-roles')
     async memberRoles(
         @WorkspaceCurrent() workspace: Workspace
@@ -144,9 +144,9 @@ export class AnalyticUserController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/activity')
     async activity(
         @WorkspaceCurrent() workspace: Workspace,

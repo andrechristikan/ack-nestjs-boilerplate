@@ -580,9 +580,9 @@ describe('ResponseFileInterceptor', () => {
     });
 
     describe('createDefaultFilename', () => {
-        it('fills the configured pattern with the timestamp and the csv extension', () => {
+        it('fills the configured pattern with the current timestamp and the csv extension', () => {
             const filename = interceptor['createDefaultFilename'](
-                today.getTime()
+                EnumFileExtensionDocument.csv
             );
 
             expect(filename).toBe(`export-${today.getTime()}.csv`);
@@ -591,6 +591,18 @@ describe('ResponseFileInterceptor', () => {
                 {
                     timestamp: String(today.getTime()),
                     extension: EnumFileExtensionDocument.csv,
+                }
+            );
+        });
+
+        it('fills the extension of the given document type', () => {
+            interceptor['createDefaultFilename'](EnumFileExtensionDocument.pdf);
+
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'export-{timestamp}.{extension}',
+                {
+                    timestamp: String(today.getTime()),
+                    extension: EnumFileExtensionDocument.pdf,
                 }
             );
         });

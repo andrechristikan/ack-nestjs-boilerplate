@@ -1,3 +1,5 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
@@ -14,7 +16,8 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 export class PolicyDomain {
     constructor(
         private readonly policyAbilityFactory: PolicyAbilityFactory,
-        private readonly policyRepository: PolicyRepository
+        private readonly policyRepository: PolicyRepository,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     validatePolicyGuard(
@@ -48,15 +51,19 @@ export class PolicyDomain {
         roleId: string,
         data: PolicyRequestDto
     ): Promise<Policy> {
-        const exist = await this.policyRepository.existsByRoleIdAndSubject(
-            roleId,
-            data.subject
-        );
-        if (exist) {
-            throw new PolicyExistException();
-        }
+        try {
+            return await this.policyRepository.create(roleId, data);
+        } catch (err: unknown) {
+            const isSubjectCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'subject'
+            );
+            if (isSubjectCollision) {
+                throw new PolicyExistException();
+            }
 
-        return this.policyRepository.create(roleId, data);
+            throw new AppUnknownException(err);
+        }
     }
 
     async updateByAdmin(

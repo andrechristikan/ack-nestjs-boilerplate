@@ -1,10 +1,12 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -20,25 +22,31 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
+import { WorkspaceInvitePendingKeyPattern } from '@modules/workspace/constants/workspace.constant';
+import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
+import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import type {
     IWorkspaceInviteCreate,
+    IWorkspaceInviteIssued,
     IWorkspaceInviteList,
-    IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceInviteDomain {
+    private readonly referenceMaxAttempts: number;
+
     constructor(
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
         private readonly workspaceRepository: WorkspaceRepository,
@@ -46,8 +54,14 @@ export class WorkspaceInviteDomain {
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly helperHashService: HelperHashService
-    ) {}
+        private readonly helperHashService: HelperHashService,
+        private readonly helperStringService: HelperStringService,
+        private readonly configService: ConfigService
+    ) {
+        this.referenceMaxAttempts = this.configService.get<number>(
+            'workspace.invite.referenceMaxAttempts'
+        )!;
+    }
 
     async validateInviteToken(token: string): Promise<WorkspaceInvite> {
         const hashedToken = this.helperHashService.sha256Hash(token);
@@ -89,7 +103,7 @@ export class WorkspaceInviteDomain {
                 userId
             );
         if (existingMember) {
-            throw new WorkspaceInviteInvalidException();
+            throw new WorkspaceMemberAlreadyExistsException();
         }
     }
 
@@ -97,14 +111,21 @@ export class WorkspaceInviteDomain {
         return this.workspaceInviteRepository.expireStalePending();
     }
 
-    async expirePendingByWorkspaceInTx(
+    async revokePendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string
     ): Promise<void> {
-        await this.workspaceInviteRepository.expirePendingByWorkspaceInTx(
+        await this.workspaceInviteRepository.revokePendingByWorkspaceInTx(
             tx,
             workspaceId
         );
+    }
+
+    async clearProjectInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string
+    ): Promise<void> {
+        await this.workspaceInviteRepository.clearProjectInTx(tx, projectId);
     }
 
     async getInvitesList(
@@ -130,48 +151,76 @@ export class WorkspaceInviteDomain {
         }
     }
 
-    async existsPendingByEmail(
-        workspaceId: string,
-        email: string
-    ): Promise<boolean> {
-        return this.workspaceInviteRepository.existsPendingByWorkspaceAndEmail(
-            workspaceId,
-            email
-        );
-    }
-
     assertCreatable(
         { projectId }: IWorkspaceInviteCreate,
-        project: Project | null,
-        duplicate: boolean
+        project: Project | null
     ): void {
         if (projectId !== null && !project) {
             throw new WorkspaceInviteProjectMismatchException();
-        } else if (duplicate) {
-            throw new WorkspaceInviteDuplicateException();
         }
     }
 
     async createInvite(
         workspaceId: string,
         actorId: string,
-        create: IWorkspaceInviteCreate,
-        tokenData: IWorkspaceInviteTokenData
-    ): Promise<WorkspaceInvite> {
+        create: IWorkspaceInviteCreate
+    ): Promise<IWorkspaceInviteIssued> {
         const workspaceInviteId = this.databaseUtil.createId();
+        const pendingKey = this.helperStringService.fillPattern(
+            WorkspaceInvitePendingKeyPattern,
+            { workspaceId, email: create.email }
+        );
 
-        return this.workspaceInviteRepository.createPending({
-            workspaceInviteId,
-            workspaceId,
-            email: create.email,
-            workspaceRole: create.workspaceRole,
-            projectId: create.projectId,
-            projectRole: create.projectRole,
-            hashedToken: tokenData.hashedToken,
-            reference: tokenData.reference,
-            expiredAt: tokenData.expiredAt,
-            invitedByUserId: actorId,
-        });
+        for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
+            const tokenData = this.workspaceUtil.createInviteTokenData(
+                create.expiryDuration
+            );
+
+            try {
+                const invite =
+                    await this.workspaceInviteRepository.createPending({
+                        workspaceInviteId,
+                        workspaceId,
+                        email: create.email,
+                        workspaceRole: create.workspaceRole,
+                        projectId: create.projectId,
+                        projectRole: create.projectRole,
+                        hashedToken: tokenData.hashedToken,
+                        reference: tokenData.reference,
+                        expiredAt: tokenData.expiredAt,
+                        invitedByUserId: actorId,
+                        pendingKey,
+                    });
+
+                return { invite, tokenData };
+            } catch (err: unknown) {
+                const isDuplicate = this.databaseUtil.isUniqueCollision(
+                    err,
+                    'pendingKey'
+                );
+                if (isDuplicate) {
+                    throw new WorkspaceInviteDuplicateException();
+                }
+
+                const isTokenCollision = this.databaseUtil.isUniqueCollision(
+                    err,
+                    'token'
+                );
+                const isReferenceCollision =
+                    this.databaseUtil.isUniqueCollision(err, 'reference');
+                if (isTokenCollision || isReferenceCollision) {
+                    continue;
+                }
+
+                if (err instanceof AppBaseException) {
+                    throw err;
+                }
+
+                throw new AppUnknownException(err);
+            }
+        }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 
     async getPendingById(
@@ -194,32 +243,50 @@ export class WorkspaceInviteDomain {
 
     async resendInvite(
         workspaceInviteId: string,
-        tokenData: IWorkspaceInviteTokenData
-    ): Promise<WorkspaceInvite> {
-        try {
-            const invite = await this.workspaceInviteRepository.rotateForResend(
-                workspaceInviteId,
-                tokenData.hashedToken,
-                tokenData.reference,
-                tokenData.expiredAt
-            );
-            if (!invite) {
-                throw new WorkspaceInviteAlreadyProcessedException();
-            }
+        expiryDuration: EnumWorkspaceInviteExpiry | null
+    ): Promise<IWorkspaceInviteIssued> {
+        for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
+            const tokenData =
+                this.workspaceUtil.createInviteTokenData(expiryDuration);
 
-            return invite;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
+            try {
+                const invite =
+                    await this.workspaceInviteRepository.rotateForResend(
+                        workspaceInviteId,
+                        tokenData.hashedToken,
+                        tokenData.reference,
+                        tokenData.expiredAt
+                    );
+                if (!invite) {
+                    throw new WorkspaceInviteAlreadyProcessedException();
+                }
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new WorkspaceInviteAlreadyProcessedException();
-            }
+                return { invite, tokenData };
+            } catch (err: unknown) {
+                if (err instanceof AppBaseException) {
+                    throw err;
+                }
 
-            throw new AppUnknownException(err);
+                const isTokenCollision = this.databaseUtil.isUniqueCollision(
+                    err,
+                    'token'
+                );
+                const isReferenceCollision =
+                    this.databaseUtil.isUniqueCollision(err, 'reference');
+                if (isTokenCollision || isReferenceCollision) {
+                    continue;
+                }
+
+                const mapped = this.databaseUtil.toException(err);
+                if (mapped instanceof DatabaseWriteConflictException) {
+                    throw new WorkspaceInviteAlreadyProcessedException();
+                }
+
+                throw new AppUnknownException(err);
+            }
         }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 
     async revokeInvite(workspaceInviteId: string): Promise<void> {
@@ -267,18 +334,18 @@ export class WorkspaceInviteDomain {
     ): Promise<void> {
         const acceptedAt = this.helperDateService.create();
 
+        await this.acceptPendingInTx(
+            tx,
+            context.workspaceInviteId,
+            userId,
+            acceptedAt
+        );
         await this.workspaceMemberDomain.createInTx(
             tx,
             context.workspaceId,
             userId,
             context.workspaceMemberRole,
             userId
-        );
-        await this.acceptPendingInTx(
-            tx,
-            context.workspaceInviteId,
-            userId,
-            acceptedAt
         );
     }
 

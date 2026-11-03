@@ -59,9 +59,9 @@ describe('UserAnalyticDomain', () => {
     });
 
     describe('getChurnRate', () => {
-        it('computes the rate from the deleted count and the total', async () => {
+        it('computes the rate from the deleted count and the users alive at the start date', async () => {
             userAnalyticRepository.countDeletedInRange.mockResolvedValue(2);
-            userAnalyticRepository.countRegisteredUntil.mockResolvedValue(8);
+            userAnalyticRepository.countAliveAt.mockResolvedValue(8);
             helperNumberService.percent.mockReturnValue(25);
 
             await expect(
@@ -71,6 +71,9 @@ describe('UserAnalyticDomain', () => {
                 total: 8,
                 rate: 25,
             });
+            expect(userAnalyticRepository.countAliveAt).toHaveBeenCalledWith(
+                startDate
+            );
             expect(helperNumberService.percent).toHaveBeenCalledWith(2, 8);
         });
     });
@@ -217,10 +220,22 @@ describe('UserAnalyticDomain', () => {
             ];
             userAnalyticRepository.findNearLockout.mockResolvedValue(rows);
 
-            await expect(domain.getNearLockout(4)).resolves.toBe(rows);
+            await expect(domain.getNearLockout(4, 100)).resolves.toBe(rows);
             expect(userAnalyticRepository.findNearLockout).toHaveBeenCalledWith(
-                4
+                4,
+                100
             );
+        });
+    });
+
+    describe('getCountNearLockout', () => {
+        it('delegates to the repository count', async () => {
+            userAnalyticRepository.countNearLockout.mockResolvedValue(7);
+
+            await expect(domain.getCountNearLockout(4)).resolves.toBe(7);
+            expect(
+                userAnalyticRepository.countNearLockout
+            ).toHaveBeenCalledWith(4);
         });
     });
 

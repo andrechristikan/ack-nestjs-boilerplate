@@ -67,12 +67,6 @@ export const RequestIdStoreKey = 'RequestIdStoreKey';
  */
 export const RequestActorStoreKey = 'RequestActorStoreKey';
 /**
- * Request-store flag set once the per-request throttle has been counted.
- * @public
- */
-export const RequestThrottleHandledStoreKey = 'RequestThrottleHandledStoreKey';
-
-/**
  * Header carrying the response language, read from the request and echoed on the response.
  * @public
  */

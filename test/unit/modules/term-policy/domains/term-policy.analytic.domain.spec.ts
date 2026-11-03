@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { TermPolicyAnalyticDomain } from '@modules/term-policy/domains/term-policy.analytic.domain';
@@ -27,16 +28,21 @@ describe('TermPolicyAnalyticDomain', () => {
         domain = module.get(TermPolicyAnalyticDomain);
     });
 
-    describe('getCountPublished', () => {
-        it('returns the published term-policy count from the repository', async () => {
-            termPolicyAnalyticRepository.countPublished.mockResolvedValue(5);
+    describe('getLatestPublishedByTypes', () => {
+        it('returns the latest published version per type from the repository', async () => {
+            const latest = [{ type: EnumTermPolicyType.privacy, version: 2 }];
+            termPolicyAnalyticRepository.groupLatestPublishedByTypes.mockResolvedValue(
+                latest
+            );
 
-            const result = await domain.getCountPublished();
+            const result = await domain.getLatestPublishedByTypes([
+                EnumTermPolicyType.privacy,
+            ]);
 
-            expect(result).toBe(5);
+            expect(result).toBe(latest);
             expect(
-                termPolicyAnalyticRepository.countPublished
-            ).toHaveBeenCalledWith();
+                termPolicyAnalyticRepository.groupLatestPublishedByTypes
+            ).toHaveBeenCalledWith([EnumTermPolicyType.privacy]);
         });
     });
 });

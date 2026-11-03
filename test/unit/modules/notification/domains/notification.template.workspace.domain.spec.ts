@@ -1,7 +1,9 @@
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
 import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationTemplateWorkspaceDomain } from '@modules/notification/domains/notification.template.workspace.domain';
@@ -26,14 +28,14 @@ describe('NotificationTemplateWorkspaceDomain', () => {
     });
 
     describe('emailImportWorkspaceInvite', () => {
-        it('creates the workspace invite template and returns true', async () => {
+        it('creates the workspace invite template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportWorkspaceInvite();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportWorkspaceInvite()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.workspaceInvite,
                 subject: 'Workspace Invitation',
@@ -41,12 +43,16 @@ describe('NotificationTemplateWorkspaceDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportWorkspaceInvite();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportWorkspaceInvite()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -66,45 +72,64 @@ describe('NotificationTemplateWorkspaceDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetWorkspaceInvite();
+            await expect(domain.emailGetWorkspaceInvite()).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(
+                domain.emailGetWorkspaceInvite()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailDeleteWorkspaceInvite', () => {
-        it('deletes the workspace invite template and returns true', async () => {
+        it('deletes the workspace invite template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteWorkspaceInvite();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteWorkspaceInvite()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.workspaceInvite,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteWorkspaceInvite();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteWorkspaceInvite()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailImportWorkspaceJoinRequest', () => {
-        it('creates the workspace join request template and returns true', async () => {
+        it('creates the workspace join request template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportWorkspaceJoinRequest();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportWorkspaceJoinRequest()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.workspaceJoinRequest,
                 subject: 'New Workspace Join Request',
@@ -112,12 +137,16 @@ describe('NotificationTemplateWorkspaceDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportWorkspaceJoinRequest();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportWorkspaceJoinRequest()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -137,45 +166,66 @@ describe('NotificationTemplateWorkspaceDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetWorkspaceJoinRequest();
+            await expect(
+                domain.emailGetWorkspaceJoinRequest()
+            ).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(
+                domain.emailGetWorkspaceJoinRequest()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailDeleteWorkspaceJoinRequest', () => {
-        it('deletes the workspace join request template and returns true', async () => {
+        it('deletes the workspace join request template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteWorkspaceJoinRequest();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteWorkspaceJoinRequest()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.workspaceJoinRequest,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteWorkspaceJoinRequest();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteWorkspaceJoinRequest()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailImportWorkspaceJoinAccepted', () => {
-        it('creates the workspace join accepted template and returns true', async () => {
+        it('creates the workspace join accepted template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportWorkspaceJoinAccepted();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportWorkspaceJoinAccepted()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.workspaceJoinAccepted,
                 subject: 'Workspace Join Request Accepted',
@@ -183,12 +233,16 @@ describe('NotificationTemplateWorkspaceDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportWorkspaceJoinAccepted();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportWorkspaceJoinAccepted()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -208,45 +262,66 @@ describe('NotificationTemplateWorkspaceDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetWorkspaceJoinAccepted();
+            await expect(
+                domain.emailGetWorkspaceJoinAccepted()
+            ).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(
+                domain.emailGetWorkspaceJoinAccepted()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailDeleteWorkspaceJoinAccepted', () => {
-        it('deletes the workspace join accepted template and returns true', async () => {
+        it('deletes the workspace join accepted template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteWorkspaceJoinAccepted();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteWorkspaceJoinAccepted()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.workspaceJoinAccepted,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteWorkspaceJoinAccepted();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteWorkspaceJoinAccepted()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailImportWorkspaceJoinRejected', () => {
-        it('creates the workspace join rejected template and returns true', async () => {
+        it('creates the workspace join rejected template', async () => {
             awsSESService.createTemplate.mockResolvedValue({
                 $metadata: {},
             });
 
-            const result = await domain.emailImportWorkspaceJoinRejected();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailImportWorkspaceJoinRejected()
+            ).resolves.toBeUndefined();
             expect(awsSESService.createTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.workspaceJoinRejected,
                 subject: 'Workspace Join Request Rejected',
@@ -254,12 +329,16 @@ describe('NotificationTemplateWorkspaceDomain', () => {
             });
         });
 
-        it('returns false when the create call rejects', async () => {
-            awsSESService.createTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.createTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailImportWorkspaceJoinRejected();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailImportWorkspaceJoinRejected()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -279,33 +358,54 @@ describe('NotificationTemplateWorkspaceDomain', () => {
             });
         });
 
-        it('returns null when the get call rejects', async () => {
-            awsSESService.getTemplate.mockRejectedValue(new Error('missing'));
+        it('returns null for the template-not-found answer', async () => {
+            awsSESService.getTemplate.mockRejectedValue(
+                new TemplateDoesNotExistException({
+                    message: 'missing',
+                    $metadata: {},
+                })
+            );
 
-            const result = await domain.emailGetWorkspaceJoinRejected();
+            await expect(
+                domain.emailGetWorkspaceJoinRejected()
+            ).resolves.toBeNull();
+        });
 
-            expect(result).toBeNull();
+        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
+            const error = new Error('ses down');
+            awsSESService.getTemplate.mockRejectedValue(error);
+
+            await expect(
+                domain.emailGetWorkspaceJoinRejected()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('emailDeleteWorkspaceJoinRejected', () => {
-        it('deletes the workspace join rejected template and returns true', async () => {
+        it('deletes the workspace join rejected template', async () => {
             awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
-            const result = await domain.emailDeleteWorkspaceJoinRejected();
-
-            expect(result).toBe(true);
+            await expect(
+                domain.emailDeleteWorkspaceJoinRejected()
+            ).resolves.toBeUndefined();
             expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationProcess.workspaceJoinRejected,
             });
         });
 
-        it('returns false when the delete call rejects', async () => {
-            awsSESService.deleteTemplate.mockRejectedValue(new Error('down'));
+        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
+            const error = new Error('down');
+            awsSESService.deleteTemplate.mockRejectedValue(error);
 
-            const result = await domain.emailDeleteWorkspaceJoinRejected();
-
-            expect(result).toBe(false);
+            await expect(
+                domain.emailDeleteWorkspaceJoinRejected()
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 });

@@ -53,9 +53,9 @@ export class TermPolicySharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/acceptance/list')
     async listAccepted(
         @Query({ schema: TermPolicyAcceptedListRequestSchema })
@@ -71,9 +71,9 @@ export class TermPolicySharedController {
     @Doc({ summary: 'user accepts term or policy' })
     @Response('termPolicy.accept')
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/accept')
     async accept(

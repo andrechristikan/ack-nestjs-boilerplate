@@ -2,6 +2,8 @@
     "error": {
         "uniqueValueGenerationFailed": "We couldn't complete this action. Please try again.",
         "writeConflict": "The request conflicted with another change. Please try again.",
-        "unavailable": "The service is temporarily unavailable. Please try again later."
+        "unavailable": "The service is temporarily unavailable. Please try again later.",
+        "idInvalid": "The request carries an invalid identifier.",
+        "transactionExpired": "The service is temporarily unavailable. Please try again later."
     }
 }

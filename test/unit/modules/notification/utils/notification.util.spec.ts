@@ -35,30 +35,58 @@ describe('NotificationUtil', () => {
     });
 
     describe('toStepFailure', () => {
-        it('maps an Error reason to its message', () => {
-            expect(
-                util.toStepFailure(
-                    EnumNotificationStep.sendEmail,
-                    new Error('down')
-                )
-            ).toEqual({ step: EnumNotificationStep.sendEmail, error: 'down' });
+        it('keeps an Error reason as the raw error with its message', () => {
+            const rawError = new Error('down');
+
+            const failure = util.toStepFailure(
+                EnumNotificationStep.sendEmail,
+                rawError
+            );
+
+            expect(failure).toEqual({
+                step: EnumNotificationStep.sendEmail,
+                message: 'down',
+                rawError,
+            });
+            expect(failure.rawError).toBe(rawError);
         });
 
-        it('maps a non-Error reason to its string form', () => {
-            expect(
-                util.toStepFailure(EnumNotificationStep.sendPush, 'boom')
-            ).toEqual({ step: EnumNotificationStep.sendPush, error: 'boom' });
+        it('wraps a non-Error reason into an Error carrying its string form', () => {
+            const failure = util.toStepFailure(
+                EnumNotificationStep.sendPush,
+                'boom'
+            );
+
+            expect(failure.step).toBe(EnumNotificationStep.sendPush);
+            expect(failure.message).toBe('boom');
+            expect(failure.rawError).toBeInstanceOf(Error);
+            expect(failure.rawError.message).toBe('boom');
         });
     });
 
     describe('toStepSummary', () => {
-        it('summarizes failed steps as step:error pairs on one line', () => {
+        it('summarizes failed steps by step name only', () => {
+            messageService.setMessage.mockImplementation(
+                (path: string, options) =>
+                    `${path}|${String(options?.properties?.steps)}`
+            );
+
             expect(
                 util.toStepSummary([
-                    { step: EnumNotificationStep.sendEmail, error: 'down' },
-                    { step: EnumNotificationStep.sendPush, error: 'boom' },
+                    {
+                        step: EnumNotificationStep.sendEmail,
+                        message: 'prisma secret',
+                        rawError: new Error('prisma secret'),
+                    },
+                    {
+                        step: EnumNotificationStep.sendPush,
+                        message: 'boom',
+                        rawError: new Error('boom'),
+                    },
                 ])
-            ).toBe('notification.queue.error.stepsFailed');
+            ).toBe(
+                `notification.queue.error.stepsFailed|${EnumNotificationStep.sendEmail}, ${EnumNotificationStep.sendPush}`
+            );
         });
     });
 
@@ -161,18 +189,23 @@ describe('NotificationUtil', () => {
 
     describe('foldStepOutcomes', () => {
         it('splits fulfilled steps from rejected ones by position', () => {
+            const rawError = new Error('down');
             const folded = util.foldStepOutcomes(
                 [EnumNotificationStep.sendEmail, EnumNotificationStep.sendPush],
                 [
                     { status: 'fulfilled', value: undefined },
-                    { status: 'rejected', reason: new Error('down') },
+                    { status: 'rejected', reason: rawError },
                 ]
             );
 
             expect(folded).toEqual({
                 completedSteps: [EnumNotificationStep.sendEmail],
                 failedSteps: [
-                    { step: EnumNotificationStep.sendPush, error: 'down' },
+                    {
+                        step: EnumNotificationStep.sendPush,
+                        message: 'down',
+                        rawError,
+                    },
                 ],
             });
         });

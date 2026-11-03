@@ -7,6 +7,12 @@ import type { IDatabaseModelRelations } from '@common/database/interfaces/databa
 export const DatabaseClientToken = Symbol('DatabaseClient');
 
 /**
+ * Collection and operation of a Prisma MongoDB query event, `db.<Collection>.<operation>(`.
+ * @public
+ */
+export const DatabaseQueryTargetRegex = /^db\.(\w+)\.(\w+)\(/;
+
+/**
  * Relation field to related model map per Prisma model, used to stamp audit fields on nested writes.
  * @public
  */
@@ -106,6 +112,18 @@ export const DatabaseUniqueConstraintCode = 'P2002';
  * @public
  */
 export const DatabaseWriteConflictCode = 'P2034';
+
+/**
+ * Prisma error code of inconsistent column data, such as a malformed ObjectId.
+ * @public
+ */
+export const DatabaseIdInvalidCode = 'P2023';
+
+/**
+ * Prisma error code of a transaction API failure, such as an expired or closed interactive transaction.
+ * @public
+ */
+export const DatabaseTransactionExpiredCode = 'P2028';
 
 /**
  * Mask written in place of a credential, and in place of a whole value that is not a url, in a logged connection url.

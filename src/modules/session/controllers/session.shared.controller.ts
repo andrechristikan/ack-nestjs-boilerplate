@@ -36,9 +36,9 @@ export class SessionSharedController {
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: SessionSharedListRequestSchema })
@@ -52,9 +52,9 @@ export class SessionSharedController {
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
         @Param('sessionId', { schema: RequestMongoIdSchema })

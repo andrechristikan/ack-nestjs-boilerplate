@@ -18,6 +18,12 @@ export interface IAnalyticSortedPage<T> {
     total: number;
 }
 
+export interface IAnalyticCountRange {
+    key: string;
+    min: number;
+    max: number | null;
+}
+
 export interface IAnalyticBucketsResult {
     buckets: IAnalyticCountBucket[];
 }
@@ -100,11 +106,7 @@ export interface IAnalyticApiKeyLifecycle {
 export interface IAnalyticApiKeyActiveExpired {
     active: number;
     expired: number;
-}
-
-export interface IAnalyticTermPolicyAcceptanceCounts {
-    acceptances: number;
-    published: number;
+    inactive: number;
 }
 
 export interface IAnalyticTermPolicyAcceptanceRate {

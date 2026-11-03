@@ -20,8 +20,10 @@ import {
     AnalyticLoginTimeAnomalyAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
+import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
@@ -32,12 +34,16 @@ import type { IAnalyticAnomalyDomainDoubles } from '@test/unit/helpers/test.unit
 
 describe('AnalyticAnomalyDomain', () => {
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
+    const analyticDateDomain: MockProxy<AnalyticDateDomain> =
+        mock<AnalyticDateDomain>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
     const analyticAnomalyUtil: MockProxy<AnalyticAnomalyUtil> =
         mock<AnalyticAnomalyUtil>();
     const analyticSortUtil: MockProxy<AnalyticSortUtil> =
         mock<AnalyticSortUtil>();
+    const analyticFraudUtil: MockProxy<AnalyticFraudUtil> =
+        mock<AnalyticFraudUtil>();
     const paginationService: MockProxy<PaginationService> =
         mock<PaginationService>();
     const configGet = vi.fn<(key: string) => number | undefined>();
@@ -99,9 +105,11 @@ describe('AnalyticAnomalyDomain', () => {
 
     const doubles: IAnalyticAnomalyDomainDoubles = {
         analyticCache,
+        analyticDateDomain,
         analyticDateUtil,
         analyticAnomalyUtil,
         analyticSortUtil,
+        analyticFraudUtil,
         paginationService,
         configService,
         helperDateService,
@@ -121,13 +129,18 @@ describe('AnalyticAnomalyDomain', () => {
                 'analytic.anomaly.loginSpikeIp.minUniqueAccounts': 2,
                 'analytic.anomaly.loginSpikeIp.windowInMs': 3600000,
                 'analytic.anomaly.loginTimeAnomaly.historicalFrequencyPercent': 20,
+                'analytic.anomaly.minSample': 5,
+                'analytic.anomaly.lookbackInMs': 2592000000,
                 'auth.password.maxAttempt': 5,
-                'analytic.anomaly.failedLoginSpike.nearLockoutOffset': 1,
                 'analytic.anomaly.deviceProliferation.zScoreThreshold': 3,
             };
             return values[key];
         });
+        analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
         analyticCache.getAnomalySummary.mockResolvedValue(null);
+        analyticDateDomain.resolveWindow.mockImplementation(
+            (windowMs, defaultInMs) => windowMs ?? defaultInMs
+        );
         analyticDateUtil.windowToken.mockReturnValue('window-token');
         analyticDateUtil.windowRange.mockReturnValue({
             startDate,
@@ -284,6 +297,10 @@ describe('AnalyticAnomalyDomain', () => {
             const result = await domain.loginSpikeIpSummary(600000);
 
             expect(result.window).toBe('600000');
+            expect(analyticDateDomain.resolveWindow).toHaveBeenCalledWith(
+                600000,
+                3600000
+            );
             expect(analyticCache.setAnomalySummary).toHaveBeenCalledWith(
                 'login-spike-ip',
                 '600000',
@@ -356,22 +373,16 @@ describe('AnalyticAnomalyDomain', () => {
             const result = await domain.failedLoginSpikeSummary();
 
             expect(result).toEqual(cached);
-            expect(userAnalyticDomain.getNearLockout).not.toHaveBeenCalled();
+            expect(
+                userAnalyticDomain.getCountNearLockout
+            ).not.toHaveBeenCalled();
         });
 
-        it('caches near-lockout counts with a floor of one attempt', async () => {
+        it('caches the near-lockout count with a floor of one attempt', async () => {
             userAnalyticDomain.getGroupPasswordAttemptBuckets.mockResolvedValue(
                 [{ key: '3', count: 2 }]
             );
-            userAnalyticDomain.getNearLockout.mockResolvedValue([
-                {
-                    id: 'user-1',
-                    email: 'user@example.com',
-                    passwordAttempt: 4,
-                    lastLoginAt: startDate,
-                    createdAt: startDate,
-                },
-            ]);
+            userAnalyticDomain.getCountNearLockout.mockResolvedValue(1);
 
             const result = await domain.failedLoginSpikeSummary();
 
@@ -380,7 +391,9 @@ describe('AnalyticAnomalyDomain', () => {
                 window: null,
                 meta: { nearLockoutMinAttempt: 4, bucketCount: 1 },
             });
-            expect(userAnalyticDomain.getNearLockout).toHaveBeenCalledWith(4);
+            expect(userAnalyticDomain.getCountNearLockout).toHaveBeenCalledWith(
+                4
+            );
         });
     });
 
@@ -398,19 +411,8 @@ describe('AnalyticAnomalyDomain', () => {
             ).toHaveBeenCalledWith(4, pagination);
         });
 
-        it('floors the near-lockout min attempt at 1', async () => {
-            configGet.mockImplementation((key: string) => {
-                if (key === 'auth.password.maxAttempt') {
-                    return 1;
-                }
-                if (
-                    key ===
-                    'analytic.anomaly.failedLoginSpike.nearLockoutOffset'
-                ) {
-                    return 5;
-                }
-                return 0;
-            });
+        it('takes the near-lockout min attempt from the fraud util for the password max attempt', async () => {
+            analyticFraudUtil.nearLockoutThreshold.mockReturnValue(1);
             domain = await createAnalyticAnomalyDomain(doubles);
             userAnalyticDomain.getListNearLockoutOffset.mockResolvedValue(
                 offsetPage
@@ -418,6 +420,9 @@ describe('AnalyticAnomalyDomain', () => {
 
             await domain.failedLoginSpikeList(pagination);
 
+            expect(analyticFraudUtil.nearLockoutThreshold).toHaveBeenCalledWith(
+                5
+            );
             expect(
                 userAnalyticDomain.getListNearLockoutOffset
             ).toHaveBeenCalledWith(1, pagination);
@@ -767,7 +772,7 @@ describe('AnalyticAnomalyDomain', () => {
     });
 
     describe('computeLoginTimeAnomalies', () => {
-        it('uses now and a 30-day lookback when dates are omitted', async () => {
+        it('uses now and the configured lookback when dates are omitted', async () => {
             const defaultStart = new Date('2026-01-30T00:00:00.000Z');
             helperDateService.backward.mockReturnValue(defaultStart);
             activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
@@ -778,7 +783,7 @@ describe('AnalyticAnomalyDomain', () => {
 
             expect(helperDateService.backward).toHaveBeenCalledWith(
                 now,
-                Duration.fromObject({ days: 30 })
+                Duration.fromMillis(2592000000)
             );
             expect(
                 activityLogAnalyticDomain.getManyByActionsInRange
@@ -826,7 +831,7 @@ describe('AnalyticAnomalyDomain', () => {
             );
             expect(
                 analyticAnomalyUtil.findLoginTimeAnomalies
-            ).toHaveBeenCalledWith(logs, 20);
+            ).toHaveBeenCalledWith(logs, 20, 5);
         });
     });
 });

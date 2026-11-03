@@ -32,6 +32,7 @@ import {
     AnalyticUserCountAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
 import {
     EnumAnalyticFraudBand,
@@ -51,6 +52,8 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 
 describe('AnalyticFraudDomain', () => {
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
+    const analyticDateDomain: MockProxy<AnalyticDateDomain> =
+        mock<AnalyticDateDomain>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
     const analyticSortUtil: MockProxy<AnalyticSortUtil> =
@@ -119,6 +122,7 @@ describe('AnalyticFraudDomain', () => {
         'analytic.fraud.refreshSpike.windowInMs': 86400000,
         'analytic.fraud.refreshSpike.minCount': 2,
         'analytic.fraud.backupCodeNewDevice.windowInMs': 86400000,
+        'analytic.fraud.backupCodeNewDevice.newDeviceAfterInMs': 7200000,
         'analytic.fraud.apiKeyBurst.windowInMs': 86400000,
         'analytic.fraud.apiKeyBurst.minCount': 2,
         'analytic.fraud.bands.monitorMax': 10,
@@ -133,7 +137,6 @@ describe('AnalyticFraudDomain', () => {
         'analytic.fraud.weights.massRegistrationIp': 10,
         'analytic.fraud.weights.forgotPasswordAbuse': 10,
         'auth.password.maxAttempt': 5,
-        'analytic.anomaly.failedLoginSpike.nearLockoutOffset': 1,
         'analytic.fraud.riskScore.candidateLimit': 3,
         'analytic.fraud.riskScore.lookbackInMs': 3600000,
     };
@@ -158,6 +161,9 @@ describe('AnalyticFraudDomain', () => {
         );
         configGet.mockImplementation((key: string) => configValues[key]);
         analyticCache.getFraudSummary.mockResolvedValue(null);
+        analyticDateDomain.resolveWindow.mockImplementation(
+            (windowMs, defaultInMs) => windowMs ?? defaultInMs
+        );
         analyticCache.getRiskScore.mockResolvedValue(null);
         analyticDateUtil.windowToken.mockReturnValue('window-token');
         helperDateService.create.mockReturnValue(now);
@@ -171,6 +177,7 @@ describe('AnalyticFraudDomain', () => {
         analyticAnomalyUtil.groupByIp.mockReturnValue(new Map());
         analyticBucketUtil.toBuckets.mockReturnValue([]);
         analyticFraudUtil.countByUser.mockReturnValue([]);
+        analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
         paginationService.offsetPage.mockReturnValue(offsetPage);
         activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue([]);
         activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
@@ -182,12 +189,16 @@ describe('AnalyticFraudDomain', () => {
         userAnalyticDomain.getNearLockout.mockResolvedValue([]);
         userAnalyticDomain.getManyByIds.mockResolvedValue([]);
         deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([]);
-        deviceAnalyticDomain.getCreatedInRange.mockResolvedValue([]);
+        deviceAnalyticDomain.getCreatedInRangeByUser.mockResolvedValue([]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticFraudDomain,
                 { provide: AnalyticCache, useValue: analyticCache },
+                {
+                    provide: AnalyticDateDomain,
+                    useValue: analyticDateDomain,
+                },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: AnalyticSortUtil, useValue: analyticSortUtil },
                 { provide: AnalyticFraudUtil, useValue: analyticFraudUtil },
@@ -249,6 +260,10 @@ describe('AnalyticFraudDomain', () => {
                 window: '600000',
                 meta: { minUniqueAccounts: 2 },
             });
+            expect(analyticDateDomain.resolveWindow).toHaveBeenCalledWith(
+                600000,
+                86400000
+            );
         });
     });
 
@@ -1151,7 +1166,13 @@ describe('AnalyticFraudDomain', () => {
             expect(
                 deviceAnalyticDomain.getSharedFingerprints
             ).toHaveBeenCalledTimes(1);
-            expect(userAnalyticDomain.getNearLockout).toHaveBeenCalledWith(4);
+            expect(analyticFraudUtil.nearLockoutThreshold).toHaveBeenCalledWith(
+                5
+            );
+            expect(userAnalyticDomain.getNearLockout).toHaveBeenCalledWith(
+                4,
+                3
+            );
             expect(analyticFraudUtil.collectCandidateIds).toHaveBeenCalledWith(
                 signals,
                 nearLockout,
@@ -1292,6 +1313,7 @@ describe('AnalyticFraudDomain', () => {
                 [
                     EnumActivityLogAction.userLoginFailed,
                     EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    EnumActivityLogAction.userReachMaxTwoFactorAttempt,
                 ],
                 startDate,
                 now
@@ -1336,7 +1358,7 @@ describe('AnalyticFraudDomain', () => {
                     createdAt: startDate,
                 },
             ]);
-            deviceAnalyticDomain.getCreatedInRange
+            deviceAnalyticDomain.getCreatedInRangeByUser
                 .mockResolvedValueOnce([
                     {
                         id: 'own-1',
@@ -1345,14 +1367,7 @@ describe('AnalyticFraudDomain', () => {
                         createdAt: windowEnd,
                     },
                 ])
-                .mockResolvedValueOnce([
-                    {
-                        id: 'own-2',
-                        userId: 'user-3',
-                        deviceId: 'device-2',
-                        createdAt: windowEnd,
-                    },
-                ]);
+                .mockResolvedValueOnce([]);
 
             const result = await domain['computeAccountTakeover'](
                 startDate,
@@ -1366,6 +1381,12 @@ describe('AnalyticFraudDomain', () => {
                     passwordChangedAt: startDate,
                 },
             ]);
+            expect(
+                deviceAnalyticDomain.getCreatedInRangeByUser
+            ).toHaveBeenCalledWith('user-1', startDate, windowEnd);
+            expect(
+                deviceAnalyticDomain.getCreatedInRangeByUser
+            ).toHaveBeenCalledWith('user-2', startDate, windowEnd);
             expect(
                 passwordHistoryAnalyticDomain.getByTypeInRange
             ).toHaveBeenCalledWith(
@@ -1621,7 +1642,7 @@ describe('AnalyticFraudDomain', () => {
                     },
                 ]
             );
-            deviceAnalyticDomain.getCreatedInRange
+            deviceAnalyticDomain.getCreatedInRangeByUser
                 .mockResolvedValueOnce([
                     {
                         id: 'own-1',
@@ -1630,14 +1651,7 @@ describe('AnalyticFraudDomain', () => {
                         createdAt: windowEnd,
                     },
                 ])
-                .mockResolvedValueOnce([
-                    {
-                        id: 'own-2',
-                        userId: 'user-3',
-                        deviceId: 'device-2',
-                        createdAt: windowEnd,
-                    },
-                ]);
+                .mockResolvedValueOnce([]);
 
             const result = await domain['computeBackupCodeNewDevice'](86400000);
 
@@ -1646,8 +1660,11 @@ describe('AnalyticFraudDomain', () => {
             ]);
             expect(helperDateService.forward).toHaveBeenCalledWith(
                 startDate,
-                Duration.fromMillis(86400000)
+                Duration.fromMillis(7200000)
             );
+            expect(
+                deviceAnalyticDomain.getCreatedInRangeByUser
+            ).toHaveBeenCalledWith('user-2', startDate, windowEnd);
         });
     });
 

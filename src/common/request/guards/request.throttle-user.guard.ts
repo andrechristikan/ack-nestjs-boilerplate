@@ -1,38 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import type {
-    CallHandler,
-    ExecutionContext,
-    NestInterceptor,
-} from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Response } from 'express';
-import { Observable } from 'rxjs';
-import {
-    RequestThrottleHandledStoreKey,
-    RequestThrottleOptionsMetaKey,
-} from '@common/request/constants/request.constant';
+import { RequestThrottleOptionsMetaKey } from '@common/request/constants/request.constant';
 import { EnumRequestThrottleName } from '@common/request/enums/request.enum';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type {
     IRequestApp,
     IRequestThrottleOptions,
     IRequestThrottlePolicy,
 } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 
 /**
- * Enforces the per-user limiter for routes carrying `@RequestThrottle`.
+ * Enforces the per-user limiter of `@RequestThrottle`; it runs after the JWT guard that sets `request.user`.
  */
 @Injectable()
-export class RequestThrottleUserInterceptor implements NestInterceptor {
+export class RequestThrottleUserGuard implements CanActivate {
     private readonly name = EnumRequestThrottleName.user;
     private readonly policy: IRequestThrottlePolicy;
 
     constructor(
         private readonly reflector: Reflector,
         private readonly configService: ConfigService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly requestThrottleService: RequestThrottleService
     ) {
         this.policy = this.configService.get<IRequestThrottlePolicy>(
@@ -40,37 +31,20 @@ export class RequestThrottleUserInterceptor implements NestInterceptor {
         )!;
     }
 
-    async intercept(
-        context: ExecutionContext,
-        next: CallHandler
-    ): Promise<Observable<unknown>> {
-        // NestJS mounts this interceptor once per `@RequestThrottle` on the handler, so a
-        // handler carrying the decorator twice would count twice.
-        const isThrottleHandled = this.requestStoreService.get<boolean>(
-            RequestThrottleHandledStoreKey
-        );
-        if (isThrottleHandled) {
-            return next.handle();
-        }
-
-        this.requestStoreService.set<boolean>(
-            RequestThrottleHandledStoreKey,
-            true
-        );
-
+    async canActivate(context: ExecutionContext): Promise<boolean> {
         const options = this.reflector.get<IRequestThrottleOptions | undefined>(
             RequestThrottleOptionsMetaKey,
             context.getHandler()
         );
 
         if (!options?.user) {
-            return next.handle();
+            return true;
         }
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
-        const userId = request.user?.userId;
-        if (!userId) {
-            return next.handle();
+        const userId = request.user?.userId ?? null;
+        if (userId === null) {
+            throw new RequestContextMissingException('request.user');
         }
 
         const response = context.switchToHttp().getResponse<Response>();
@@ -81,6 +55,6 @@ export class RequestThrottleUserInterceptor implements NestInterceptor {
             this.policy
         );
 
-        return next.handle();
+        return true;
     }
 }

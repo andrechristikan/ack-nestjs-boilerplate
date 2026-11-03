@@ -31,4 +31,8 @@ export interface IUserMobileNumberRepository {
         tx: IDatabaseTransactionClient,
         mobileNumberId: string
     ): Promise<UserMobileNumber & { country: Country }>;
+    deleteByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void>;
 }

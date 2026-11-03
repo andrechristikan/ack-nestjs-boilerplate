@@ -1,6 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -24,7 +25,7 @@ export class ProjectDomain {
     constructor(
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async validateProjectGuard(
@@ -99,23 +100,27 @@ export class ProjectDomain {
             throw new ProjectSlugInvalidException();
         }
 
-        // Sequential by design: gate before the work it guards
-        const slugTaken = await this.projectRepository.existsBySlugInWorkspace(
-            project.workspaceId,
-            slug,
-            project.id
-        );
-        if (slugTaken) {
-            throw new ProjectSlugAlreadyExistsException();
-        }
+        try {
+            return await this.projectRepository.updateSlug(project.id, slug);
+        } catch (err: unknown) {
+            const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'slug'
+            );
+            if (isSlugCollision) {
+                throw new ProjectSlugAlreadyExistsException();
+            }
 
-        return this.projectRepository.updateSlug(project.id, slug);
+            throw new AppUnknownException(err);
+        }
     }
 
-    async softDeleteProject(project: Project): Promise<void> {
-        const deletedAt = this.helperDateService.create();
-
-        await this.projectRepository.softDelete(project.id, deletedAt);
+    async softDeleteProjectInTx(
+        tx: IDatabaseTransactionClient,
+        project: Project,
+        deletedAt: Date
+    ): Promise<void> {
+        await this.projectRepository.softDeleteInTx(tx, project.id, deletedAt);
     }
 
     async softDeleteByWorkspaceInTx(

@@ -59,6 +59,8 @@ export class UserVerificationDomain {
         const user = await this.userRepository.findOneById(verification.userId);
         if (!user) {
             throw new UserNotFoundException();
+        } else if (user.isVerified) {
+            throw new UserEmailAlreadyVerifiedException();
         }
 
         return { verification, user };
@@ -99,13 +101,11 @@ export class UserVerificationDomain {
         }
     }
 
-    /** Resolves the active, unverified user of an email whose last verification email is out of its resend window. */
-    async getOneForResendByEmail(email: string): Promise<User> {
+    /** Resolves the active, unverified user of an email whose last verification email is out of its resend window; null when the email holds no active, unverified user. */
+    async getOneForResendByEmail(email: string): Promise<User | null> {
         const user = await this.userRepository.findOneActiveByEmail(email);
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.isVerified) {
-            throw new UserEmailAlreadyVerifiedException();
+        if (!user || user.isVerified) {
+            return null;
         }
 
         // Sequential by design: gate before the work it guards

@@ -1499,11 +1499,14 @@ describe('AnalyticDashboardHttpService', () => {
             analyticDashboardDomain.apiKeysActiveExpired.mockResolvedValue({
                 active: 6,
                 expired: 1,
+                inactive: 2,
             });
 
             const result = await service.apiKeysActiveExpired();
 
-            expect(result).toEqual({ data: { active: 6, expired: 1 } });
+            expect(result).toEqual({
+                data: { active: 6, expired: 1, inactive: 2 },
+            });
             expect(
                 analyticDashboardDomain.apiKeysActiveExpired
             ).toHaveBeenCalledWith();

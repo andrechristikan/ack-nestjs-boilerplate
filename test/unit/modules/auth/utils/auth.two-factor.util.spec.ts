@@ -117,17 +117,17 @@ describe('AuthTwoFactorUtil', () => {
     });
 
     describe('verifyCode', () => {
-        it('returns true when the code verifies within the configured window', () => {
+        it('returns the matched time step when the code verifies within the configured window', () => {
             vi.mocked(verifySync).mockReturnValue({
                 valid: true,
                 delta: 0,
                 epoch: 0,
-                timeStep: 0,
+                timeStep: 58123456,
             });
 
             const result = util.verifyCode('secret', '123456');
 
-            expect(result).toBe(true);
+            expect(result).toBe(58123456);
             expect(verifySync).toHaveBeenCalledWith({
                 token: '123456',
                 secret: 'secret',
@@ -139,12 +139,12 @@ describe('AuthTwoFactorUtil', () => {
             });
         });
 
-        it('returns false when the code does not verify', () => {
+        it('returns null when the code does not verify', () => {
             vi.mocked(verifySync).mockReturnValue({ valid: false });
 
             const result = util.verifyCode('secret', 'wrong-code');
 
-            expect(result).toBe(false);
+            expect(result).toBeNull();
         });
     });
 
