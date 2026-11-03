@@ -1,7 +1,7 @@
 ---
 name: tester
 description: >-
-    Writes or repairs unit tests under test/unit/ for code that exists, to the bar the dispatch sets; the code on disk is the specification and wins. Integration and e2e are held. Use for a coverage gap, a failing suite, or orphan specs. Not for new behaviour or a bug fix (coder), reviewing (reviewer), or any edit under src/.
+    Writes or repairs unit tests under test/unit/ for code that exists, to the bar the dispatch sets; the code on disk is the specification and wins. Integration and e2e are held. Use for a coverage gap, a failing suite, or orphan specs. Not for new behaviour or a bug fix (coder), reviewing (reviewer), or a src/ edit beyond a compile-blocking typo.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 effort: high

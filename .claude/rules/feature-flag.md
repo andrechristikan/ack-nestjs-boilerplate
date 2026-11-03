@@ -17,7 +17,7 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 
 - Flat only. Values are `boolean | number | string` or a homogeneous `string[]` / `number[]`; a mixed or nested array, `boolean[]`, an empty array, and `''` fail. An array value cannot change element type on update.
 - Keys are frozen; the admin API updates values and never adds or removes a key.
-- A metadata sub-key used as a gate holds a boolean and is asserted in the domain, never in the decorator: `await this.featureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` (`src/modules/feature-flag/domains/feature-flag.domain.ts:102`) at the top of the domain method; it throws `FeatureFlagNotConfiguredException` for a key no row holds and `FeatureFlagDisabledException` for a disabled flag, a non-boolean, or `false`. Written into the decorator it would gate one route instead of every caller.
+- A metadata sub-key used as a gate holds a boolean and is asserted in the domain, never in the decorator: `await this.featureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` (`src/modules/feature-flag/domains/feature-flag.domain.ts:109`) at the top of the domain method; it throws `FeatureFlagNotConfiguredException` for a key no row holds and `FeatureFlagDisabledException` for a disabled flag, a non-boolean, or `false`. Written into the decorator it would gate one route instead of every caller.
 - Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
 
 ## Gating

@@ -10,7 +10,7 @@ One reason to change per role: `Controller → HTTP Service → Domain → Repos
     - A method, private included, that calls no repository, cache, queue, domain, `RequestStoreService`, `FileService`, `AwsS3Service`, `JwtService`, or `SentryService` and returns a value is a util method once it exceeds three lines or has two call sites; the same shape inline in two methods or two domains is one util method.
     - An assert is a util predicate plus the throw: `if (!this.roleUtil.outranks(actor, target)) throw new RoleRankForbiddenException()`.
     - A method returning its argument or a single util call is deleted.
-- Aggregation domain (`src/modules/analytic/`): reads only. Injects other modules' analytic domains, any module's util, its own module's domains, utils, and caches (`src/modules/analytic/domains/analytic.fraud.domain.ts:96-97`), and the kit; never a repository, a queue class, or `DatabaseService`.
+- Aggregation domain (`src/modules/analytic/`): reads only. Injects other modules' analytic domains, any module's util, its own module's domains, utils, and caches (`src/modules/analytic/domains/analytic.fraud.domain.ts:89-91`), and the kit; never a repository, a queue class, or `DatabaseService`.
 - HTTP service (`services/http/<module>[.<concern>].http.service.ts`): sequences domain calls for a controller; it and the processor service alone own a cross-module transaction (`service.md`).
 - Processor service (`services/processor/<module>[.<concern>].processor.service.ts`): the same on the queue side (`service.md`).
 - Controller: one endpoint returning one HTTP service call (`http.md`).

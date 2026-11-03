@@ -1,6 +1,6 @@
 # gh pr command sequence
 
-Every write runs in the session, after `writer` has returned the document and the session has read it against the diff. Show the exact command to the owner first and run it only on a yes. Merge is not in this list: `gh pr merge` stays under `ask` in `.claude/settings.json` and this skill does not propose it.
+Every write runs in the session, after `writer` has returned the document and the session has read it against the diff. Before a write taking a document (a `--body-file` or the review reply's `--field body=@`), print the document's full text to the owner, then run the command, whose permission prompt is the go-ahead. A write under `ask` in `.claude/settings.json` runs on its permission prompt, the owner's go-ahead, with no separate yes. For any other write, show the exact command to the owner first and run it only on a yes. Merge is not in this list: `gh pr merge` stays under `ask` in `.claude/settings.json` and this skill does not propose it.
 
 ## Preconditions
 

@@ -60,7 +60,7 @@ Report: specs written or repaired; per-file coverage rows; every line that canno
   file:line, unfixed.
 ```
 
-Add the Every dispatch block from `../ack-work/references/dispatch.md`. `tester` does not edit `src/`.
+Add the Every dispatch block from `../ack-work/references/dispatch.md`. `tester` edits `src/` only as `.claude/agents/tester.md`, Not this agent, allows.
 
 ## 5. Reach 100%
 

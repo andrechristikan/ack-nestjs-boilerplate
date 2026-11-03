@@ -39,7 +39,7 @@ Define the check first, then loop until it passes.
 
 ## Enforcement
 
-- `bash .claude/hooks/rules.sh` prints this rule for every path, so every dispatch's `Rules to read:` carries it.
+- `bash .claude/hooks/rules.sh` prints this rule for every path, so a dispatch template's `Rules to read:`, pasted from that output, carries it.
 - `reviewer` reports a breach as a finding at `task`, `rules and boot`, and `end to end`: a line that traces to nothing, a speculative abstraction or option, error handling for an excluded case, a check not run.
 - The `Stop` hook runs `pnpm typecheck` and the unit suite after any `src/` or `test/` change.
 - The rule is working when diffs carry fewer unrequested lines, fewer rewrites follow review, and questions come before implementation.

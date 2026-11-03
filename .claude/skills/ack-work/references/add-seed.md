@@ -26,7 +26,7 @@ A seed whose fixed id may already belong to another row checks first and stops w
 
 ## 4. Register
 
-Add the class to `providers` in `src/migration/migration.module.ts:22-34`, and a kit module it injects from (`AwsModule`) to `imports` (`:36`). A feature domain module goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a feature repository module never does. The `providers` order does not decide run order.
+Add the class to `providers` in `src/migration/migration.module.ts:21-32`, and a kit module it injects from (`AwsModule`) to `imports` (`:34`). A feature domain module goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a feature repository module never does. The `providers` order does not decide run order.
 
 ## 5. Place it in the scripts
 

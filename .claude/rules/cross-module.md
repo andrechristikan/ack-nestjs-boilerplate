@@ -16,7 +16,7 @@
 
 A repository reaches another module's util only when the owner is `@Global()`. A util injects no `src/modules/` util, its own module's or another module's; the value arrives as an argument. Anything a `@Global()` module or the composed `src/common/` kit exports is reachable with no import by the callers `layering.md`, Tiers, names. That reach runs one way: `@Global()` widens who may inject a class, not what the class may inject.
 
-`src/modules/analytic/` aggregates every feature's analytics, so a feature's analytic repository, its port, and its analytic domain import their shapes from `@modules/analytic/interfaces` (`src/modules/user/repositories/user.analytic.repository.ts:6`).
+`src/modules/analytic/` aggregates every feature's analytics, so a feature's analytic repository, its port, and its analytic domain import their shapes from `@modules/analytic/interfaces` (`src/modules/user/repositories/user.analytic.repository.ts:7`).
 
 ## A repository owns its model
 
