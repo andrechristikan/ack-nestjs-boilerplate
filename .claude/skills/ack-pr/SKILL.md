@@ -1,7 +1,7 @@
 ---
 name: ack-pr
 description: >-
-    Runs a GitHub pull request end to end: the description or the version notes through writer, the PR, a comment, a review reply, each gh write on the owner's go-ahead. Use when the owner asks for a PR, its description, a PR comment or review reply, or release notes. Not for a commit message, docs/*.md (ack-doc), or src/ (ack-plan, ack-build).
+    Runs a GitHub pull request end to end: the description or the version notes through writer, the PR, a comment, a review reply, each gh write on the owner's go-ahead. Use when the owner asks for a PR, its description, a PR comment or review reply, or release notes. Not for a commit message, docs/*.md (ack-doc), or src/ (ack-work).
 disable-model-invocation: true
 argument-hint: 'description | create | comment | version [base branch, PR number, or tag]'
 ---
@@ -10,7 +10,7 @@ argument-hint: 'description | create | comment | version [base branch, PR number
 
 # ack-pr
 
-You orchestrate one `writer` dispatch and the `gh pr` commands. Four modes: `description` writes `generated/docs/pr-<slug>.md`; `create` writes it and opens the PR; `comment` writes a PR comment or a review reply; `version` writes `generated/docs/version-<slug>.md`. This skill runs in the session: the `gh pr` commands run with the owner's go-ahead (`references/gh.md`). It fetches from `origin` and moves a local compare ref; every other skill keeps git read-only, so run it once the branch or release set is settled and run nothing after it. The project is a boilerplate with no external client: the text describes the shape on disk, with no compat or migration note (`../ack-build/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call (`../ack-build/references/dispatch.md`, Foreground dispatch).
+You orchestrate one `writer` dispatch and the `gh pr` commands. Four modes: `description` writes `generated/docs/pr-<slug>.md`; `create` writes it and opens the PR; `comment` writes a PR comment or a review reply; `version` writes `generated/docs/version-<slug>.md`. This skill runs in the session: the `gh pr` commands run with the owner's go-ahead (`references/gh.md`). It fetches from `origin` and moves a local compare ref; every other skill keeps git read-only, so run it once the branch or release set is settled and run nothing after it. The project is a boilerplate with no external client: the text describes the shape on disk, with no compat or migration note (`../ack-work/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call (`../ack-work/references/dispatch.md`, Foreground dispatch).
 
 ## 1. Mode and inputs
 
@@ -47,7 +47,7 @@ Report: the file path, and every open question the diff could not settle (hand-b
   not a document section).
 ```
 
-Add the Every dispatch block from `../ack-build/references/dispatch.md`.
+Add the Every dispatch block from `../ack-work/references/dispatch.md`.
 
 ## 5. Read the document against the diff
 

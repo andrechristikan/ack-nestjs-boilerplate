@@ -35,7 +35,7 @@ A `*.dto.ts` file exports one schema const and its type: `export const XRequestS
 
 ## Concurrency
 
-Async-first: independent calls run concurrently, each an element of `Promise.all([...])` (one failure fails the whole) or `Promise.allSettled([...])` (each outcome handled on its own). A `const` holds a promise, and a sequential `await` runs independent work, only in the cases `.claude/rules/concurrency.md` lists.
+Async-first: independent calls run concurrently in `Promise.all([...])` or `Promise.allSettled([...])`; a held promise or a sequential `await` of independent work only where `.claude/rules/concurrency.md` allows.
 
 ## Imports
 
@@ -43,11 +43,15 @@ Aliases: `tsconfig.json` `paths`. A class Nest injects is a value import, not `i
 
 ## Tests
 
-A spec mirrors its subject's `src/` path under `test/unit/`; `pnpm test user` filters. Integration and e2e are held: no script or folder exists. Functions and arrows in a spec: the `ts/test-spec` block in `eslint.config.mjs`; reused logic is a helper. Rule: `.claude/rules/testing.md`.
+A spec mirrors its subject's `src/` path under `test/unit/`; `pnpm test user` filters. Functions and arrows in a spec: the `ts/test-spec` block in `eslint.config.mjs`; reused logic is a helper. Rule: `.claude/rules/testing.md`.
 
 ## Errors
 
 A request failure extends `AppBaseException`, any other runtime failure `AppUnknownException`. No `throw new Error(...)`; rethrow only inside an `instanceof` guard of our own exception, else `throw new AppUnknownException(err)`. Rule: `.claude/rules/exceptions.md`.
+
+## Discipline
+
+Suggest the minimum the change needs: no unrequested option or abstraction, no handling for a case the types exclude, nothing beside the change. Rule: `.claude/rules/discipline.md`.
 
 ## Prisma schema
 

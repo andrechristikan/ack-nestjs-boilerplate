@@ -4,7 +4,7 @@ Invariants: `.claude/rules/layering.md` (roles, tiers, module files, boot-only d
 
 ## 1. Claim the status-code block
 
-Scan and claim the next free hundred, then create `src/modules/<module>/enums/<module>.status-code.enum.ts` with the first member at the block base (`src/modules/device/enums/device.status-code.enum.ts:5-7`). Procedure: `.claude/skills/ack-build/references/add-status-code.md`.
+Scan and claim the next free hundred, then create `src/modules/<module>/enums/<module>.status-code.enum.ts` with the first member at the block base (`src/modules/device/enums/device.status-code.enum.ts:5-7`). Procedure: `.claude/skills/ack-work/references/add-status-code.md`.
 
 ## 2. Schema
 
@@ -26,7 +26,7 @@ Add the model to `prisma/schema.prisma` and run `pnpm db:generate`. Applying it 
 | HTTP service | `services/http/<module>.http.service.ts` | `src/modules/device/services/http/device.http.service.ts:30` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:39-64` |
 
-A queue, a processor, and a processor service follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module. The domain injects its own module's classes, another module's util, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the HTTP or processor service around the domain call, and a write needing one transaction across modules goes in the HTTP or processor service, calling each feature domain's `*InTx` method (`.claude/rules/service.md`).
+A queue, a processor, and a processor service follow `.claude/skills/ack-work/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module. The domain injects its own module's classes, another module's util, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the HTTP or processor service around the domain call, and a write needing one transaction across modules goes in the HTTP or processor service, calling each feature domain's `*InTx` method (`.claude/rules/service.md`).
 
 ## 4. The module files
 
@@ -51,7 +51,7 @@ Create `src/languages/<lang>/<module>.json` in every directory under `src/langua
 
 ## 7. Seed and docs
 
-Reference rows an empty database needs: `.claude/skills/ack-build/references/add-seed.md`. Swagger comes from the decorators; no separate doc file. A `docs/<module>.md` page is `writer`'s, from the hand-back.
+Reference rows an empty database needs: `.claude/skills/ack-work/references/add-seed.md`. Swagger comes from the decorators; no separate doc file. A `docs/<module>.md` page is `writer`'s, from the hand-back.
 
 ## 8. Verify
 

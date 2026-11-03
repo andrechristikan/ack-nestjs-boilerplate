@@ -1,4 +1,4 @@
-# ack-build dispatch templates
+# Dispatch templates
 
 ## Foreground dispatch
 
@@ -26,7 +26,7 @@ Before writing or judging, run `bash .claude/hooks/rules.sh <every file you touc
 Reply in English.
 ```
 
-Rules by path: `bash .claude/hooks/rules.sh <path>...` prints the rules binding those paths, the unscoped four included. A newline-joined list goes in as one argument (`"$P"`) or on stdin (`git diff HEAD --name-only | bash .claude/hooks/rules.sh`), zsh included. Run it over a template's `Scope` paths and paste its output into `Rules to read:`.
+Rules by path: `bash .claude/hooks/rules.sh <path>...` prints the rules binding those paths, the unscoped five included. A newline-joined list goes in as one argument (`"$P"`) or on stdin (`git diff HEAD --name-only | bash .claude/hooks/rules.sh`), zsh included. Run it over a template's `Scope` paths and paste its output into `Rules to read:`.
 
 ## Explorer
 
@@ -60,7 +60,7 @@ Report: the reproduction command and its decisive line; each hypothesis with the
 
 ```
 Agent: coder
-Task: <.superpowers/plans/<plan-basename>.md> task <N>, brief at <.superpowers/sdd/<plan-basename>/task-<N>-brief.md>
+Task: <.superpowers/plans/<plan-basename>.md> task <N>, its text pasted
   or
 Pin: files <paths>; cause at <file:line>; change <one sentence>
 Scope: <module directories this task may edit; test/ mirrors of the same; the specs,
@@ -80,7 +80,7 @@ Acceptance: `pnpm typecheck` exit 0; the task's own acceptance commands when the
 Schema: when prisma/schema.prisma changes, run `pnpm db:generate` and hand back the
   model, field, index, and `pnpm db:migrate` for the owner. Do not run db:migrate,
   migration:*, db:studio, mongosh, or redis-cli.
-Seeds: a seed under src/migration/ follows `.claude/skills/ack-build/references/add-seed.md`.
+Seeds: a seed under src/migration/ follows `.claude/skills/ack-work/references/add-seed.md`.
 Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
 Report: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED; files changed; the decisive
   test and typecheck lines; open items.
@@ -92,7 +92,7 @@ Report: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED; files changed; the 
 Agent: reviewer
 Depth: task | plan | docs | harness | rules and boot | end to end through guards, services, repository, processors
 Scope: <files and modules from git status --short, a plan path, docs files, or harness files, as the depth needs>
-Requirement: <the task brief, the plan path, or the settled paragraph>
+Requirement: <the task text, the plan path, or the settled paragraph>
 Checks: at task, rules and boot, and end to end: every rule file that binds a changed path,
   named in the report; every sequential await of independent work
   (.claude/rules/concurrency.md); boot (pnpm build, on exit 0 timeout 90 node --import

@@ -1,6 +1,6 @@
 # Layering
 
-One reason to change per role: `Controller → HTTP Service → Domain → Repository → DatabaseService`, with `Processor → Processor Service` joining at the domain. New module: `.claude/skills/ack-build/references/add-module.md`. `src/migration/` sits outside this layering (`seeding.md`).
+One reason to change per role: `Controller → HTTP Service → Domain → Repository → DatabaseService`, with `Processor → Processor Service` joining at the domain. New module: `.claude/skills/ack-work/references/add-module.md`. `src/migration/` sits outside this layering (`seeding.md`).
 
 ## Roles
 

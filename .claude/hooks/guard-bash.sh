@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# PreToolUse Bash: foreground only; pnpm only; owner-only database commands; no read of the root .env, keys/, or
-# generated/vault/; commits, staging, and discarding work ask; docker compose down with volumes asks.
+# PreToolUse Bash: foreground only; pnpm only; owner-only database commands; no read of the root .env, keys/,
+# generated/vault/, or .claude/settings.local.json; no print of the session environment; commits, staging, and
+# discarding work ask; docker compose down with volumes asks.
 set -euo pipefail
 
 decide() {
@@ -45,12 +46,21 @@ if printf '%s' "$env_cmd" | grep -qE "${env_file}|${dotenv_cli}"; then
     decide deny "The root .env is the owner's and no agent reads it; .env.example and other .env.* files stay readable. Diagnose a boot failure from the container env (docker-compose exec -T <service> printenv, never printing a secret value) or a boot with the variable set in the environment, which .env does not override; hand the .env fix to the owner."
 fi
 
-# keys/ (JWT private keys, encryption-secret.env, the Mongo keyfile) and generated/vault/ (init.json: the Vault root token
-# and unseal key) are owner-only secret stores: a command naming either as a path token (`keys/x`, `./keys/x`,
-# `<dir>/keys/x`, `generated/vault`) reads them. `keys` inside another segment (`api-key/`, `api-keys/`) does not match.
-secret_path="(^|[[:space:]'\"\`=:(<>{,/])(keys/|generated/vault([[:space:]'\"\`);&|<>,}*?/]|$))"
+# keys/ (JWT private keys, encryption-secret.env, the Mongo keyfile), generated/vault/ (init.json: the Vault root token
+# and unseal key), and .claude/settings.local.json (TYPESAFE_API_KEY) are owner-only secret stores: a command naming one
+# as a path token (`keys/x`, `./keys/x`, `<dir>/keys/x`, `generated/vault`) reads it. `keys` inside another segment (`api-key/`, `api-keys/`) does not match.
+secret_path="(^|[[:space:]'\"\`=:(<>{,/])(keys/|generated/vault([[:space:]'\"\`);&|<>,}*?/]|$)|\.claude/settings\.local\.json)"
 if printf '%s' "$cmd" | grep -qE "$secret_path"; then
-    decide deny "keys/ (JWT private keys, encryption-secret.env) and generated/vault/ (init.json: the Vault root token and unseal key) are the owner's secret stores and no agent reads them; hand any step that needs them to the owner."
+    decide deny "keys/ (JWT private keys, encryption-secret.env), generated/vault/ (init.json: the Vault root token and unseal key), and .claude/settings.local.json (the TYPESAFE_API_KEY env block) are the owner's secret stores and no agent reads them; hand any step that needs them to the owner."
+fi
+
+# The session environment carries TYPESAFE_API_KEY and other credentials: a command that dumps it (bare env, printenv,
+# set, export, declare -p/-x) or prints a key variable is denied. `env NAME=value cmd`, `env -u NAME cmd`, and a
+# container's `docker compose exec <service> printenv` do not match.
+env_dump="${at_command_start}(env|printenv([[:space:]]+[A-Za-z_][A-Za-z0-9_]*)*|set|export([[:space:]]+-p)?|declare[[:space:]]+-[A-Za-z]*[px][A-Za-z]*)[[:space:]]*([;&|)]|$)"
+key_print="${at_command_start}(echo|printf)[^;&|]*\\$\\{?TYPESAFE_API_KEY"
+if printf '%s' "$cmd" | grep -qE "${env_dump}|${key_print}"; then
+    decide deny "The session environment holds credentials (TYPESAFE_API_KEY among them): do not print it. Test whether a variable is set with [ -n \"\${NAME:-}\" ] && echo set."
 fi
 
 git_write="${at_command_start}git([[:space:]]+-[Cc][[:space:]]+[^[:space:]]+|[[:space:]]+-[^[:space:]]+)*[[:space:]]+((commit|add|reset)${word_end}|stash(([[:space:]]+(push|pop|apply|drop|clear|save|branch|store)|[[:space:]]+-[^[:space:]]+)${word_end}|[[:space:]]*([;&|)]|$)))"

@@ -1,4 +1,4 @@
-# ack-plan interrogation checklist
+# ack-work interrogation checklist
 
 Ask only what the owner has not named and the code cannot answer. Each line names what to ask and where the answer's shape is decided.
 
@@ -12,20 +12,20 @@ Ask only what the owner has not named and the code cannot answer. Each line name
 
 - Request and response: the zod DTO fields, which are optional, which are nullable (`.claude/rules/dto.md`, `.claude/rules/null-safety.md`).
 - A list endpoint: pagination type, the `search` and `orderBy` allow-lists, filter defaults (`.claude/rules/pagination.md`).
-- Status codes and exceptions: which failures are new, which module owns each subject (`.claude/skills/ack-build/references/add-status-code.md`, `.claude/rules/exceptions.md`).
+- Status codes and exceptions: which failures are new, which module owns each subject (`.claude/skills/ack-work/references/add-status-code.md`, `.claude/rules/exceptions.md`).
 - i18n: every new message key, in every language directory under `src/languages/` (`.claude/rules/i18n.md`).
 
 ## Data
 
 - Prisma delta: model, field, index, relation; soft delete and what cascades (`.claude/rules/database.md`).
-- A seed and its `remove` pair (`.claude/skills/ack-build/references/add-seed.md`, `.claude/rules/seeding.md`).
+- A seed and its `remove` pair (`.claude/skills/ack-work/references/add-seed.md`, `.claude/rules/seeding.md`).
 - Config keys and env variables the change reads (`.claude/rules/config.md`).
 
 ## Side effects
 
 - Activity log row: which action, which subject (`.claude/rules/security.md` Activity log).
-- Notification kind and channel (`.claude/skills/ack-build/references/add-notification.md`, `.claude/rules/queue.md`).
-- Queue job: name, payload, retry (`.claude/skills/ack-build/references/add-queue.md`, `.claude/rules/queue.md`).
+- Notification kind and channel (`.claude/skills/ack-work/references/add-notification.md`, `.claude/rules/queue.md`).
+- Queue job: name, payload, retry (`.claude/skills/ack-work/references/add-queue.md`, `.claude/rules/queue.md`).
 - Cache key: what it caches and what invalidates it (`.claude/rules/cache.md`).
 
 ## Failure

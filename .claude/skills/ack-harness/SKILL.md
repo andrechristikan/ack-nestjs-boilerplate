@@ -1,7 +1,7 @@
 ---
 name: ack-harness
 description: >-
-    Reworks the AI configuration (.claude/**, AGENTS.md, .github/copilot-instructions.md) through the harness agent from a requirement settled with the owner, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-plan, ack-build, ack-spec), docs/ (ack-doc), or prisma/ (ack-plan).
+    Reworks the AI configuration (.claude/**, AGENTS.md, .github/copilot-instructions.md) through the harness agent from a requirement settled with the owner, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-work, ack-spec), docs/ (ack-doc), or prisma/ (ack-work).
 disable-model-invocation: true
 argument-hint: '<settled requirement: files, the change, expected outcomes> | diagnose [session id | last]'
 ---
@@ -10,7 +10,7 @@ argument-hint: '<settled requirement: files, the change, expected outcomes> | di
 
 # ack-harness
 
-You orchestrate one `harness` dispatch and verify what it wrote. This skill runs in the session because the requirement is settled with the owner. `harness` writes `.claude/**`, `AGENTS.md`, and `.github/copilot-instructions.md`; this skill does not edit those trees, and no other agent runs while `harness` is writing because it would read the tree the run is rewriting. Final state only: `.claude/rules/authoring.md`. The project is a boilerplate with no external client: a rule states the correct shape and every call site changes with it (`../ack-build/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call (`../ack-build/references/dispatch.md`, Foreground dispatch).
+You orchestrate one `harness` dispatch and verify what it wrote. This skill runs in the session because the requirement is settled with the owner. `harness` writes `.claude/**`, `AGENTS.md`, and `.github/copilot-instructions.md`; this skill does not edit those trees, and no other agent runs while `harness` is writing because it would read the tree the run is rewriting. Final state only: `.claude/rules/authoring.md`. The project is a boilerplate with no external client: a rule states the correct shape and every call site changes with it (`../ack-work/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call (`../ack-work/references/dispatch.md`, Foreground dispatch).
 
 ## 1. Settle
 
@@ -44,16 +44,17 @@ Report: files written with wc -w, files deleted, what each file now says, the
   the scope
 ```
 
-Add the Every dispatch block from `../ack-build/references/dispatch.md`. A follow-up dispatch is a fresh instance reading the tree as the previous one left it.
+Add the Every dispatch block from `../ack-work/references/dispatch.md`. A follow-up dispatch is a fresh instance reading the tree as the previous one left it.
 
 ## 3. Verify
 
 Invoke `superpowers:verification-before-completion`, then run and quote the output:
 
 ```bash
-jq . .claude/settings.json >/dev/null
+jq . .claude/settings.json .claude/hooks/*.json >/dev/null
 for f in .claude/hooks/*.sh; do bash -n "$f" && test -x "$f"; done
 echo '{}' | bash .claude/hooks/roster.sh
+echo '{"command_name":"ack-work","command_args":"verify the router prints nothing"}' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh route   # no key: one "Jev: off" systemMessage, no reminder
 grep -rnE 'N[E]VER|A[L]WAYS|M[U]ST|H[A]RD' .claude AGENTS.md .github/copilot-instructions.md --exclude-dir=worktrees   # all-caps emphasis: empty
 wc -w .claude/CLAUDE.md AGENTS.md .github/copilot-instructions.md .claude/rules/*.md .claude/agents/*.md .claude/skills/*/SKILL.md .claude/skills/*/references/*.md
 ```
@@ -74,4 +75,4 @@ The settled requirement; for `diagnose`, the transcript read and each finding th
 
 ## Next
 
-`/ack-build pin: ...` for a recorded `src/` finding that is a confirmed no-flow bug; `/ack-plan` for one whose cause is not in hand or that changes a flow.
+`/ack-work` with the pin for a recorded `src/` finding that is a confirmed no-flow bug, or with the symptom for one whose cause is not in hand or that changes a flow.

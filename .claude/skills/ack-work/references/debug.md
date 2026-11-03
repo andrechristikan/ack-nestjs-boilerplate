@@ -1,6 +1,6 @@
-# ack-plan debug path
+# ack-work debug path
 
-A symptom without a cause runs here, in the session, because a decision goes back to the owner. The path ends with Next `/ack-build pin: ...`, with Next `/ack-spec`, or by continuing to Interrogate (`SKILL.md` step 2) inside the same run.
+A symptom without a cause runs here, in the session, because a decision goes back to the owner. The path ends in the `fix` route with the debugger's pin, in `change` or `feature` when the change alters a flow or needs a decision, or with `/ack-spec` named to the owner.
 
 ## 1. Pin the symptom
 
@@ -10,7 +10,7 @@ A symptom without a cause runs here, in the session, because a decision goes bac
 
 ## 2. Find the cause, through `debugger`
 
-Dispatch `debugger` with the template at `.claude/skills/ack-build/references/dispatch.md`, Debugger. Its `Rules to read:` is the output of `bash .claude/hooks/rules.sh` over the paths in `Scope`, pasted.
+Dispatch `debugger` with the template at `dispatch.md`, Debugger. Its `Rules to read:` is the output of `bash .claude/hooks/rules.sh` over the paths in `Scope`, pasted. A `<jev_route>` model and effort for `debugger` are the Agent `model` and `effort`.
 
 ## 3. Read the hand-back
 
@@ -23,15 +23,15 @@ Dispatch `debugger` with the template at `.claude/skills/ack-build/references/di
 
 Take the first branch that matches:
 
-1. The cause is a spec that asserts a wish over correct code: Next `/ack-spec`.
-2. The change alters a flow or needs a decision: continue to Interrogate (`SKILL.md` step 2) with the pin and the symptom as the request.
-3. Otherwise the change alters no flow (the contract, the guard stack, the status code, and the call order stay): Next `/ack-build pin: files <paths>; cause <file:line>; change <one sentence>`.
+1. The cause is a spec that asserts a wish over correct code: name `/ack-spec` to the owner and stop.
+2. The change alters a flow or needs a decision: confirm with `AskUserQuestion`, then run `change` (one module) or `feature` (otherwise) with the pin and the symptom as the request.
+3. Otherwise the change alters no flow (the contract, the guard stack, the status code, and the call order stay): run `fix` with the pin.
 
 Invoke `superpowers:verification-before-completion` before stating the classification: the cause rests on the quoted reproduction and the quoted evidence, not on a claim.
 
 ## Boundaries
 
-- No edit, no fix, no spec, no commit, no DB or seed command.
+- No edit, no spec, no commit, no DB or seed command before step 4.
 - The session does not debug in place of `debugger`.
 
 ## Hand back
@@ -41,5 +41,5 @@ Invoke `superpowers:verification-before-completion` before stating the classific
 - Each hypothesis and its evidence.
 - The root cause at `file:line`.
 - The pin.
-- The classification and the Next command filled in, or the step 2 continuation.
+- The classification and the route it continues in.
 - Every decision the owner made.

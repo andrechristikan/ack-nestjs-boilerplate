@@ -1,7 +1,7 @@
 ---
 name: ack-doc
 description: >-
-    Checks docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md against the checkout through writer and repairs what is stale, final state only. Use when the owner asks to update, verify, or extend the docs, or for an architecture diagram. Not for a PR description or version notes (ack-pr), src/ (ack-plan, ack-build), or .claude/** (ack-harness).
+    Checks docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md against the checkout through writer and repairs what is stale, final state only. Use when the owner asks to update, verify, or extend the docs, or for an architecture diagram. Not for a PR description or version notes (ack-pr), src/ (ack-work), or .claude/** (ack-harness).
 disable-model-invocation: true
 argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <name and subject>]"
 ---
@@ -10,7 +10,7 @@ argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <n
 
 # ack-doc
 
-You orchestrate one dispatch to `writer`, the agent that owns reader-facing prose, then a reader test of what it added. This skill runs in the session so the owner settles a scope question and each CONFLICT. You do not edit those trees yourself. Final state only: `.claude/rules/authoring.md`. The project is a boilerplate with no external client: the docs state the correct shape as it is on disk (`../ack-build/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call; parallel dispatches are several calls in one message (`../ack-build/references/dispatch.md`, Foreground dispatch).
+You orchestrate one dispatch to `writer`, the agent that owns reader-facing prose, then a reader test of what it added. This skill runs in the session so the owner settles a scope question and each CONFLICT. You do not edit those trees yourself. Final state only: `.claude/rules/authoring.md`. The project is a boilerplate with no external client: the docs state the correct shape as it is on disk (`../ack-work/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call; parallel dispatches are several calls in one message (`../ack-work/references/dispatch.md`, Foreground dispatch).
 
 ## 1. Scope
 
@@ -29,7 +29,7 @@ When the argument leaves the files missing or ambiguous, or asks for a diagram w
 | `.github/ISSUE_TEMPLATE/*` | advisory URL, contributing path, docs path |
 | `.github/dependabot.yml` | lockfile ecosystem against `package.json` |
 
-`docs/status-codes.md` is the human catalog; it is updated from the numbers an `/ack-build` run handed back, not re-derived here.
+`docs/status-codes.md` is the human catalog; it is updated from the numbers an `ack-work` build handed back, not re-derived here.
 
 The `Diagram:` slot carries the diagram and its subject when the owner asked for a designed one (an architecture overview, say), and `none` otherwise.
 
@@ -54,7 +54,7 @@ Report: findings by class, files changed, every CONFLICT with its evidence, the
   added, and for a diagram the HTML and SVG paths under docs/assets/ and the drawing plan.
 ```
 
-Add the Every dispatch block from `../ack-build/references/dispatch.md`. Git stays read-only. `writer`'s classified report is the evidence for every file it checked.
+Add the Every dispatch block from `../ack-work/references/dispatch.md`. Git stays read-only. `writer`'s classified report is the evidence for every file it checked.
 
 ## 3. Reader test
 
@@ -73,10 +73,10 @@ Open the doc and the code behind each unanswered question, assumption, and ambig
 
 ## 4. Resolve each CONFLICT
 
-Put each CONFLICT to the owner with `AskUserQuestion`, the evidence for both sides as the question context. When the evidence says the code is wrong (a guard removed by a commit that does not mention it, a doc newer than the change, a disagreement about authorization, credentials, or session invalidation), say so in the question and recommend the `/ack-plan` route. Route per the answer:
+Put each CONFLICT to the owner with `AskUserQuestion`, the evidence for both sides as the question context. When the evidence says the code is wrong (a guard removed by a commit that does not mention it, a doc newer than the change, a disagreement about authorization, credentials, or session invalidation), say so in the question and recommend the `/ack-work` route. Route per the answer:
 
 - The doc is wrong: one repair dispatch to `writer` (step 2 template, Scope the files the CONFLICTs name).
-- The code is suspected wrong: record it as a suspected defect for `/ack-plan`; the doc stays as it is.
+- The code is suspected wrong: record it as a suspected defect for `/ack-work`; the doc stays as it is.
 
 ## 5. Verify
 
@@ -92,4 +92,4 @@ Findings by class, files repaired, every CONFLICT with its evidence, the owner's
 
 ## Next
 
-`/ack-plan` for a CONFLICT resolved as the code being wrong. `/ack-pr` once the branch is settled.
+`/ack-work` for a CONFLICT resolved as the code being wrong. `/ack-pr` once the branch is settled.

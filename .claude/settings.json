@@ -80,6 +80,7 @@
             "Read(/.env)",
             "Read(/keys/**)",
             "Read(/generated/vault/**)",
+            "Read(/.claude/settings.local.json)",
             "Skill(caveman:caveman-compress)",
             "Skill(caveman:caveman-compress *)",
             "Skill(caveman:caveman-init)",
@@ -197,6 +198,18 @@
                         "type": "command",
                         "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify.sh",
                         "timeout": 600
+                    }
+                ]
+            }
+        ],
+        "UserPromptExpansion": [
+            {
+                "matcher": "ack-work",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/jev.sh route",
+                        "timeout": 8
                     }
                 ]
             }

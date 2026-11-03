@@ -1,0 +1,93 @@
+{
+    "model": "jev-1.14.0",
+    "timeout_seconds": 5,
+    "min_request_chars": 15,
+    "thresholds": {
+        "noul_yes": 0.7,
+        "noul_no": 0.3,
+        "kind_min_probability": 0.5,
+        "effort_sonnet": 0.5,
+        "effort_opus": 1.5
+    },
+    "floors": {
+        "explorer": {
+            "model": "haiku",
+            "effort": "low"
+        },
+        "debugger": {
+            "model": "sonnet",
+            "effort": "high"
+        },
+        "coder": {
+            "model": "sonnet",
+            "effort": "medium"
+        },
+        "reviewer": {
+            "model": "sonnet",
+            "effort": "medium"
+        }
+    },
+    "repository": "A NestJS API boilerplate. src/ holds the application in feature modules (auth, user, workspace, project, notification, and more). test/unit/ holds unit specs. docs/ holds documentation. .claude/ holds the Claude Code agents, skills, rules, hooks, and settings.",
+    "route_questions": {
+        "is_repo_task": {
+            "type": "noul",
+            "instructions": "Does `request` ask for work on this code repository?",
+            "criteria": {
+                "true": "It asks to find, explain, change, test, review, or document something in the repository",
+                "false": "A greeting, a thank-you, a one-word follow-up such as 'continue', or a topic unrelated to the repository"
+            }
+        },
+        "kind": {
+            "type": "choice",
+            "instructions": "What is `request` asking for?",
+            "criteria": {
+                "bug_report": "Something in the application is broken: an error, a crash, a failing test, or a wrong result",
+                "new_behaviour": "Add a feature or change how the application behaves",
+                "unit_tests": "Write, fix, or extend unit tests",
+                "review": "Judge changes, a plan, or a document before it is called done",
+                "documentation": "Write or update the docs or the README",
+                "pull_request": "Create, describe, or comment on a pull request, or write release notes",
+                "ai_configuration": "Change how Claude or Copilot works here: agents, skills, rules, hooks, settings",
+                "code_question": "Explain or locate code without changing it"
+            }
+        },
+        "cause_named": {
+            "type": "noul",
+            "instructions": "Does `request` name the file, function, or line that causes the problem?"
+        },
+        "spans_modules": {
+            "type": "noul",
+            "instructions": "Does `request` involve more than one feature area of the application, such as authentication and workspaces together?"
+        },
+        "effort": {
+            "type": "score",
+            "instructions": "How much work does `request` need?",
+            "criteria": [
+                "A lookup, a rename, or a one-line edit",
+                "A change inside one feature module, with its tests",
+                "A design across several modules, or concurrency, security, or data-model work"
+            ]
+        }
+    },
+    "followup": {
+        "generic_headings": [
+            "Overview",
+            "Related Documents",
+            "Table of Contents",
+            "Contents",
+            "Important",
+            "TODO",
+            "Contributors",
+            "License"
+        ],
+        "doc_question": "Does `change` alter something this page documents, such as an endpoint, a guard, a config key, a status code, a flow, or a command?",
+        "harness_question": {
+            "type": "noul",
+            "instructions": "Does `change` add, rename, or remove a command, a script, a file path pattern, a module layout, or a coding convention?",
+            "criteria": {
+                "true": "A new or renamed pnpm script, a new module folder pattern, a new required decorator or base class, or a moved config file",
+                "false": "A change inside existing files that follows the patterns already in the repository"
+            }
+        }
+    }
+}

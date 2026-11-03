@@ -3,7 +3,7 @@
 # Each argument may hold several newline-separated paths (bash .claude/hooks/rules.sh "$P" in zsh or bash);
 # with no argument and stdin not a terminal, paths are read from stdin, one per line
 # (git diff HEAD --name-only | bash .claude/hooks/rules.sh). Empty lines are ignored.
-# Prints the rule files that bind the given paths, one per line, sorted and unique: the four unscoped
+# Prints the rule files that bind the given paths, one per line, sorted and unique: the five unscoped
 # rules always, plus every .claude/rules/*.md whose frontmatter paths: list has a glob matching a path.
 # Globs: ** spans any number of segments (zero included); * and ? stay inside one segment; a pattern
 # without / matches the basename at any depth. A directory argument matches when any file under it
@@ -22,7 +22,7 @@ import fnmatch, os, re, subprocess, sys
 root = os.path.realpath(sys.argv[1])
 args = [line for arg in sys.argv[2:] for line in arg.split('\n') if line]
 rules_dir = os.path.join(root, '.claude', 'rules')
-unscoped = ['layering.md', 'cross-module.md', 'null-safety.md', 'naming.md']
+unscoped = ['layering.md', 'cross-module.md', 'null-safety.md', 'naming.md', 'discipline.md']
 
 
 def rel(arg):

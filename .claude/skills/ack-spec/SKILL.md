@@ -1,7 +1,7 @@
 ---
 name: ack-spec
 description: >-
-    Creates or repairs unit tests for code that exists through tester, to 100% coverage per file; integration and e2e are held. Use for a failing suite, a coverage gap, or orphan specs. Not for new behaviour or a symptom whose cause is not in hand (ack-plan), or a src/ change from a plan or a pin (ack-build).
+    Creates or repairs unit tests for code that exists through tester, to 100% coverage per file; integration and e2e are held. Use for a failing suite, a coverage gap, or orphan specs. Not for new behaviour, a symptom whose cause is not in hand, or a src/ change from a plan or a pin (ack-work).
 disable-model-invocation: true
 model: sonnet
 effort: high
@@ -13,7 +13,7 @@ argument-hint: '<module or path filter, or the failing suite>'
 
 # ack-spec
 
-You orchestrate in a fork. `tester` writes `test/`; `coder` writes a confirmed no-flow repair, test-first. On the coverage path the code wins: a spec asserts what `src/` does. A fork cannot ask the owner: every question is a hand-back. The project is a boilerplate with no external client: a repair builds the correct shape and changes every call site (`../ack-build/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call; parallel dispatches are several calls in one message (`../ack-build/references/dispatch.md`, Foreground dispatch).
+You orchestrate in a fork. `tester` writes `test/`; `coder` writes a confirmed no-flow repair, test-first. On the coverage path the code wins: a spec asserts what `src/` does. A fork cannot ask the owner: every question is a hand-back. The project is a boilerplate with no external client: a repair builds the correct shape and changes every call site (`../ack-work/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call; parallel dispatches are several calls in one message (`../ack-work/references/dispatch.md`, Foreground dispatch).
 
 ## 1. Scope
 
@@ -35,13 +35,13 @@ Every defect the run surfaces, and every defect `tester` hands back, is classifi
 | spec wrong | the code moved and the spec was left behind, or the spec asserts a wish | `tester` |
 | no-flow bug | confirmed defect; contract, guard stack, status code, and call order stay | `coder`, test-first |
 | flow or decision | route, DTO, status code, guard, who may do what, or when; or two readings | hand back the question, or a sweep row |
-| cause unknown | a red spec whose cause is not in hand: neither a stale spec nor a pinned defect | hand back the symptom, Next `/ack-plan` |
+| cause unknown | a red spec whose cause is not in hand: neither a stale spec nor a pinned defect | hand back the symptom, Next `/ack-work` |
 
-A pinned no-flow bug (files, cause at `file:line`, the change) goes straight to `coder`. A flow change is a hand-back naming `/ack-plan`.
+A pinned no-flow bug (files, cause at `file:line`, the change) goes straight to `coder`. A flow change is a hand-back naming `/ack-work`.
 
 ## 3. Repair, through `coder`
 
-Dispatch one `coder` per pinned no-flow bug (template `../ack-build/references/dispatch.md`, Coder, Pin form): files, cause at `file:line`, the change, `Scope` limited to those files and their `test/` mirrors. `Rules to read:` is the output of `bash .claude/hooks/rules.sh` over that `Scope`, pasted. Acceptance: the red spec quoted, then `pnpm typecheck` and `pnpm test <module>` green.
+Dispatch one `coder` per pinned no-flow bug (template `../ack-work/references/dispatch.md`, Coder, Pin form): files, cause at `file:line`, the change, `Scope` limited to those files and their `test/` mirrors. `Rules to read:` is the output of `bash .claude/hooks/rules.sh` over that `Scope`, pasted. Acceptance: the red spec quoted, then `pnpm typecheck` and `pnpm test <module>` green.
 
 ## 4. Cover, through `tester`
 
@@ -60,7 +60,7 @@ Report: specs written or repaired; per-file coverage rows; every line that canno
   file:line, unfixed.
 ```
 
-Add the Every dispatch block from `../ack-build/references/dispatch.md`. `tester` does not edit `src/`.
+Add the Every dispatch block from `../ack-work/references/dispatch.md`. `tester` does not edit `src/`.
 
 ## 5. Reach 100%
 
@@ -91,4 +91,4 @@ Specs written or repaired by file; every no-flow bug fixed (file, line, change);
 
 ## Next
 
-`/ack-plan` for a flow change the owner approved, or a failing spec whose cause is not pinned.
+`/ack-work` for a flow change the owner approved, or a failing spec whose cause is not pinned.

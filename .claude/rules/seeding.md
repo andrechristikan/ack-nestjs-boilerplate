@@ -5,7 +5,7 @@ paths:
 
 # Seeding
 
-`src/migration/` holds seeds, not schema migrations: the reference and bootstrap rows an empty database needs (roles, countries, the seed API key, feature flags, term policies, templates, the S3 config, the seed user). There are no migration files and applying the schema is the owner's (`AGENTS.md`). A one-off production write, a column re-compute, or a historical import does not belong here, and a seed holds no business logic. Procedure for a new seed: `.claude/skills/ack-build/references/add-seed.md`.
+`src/migration/` holds seeds, not schema migrations: the reference and bootstrap rows an empty database needs (roles, countries, the seed API key, feature flags, term policies, templates, the S3 config, the seed user). There are no migration files and applying the schema is the owner's (`AGENTS.md`). A one-off production write, a column re-compute, or a historical import does not belong here, and a seed holds no business logic. Procedure for a new seed: `.claude/skills/ack-work/references/add-seed.md`.
 
 ## Anatomy
 

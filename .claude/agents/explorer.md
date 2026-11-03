@@ -3,8 +3,8 @@ name: explorer
 description: >-
     Locates code in this repository, reads a third-party contract, and assesses approaches with trade-offs and a recommendation, read-only. Use when the location, the contract, or the shape of a change is not yet in hand. Not for debugging (debugger), writing code (coder), tests (tester), reviewing (reviewer), prose (writer), or the harness (harness).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
-model: opus
-effort: medium
+model: haiku
+effort: low
 skills: caveman:caveman
 ---
 

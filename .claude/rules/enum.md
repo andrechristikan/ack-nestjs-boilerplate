@@ -34,5 +34,5 @@ A query param filtered against an enum is a field on the list schema; the HTTP s
 ## Adding a member
 
 - Reuse before adding; near-synonyms make the surface unreadable.
-- A new status-code member follows `.claude/skills/ack-build/references/add-status-code.md`.
+- A new status-code member follows `.claude/skills/ack-work/references/add-status-code.md`.
 - A new member of an enum a `switch` dispatches on means every such `switch` is revisited; TypeScript stays silent when the switch has a `default`.
