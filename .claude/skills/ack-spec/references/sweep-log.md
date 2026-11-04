@@ -21,7 +21,7 @@ Append a new finding as an open row under its heading; delete a row once its def
 A finding is one open row under the matching heading:
 
 ```
-- [ ] `src/<path>:<line>`: <the fact, one sentence, no proposal>
+- [ ] `<path>:<line>`: <the fact, one sentence, no proposal>
 ```
 
 Rules:
@@ -30,7 +30,7 @@ Rules:
 - One row per defect; a defect spanning files names each `file:line` in the same row.
 - The fact describes what the code does, not what it should do; the decision is the owner's.
 
-End of every run, whether or not the run added a row, validate the whole file: re-read every open row and open the `src/` it names.
+End of every run, whether or not the run added a row, validate the whole file: re-read every open row and open the file it names.
 
 | State of the defect     | Action                             |
 | ----------------------- | ---------------------------------- |

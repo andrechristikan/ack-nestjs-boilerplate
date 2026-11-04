@@ -6,6 +6,7 @@ import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -40,6 +41,7 @@ describe('ActivityLogDomain', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
     const userAgent: UserAgent = {
@@ -89,6 +91,7 @@ describe('ActivityLogDomain', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: SentryService, useValue: sentryService },
             ],
         }).compile();
 
@@ -419,6 +422,89 @@ describe('ActivityLogDomain', () => {
             );
         });
 
+        it('reports an invalid entry to Sentry, enqueues the valid rest, and clears the store', async () => {
+            const staged: IActivityLogStaged[] = [
+                {
+                    action: EnumActivityLogAction.userUpdateProfile,
+                    metadata: {},
+                    userId: null,
+                    createdBy: null,
+                    workspaceId: null,
+                },
+                {
+                    action: EnumActivityLogAction.userLoginCredential,
+                    metadata: {},
+                    userId: 'user-1',
+                    createdBy: 'creator-1',
+                    workspaceId: null,
+                },
+            ];
+            requestStoreService.get.mockImplementation(
+                (key: string): unknown => {
+                    if (key === ActivityLogStageStoreKey) {
+                        return staged;
+                    }
+                    if (key === RequestLogStoreKey) {
+                        return requestLog;
+                    }
+                    return null;
+                }
+            );
+            databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
+            helperDateService.create.mockReturnValue(createdAt);
+            activityLogUtil.getDescription.mockReturnValue('Description');
+
+            await domain.flushStaged({ payloadUserId: null });
+
+            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.any(ActivityLogContractInvalidException)
+            );
+            expect(activityLogQueue.createMany).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+                    action: EnumActivityLogAction.userLoginCredential,
+                }),
+            ]);
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                ActivityLogStageStoreKey,
+                []
+            );
+        });
+
+        it('enqueues nothing and clears the store when every entry is invalid', async () => {
+            const staged: IActivityLogStaged[] = [
+                {
+                    action: EnumActivityLogAction.userUpdateProfile,
+                    metadata: {},
+                    userId: null,
+                    createdBy: null,
+                    workspaceId: null,
+                },
+            ];
+            requestStoreService.get.mockImplementation(
+                (key: string): unknown => {
+                    if (key === ActivityLogStageStoreKey) {
+                        return staged;
+                    }
+                    if (key === RequestLogStoreKey) {
+                        return requestLog;
+                    }
+                    return null;
+                }
+            );
+            helperDateService.create.mockReturnValue(createdAt);
+
+            await domain.flushStaged({ payloadUserId: null });
+
+            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.createMany).not.toHaveBeenCalled();
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                ActivityLogStageStoreKey,
+                []
+            );
+        });
+
         it('keeps the staged list when the enqueue fails', async () => {
             const staged: IActivityLogStaged[] = [
                 {
@@ -506,7 +592,11 @@ describe('ActivityLogDomain', () => {
 
     describe('getListCursorByUser', () => {
         it('delegates to the repository and returns its page', async () => {
-            const pagination = { limit: 20, orderBy: [] };
+            const pagination = {
+                limit: 20,
+                orderBy: [],
+                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            };
             const page = {
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,
@@ -561,7 +651,11 @@ describe('ActivityLogDomain', () => {
 
     describe('getListCursorByWorkspace', () => {
         it('delegates to the repository and returns its page', async () => {
-            const pagination = { limit: 20, orderBy: [] };
+            const pagination = {
+                limit: 20,
+                orderBy: [],
+                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            };
             const page = {
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,

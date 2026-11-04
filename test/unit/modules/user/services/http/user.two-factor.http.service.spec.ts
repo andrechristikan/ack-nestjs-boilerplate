@@ -963,6 +963,33 @@ describe('UserTwoFactorHttpService', () => {
             expect(userTwoFactorDomain.saveSetup).not.toHaveBeenCalled();
         });
 
+        it('purges and stages nothing and answers the attempt limit when the lockout write conflicts', async () => {
+            const limit = new Error('attempt max');
+            const conflict = new Error('write conflict');
+            userUtil.hasPassword.mockReturnValue(true);
+            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
+                false
+            );
+            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
+                throw limit;
+            });
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.setupTwoFactor(user, { password: 'Current-pass1' })
+            ).rejects.toBe(limit);
+
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                userPasswordDomain.assertOldPasswordMatch
+            ).not.toHaveBeenCalled();
+        });
+
         it('saves nothing and keeps the counter when the password does not match', async () => {
             const mismatch = new Error('password not match');
             userUtil.hasPassword.mockReturnValue(true);
@@ -1233,6 +1260,16 @@ describe('UserTwoFactorHttpService', () => {
                 service['reachMaxAttempt']('user-marten')
             ).resolves.toBeNull();
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('rethrows an app exception of the lockout unchanged', async () => {
+            const failure = new AuthTwoFactorAttemptMaxException();
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(
+                service['reachMaxAttempt']('user-marten')
+            ).rejects.toBe(failure);
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('wraps any other failure of the lockout in the unknown exception', async () => {

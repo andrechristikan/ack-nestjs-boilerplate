@@ -1,18 +1,22 @@
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
-import {
-    buildAnalyticActivityLog,
-    buildAnalyticSession,
-} from '@test/unit/helpers/test.unit.analytic.helper';
+import { buildAnalyticSession } from '@test/unit/helpers/test.unit.analytic.helper';
 
 describe('AnalyticAnomalyUtil', () => {
     const helperNumberService: MockProxy<HelperNumberService> =
         mock<HelperNumberService>();
+
+    const configGet = vi.fn<(key: string) => string | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
 
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const tenMinutesLater = new Date('2026-01-01T00:10:00.000Z');
@@ -54,9 +58,15 @@ describe('AnalyticAnomalyUtil', () => {
             total === 0 ? 0 : (part / total) * 100
         );
 
+        configGet.mockImplementation((key: string) =>
+            key === 'app.timezone' ? 'UTC' : undefined
+        );
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticAnomalyUtil,
+                HelperDateService,
+                { provide: ConfigService, useValue: configService },
                 { provide: HelperNumberService, useValue: helperNumberService },
             ],
         }).compile();
@@ -222,15 +232,14 @@ describe('AnalyticAnomalyUtil', () => {
     });
 
     describe('groupByIp', () => {
-        it('groups unique users and the attempt count per ip and maps a missing ip to unknown', () => {
-            const logs = [
-                buildAnalyticActivityLog('e1', 'user-1', '10.0.0.1', startDate),
-                buildAnalyticActivityLog('e2', 'user-2', '10.0.0.1', startDate),
-                buildAnalyticActivityLog('e3', 'user-2', '10.0.0.1', startDate),
-                buildAnalyticActivityLog('e4', 'user-3', null, startDate),
+        it('merges ip and user pairs into unique users and a summed count per ip and maps a missing ip to unknown', () => {
+            const pairs = [
+                { ipAddress: '10.0.0.1', userId: 'user-1', count: 1 },
+                { ipAddress: '10.0.0.1', userId: 'user-2', count: 2 },
+                { ipAddress: null, userId: 'user-3', count: 1 },
             ];
 
-            const result = util.groupByIp(logs);
+            const result = util.groupByIp(pairs);
 
             expect(result.get('10.0.0.1')).toEqual({
                 users: new Set(['user-1', 'user-2']),
@@ -243,79 +252,77 @@ describe('AnalyticAnomalyUtil', () => {
             expect(result.size).toBe(2);
         });
 
-        it('returns an empty map for no logs', () => {
+        it('returns an empty map for no pairs', () => {
             expect(util.groupByIp([]).size).toBe(0);
         });
     });
 
-    describe('findLoginTimeAnomalies', () => {
+    describe('findLoginTimeAnomaly', () => {
         const eightAm = new Date('2026-01-01T08:00:00.000Z');
         const threeAm = new Date('2026-01-01T03:00:00.000Z');
-        const minSample = 5;
-
-        it('skips users with fewer logins than the minimum sample', () => {
-            const logs = [
-                buildAnalyticActivityLog('e1', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e2', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e3', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e4', 'user-1', null, threeAm),
-            ];
-
-            expect(util.findLoginTimeAnomalies(logs, 20, minSample)).toEqual(
-                []
-            );
-        });
-
-        it('honours a custom minimum sample', () => {
-            const logs = [
-                buildAnalyticActivityLog('e1', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e2', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e3', 'user-1', null, threeAm),
-            ];
-
-            expect(util.findLoginTimeAnomalies(logs, 20, 3)).toEqual([
-                {
-                    userId: 'user-1',
-                    lastHour: 3,
-                    historicalFrequencyPercent: 0,
-                },
-            ]);
-        });
 
         it('flags a last hour absent from the prior logins using a histogram that excludes the last login', () => {
-            const logs = [
-                buildAnalyticActivityLog('e0', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e1', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e2', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e3', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e4', 'user-1', null, eightAm),
-                buildAnalyticActivityLog('e5', 'user-1', null, threeAm),
+            const logins = [
+                eightAm,
+                eightAm,
+                eightAm,
+                eightAm,
+                eightAm,
+                threeAm,
             ];
 
-            const result = util.findLoginTimeAnomalies(logs, 20, minSample);
+            const result = util.findLoginTimeAnomaly('user-1', logins, 20);
 
-            expect(result).toEqual([
-                {
-                    userId: 'user-1',
-                    lastHour: 3,
-                    historicalFrequencyPercent: 0,
-                },
-            ]);
+            expect(result).toEqual({
+                userId: 'user-1',
+                lastHour: 3,
+                historicalFrequencyPercent: 0,
+            });
             expect(helperNumberService.percent).toHaveBeenCalledWith(0, 5);
         });
 
-        it('does not flag a last hour whose prior frequency reaches the threshold', () => {
-            const logs = [
-                buildAnalyticActivityLog('k0', 'user-keep', null, eightAm),
-                buildAnalyticActivityLog('k1', 'user-keep', null, eightAm),
-                buildAnalyticActivityLog('k2', 'user-keep', null, eightAm),
-                buildAnalyticActivityLog('k3', 'user-keep', null, eightAm),
-                buildAnalyticActivityLog('k4', 'user-keep', null, eightAm),
+        it('buckets logins by their hour in the configured timezone', async () => {
+            configGet.mockImplementation((key: string) =>
+                key === 'app.timezone' ? 'Asia/Jakarta' : undefined
+            );
+            const module: TestingModule = await Test.createTestingModule({
+                providers: [
+                    AnalyticAnomalyUtil,
+                    HelperDateService,
+                    { provide: ConfigService, useValue: configService },
+                    {
+                        provide: HelperNumberService,
+                        useValue: helperNumberService,
+                    },
+                ],
+            }).compile();
+            const zonedUtil = module.get(AnalyticAnomalyUtil);
+            const beforeMidnight = new Date('2026-01-01T16:00:00.000Z');
+            const afterMidnight = new Date('2026-01-01T17:00:00.000Z');
+            const logins = [
+                beforeMidnight,
+                beforeMidnight,
+                beforeMidnight,
+                beforeMidnight,
+                afterMidnight,
             ];
 
-            expect(util.findLoginTimeAnomalies(logs, 20, minSample)).toEqual(
-                []
-            );
+            const result = zonedUtil.findLoginTimeAnomaly('user-1', logins, 20);
+
+            expect(result).toEqual({
+                userId: 'user-1',
+                lastHour: 0,
+                historicalFrequencyPercent: 0,
+            });
+            expect(helperNumberService.percent).toHaveBeenCalledWith(0, 4);
+        });
+
+        it('returns null when the last hour frequency reaches the threshold', () => {
+            const logins = [eightAm, eightAm, eightAm, eightAm, eightAm];
+
+            expect(
+                util.findLoginTimeAnomaly('user-keep', logins, 20)
+            ).toBeNull();
             expect(helperNumberService.percent).toHaveBeenCalledWith(4, 4);
         });
     });

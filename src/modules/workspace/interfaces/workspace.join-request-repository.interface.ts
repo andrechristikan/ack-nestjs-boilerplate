@@ -12,6 +12,7 @@ import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import type { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceJoinRequestRepository {
+    expireStalePending(): Promise<number>;
     findByIdAndWorkspace(
         workspaceJoinRequestId: string,
         workspaceId: string
@@ -28,16 +29,19 @@ export interface IWorkspaceJoinRequestRepository {
         workspaceId,
         userId,
         message,
-        pendingKey,
+        expiredAt,
+        nonce,
     }: IWorkspaceJoinRequestCreateData): Promise<WorkspaceJoinRequest>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceJoinRequestId: string,
+        nonce: string,
         reviewerId: string,
         reviewedAt: Date
     ): Promise<boolean>;
     reject(
         workspaceJoinRequestId: string,
+        nonce: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date

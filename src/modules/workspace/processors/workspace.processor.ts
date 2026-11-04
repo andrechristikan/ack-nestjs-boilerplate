@@ -8,7 +8,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
- * Consumes the workspace queue; currently only the recurring stale-invite expiry sweep.
+ * Consumes the workspace queue; the recurring stale-invite and stale-join-request expiry sweeps.
  */
 @QueueProcessor(EnumQueue.workspace)
 export class WorkspaceProcessor extends QueueProcessorBase {
@@ -26,6 +26,8 @@ export class WorkspaceProcessor extends QueueProcessorBase {
         switch (job.name) {
             case EnumWorkspaceProcess.expireStaleInvites:
                 return await this.workspaceProcessorService.processExpireStaleInvites();
+            case EnumWorkspaceProcess.expireStaleJoinRequests:
+                return await this.workspaceProcessorService.processExpireStaleJoinRequests();
             default:
                 this.workspaceProcessorService.processUnknown(job.name);
         }

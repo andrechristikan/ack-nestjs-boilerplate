@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -31,6 +32,7 @@ import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
+import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -115,6 +117,7 @@ describe('TermPolicyDomain', () => {
         termPolicyQueue.deleteContent.mockResolvedValue();
         termPolicyUtil.toContents.mockReturnValue([contentEn]);
         termPolicyUtil.isContentSizeAllowed.mockReturnValue(true);
+        termPolicyUtil.isContentKeyInPath.mockReturnValue(true);
         messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -193,7 +196,11 @@ describe('TermPolicyDomain', () => {
 
     describe('getListPublished', () => {
         it('delegates to the repository with pagination and type filter', async () => {
-            const params = { limit: 20, orderBy: [] };
+            const params = {
+                limit: 20,
+                orderBy: [],
+                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            };
             const page = {
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,
@@ -215,7 +222,11 @@ describe('TermPolicyDomain', () => {
 
         it('passes a null type filter when none is given', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput> =
-                { limit: 20, orderBy: [] };
+                {
+                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    limit: 20,
+                    orderBy: [],
+                };
             const page: IResponsePaginationReturn<TermPolicy> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -287,6 +298,47 @@ describe('TermPolicyDomain', () => {
                     ],
                 messagePath: 'termPolicy.error.contentsLanguageMustBeUnique',
             });
+            expect(termPolicyRepository.create).not.toHaveBeenCalled();
+        });
+
+        it('throws TermPolicyContentKeyInvalidException and writes nothing when a content key is outside the policy path', async () => {
+            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
+                false
+            );
+            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            termPolicyUtil.isContentKeyInPath.mockReturnValueOnce(true);
+            termPolicyUtil.isContentKeyInPath.mockReturnValueOnce(false);
+
+            const promise = domain.createByAdmin('term-policy-1', {
+                type: EnumTermPolicyType.privacy,
+                version: 1,
+                contents: [
+                    {
+                        language: EnumMessageLanguage.en,
+                        size: 1024,
+                        key: 'term-policies/privacy/1/en.hbs',
+                    },
+                    {
+                        language: EnumMessageLanguage.en,
+                        size: 1024,
+                        key: 'other/path/en.hbs',
+                    },
+                ],
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyContentKeyInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'termPolicy.error.contentKeyInvalid',
+            });
+            expect(termPolicyUtil.isContentKeyInPath).toHaveBeenCalledWith(
+                EnumTermPolicyType.privacy,
+                1,
+                'other/path/en.hbs'
+            );
+            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
             expect(termPolicyRepository.create).not.toHaveBeenCalled();
         });
 

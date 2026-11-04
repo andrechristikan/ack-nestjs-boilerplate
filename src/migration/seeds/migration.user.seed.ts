@@ -128,24 +128,6 @@ export class MigrationUserSeed
             return;
         }
 
-        const superAdminUsers = this.users.filter(
-            user => user.id === MigrationUserSuperAdminId
-        );
-        const superAdminEmails = superAdminUsers.map(user =>
-            user.email.toLowerCase()
-        );
-        const legacySuperAdmin = existingUsers.find(
-            user =>
-                superAdminEmails.includes(user.email) &&
-                user.id !== MigrationUserSuperAdminId
-        );
-        if (legacySuperAdmin) {
-            this.logger.error(
-                `Superadmin ${legacySuperAdmin.email} exists with id ${legacySuperAdmin.id}, expected ${MigrationUserSuperAdminId}. Run pnpm migration:remove, then pnpm migration:seed.`
-            );
-            return;
-        }
-
         const existingEmails = new Set(existingUsers.map(user => user.email));
 
         try {

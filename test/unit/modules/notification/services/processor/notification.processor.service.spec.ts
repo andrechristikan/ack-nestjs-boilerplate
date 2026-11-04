@@ -1,5 +1,8 @@
 import { Test } from '@nestjs/testing';
-import { buildTermPolicyPage } from '@test/unit/helpers/test.unit.notification-term-policy.helper';
+import {
+    buildTermPolicyCursorPage as cursorPage,
+    buildTermPolicyPage,
+} from '@test/unit/helpers/test.unit.notification-term-policy.helper';
 import { ConfigService } from '@nestjs/config';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { mock } from 'vitest-mock-extended';
@@ -995,8 +998,8 @@ describe('NotificationProcessorService', () => {
 
         it('pages the active users at the cutoff and sends each page as batches, advancing the batch index', async () => {
             userDomain.getListActiveRecipientCursor
-                .mockResolvedValueOnce([u1, u2, u3])
-                .mockResolvedValueOnce([u4]);
+                .mockResolvedValueOnce(cursorPage([u1, u2, u3], true))
+                .mockResolvedValueOnce(cursorPage([u4], false));
             const firstPage = buildTermPolicyPage([u1, u2, u3]);
             const secondPage = buildTermPolicyPage([u4]);
             notificationTermPolicyDomain.getPage
@@ -1014,7 +1017,7 @@ describe('NotificationProcessorService', () => {
             ).toHaveBeenNthCalledWith(1, null, 3, cutoff);
             expect(
                 userDomain.getListActiveRecipientCursor
-            ).toHaveBeenNthCalledWith(2, 'u3', 3, cutoff);
+            ).toHaveBeenNthCalledWith(2, 'cursor-after-u3', 3, cutoff);
             expect(
                 userDomain.getManyActiveRecipientsByIds
             ).not.toHaveBeenCalled();
@@ -1054,7 +1057,9 @@ describe('NotificationProcessorService', () => {
         });
 
         it('fetches the active users off the page that a pending batch names before sending them', async () => {
-            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([u1]);
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce(
+                cursorPage([u1], false)
+            );
             const page = buildTermPolicyPage([u1], [], ['B']);
             const pending = { sendableMarkers: [], offPageUserIds: ['u4'] };
             notificationTermPolicyDomain.getPage.mockResolvedValue(page);
@@ -1084,10 +1089,9 @@ describe('NotificationProcessorService', () => {
         });
 
         it('creates the fresh batch while the pending batches read their markers and users, numbering it after them', async () => {
-            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([
-                u1,
-                u2,
-            ]);
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce(
+                cursorPage([u1, u2], false)
+            );
             const page = buildTermPolicyPage([u1, u2], [u2], ['B1', 'B2']);
             notificationTermPolicyDomain.getPage.mockResolvedValue(page);
             const deferredPending = Promise.withResolvers<{
@@ -1121,28 +1125,47 @@ describe('NotificationProcessorService', () => {
 
         it('advances the cursor past a full page that sends nothing', async () => {
             userDomain.getListActiveRecipientCursor
-                .mockResolvedValueOnce([u1, u2, u3])
-                .mockResolvedValueOnce([]);
-            notificationTermPolicyDomain.getPage.mockResolvedValue(
-                buildTermPolicyPage([u1, u2, u3], [])
-            );
+                .mockResolvedValueOnce(cursorPage([u1, u2, u3], true))
+                .mockResolvedValueOnce(cursorPage([u4], false));
+            notificationTermPolicyDomain.getPage
+                .mockResolvedValueOnce(buildTermPolicyPage([u1, u2, u3], []))
+                .mockResolvedValueOnce(buildTermPolicyPage([u4], []));
             notificationTermPolicyDomain.sendFreshBatch.mockResolvedValue(0);
 
             const result = await service.processPublishTermPolicy(job);
 
             expect(
                 userDomain.getListActiveRecipientCursor
-            ).toHaveBeenNthCalledWith(2, 'u3', 3, cutoff);
+            ).toHaveBeenNthCalledWith(2, 'cursor-after-u3', 3, cutoff);
             expect(result).toEqual({
                 message: 'notification.queue.publishTermPolicy',
-                candidateCounts: 3,
+                candidateCounts: 4,
                 createdCounts: 0,
                 batches: 0,
             });
         });
 
+        it('stops after a full page that has no next page', async () => {
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce(
+                cursorPage([u1, u2, u3], false)
+            );
+            notificationTermPolicyDomain.getPage.mockResolvedValue(
+                buildTermPolicyPage([u1, u2, u3])
+            );
+            notificationTermPolicyDomain.sendFreshBatch.mockResolvedValue(1);
+
+            const result = await service.processPublishTermPolicy(job);
+
+            expect(
+                userDomain.getListActiveRecipientCursor
+            ).toHaveBeenCalledTimes(1);
+            expect(result).toMatchObject({ candidateCounts: 3, batches: 1 });
+        });
+
         it('stops after a page shorter than the batch size', async () => {
-            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([u1]);
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce(
+                cursorPage([u1], false)
+            );
             notificationTermPolicyDomain.getPage.mockResolvedValue(
                 buildTermPolicyPage([u1])
             );
@@ -1156,7 +1179,9 @@ describe('NotificationProcessorService', () => {
         });
 
         it('reads and sends nothing when there is no candidate', async () => {
-            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce([]);
+            userDomain.getListActiveRecipientCursor.mockResolvedValueOnce(
+                cursorPage([], false)
+            );
 
             const result = await service.processPublishTermPolicy(job);
 

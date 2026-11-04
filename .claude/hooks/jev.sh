@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Jev, TypeSafe's decision model, for ack-work. Calls Jev only when TYPESAFE_API_KEY is set and JEV_ROUTER_DISABLED is
 # not 1; otherwise ack-work decides on its own.
-#   route     UserPromptExpansion hook on /ack-work: judges the request and injects a <jev_route> reminder naming the
-#             route and each agent's model and effort. Every /ack-work also shows the owner one "Jev:" line: the route,
-#             off, unavailable, or no clear route.
+#   route     UserPromptSubmit hook on every prompt, reading the payload's prompt field. A prompt starting with / or
+#             shorter than min_request_chars prints nothing. Otherwise it shows the owner one "Jev:" line (the route,
+#             off, unavailable, or no clear route) and, for a settled route, injects a <jev_route> reminder that starts
+#             the ack-work skill on the route with each agent's model and effort.
 #   followup  run by ack-work after a route that changed files, JSON on stdin {"request","change","files"}: prints a
 #             <jev_followup> block naming the docs pages writer updates and whether the harness needs a change.
-# Questions, thresholds, and per-agent floors live in jev.json; the truth tables live here.
+# Questions and thresholds live in jev.json; each agent's floor is the model: and effort: of its .claude/agents/<name>.md
+# frontmatter; the truth tables live here.
 set -uo pipefail
 
 mode="${1:-}"
@@ -53,36 +55,57 @@ def ask(state, questions):
     return answers
 
 
+MODELS = ["haiku", "sonnet", "opus"]
+EFFORTS = ["low", "medium", "high"]
+
+
+def floor(agent):
+    """The model: and effort: lines of the agent's frontmatter; a missing file or line is haiku, low."""
+    found = {"model": "haiku", "effort": "low"}
+    try:
+        lines = open(os.path.join(os.environ["JEV_ROOT"], ".claude", "agents", f"{agent}.md"), encoding="utf-8").read().splitlines()
+    except OSError:
+        return found
+    if lines[:1] != ["---"]:
+        return found
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        key, _, value = line.partition(":")
+        value = value.strip()
+        if (key == "model" and value in MODELS) or (key == "effort" and value in EFFORTS):
+            found[key] = value
+    return found
+
+
 def route():
-    if payload.get("command_name") != "ack-work":
+    request = (payload.get("prompt") or "").strip()
+    if request.startswith("/") or len(request) < cfg["min_request_chars"]:
         return
-    request = (payload.get("command_args") or "").strip()
-    if len(request) < cfg["min_request_chars"]:
-        return print(json.dumps({"systemMessage": "Jev: request too short to judge; /ack-work routes on its own"}))
 
     def emit(shown, text=None):
-        # systemMessage is the owner's "Jev:" line; additionalContext is the reminder ack-work reads
+        # systemMessage is the owner's "Jev:" line; additionalContext is the reminder the session reads
         out = {"systemMessage": f"Jev: {shown}"}
         if text:
             out["hookSpecificOutput"] = {
-                "hookEventName": "UserPromptExpansion",
+                "hookEventName": "UserPromptSubmit",
                 "additionalContext": f"<jev_route>\n{text}\n</jev_route>",
             }
         print(json.dumps(out))
 
     state = os.environ["JEV_STATE"]
     if state == "no-key":
-        return emit("off (TYPESAFE_API_KEY not set); /ack-work routes on its own")
+        return emit("off (TYPESAFE_API_KEY not set); ack-work routes on its own")
     if state == "disabled":
-        return emit("off (JEV_ROUTER_DISABLED=1); /ack-work routes on its own")
+        return emit("off (JEV_ROUTER_DISABLED=1); ack-work routes on its own")
 
     a = ask({"repository": cfg["repository"], "request": request}, cfg["route_questions"])
     if isinstance(a, str):
-        return emit(a.replace("Jev unavailable", "unavailable").replace(". Decide directly.", "; /ack-work routes on its own"), a)
+        return emit(a.replace("Jev unavailable", "unavailable").replace(". Decide directly.", "; ack-work routes on its own"), a)
 
     yes = lambda name: a[name]["noul"] >= t["noul_yes"]
     no = lambda name: a[name]["noul"] <= t["noul_no"]
-    unsettled = "no clear route; /ack-work routes on its own"
+    unsettled = "no clear route; ack-work routes on its own"
     if not yes("is_repo_task"):
         return emit(unsettled)
     kind = a["kind"]["choice"]
@@ -101,16 +124,15 @@ def route():
                     f"Route: owner skill {owner_skills[kind]}. Name it to the owner and stop.\n{signals}")
 
     # The effort Score picks a level; each level is a model and an effort. An agent never runs below its floor.
-    levels = [("haiku", "low"), ("sonnet", "medium"), ("opus", "high")]
-    models = [m for m, _ in levels]
-    efforts = ["low", "medium", "high"]
+    # The session raises reviewer to opus, high at end to end; the depth is set after routing (ack-work SKILL.md).
+    levels = list(zip(MODELS, EFFORTS))
     effort = a["effort"]["score"]
     level = 0 if effort < t["effort_sonnet"] else 1 if effort < t["effort_opus"] else 2
 
     def at(agent, model=None, effort_level=None, at_least="low"):
-        floor = cfg["floors"].get(agent, {"model": "haiku", "effort": "low"})
-        m = max(model or levels[level][0], floor["model"], key=models.index)
-        e = max(effort_level or levels[level][1], floor["effort"], at_least, key=efforts.index)
+        base = floor(agent)
+        m = max(model or levels[level][0], base["model"], key=MODELS.index)
+        e = max(effort_level or levels[level][1], base["effort"], at_least, key=EFFORTS.index)
         return f"{agent} ({m}, {e})"
 
     if kind == "bug_report" and yes("cause_named"):
@@ -124,17 +146,20 @@ def route():
         # locate is a text search: explorer stays on haiku at low effort
         route_name, chain = "change", [at("explorer", model="haiku", effort_level="low"), at("coder"), at("reviewer")]
     elif kind == "new_behaviour":
-        route_name, chain = "feature", [at("explorer", model=max(levels[level][0], "sonnet", key=models.index), at_least="medium"), at("coder"), at("reviewer")]
+        route_name, chain = "feature", [at("explorer", model=max(levels[level][0], "sonnet", key=MODELS.index), at_least="medium"), at("planner"), at("coder"), at("reviewer")]
     elif kind == "review":
         route_name, chain = "review", [at("reviewer")]
+    elif kind == "code_question" and level == 0:
+        route_name, chain = "answer", []
     else:
         # a code question: a text search runs on haiku, a contract or an assessment climbs with effort
         route_name, chain = "explore", [at("explorer")]
 
-    agents = ", ".join(chain) or "none, the session works alone"
+    alone = "none, the session answers" if route_name == "answer" else "none, the session works alone"
+    agents = ", ".join(chain) or alone
     emit(
         f"{route_name}, {agents}",
-        f"Route: {route_name}. Agents: {agents}.\n{signals}\n"
+        f"Invoke the ack-work skill and follow route {route_name}. Agents: {agents}.\n{signals}\n"
         "Pass each agent's model and effort as its Agent model and effort. "
         "Ignore this reminder when it does not fit the request."
     )

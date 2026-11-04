@@ -14,6 +14,7 @@
             "WebSearch",
             "Agent(general-purpose)",
             "Agent(explorer)",
+            "Agent(planner)",
             "Agent(coder)",
             "Agent(reviewer)",
             "Agent(writer)",
@@ -206,9 +207,8 @@
                 ]
             }
         ],
-        "UserPromptExpansion": [
+        "UserPromptSubmit": [
             {
-                "matcher": "ack-work",
                 "hooks": [
                     {
                         "type": "command",

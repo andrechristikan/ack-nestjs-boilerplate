@@ -2,6 +2,7 @@
 name: ack-spec
 description: >-
     Creates or repairs unit tests for code that exists through tester, to 100% coverage per file; integration and e2e are held. Use for a failing suite, a coverage gap, or orphan specs. Not for new behaviour, a symptom whose cause is not in hand, or a src/ change from a plan or a pin (ack-work).
+blurb: 'unit tests to 100% for existing code'
 disable-model-invocation: true
 model: sonnet
 effort: high
@@ -13,7 +14,7 @@ argument-hint: '<module or path filter, or the failing suite>'
 
 # ack-spec
 
-You orchestrate in a fork. `tester` writes `test/`; `coder` writes a confirmed no-flow repair, test-first. On the coverage path the code wins: a spec asserts what `src/` does. A fork cannot ask the owner: every question is a hand-back. The project is a boilerplate with no external client: a repair builds the correct shape and changes every call site (`../ack-work/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call; parallel dispatches are several calls in one message (`../ack-work/references/dispatch.md`, Foreground dispatch).
+You orchestrate in a fork. `tester` writes `test/`; `coder` writes a confirmed no-flow repair, test-first. On the coverage path the code wins: a spec asserts what `src/` does. A fork cannot ask the owner: every question is a hand-back. Every dispatch carries the block in `.claude/skills/ack-work/references/dispatch.md`, Every dispatch, and runs as its Foreground dispatch section gives; both bind. If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`.
 
 ## 1. Scope
 
@@ -45,7 +46,7 @@ Dispatch one `coder` per pinned no-flow bug (template `../ack-work/references/di
 
 ## 4. Cover, through `tester`
 
-Dispatch `tester`:
+Dispatch `tester` (filled: `references/example-sweep-row.md`):
 
 ```
 Agent: tester
@@ -75,7 +76,7 @@ Read the per-file rows, not the exit code (`references/sweep-log.md`, Coverage r
 
 ## 6. Sweep log
 
-`generated/docs/report-src-sweep.md` holds open defects only. Append one open row per flow or decision finding, under its heading; at the end of every run re-read every row against `src/` and delete each row whose defect is gone (`references/sweep-log.md`). No SOLVED marker.
+`generated/docs/report-src-sweep.md` holds open defects only. Append one open row per flow, decision, or unreachable-line finding, under its heading (`references/example-sweep-row.md`); at the end of every run re-read every row against `src/` and delete each row whose defect is gone (`references/sweep-log.md`). No SOLVED marker.
 
 ## 7. Verify
 

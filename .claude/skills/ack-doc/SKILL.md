@@ -2,6 +2,7 @@
 name: ack-doc
 description: >-
     Checks docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md against the checkout through writer and repairs what is stale, final state only. Use when the owner asks to update, verify, or extend the docs, or for an architecture diagram. Not for a PR description or version notes (ack-pr), src/ (ack-work), or .claude/** (ack-harness).
+blurb: 'docs, root people files, .github against the code'
 disable-model-invocation: true
 argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <name and subject>]"
 ---
@@ -10,7 +11,7 @@ argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <n
 
 # ack-doc
 
-You orchestrate one dispatch to `writer`, the agent that owns reader-facing prose, then a reader test of what it added. This skill runs in the session so the owner settles a scope question and each CONFLICT. You do not edit those trees yourself. Final state only: `.claude/rules/authoring.md`. The project is a boilerplate with no external client: the docs state the correct shape as it is on disk (`../ack-work/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call; parallel dispatches are several calls in one message (`../ack-work/references/dispatch.md`, Foreground dispatch).
+You orchestrate one dispatch to `writer`, the agent that owns reader-facing prose, then a reader test of what it added. This skill runs in the session so the owner settles a scope question and each CONFLICT. You do not edit those trees yourself. Final state only: `.claude/rules/authoring.md`. Every dispatch carries the block in `.claude/skills/ack-work/references/dispatch.md`, Every dispatch, and runs as its Foreground dispatch section gives; both bind. If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`.
 
 ## 1. Scope
 
@@ -49,7 +50,7 @@ Acceptance: every claim classified ACCURATE, STALE, MISSING, PHANTOM, CONTRADICT
   the Diagram line; no em-dash; keep the page's section structure. Run humanizer in file
   mode on every markdown file touched; YAML is repaired for stale facts only.
 Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
-Report: findings by class, files changed, every CONFLICT with its evidence, the
+Report: findings by class (shape: .claude/skills/ack-doc/references/example-writer-report.md), files changed, every CONFLICT with its evidence, the
   humanizer spans touched, the reader questions predicted per page created or section
   added, and for a diagram the HTML and SVG paths under docs/assets/ and the drawing plan.
 ```

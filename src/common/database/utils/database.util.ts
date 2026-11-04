@@ -53,7 +53,10 @@ export class DatabaseUtil {
             return `${scheme}${authority}${path}`;
         }
 
-        const username = authority.slice(0, credentialEnd).split(':')[0] ?? '';
+        const username = authority
+            .slice(0, credentialEnd)
+            .split(':', 1)
+            .join('');
         const hosts = authority.slice(credentialEnd + 1);
         const user =
             username === ''

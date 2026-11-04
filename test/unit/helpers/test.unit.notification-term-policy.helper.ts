@@ -1,3 +1,5 @@
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import type { IPaginationCursorReturn } from '@common/pagination/interfaces/pagination.interface';
 import type {
     INotificationTermPolicyBatchRecipient,
     INotificationTermPolicyPage,
@@ -33,4 +35,17 @@ export function buildTermPolicyPage(
     pendingBatchIds: string[] = []
 ): INotificationTermPolicyPage {
     return { users, freshUsers, pendingBatchIds };
+}
+
+export function buildTermPolicyCursorPage(
+    data: IUserRecipient[],
+    hasNext: boolean
+): IPaginationCursorReturn<IUserRecipient> {
+    return {
+        type: EnumPaginationType.cursor,
+        perPage: 3,
+        hasNext,
+        data,
+        ...(hasNext && { cursor: `cursor-after-${data.at(-1)?.id}` }),
+    };
 }

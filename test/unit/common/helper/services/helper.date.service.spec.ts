@@ -101,6 +101,17 @@ describe('HelperDateService', () => {
         });
     });
 
+    describe('getHour', () => {
+        it('returns the hour of the date in the configured timezone', () => {
+            expect(service.getHour(new Date('2026-01-01T16:00:00.000Z'))).toBe(
+                23
+            );
+            expect(service.getHour(new Date('2026-01-01T17:00:00.000Z'))).toBe(
+                0
+            );
+        });
+    });
+
     describe('getTimestamp', () => {
         it('returns the epoch millisecond instant of the date', () => {
             const date = new Date('2026-01-01T00:00:00.000Z');

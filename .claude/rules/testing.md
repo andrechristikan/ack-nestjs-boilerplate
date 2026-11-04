@@ -21,7 +21,7 @@ Integration asserts only what a mock cannot: a rollback, a unique index rejectin
 ## Layout and runs
 
 - `vitest.config.ts` is the only config; `test.projects` holds `unit` (`test/unit/**/*.spec.ts`); a released type adds its project on the same pattern. A spec mirrors its subject's `src/` path under `test/<type>/`. A helper for one type lives in `test/<type>/helpers/` and moves to `test/helpers/` when a second type imports it (names: `naming.md`); specs import it through `@test/*`.
-- `pnpm test` (unit, no Docker; pre-commit and `verify.sh` run it) takes a path filter (`pnpm test user.domain`); name it when reporting. `pnpm test:cov` applies the 100% thresholds to `src/**/*.ts` minus `coverage.exclude`; an excluded file gets no spec.
+- `pnpm test` (unit, no Docker) takes a path filter (`pnpm test user.domain`); name it when reporting. Pre-commit runs the full unit suite; the Stop hook `verify.sh` runs the specs of the changed modules, and the full suite when a changed path lies outside `src/modules/<name>/`, `src/common/<name>/`, and their `test/unit/` mirrors. `pnpm test:cov` applies the 100% thresholds to `src/**/*.ts` minus `coverage.exclude`; an excluded file gets no spec.
 - `test/helpers/test.logger.helper.ts`, first in every `setupFiles`, mutes Nest loggers; never mock, spy, or assert one.
 
 ## Spec content

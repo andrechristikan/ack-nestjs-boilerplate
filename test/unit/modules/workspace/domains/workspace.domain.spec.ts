@@ -137,7 +137,11 @@ describe('WorkspaceDomain', () => {
     describe('getListCursorByMember', () => {
         it('delegates to the repository cursor listing', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput> =
-                { limit: 20, orderBy: [] };
+                {
+                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    limit: 20,
+                    orderBy: [],
+                };
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

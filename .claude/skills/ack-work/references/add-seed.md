@@ -22,8 +22,6 @@ Static rows live in `src/migration/data/migration.<concern>.data.ts` as a Pascal
 - `remove()` resets the collections `seed()` owns with `deleteMany` (`:78-92`).
 - A failed write is wrapped and thrown with no log before it, `throw new AppUnknownException(error)` (`:70`; `.claude/rules/exceptions.md`, `.claude/rules/logging.md`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
 
-A seed whose fixed id may already belong to another row checks first and stops with a message naming the email and both ids (`src/migration/seeds/migration.user.seed.ts`).
-
 ## 4. Register
 
 Add the class to `providers` in `src/migration/migration.module.ts:21-32`, and a kit module it injects from (`AwsModule`) to `imports` (`:34`). A feature domain module goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a feature repository module never does. The `providers` order does not decide run order.

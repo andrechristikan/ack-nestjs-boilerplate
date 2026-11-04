@@ -5,15 +5,16 @@
 Binds every skill that dispatches an agent. An Agent call may return before the agent finishes; the hand-back is the result.
 
 - Pass `run_in_background: false` on every Agent call where the tool offers the parameter.
-- Run parallel work (a review split into parts, one reader test per file) as several calls in one message. They run concurrently.
-- Wait for every dispatched agent's hand-back before the next step. Never poll: `Monitor` and `Workflow` are denied, and scheduled wakeups and cron jobs are off (`.claude/CLAUDE.md`, Etiquette).
+- Run parallel work (a review split into parts, one reader test per file) as several calls in one message.
+- Wait for every dispatched agent's hand-back before the next step; never poll (`.claude/CLAUDE.md`, Etiquette).
 - Read each hand-back and act on it (confirm or reject, route, record) before the next step. End the turn only when every hand-back has been read and acted on.
 
 ## Every dispatch
 
-Every dispatch carries these lines verbatim after the template body:
+Every dispatch carries these lines verbatim after the template body, except `Decisions:`: fill it once, in the template's slot where it has one; before a plan file exists, with the owner's answers so far, or `none`.
 
 ```
+Decisions: <the **Decisions:** block of the plan file, pasted>
 The working tree is the source, including unstaged and untracked files; read files from
 disk, never from `HEAD` or a ref. To list what changed, use `git status --short` and
 `git diff HEAD --name-only` plus `git ls-files --others --exclude-standard`; never
@@ -26,7 +27,7 @@ Before writing or judging, run `bash .claude/hooks/rules.sh <every file you touc
 Reply in English.
 ```
 
-Rules by path: `bash .claude/hooks/rules.sh <path>...` prints the rules binding those paths, the unscoped five included. A newline-joined list goes in as one argument (`"$P"`) or on stdin (`git diff HEAD --name-only | bash .claude/hooks/rules.sh`), zsh included. Run it over a template's `Scope` paths and paste its output into `Rules to read:`.
+Rules by path: `bash .claude/hooks/rules.sh <path>...` prints the rules binding those paths, the unscoped five included; a newline-joined list goes in as one argument (`"$P"`) or on stdin, zsh included. Paste its output over a template's `Scope` paths into `Rules to read:`.
 
 ## Explorer
 
@@ -34,11 +35,12 @@ Rules by path: `bash .claude/hooks/rules.sh <path>...` prints the rules binding 
 Agent: explorer
 Mode: locate | contract | assess
 Requirement: <the settled paragraph>
+Decisions: <the **Decisions:** block of the plan file, pasted>
 Scope: <modules or paths the requirement names>
 Question: <what the session cannot answer from the code it has read>
 Deliver: a location table (file:line per touch point), the third-party contract quoted
 with its source, two or three approaches with trade-offs and a recommendation, and every
-open question the owner has to settle.
+open owner question.
 Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
 ```
 
@@ -49,6 +51,7 @@ Agent: debugger
 Symptom: input <..>; observed <..>; expected <..>; surfaces at <route, spec, log line, or job>
 Scope: <modules or paths the symptom touches>
 Decision: <the owner's answer to a previous NEEDS_DECISION, or none>
+Decisions: <the **Decisions:** block of the plan file, pasted>
 Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
 Report: the reproduction command and its decisive line; each hypothesis with the
   evidence that confirmed or killed it; the root cause at file:line; the pin (files,
@@ -60,18 +63,16 @@ Report: the reproduction command and its decisive line; each hypothesis with the
 
 ```
 Agent: coder
-Task: <.superpowers/plans/<plan-basename>.md> task <N>, its text pasted
+Task: <.superpowers/plans/<plan-basename>.md> task <N>: task text pasted, or the brief path
   or
 Pin: files <paths>; cause at <file:line>; change <one sentence>
+Decisions: <the **Decisions:** block of the plan file, pasted>
 Scope: <module directories this task may edit; test/ mirrors of the same; the specs,
   test helpers, setup or global-setup files, test config, and run-surface files the task's
   Files list names>
 Test first: when the task changes src/ behaviour, write the failing spec under test/unit/
   mirroring the subject, run `pnpm test <path filter>` and quote the failing line, then
-  implement the minimum. Specs, test helpers, setup or global-setup files, and test config
-  the task's Files list names (a moved spec, a spec rewritten to a rule) are written as
-  listed; no other spec (coverage work is tester). Integration and e2e are held
-  (`.claude/rules/testing.md`): a task naming one is a hand-back.
+  implement the minimum; integration and e2e are held (`.claude/rules/testing.md`).
 Acceptance: `pnpm typecheck` exit 0; the task's own acceptance commands when the plan
   names them (the parity counts), otherwise
   `pnpm test <module>` green with the new spec named; the run surface (`.claude/rules/layering.md`,
@@ -83,7 +84,8 @@ Schema: when prisma/schema.prisma changes, run `pnpm db:generate` and hand back 
 Seeds: a seed under src/migration/ follows `.claude/skills/ack-work/references/add-seed.md`.
 Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
 Report: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED; files changed; the decisive
-  test and typecheck lines; open items.
+  test and typecheck lines; open items; on a plan task, also written to
+  generated/docs/report-<plan-basename>-task-<N>.md.
 ```
 
 ## Reviewer
@@ -93,17 +95,25 @@ Agent: reviewer
 Depth: task | plan | docs | harness | rules and boot | end to end through guards, services, repository, processors
 Scope: <files and modules from git status --short, a plan path, docs files, or harness files, as the depth needs>
 Requirement: <the task text, the plan path, or the settled paragraph>
-Checks: at task, rules and boot, and end to end: every rule file that binds a changed path,
-  named in the report; every sequential await of independent work
-  (.claude/rules/concurrency.md); boot (pnpm build, on exit 0 timeout 90 node --import
-  ./dist/instrument.js dist/main.js, the 'App Name:' block in its log) when the depth
-  includes it; pnpm lint, pnpm deadcode, pnpm spell; pnpm typecheck only with no boot,
-  as the boot's pnpm build runs it: quote the build's exit code and first error TS line.
-  At plan, docs, and harness: only what the depth names in .claude/agents/reviewer.md.
+Decisions: <the **Decisions:** block of the plan file, pasted>
+Checks: the depth's checks in .claude/agents/reviewer.md (Depth, Checks), the boot when
+  the depth includes it; every rule file that binds a changed path, named in the report.
   Never pnpm test at any scope.
 Report: only what affects correctness or the stated requirement, each labelled Critical,
   Important, or Minor, with file:line and the rule or requirement it breaks; the rule
   files read; the surfaces checked and found clean; each check command with its exit code
   and decisive output quoted. Do not fix anything.
 Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
+```
+
+## Planner
+
+```
+Agent: planner
+Requirement: <the design path or the chat-approved design; the settled paragraph>
+Decisions: <the owner's answers so far, verbatim>
+Location table: <explorer's, pasted>
+Review depth: <SKILL.md, Review, for feature>
+Deliver: .superpowers/plans/YYYY-MM-DD-<slug>.md (references/gate.md); **Agents:** <each agent, model, effort>
+Rules to read: <the output of bash .claude/hooks/rules.sh over the table's paths, pasted>
 ```

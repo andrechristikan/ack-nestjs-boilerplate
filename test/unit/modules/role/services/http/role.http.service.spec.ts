@@ -123,7 +123,11 @@ describe('RoleHttpService', () => {
     const offsetPagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput> =
         { skip: 0, limit: 20, orderBy: [] };
     const cursorPagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
-        { limit: 20, orderBy: [] };
+        {
+            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            limit: 20,
+            orderBy: [],
+        };
 
     let service: RoleHttpService;
 

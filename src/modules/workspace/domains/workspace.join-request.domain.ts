@@ -5,6 +5,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationIn,
@@ -21,7 +22,7 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
-import { WorkspaceJoinRequestPendingKeyPattern } from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
 import { WorkspaceJoinRequestDuplicateException } from '@modules/workspace/exceptions/workspace.join-request-duplicate.exception';
@@ -34,9 +35,12 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceJoinRequestDomain {
+    private readonly expiresInMs: number;
+
     constructor(
         private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
@@ -45,8 +49,14 @@ export class WorkspaceJoinRequestDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService
-    ) {}
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService,
+        private readonly configService: ConfigService
+    ) {
+        this.expiresInMs = this.configService.get<number>(
+            'workspace.joinRequest.expiresInMs'
+        )!;
+    }
 
     async getJoinableWorkspace(
         userId: string,
@@ -76,24 +86,36 @@ export class WorkspaceJoinRequestDomain {
         userId: string,
         create: IWorkspaceJoinRequestCreate
     ): Promise<WorkspaceJoinRequest> {
-        const pendingKey = this.helperStringService.fillPattern(
-            WorkspaceJoinRequestPendingKeyPattern,
+        const noncePattern = this.helperStringService.fillPattern(
+            WorkspaceJoinRequestNoncePattern,
             { workspaceId: create.workspaceId, userId }
         );
+        const nonce = this.helperHashService.sha256Hash(noncePattern);
+        const now = this.helperDateService.create();
+        const duration = this.helperDateService.createDuration({
+            milliseconds: this.expiresInMs,
+        });
+        const expiredAt = this.helperDateService.forward(now, duration);
 
         try {
             return await this.workspaceJoinRequestRepository.createPending({
                 workspaceId: create.workspaceId,
                 userId,
                 message: create.message,
-                pendingKey,
+                expiredAt,
+                nonce,
             });
         } catch (err: unknown) {
             const isDuplicate = this.databaseUtil.isUniqueCollision(
                 err,
-                'pendingKey'
+                'nonce'
             );
             if (isDuplicate) {
+                throw new WorkspaceJoinRequestDuplicateException();
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
                 throw new WorkspaceJoinRequestDuplicateException();
             }
 
@@ -138,6 +160,7 @@ export class WorkspaceJoinRequestDomain {
         reviewerId: string
     ): Promise<void> {
         const reviewedAt = this.helperDateService.create();
+        const nonce = this.helperHashService.sha256Hash(joinRequest.id);
 
         try {
             await this.databaseService.withTransaction(async tx => {
@@ -145,6 +168,7 @@ export class WorkspaceJoinRequestDomain {
                     await this.workspaceJoinRequestRepository.acceptInTx(
                         tx,
                         joinRequest.id,
+                        nonce,
                         reviewerId,
                         reviewedAt
                     );
@@ -188,9 +212,11 @@ export class WorkspaceJoinRequestDomain {
         rejectReasonCode: EnumWorkspaceJoinRejectReason
     ): Promise<void> {
         const reviewedAt = this.helperDateService.create();
+        const nonce = this.helperHashService.sha256Hash(workspaceJoinRequestId);
 
         const rejected = await this.workspaceJoinRequestRepository.reject(
             workspaceJoinRequestId,
+            nonce,
             reviewerId,
             rejectReasonCode,
             reviewedAt
@@ -198,6 +224,10 @@ export class WorkspaceJoinRequestDomain {
         if (!rejected) {
             throw new WorkspaceJoinRequestAlreadyProcessedException();
         }
+    }
+
+    async expireStalePending(): Promise<number> {
+        return this.workspaceJoinRequestRepository.expireStalePending();
     }
 
     async cancelPendingByWorkspaceInTx(

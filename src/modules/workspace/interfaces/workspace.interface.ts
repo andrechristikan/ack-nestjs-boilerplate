@@ -83,7 +83,7 @@ export interface IWorkspaceInviteCreateData {
     reference: string;
     expiredAt: Date;
     invitedByUserId: string;
-    pendingKey: string;
+    nonce: string;
 }
 
 export interface IWorkspaceInvitePreviewSummary {
@@ -102,7 +102,8 @@ export interface IWorkspaceJoinRequestCreateData {
     workspaceId: string;
     userId: string;
     message: string | null;
-    pendingKey: string;
+    expiredAt: Date;
+    nonce: string;
 }
 
 export type IWorkspaceField = Extract<keyof Workspace, string>;

@@ -432,7 +432,7 @@ describe('UserAuthHttpService', () => {
         invitedByUserId: 'user-inviter',
         acceptedAt: null,
         acceptedByUserId: null,
-        pendingKey: 'workspace-invite:bramble@example.com',
+        nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
     const challenge: IAuthTwoFactorChallengeCache = {
         userId: 'user-bramble',
@@ -2873,6 +2873,16 @@ describe('UserAuthHttpService', () => {
                 service['reachMaxAttempt']('user-bramble')
             ).resolves.toBeNull();
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('rethrows an app exception of the lockout unchanged', async () => {
+            const failure = new AuthTwoFactorAttemptMaxException();
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(
+                service['reachMaxAttempt']('user-bramble')
+            ).rejects.toBe(failure);
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('wraps any other failure of the lockout in the unknown exception', async () => {

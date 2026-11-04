@@ -37,6 +37,7 @@ describe('CountryHttpService', () => {
     };
 
     const pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput> = {
+        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
         limit: 20,
         orderBy: [],
     };

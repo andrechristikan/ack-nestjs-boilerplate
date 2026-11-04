@@ -21,7 +21,12 @@ describe('ActivityLogHttpService', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const params = { skip: 0, limit: 20, orderBy: [] };
+    const params = {
+        skip: 0,
+        limit: 20,
+        orderBy: [],
+        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+    };
     const storePatch = { perPage: 20 };
     const offsetQuery: ActivityLogAdminListRequestDto = {};
     const workspaceQuery: ActivityLogAdminWorkspaceListRequestDto = {

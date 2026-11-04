@@ -109,7 +109,11 @@ describe('WorkspaceHttpService', () => {
     const offsetPagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput> =
         { skip: 0, limit: 20, orderBy: [] };
     const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput> =
-        { limit: 20, orderBy: [] };
+        {
+            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            limit: 20,
+            orderBy: [],
+        };
 
     let service: WorkspaceHttpService;
 

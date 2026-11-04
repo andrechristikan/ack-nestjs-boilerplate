@@ -5,6 +5,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type {
+    IPaginationCursorReturn,
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
@@ -105,19 +106,23 @@ export class UserRepository implements IUserRepository {
 
     async findActiveRecipientsCursor(
         cursor: string | null,
-        take: number,
+        limit: number,
         createdBefore: Date
-    ): Promise<IUserRecipient[]> {
-        return this.databaseService.client.user.findMany({
+    ): Promise<IPaginationCursorReturn<IUserRecipient>> {
+        return this.paginationService.cursor<
+            IUserRecipient,
+            Prisma.UserWhereInput
+        >(this.databaseService.client.user, {
             where: {
                 ...UserNotDeletedWhere,
                 status: EnumUserStatus.active,
                 createdAt: { lte: createdBefore },
-                ...(cursor !== null && { id: { gt: cursor } }),
             },
+            orderBy: [{ id: EnumPaginationOrderDirectionType.asc }],
+            limit,
+            firstPageAt: createdBefore,
             select: UserRecipientSelect,
-            orderBy: { id: EnumPaginationOrderDirectionType.asc },
-            take,
+            ...(cursor !== null && { cursor }),
         });
     }
 

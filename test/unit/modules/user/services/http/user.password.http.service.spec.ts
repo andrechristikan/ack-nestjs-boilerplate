@@ -1286,4 +1286,39 @@ describe('UserPasswordHttpService', () => {
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
         });
     });
+
+    describe('reachMaxAttempt', () => {
+        it('rethrows an app exception of the lockout unchanged', async () => {
+            const failure = new UserPasswordAttemptMaxException();
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(
+                service['reachMaxAttempt']('user-linden')
+            ).rejects.toBe(failure);
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+        });
+
+        it('answers null when the lockout write conflicts', async () => {
+            const conflict = new Error('write conflict');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service['reachMaxAttempt']('user-linden')
+            ).resolves.toBeNull();
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('wraps any other failure of the lockout in AppUnknownException', async () => {
+            const cause = new Error('database exploded');
+            databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service['reachMaxAttempt']('user-linden')
+            ).rejects.toMatchObject({ rawError: cause });
+        });
+    });
 });

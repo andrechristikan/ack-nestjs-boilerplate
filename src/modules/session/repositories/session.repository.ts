@@ -60,8 +60,6 @@ export class SessionRepository implements ISessionRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        const now = this.helperDateService.create();
-
         return this.paginationService.cursor<
             ISessionList,
             Prisma.SessionWhereInput
@@ -71,7 +69,7 @@ export class SessionRepository implements ISessionRepository {
                 ...where,
                 userId,
                 isRevoked: false,
-                expiredAt: { gte: now },
+                expiredAt: { gte: others.firstPageAt },
             },
             select: SessionListSelect,
         });

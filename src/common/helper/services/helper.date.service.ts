@@ -53,6 +53,10 @@ export class HelperDateService {
         return DateTime.fromJSDate(date).setZone(this.defTz).zone.name;
     }
 
+    getHour(date: Date): number {
+        return DateTime.fromJSDate(date).setZone(this.defTz).hour;
+    }
+
     getZoneOffset(date: Date): string {
         return (
             DateTime.fromJSDate(date).setZone(this.defTz).offsetNameShort ??

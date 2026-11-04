@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -11,6 +12,8 @@ import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositorie
 describe('ActivityLogAnalyticDomain', () => {
     const activityLogAnalyticRepository: MockProxy<ActivityLogAnalyticRepository> =
         mock<ActivityLogAnalyticRepository>();
+
+    const pageSize = 2;
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -26,6 +29,10 @@ describe('ActivityLogAnalyticDomain', () => {
                 {
                     provide: ActivityLogAnalyticRepository,
                     useValue: activityLogAnalyticRepository,
+                },
+                {
+                    provide: ConfigService,
+                    useValue: { get: vi.fn().mockReturnValue(pageSize) },
                 },
             ],
         }).compile();
@@ -126,34 +133,208 @@ describe('ActivityLogAnalyticDomain', () => {
         });
     });
 
-    describe('getManyByActionsInRange', () => {
-        it('delegates to the repository', async () => {
-            const rows = [
-                {
-                    id: 'activity-log-1',
-                    userId: 'user-1',
-                    action: EnumActivityLogAction.userLogout,
-                    ipAddress: null,
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-            ];
-            activityLogAnalyticRepository.findManyByActionsInRange.mockResolvedValue(
+    describe('getPageByActionsInRange', () => {
+        const row = {
+            id: 'a',
+            userId: 'user-1',
+            action: EnumActivityLogAction.userLogout,
+            ipAddress: null,
+            createdAt: startDate,
+            workspaceId: null,
+            userAgent: null,
+        };
+
+        it('reads one page from the repository at the configured page size', async () => {
+            const page = {
+                type: EnumPaginationType.cursor as const,
+                perPage: pageSize,
+                hasNext: true,
+                cursor: 'next-cursor',
+                data: [row],
+            };
+            activityLogAnalyticRepository.findPageByActionsInRange.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getPageByActionsInRange(
+                [EnumActivityLogAction.userLogout],
+                startDate,
+                endDate,
+                'prev-cursor'
+            );
+
+            expect(result).toBe(page);
+            expect(
+                activityLogAnalyticRepository.findPageByActionsInRange
+            ).toHaveBeenCalledWith(
+                [EnumActivityLogAction.userLogout],
+                startDate,
+                endDate,
+                'prev-cursor',
+                pageSize
+            );
+        });
+
+        it('passes a null cursor for the first page', async () => {
+            const page = {
+                type: EnumPaginationType.cursor as const,
+                perPage: pageSize,
+                hasNext: false,
+                data: [],
+            };
+            activityLogAnalyticRepository.findPageByActionsInRange.mockResolvedValue(
+                page
+            );
+
+            await domain.getPageByActionsInRange(
+                [EnumActivityLogAction.userLogout],
+                startDate,
+                endDate,
+                null
+            );
+
+            expect(
+                activityLogAnalyticRepository.findPageByActionsInRange
+            ).toHaveBeenCalledWith(
+                [EnumActivityLogAction.userLogout],
+                startDate,
+                endDate,
+                null,
+                pageSize
+            );
+        });
+    });
+
+    describe('getGroupUserByActions', () => {
+        it('passes the actions, range, and minimum count to the repository', async () => {
+            const rows = [{ userId: 'user-1', count: 6 }];
+            activityLogAnalyticRepository.groupUserByActions.mockResolvedValue(
                 rows
             );
 
-            const result = await domain.getManyByActionsInRange(
-                [EnumActivityLogAction.userLogout],
+            const result = await domain.getGroupUserByActions(
+                [EnumActivityLogAction.userRefreshToken],
+                startDate,
+                endDate,
+                5
+            );
+
+            expect(result).toBe(rows);
+            expect(
+                activityLogAnalyticRepository.groupUserByActions
+            ).toHaveBeenCalledWith(
+                [EnumActivityLogAction.userRefreshToken],
+                startDate,
+                endDate,
+                5
+            );
+        });
+    });
+
+    describe('getGroupUserIdByIps', () => {
+        it('passes the actions, range, and ips to the repository', async () => {
+            activityLogAnalyticRepository.groupUserIdByIps.mockResolvedValue([
+                'user-1',
+            ]);
+
+            const result = await domain.getGroupUserIdByIps(
+                [EnumActivityLogAction.userSignedUp],
+                startDate,
+                endDate,
+                ['10.0.0.1']
+            );
+
+            expect(result).toEqual(['user-1']);
+            expect(
+                activityLogAnalyticRepository.groupUserIdByIps
+            ).toHaveBeenCalledWith(
+                [EnumActivityLogAction.userSignedUp],
+                startDate,
+                endDate,
+                ['10.0.0.1']
+            );
+        });
+    });
+
+    describe('getGroupIpUserByActions', () => {
+        it('passes the actions and range to the repository', async () => {
+            const rows = [
+                { ipAddress: '10.0.0.1', userId: 'user-1', count: 3 },
+            ];
+            activityLogAnalyticRepository.groupIpUserByActions.mockResolvedValue(
+                rows
+            );
+
+            const result = await domain.getGroupIpUserByActions(
+                [EnumActivityLogAction.userLoginFailed],
                 startDate,
                 endDate
             );
 
             expect(result).toBe(rows);
             expect(
-                activityLogAnalyticRepository.findManyByActionsInRange
+                activityLogAnalyticRepository.groupIpUserByActions
             ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userLogout],
+                [EnumActivityLogAction.userLoginFailed],
+                startDate,
+                endDate
+            );
+        });
+    });
+
+    describe('getOneByUserActionsInRange', () => {
+        it('passes the user, actions, and range to the repository', async () => {
+            const row = {
+                id: 'a',
+                userId: 'user-1',
+                action: EnumActivityLogAction.userLoginCredential,
+                ipAddress: null,
+                createdAt: startDate,
+                workspaceId: null,
+                userAgent: null,
+            };
+            activityLogAnalyticRepository.findOneByUserActionsInRange.mockResolvedValue(
+                row
+            );
+
+            const result = await domain.getOneByUserActionsInRange(
+                'user-1',
+                [EnumActivityLogAction.userLoginCredential],
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(row);
+            expect(
+                activityLogAnalyticRepository.findOneByUserActionsInRange
+            ).toHaveBeenCalledWith(
+                'user-1',
+                [EnumActivityLogAction.userLoginCredential],
+                startDate,
+                endDate
+            );
+        });
+    });
+
+    describe('getCreatedAtByUserActionsInRange', () => {
+        it('passes the user, actions, and range to the repository', async () => {
+            activityLogAnalyticRepository.findCreatedAtByUserActionsInRange.mockResolvedValue(
+                [startDate]
+            );
+
+            const result = await domain.getCreatedAtByUserActionsInRange(
+                'user-1',
+                [EnumActivityLogAction.userLoginCredential],
+                startDate,
+                endDate
+            );
+
+            expect(result).toEqual([startDate]);
+            expect(
+                activityLogAnalyticRepository.findCreatedAtByUserActionsInRange
+            ).toHaveBeenCalledWith(
+                'user-1',
+                [EnumActivityLogAction.userLoginCredential],
                 startDate,
                 endDate
             );

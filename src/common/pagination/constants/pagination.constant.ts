@@ -35,7 +35,25 @@ export const PaginationDefaultCursorField = 'id';
  * Longest cursor string a cursor list request may send.
  * @public
  */
-export const PaginationMaxCursorLength = 256;
+export const PaginationMaxCursorLength = 2560;
+
+/**
+ * Key purpose the cursor token is sealed under, so a ciphertext sealed for another use never opens as a cursor.
+ * @public
+ */
+export const PaginationCursorEncryptionPurpose = 'PaginationCursor';
+
+/**
+ * Authenticated context of a sealed cursor token. A token has no owning id, so the context is fixed and the fingerprint binds the token to its query.
+ * @public
+ */
+export const PaginationCursorEncryptionContext = 'PaginationCursorContext';
+
+/**
+ * Key tagging a `Date` sort value in a cursor token (`{ "$date": <ISO string> }`), so a string value that looks like a date stays a string.
+ * @public
+ */
+export const PaginationCursorDateKey = '$date';
 
 /**
  * Hex width of the cursor fingerprint — the leading 64 bits of the sha256 over the

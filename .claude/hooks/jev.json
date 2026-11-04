@@ -1,31 +1,13 @@
 {
     "model": "jev-1.14.0",
-    "timeout_seconds": 5,
+    "timeout_seconds": 1,
     "min_request_chars": 15,
     "thresholds": {
         "noul_yes": 0.7,
         "noul_no": 0.3,
-        "kind_min_probability": 0.5,
+        "kind_min_probability": 0.65,
         "effort_sonnet": 0.5,
-        "effort_opus": 1.5
-    },
-    "floors": {
-        "explorer": {
-            "model": "haiku",
-            "effort": "low"
-        },
-        "debugger": {
-            "model": "sonnet",
-            "effort": "high"
-        },
-        "coder": {
-            "model": "sonnet",
-            "effort": "medium"
-        },
-        "reviewer": {
-            "model": "sonnet",
-            "effort": "medium"
-        }
+        "effort_opus": 1.8
     },
     "repository": "A NestJS API boilerplate. src/ holds the application in feature modules (auth, user, workspace, project, notification, and more). test/unit/ holds unit specs. docs/ holds documentation. .claude/ holds the Claude Code agents, skills, rules, hooks, and settings.",
     "route_questions": {

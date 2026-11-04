@@ -12,7 +12,6 @@ import type {
     IAnalyticFraudSignalUsers,
 } from '@modules/analytic/interfaces/analytic.fraud.interface';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
-import { buildAnalyticActivityLog } from '@test/unit/helpers/test.unit.analytic.helper';
 
 describe('AnalyticFraudUtil', () => {
     const configGet = vi.fn<(key: string) => number | undefined>();
@@ -153,61 +152,6 @@ describe('AnalyticFraudUtil', () => {
         it('floors the threshold at one attempt', () => {
             expect(util.nearLockoutThreshold(1)).toBe(1);
             expect(util.nearLockoutThreshold(0)).toBe(1);
-        });
-    });
-
-    describe('countByUser', () => {
-        it('counts activity rows per user and keeps users at or above the minimum', () => {
-            const logs = [
-                buildAnalyticActivityLog(
-                    'log-user-1',
-                    'user-1',
-                    null,
-                    createdAt
-                ),
-                buildAnalyticActivityLog(
-                    'log-user-1',
-                    'user-1',
-                    null,
-                    createdAt
-                ),
-                buildAnalyticActivityLog(
-                    'log-user-2',
-                    'user-2',
-                    null,
-                    createdAt
-                ),
-            ];
-
-            expect(util.countByUser(logs, 2)).toEqual([
-                { userId: 'user-1', count: 2 },
-            ]);
-        });
-
-        it('returns every user when the minimum is one and nothing for no rows', () => {
-            expect(
-                util.countByUser(
-                    [
-                        buildAnalyticActivityLog(
-                            'log-user-1',
-                            'user-1',
-                            null,
-                            createdAt
-                        ),
-                        buildAnalyticActivityLog(
-                            'log-user-2',
-                            'user-2',
-                            null,
-                            createdAt
-                        ),
-                    ],
-                    1
-                )
-            ).toEqual([
-                { userId: 'user-1', count: 1 },
-                { userId: 'user-2', count: 1 },
-            ]);
-            expect(util.countByUser([], 1)).toEqual([]);
         });
     });
 

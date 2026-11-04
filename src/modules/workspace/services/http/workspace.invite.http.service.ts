@@ -326,7 +326,7 @@ export class WorkspaceInviteHttpService {
     ): Promise<IResponseReturn<WorkspaceInvite>> {
         // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
-        const existing = await this.workspaceInviteDomain.getPendingById(
+        const existing = await this.workspaceInviteDomain.getResendableById(
             workspaceInviteId,
             workspace.id
         );

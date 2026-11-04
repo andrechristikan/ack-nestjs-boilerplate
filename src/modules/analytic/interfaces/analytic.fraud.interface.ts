@@ -87,11 +87,6 @@ export interface IAnalyticApiKeyBurst {
     count: number;
 }
 
-export interface IAnalyticFraudUserCount {
-    userId: string;
-    count: number;
-}
-
 export interface IAnalyticFraudSignalRows {
     sessionAfterAdmin: IAnalyticSessionAfterAdmin[];
     impossibleTravelUserIds: string[];

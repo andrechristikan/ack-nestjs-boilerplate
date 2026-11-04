@@ -47,18 +47,20 @@ export interface IWorkspaceInviteRepository {
         reference,
         expiredAt,
         invitedByUserId,
-        pendingKey,
+        nonce,
     }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite>;
     rotateForResend(
         workspaceInviteId: string,
         hashedToken: string,
         reference: string,
-        expiredAt: Date
+        expiredAt: Date,
+        resentAt: Date
     ): Promise<WorkspaceInvite | null>;
-    revoke(workspaceInviteId: string): Promise<boolean>;
+    revoke(workspaceInviteId: string, nonce: string): Promise<boolean>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string,
+        nonce: string,
         userId: string,
         acceptedAt: Date
     ): Promise<boolean>;

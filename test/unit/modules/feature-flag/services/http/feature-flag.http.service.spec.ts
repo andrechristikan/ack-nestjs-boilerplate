@@ -28,6 +28,7 @@ describe('FeatureFlagHttpService', () => {
         mock<RequestStoreService>();
 
     const pagination = {
+        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
         skip: 0,
         limit: 20,
         orderBy: [],

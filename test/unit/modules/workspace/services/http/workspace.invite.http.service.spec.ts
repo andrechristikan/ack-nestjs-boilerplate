@@ -144,7 +144,7 @@ describe('WorkspaceInviteHttpService', () => {
         invitedByUserId: 'user-1',
         acceptedAt: null,
         acceptedByUserId: null,
-        pendingKey: 'workspace-1:invitee@example.com',
+        nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
 
     const project: Project = {
@@ -255,7 +255,11 @@ describe('WorkspaceInviteHttpService', () => {
     };
 
     const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
-        { limit: 20, orderBy: [] };
+        {
+            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            limit: 20,
+            orderBy: [],
+        };
 
     let service: WorkspaceInviteHttpService;
 
@@ -832,7 +836,7 @@ describe('WorkspaceInviteHttpService', () => {
         const body: WorkspaceInviteResendRequestDto = {};
 
         beforeEach(() => {
-            workspaceInviteDomain.getPendingById.mockResolvedValue(invite);
+            workspaceInviteDomain.getResendableById.mockResolvedValue(invite);
             userDomain.getOneActiveByEmail.mockResolvedValue(null);
             userDomain.getNameById.mockResolvedValue(null);
             workspaceUtil.resolveInviterName.mockReturnValue('Acme');
@@ -851,7 +855,7 @@ describe('WorkspaceInviteHttpService', () => {
                     callOrder.push('gate');
                 }
             );
-            workspaceInviteDomain.getPendingById.mockImplementation(
+            workspaceInviteDomain.getResendableById.mockImplementation(
                 async () => {
                     callOrder.push('pending');
 
@@ -896,10 +900,9 @@ describe('WorkspaceInviteHttpService', () => {
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
             ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
-            expect(workspaceInviteDomain.getPendingById).toHaveBeenCalledWith(
-                'invite-1',
-                'workspace-1'
-            );
+            expect(
+                workspaceInviteDomain.getResendableById
+            ).toHaveBeenCalledWith('invite-1', 'workspace-1');
             expect(userDomain.getOneActiveByEmail).toHaveBeenCalledWith(
                 'invitee@example.com'
             );
@@ -1000,11 +1003,13 @@ describe('WorkspaceInviteHttpService', () => {
             await expect(
                 service.resendInvite(workspace, 'user-1', 'invite-1', body)
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
-            expect(workspaceInviteDomain.getPendingById).not.toHaveBeenCalled();
+            expect(
+                workspaceInviteDomain.getResendableById
+            ).not.toHaveBeenCalled();
         });
 
         it('rotates nothing when the invite is not pending', async () => {
-            workspaceInviteDomain.getPendingById.mockRejectedValue(
+            workspaceInviteDomain.getResendableById.mockRejectedValue(
                 new WorkspaceInviteNotFoundException()
             );
 

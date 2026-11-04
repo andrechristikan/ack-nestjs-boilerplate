@@ -49,6 +49,28 @@ describe('WorkspaceQueue', () => {
         queue = module.get(WorkspaceQueue);
     });
 
+    describe('scheduleJoinRequestExpirySweep', () => {
+        it('schedules the join-request expiry-sweep job on the invite sweep cron', async () => {
+            await queue.scheduleJoinRequestExpirySweep();
+
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumWorkspaceProcess.expireStaleJoinRequests,
+                {
+                    pattern: '0 0 * * *',
+                    tz: 'UTC',
+                    immediately: true,
+                },
+                {
+                    name: EnumWorkspaceProcess.expireStaleJoinRequests,
+                    data: {},
+                    opts: {
+                        priority: EnumQueuePriority.low,
+                    },
+                }
+            );
+        });
+    });
+
     describe('scheduleInviteExpirySweep', () => {
         it('schedules the daily expiry-sweep job', async () => {
             await queue.scheduleInviteExpirySweep();

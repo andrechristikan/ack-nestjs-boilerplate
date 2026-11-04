@@ -23,7 +23,7 @@ src/migration/
 - Static rows live in `data/` as PascalCase consts; a seed whose data has no external key needs no data file.
 - A data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (`src/migration/seeds/migration.user.seed.ts:68`).
 - A seed writes its audit fields explicitly: no request actor exists in a command, so `createdBy` and `updatedBy` on every seeded row, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
-- A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns. A seed that finds its fixed id taken by a different row does the same, naming the email and both ids; realigning is the owner's `migration:remove` then `migration:seed`.
+- A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns.
 - A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`migration.template-notification.seed.ts:41`), and `awsS3Config` also needs `AWS_S3_IAM_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
 - A transaction opens through `this.databaseService.withTransaction` with `database.seedTransactionTimeoutInMs`; hashing, key drawing, and row building happen before the callback so the transaction holds only statements.
 

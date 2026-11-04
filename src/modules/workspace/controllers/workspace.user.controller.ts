@@ -457,7 +457,7 @@ export class WorkspaceUserController {
 
     @Doc({
         summary:
-            'rotate the token and expiry of a pending invite and resend it; the old link stops working',
+            'rotate the token and expiry of an unexpired pending invite and resend it; the old link stops working',
     })
     @Response('workspace.invite.resend', {
         schema: WorkspaceInviteResponseSchema,

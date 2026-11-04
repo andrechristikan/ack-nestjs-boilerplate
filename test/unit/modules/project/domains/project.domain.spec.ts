@@ -157,7 +157,12 @@ describe('ProjectDomain', () => {
 
     describe('getListCursorByMember', () => {
         const pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput> =
-            { where: {}, orderBy: [], limit: 20 };
+            {
+                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                where: {},
+                orderBy: [],
+                limit: 20,
+            };
 
         it('passes a null memberUserId when the caller is the workspace owner', async () => {
             const page: IResponsePaginationReturn<Project> = {

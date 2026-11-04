@@ -286,6 +286,70 @@ describe('RequestBodyParserMiddleware', () => {
             expect(next).toHaveBeenCalledWith(failure);
         });
 
+        it.each([['boom'], [null], [42]])(
+            'passes a non-object parser error %j through untouched',
+            failure => {
+                (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                    'application/json'
+                );
+                jsonHandler.mockImplementation(
+                    (_req: Request, _res: Response, done: NextFunction) =>
+                        done(failure)
+                );
+
+                middleware.use(req, res, next);
+
+                expect(next).toHaveBeenCalledWith(failure);
+            }
+        );
+
+        it('passes an object parser error without a status through untouched', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            const failure = new Error('no status');
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) =>
+                    done(failure)
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith(failure);
+        });
+
+        it('passes an object parser error with a non-numeric status through untouched', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            const failure = Object.assign(new Error('bad status'), {
+                status: '400',
+            });
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) =>
+                    done(failure)
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith(failure);
+        });
+
+        it('passes a parser error with a status below 400 through untouched', () => {
+            (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
+                'application/json'
+            );
+            const failure = Object.assign(new Error('low'), { status: 399 });
+            jsonHandler.mockImplementation(
+                (_req: Request, _res: Response, done: NextFunction) =>
+                    done(failure)
+            );
+
+            middleware.use(req, res, next);
+
+            expect(next).toHaveBeenCalledWith(failure);
+        });
+
         it('skips parsing and calls next for an unrecognized content-type', () => {
             (req.get as ReturnType<typeof vi.fn>).mockReturnValue(
                 'multipart/form-data'

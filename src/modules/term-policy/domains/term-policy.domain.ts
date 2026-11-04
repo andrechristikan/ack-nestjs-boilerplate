@@ -17,6 +17,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
+import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -88,11 +89,20 @@ export class TermPolicyDomain {
             throw new TermPolicyLanguageDuplicateException();
         }
 
-        for (const { size } of contents) {
+        for (const { size, key } of contents) {
             const isSizeAllowed =
                 this.termPolicyUtil.isContentSizeAllowed(size);
             if (!isSizeAllowed) {
                 throw new TermPolicyContentSizeExceededException();
+            }
+
+            const isInPath = this.termPolicyUtil.isContentKeyInPath(
+                type,
+                version,
+                key
+            );
+            if (!isInPath) {
+                throw new TermPolicyContentKeyInvalidException();
             }
         }
 
@@ -148,7 +158,10 @@ export class TermPolicyDomain {
         }
 
         try {
-            const contentPath = this.termPolicyUtil.getPath(termPolicy);
+            const contentPath = this.termPolicyUtil.getPath(
+                termPolicy.type,
+                termPolicy.version
+            );
             // Sequential by design: write must not run if an earlier step throws
             const isDeleted =
                 await this.termPolicyRepository.deleteDraft(termPolicyId);

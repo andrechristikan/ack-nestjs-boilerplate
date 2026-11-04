@@ -8,7 +8,7 @@ import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
- * Owns the workspace queue connection; schedules the recurring invite-expiry sweep.
+ * Owns the workspace queue connection; schedules the recurring invite and join-request expiry sweeps.
  */
 @Injectable()
 export class WorkspaceQueue extends QueueBase {
@@ -43,6 +43,25 @@ export class WorkspaceQueue extends QueueBase {
             },
             {
                 name: EnumWorkspaceProcess.expireStaleInvites,
+                data: {},
+                opts: {
+                    priority: EnumQueuePriority.low,
+                },
+            }
+        );
+    }
+
+    /** Schedules the recurring stale-join-request expiry sweep on the invite sweep cron. */
+    async scheduleJoinRequestExpirySweep(): Promise<void> {
+        await this.queue.upsertJobScheduler(
+            EnumWorkspaceProcess.expireStaleJoinRequests,
+            {
+                pattern: this.expirySweepCron,
+                tz: this.defTz,
+                immediately: true,
+            },
+            {
+                name: EnumWorkspaceProcess.expireStaleJoinRequests,
                 data: {},
                 opts: {
                     priority: EnumQueuePriority.low,

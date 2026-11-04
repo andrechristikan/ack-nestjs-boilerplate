@@ -1,3 +1,4 @@
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -47,6 +48,7 @@ export class AnalyticAnomalyDomain {
     private readonly loginTimeAnomalyHistoricalFrequencyPercent: number;
     private readonly loginTimeAnomalyMinSample: number;
     private readonly loginTimeAnomalyLookbackInMs: number;
+    private readonly concurrency: number;
     private readonly nearLockoutMinAttempt: number;
     private readonly deviceProliferationZScoreThreshold: number;
 
@@ -59,6 +61,7 @@ export class AnalyticAnomalyDomain {
         private readonly analyticFraudUtil: AnalyticFraudUtil,
         private readonly paginationService: PaginationService,
         private readonly configService: ConfigService,
+        private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
         private readonly sessionAnalyticDomain: SessionAnalyticDomain,
         private readonly userAnalyticDomain: UserAnalyticDomain,
@@ -86,6 +89,9 @@ export class AnalyticAnomalyDomain {
         )!;
         this.loginTimeAnomalyLookbackInMs = this.configService.get<number>(
             'analytic.anomaly.lookbackInMs'
+        )!;
+        this.concurrency = this.configService.get<number>(
+            'analytic.anomaly.concurrency'
         )!;
         const passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
@@ -122,13 +128,13 @@ export class AnalyticAnomalyDomain {
     ): Promise<IAnalyticLoginSpikeIp[]> {
         const { startDate, endDate } =
             this.analyticDateUtil.windowRange(windowMs);
-        const activityLogs =
-            await this.activityLogAnalyticDomain.getManyByActionsInRange(
+        const pairs =
+            await this.activityLogAnalyticDomain.getGroupIpUserByActions(
                 UserLoginAnalyticActions,
                 startDate,
                 endDate
             );
-        const groups = this.analyticAnomalyUtil.groupByIp(activityLogs);
+        const groups = this.analyticAnomalyUtil.groupByIp(pairs);
 
         return [...groups.entries()]
             .filter(
@@ -154,18 +160,39 @@ export class AnalyticAnomalyDomain {
             Duration.fromMillis(this.loginTimeAnomalyLookbackInMs)
         );
         const start = startDate ?? defaultStart;
-        const activityLogs =
-            await this.activityLogAnalyticDomain.getManyByActionsInRange(
+        const users =
+            await this.activityLogAnalyticDomain.getGroupUserByActions(
                 UserLoginAnalyticActions,
                 start,
-                end
+                end,
+                this.loginTimeAnomalyMinSample
             );
+        const anomalous: IAnalyticLoginTimeAnomaly[] = [];
+        const batches = this.helperArrayService.chunk(users, this.concurrency);
+        for (const batch of batches) {
+            const historyPromises = batch.map(user =>
+                this.activityLogAnalyticDomain.getCreatedAtByUserActionsInRange(
+                    user.userId,
+                    UserLoginAnalyticActions,
+                    start,
+                    end
+                )
+            );
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const historyPerUser = await Promise.all(historyPromises);
+            for (const [index, user] of batch.entries()) {
+                const anomaly = this.analyticAnomalyUtil.findLoginTimeAnomaly(
+                    user.userId,
+                    historyPerUser[index]!,
+                    this.loginTimeAnomalyHistoricalFrequencyPercent
+                );
+                if (anomaly) {
+                    anomalous.push(anomaly);
+                }
+            }
+        }
 
-        return this.analyticAnomalyUtil.findLoginTimeAnomalies(
-            activityLogs,
-            this.loginTimeAnomalyHistoricalFrequencyPercent,
-            this.loginTimeAnomalyMinSample
-        );
+        return anomalous;
     }
 
     async getImpossibleTravelUserIds(

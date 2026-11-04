@@ -247,6 +247,7 @@ model ActivityLog {
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [action, createdAt(sort: Desc)])
+  @@index(fields: [createdAt(sort: Desc), workspaceId])
   @@map("ActivityLogs")
 }
 
@@ -587,7 +588,7 @@ model WorkspaceInvite {
   invitedByUserId  String                    @db.ObjectId
   acceptedAt       DateTime?
   acceptedByUserId String?                   @db.ObjectId
-  pendingKey       String
+  nonce            String
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   project   Project?  @relation(fields: [projectId], references: [id])
@@ -599,7 +600,7 @@ model WorkspaceInvite {
 
   @@unique(fields: [token])
   @@unique(fields: [reference])
-  @@unique(fields: [pendingKey])
+  @@unique(fields: [nonce])
   @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [email, status])
@@ -617,7 +618,8 @@ model WorkspaceJoinRequest {
   rejectReasonCode EnumWorkspaceJoinRejectReason?
   reviewedByUserId String?                        @db.ObjectId
   reviewedAt       DateTime?
-  pendingKey       String
+  expiredAt        DateTime
+  nonce            String
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   user      User      @relation("UserWorkspaceJoinRequests", fields: [userId], references: [id])
@@ -627,10 +629,11 @@ model WorkspaceJoinRequest {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  @@unique(fields: [pendingKey])
+  @@unique(fields: [nonce])
   @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, status])
+  @@index(fields: [status, expiredAt])
   @@map("WorkspaceJoinRequests")
 }
 
@@ -1007,6 +1010,7 @@ enum EnumWorkspaceJoinRequestStatus {
   accepted
   rejected
   cancelled
+  expired
 }
 
 enum EnumWorkspaceJoinRejectReason {

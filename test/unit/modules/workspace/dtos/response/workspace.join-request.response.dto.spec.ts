@@ -18,6 +18,7 @@ describe('WorkspaceJoinRequestResponseSchema', () => {
         rejectReasonCode: null,
         reviewedByUserId: null,
         reviewedAt: null,
+        expiredAt: new Date('2026-01-09T00:00:00.000Z'),
     };
 
     it('parses a row into exactly the declared fields', () => {

@@ -87,7 +87,7 @@ describe('WorkspaceUtil', () => {
         invitedByUserId: 'user-1',
         acceptedAt: null,
         acceptedByUserId: null,
-        pendingKey: 'workspace-1:invitee@example.com',
+        nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
 
     const member: WorkspaceMember = {

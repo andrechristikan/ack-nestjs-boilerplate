@@ -67,7 +67,11 @@ describe('TermPolicyHttpService', () => {
         data: [] as TermPolicy[],
     };
     const offsetParams = { skip: 0, limit: 20, orderBy: [] };
-    const cursorParams = { limit: 20, orderBy: [] };
+    const cursorParams = {
+        limit: 20,
+        orderBy: [],
+        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+    };
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const termPolicy: TermPolicy = {
         id: 'term-policy-1',

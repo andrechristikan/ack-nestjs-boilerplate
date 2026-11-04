@@ -101,7 +101,8 @@ describe('WorkspaceJoinRequestHttpService', () => {
         rejectReasonCode: null,
         reviewedByUserId: null,
         reviewedAt: null,
-        pendingKey: 'workspace-1:user-2',
+        expiredAt: new Date('2026-01-09T00:00:00.000Z'),
+        nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
 
     const reviewer: User = {
@@ -165,7 +166,11 @@ describe('WorkspaceJoinRequestHttpService', () => {
     };
 
     const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput> =
-        { limit: 20, orderBy: [] };
+        {
+            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            limit: 20,
+            orderBy: [],
+        };
 
     let service: WorkspaceJoinRequestHttpService;
 

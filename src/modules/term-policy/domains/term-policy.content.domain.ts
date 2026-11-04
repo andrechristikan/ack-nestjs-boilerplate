@@ -7,6 +7,7 @@ import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
+import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
@@ -41,6 +42,17 @@ export class TermPolicyContentDomain {
         }
 
         return termPolicy;
+    }
+
+    private assertKeyPath({ type, version }: TermPolicy, key: string): void {
+        const isInPath = this.termPolicyUtil.isContentKeyInPath(
+            type,
+            version,
+            key
+        );
+        if (!isInPath) {
+            throw new TermPolicyContentKeyInvalidException();
+        }
     }
 
     async generateContentPresignByAdmin({
@@ -103,9 +115,18 @@ export class TermPolicyContentDomain {
         }
 
         const termPolicy = await this.findOneDraftById(termPolicyId);
+        this.assertKeyPath(termPolicy, key);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
             throw contents;
+        }
+
+        const existingContent = this.termPolicyUtil.getContentByLanguage(
+            contents,
+            language
+        );
+        if (!existingContent) {
+            throw new TermPolicyContentNotFoundException();
         }
 
         const isS3Initialized = this.awsS3Service.isInitialized();
@@ -153,6 +174,7 @@ export class TermPolicyContentDomain {
         }
 
         const termPolicy = await this.findOneDraftById(termPolicyId);
+        this.assertKeyPath(termPolicy, key);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
             throw contents;

@@ -1,5 +1,6 @@
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
-import type { IActivityLogAnalyticList } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogIpUserGroup } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     IAnalyticImpossibleTravel,
     IAnalyticIpGroup,
@@ -10,7 +11,10 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AnalyticAnomalyUtil {
-    constructor(private readonly helperNumberService: HelperNumberService) {}
+    constructor(
+        private readonly helperDateService: HelperDateService,
+        private readonly helperNumberService: HelperNumberService
+    ) {}
 
     private distanceKm(
         lat1: number,
@@ -74,57 +78,41 @@ export class AnalyticAnomalyUtil {
         return flagged;
     }
 
-    groupByIp(
-        activityLogs: IActivityLogAnalyticList[]
-    ): Map<string, IAnalyticIpGroup> {
+    groupByIp(pairs: IActivityLogIpUserGroup[]): Map<string, IAnalyticIpGroup> {
         const groups = new Map<string, IAnalyticIpGroup>();
-        for (const activityLog of activityLogs) {
-            const ip = activityLog.ipAddress ?? 'unknown';
+        for (const pair of pairs) {
+            const ip = pair.ipAddress ?? 'unknown';
             const group = groups.get(ip) ?? { users: new Set(), count: 0 };
-            group.users.add(activityLog.userId);
-            group.count++;
+            group.users.add(pair.userId);
+            group.count += pair.count;
             groups.set(ip, group);
         }
 
         return groups;
     }
 
-    findLoginTimeAnomalies(
-        activityLogs: IActivityLogAnalyticList[],
-        thresholdPercent: number,
-        minSample: number
-    ): IAnalyticLoginTimeAnomaly[] {
-        const byUser = new Map<string, number[]>();
-        for (const activityLog of activityLogs) {
-            const hours = byUser.get(activityLog.userId) ?? [];
-            hours.push(activityLog.createdAt.getUTCHours());
-            byUser.set(activityLog.userId, hours);
+    findLoginTimeAnomaly(
+        userId: string,
+        loginDates: Date[],
+        thresholdPercent: number
+    ): IAnalyticLoginTimeAnomaly | null {
+        const hours = loginDates.map(loginDate =>
+            this.helperDateService.getHour(loginDate)
+        );
+        const lastHour = hours[hours.length - 1]!;
+        const history = hours.slice(0, -1);
+        const histogram = new Array<number>(24).fill(0);
+        for (const hour of history) {
+            histogram[hour]!++;
+        }
+        const frequency = this.helperNumberService.percent(
+            histogram[lastHour]!,
+            history.length
+        );
+        if (frequency >= thresholdPercent) {
+            return null;
         }
 
-        const anomalous: IAnalyticLoginTimeAnomaly[] = [];
-        for (const [userId, hours] of byUser) {
-            if (hours.length < minSample) {
-                continue;
-            }
-            const lastHour = hours[hours.length - 1]!;
-            const history = hours.slice(0, -1);
-            const histogram = new Array<number>(24).fill(0);
-            for (const hour of history) {
-                histogram[hour]!++;
-            }
-            const frequency = this.helperNumberService.percent(
-                histogram[lastHour]!,
-                history.length
-            );
-            if (frequency < thresholdPercent) {
-                anomalous.push({
-                    userId,
-                    lastHour,
-                    historicalFrequencyPercent: frequency,
-                });
-            }
-        }
-
-        return anomalous;
+        return { userId, lastHour, historicalFrequencyPercent: frequency };
     }
 }

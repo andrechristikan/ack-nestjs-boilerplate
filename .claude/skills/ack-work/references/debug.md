@@ -1,6 +1,6 @@
 # ack-work debug path
 
-A symptom without a cause runs here, in the session, because a decision goes back to the owner. The path ends in the `fix` route with the debugger's pin, in `change` or `feature` when the change alters a flow or needs a decision, or with `/ack-spec` named to the owner.
+A symptom without a cause runs here, in the session, because a decision goes back to the owner. The path ends in the gate (`gate.md`) with the debugger's pin as the change, continuing in `fix`, `change`, or `feature`, or with `/ack-spec` named to the owner.
 
 ## 1. Pin the symptom
 
@@ -24,14 +24,16 @@ Dispatch `debugger` with the template at `dispatch.md`, Debugger. Its `Rules to 
 Take the first branch that matches:
 
 1. The cause is a spec that asserts a wish over correct code: name `/ack-spec` to the owner and stop.
-2. The change alters a flow or needs a decision: confirm with `AskUserQuestion`, then run `change` (one module) or `feature` (otherwise) with the pin and the symptom as the request.
-3. Otherwise the change alters no flow (the contract, the guard stack, the status code, and the call order stay): run `fix` with the pin.
+2. The change alters a flow or needs a decision: the route is `change` (one module) or `feature` (otherwise), with the pin and the symptom as the request.
+3. Otherwise the change alters no flow (the contract, the guard stack, the status code, and the call order stay): the route is `fix`.
+
+Enter the gate (`gate.md`): its `**Requirement:**` holds the pin as the change and the symptom; on `feature`, `SKILL.md` step 6 runs first. Build only on the owner's yes.
 
 Invoke `superpowers:verification-before-completion` before stating the classification: the cause rests on the quoted reproduction and the quoted evidence, not on a claim.
 
 ## Boundaries
 
-- No edit, no spec, no commit, no DB or seed command before step 4.
+- No edit, no spec, no commit, no DB or seed command before the gate's yes.
 - The session does not debug in place of `debugger`.
 
 ## Hand back
@@ -41,5 +43,5 @@ Invoke `superpowers:verification-before-completion` before stating the classific
 - Each hypothesis and its evidence.
 - The root cause at `file:line`.
 - The pin.
-- The classification and the route it continues in.
+- The classification, the plan file path, and the route it continues in.
 - Every decision the owner made.

@@ -75,7 +75,11 @@ describe('PasswordHistoryDomain', () => {
     describe('getListCursor', () => {
         it('returns the cursor-paginated list from the repository', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput> =
-                { limit: 20, orderBy: [] };
+                {
+                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    limit: 20,
+                    orderBy: [],
+                };
             const paginationResult: IResponsePaginationReturn<IPasswordHistoryList> =
                 {
                     type: EnumPaginationType.cursor,

@@ -8,11 +8,7 @@ import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    EnumTermPolicyStatus,
-    EnumTermPolicyType,
-} from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type {
@@ -115,27 +111,52 @@ describe('TermPolicyUtil', () => {
             helperStringService.fillPattern.mockReturnValue(
                 'term-policies/privacy/1'
             );
-            const timestamp = new Date('2026-01-01T00:00:00.000Z');
-            const termPolicy: TermPolicy = {
-                id: 'term-policy-1',
-                type: EnumTermPolicyType.privacy,
-                contents: [],
-                version: 1,
-                status: EnumTermPolicyStatus.published,
-                publishedAt: timestamp,
-                createdAt: timestamp,
-                createdBy: null,
-                updatedAt: timestamp,
-                updatedBy: null,
-            };
 
-            const result = util.getPath(termPolicy);
+            const result = util.getPath(EnumTermPolicyType.privacy, 1);
 
             expect(result).toBe('term-policies/privacy/1');
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 'term-policies/{type}/{version}',
                 { type: EnumTermPolicyType.privacy, version: '1' }
             );
+        });
+    });
+
+    describe('isContentKeyInPath', () => {
+        beforeEach(() => {
+            helperStringService.fillPattern.mockReturnValue(
+                'term-policies/privacy/1'
+            );
+        });
+
+        it('returns true when the key sits under the path of the type and version', () => {
+            const result = util.isContentKeyInPath(
+                EnumTermPolicyType.privacy,
+                1,
+                'term-policies/privacy/1/en.hbs'
+            );
+
+            expect(result).toBe(true);
+        });
+
+        it('returns false when the key sits under another path', () => {
+            const result = util.isContentKeyInPath(
+                EnumTermPolicyType.privacy,
+                1,
+                'term-policies/privacy/2/en.hbs'
+            );
+
+            expect(result).toBe(false);
+        });
+
+        it('returns false when the key only shares the path as a prefix of a segment', () => {
+            const result = util.isContentKeyInPath(
+                EnumTermPolicyType.privacy,
+                1,
+                'term-policies/privacy/10/en.hbs'
+            );
+
+            expect(result).toBe(false);
         });
     });
 

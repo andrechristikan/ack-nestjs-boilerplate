@@ -1,33 +1,44 @@
 import {
+    PaginationCursorDateKey,
     PaginationCursorFingerprintLength,
     PaginationDefaultCursorField,
     PaginationDefaultOrderBy,
 } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationCursorArgs,
+    IPaginationCursorJson,
     IPaginationCursorReturn,
+    IPaginationCursorScalar,
     IPaginationCursorValue,
     IPaginationOffsetArgs,
     IPaginationOffsetReturn,
     IPaginationOrderBy,
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { Injectable } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { Prisma } from '@generated/prisma-client/client';
 import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
 import { PaginationInvalidCursorPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-cursor-pagination-params.exception';
 import { PaginationInvalidCursorDataException } from '@common/pagination/exceptions/pagination.invalid-cursor-data.exception';
 import { PaginationFailedToEncodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-encode-cursor.exception';
-import { PaginationFailedToDecodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-decode-cursor.exception';
 
 @Injectable()
 export class PaginationService {
     constructor(
         private readonly helperHashService: HelperHashService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService,
+        private readonly paginationQueryUtil: PaginationQueryUtil
     ) {}
 
     private canonicalize(value: unknown): unknown {
@@ -64,63 +75,191 @@ export class PaginationService {
         return hash.slice(0, PaginationCursorFingerprintLength);
     }
 
-    private encodeCursor(data: IPaginationCursorValue): string {
-        if (!data || (data.cursor ?? null) === null) {
-            throw new PaginationInvalidCursorDataException();
+    private cursorTerms(
+        orderBy: IPaginationOrderBy[]
+    ): [string, EnumPaginationOrderDirectionType][] {
+        const terms = new Map<string, EnumPaginationOrderDirectionType>();
+        for (const [field, direction] of orderBy.flatMap(term =>
+            Object.entries(term)
+        )) {
+            if (!terms.has(field)) {
+                terms.set(field, direction);
+            }
+        }
+
+        return [...terms];
+    }
+
+    private encodeCursor(
+        item: Record<string, unknown>,
+        orderBy: IPaginationOrderBy[],
+        fingerprint: string,
+        firstPageAt: Date
+    ): string {
+        const terms = this.cursorTerms(orderBy);
+
+        for (const [field] of terms) {
+            if ((item[field] ?? null) === null) {
+                throw new PaginationInvalidCursorDataException();
+            }
         }
 
         try {
-            return Buffer.from(JSON.stringify(data))
-                .toString('base64')
-                .replaceAll(/\+/g, '-')
-                .replaceAll(/\//g, '_')
-                .replaceAll(/=/g, '');
+            const values: Record<string, IPaginationCursorJson> = {};
+            for (const [field] of terms) {
+                const value = item[field];
+                values[field] =
+                    value instanceof Date
+                        ? { [PaginationCursorDateKey]: value.toISOString() }
+                        : (value as IPaginationCursorJson);
+            }
+
+            return this.paginationQueryUtil.sealCursor({
+                values,
+                fingerprint,
+                firstPageAt,
+            });
         } catch {
             throw new PaginationFailedToEncodeCursorException();
         }
     }
 
+    private decodeCursorValue(raw: unknown): IPaginationCursorScalar {
+        if (
+            typeof raw === 'string' ||
+            typeof raw === 'boolean' ||
+            (typeof raw === 'number' && Number.isFinite(raw))
+        ) {
+            return raw;
+        }
+
+        if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+            const keys = Object.keys(raw);
+            const iso = (raw as Record<string, unknown>)[
+                PaginationCursorDateKey
+            ];
+
+            if (
+                keys.length === 1 &&
+                keys[0] === PaginationCursorDateKey &&
+                typeof iso === 'string'
+            ) {
+                const isIso = this.helperDateService.checkIso(iso);
+                if (isIso) {
+                    return this.helperDateService.createFromIso(iso);
+                }
+            }
+        }
+
+        throw new PaginationInvalidCursorDataException();
+    }
+
     private decodeCursor(
         cursor: string,
+        fingerprint: string,
+        orderBy: IPaginationOrderBy[],
         cursorField: string
     ): IPaginationCursorValue {
         if (!cursor || typeof cursor !== 'string') {
             throw new PaginationInvalidCursorFormatException();
         }
 
-        try {
-            const padding = '='.repeat((4 - (cursor.length % 4)) % 4);
-            const padded = `${cursor}${padding}`;
-            const base64 = padded.replaceAll(/-/g, '+').replaceAll(/_/g, '/');
-            const decoded = JSON.parse(
-                Buffer.from(base64, 'base64').toString()
-            );
+        const {
+            values,
+            fingerprint: tokenFingerprint,
+            firstPageAt,
+        } = this.paginationQueryUtil.openCursor(cursor);
 
-            if (
-                typeof decoded.cursor !== 'string' ||
-                !decoded.cursor ||
-                !decoded.fingerprint
-            ) {
+        if (tokenFingerprint !== fingerprint) {
+            throw new PaginationInvalidCursorPaginationParamsException();
+        }
+
+        const terms = this.cursorTerms(orderBy);
+        const fields = terms.map(([field]) => field);
+        if (
+            Object.keys(values).length !== fields.length ||
+            fields.some(field => !Object.hasOwn(values, field))
+        ) {
+            throw new PaginationInvalidCursorDataException();
+        }
+
+        const parsed: Record<string, IPaginationCursorScalar> = {};
+        for (const field of fields) {
+            parsed[field] = this.decodeCursorValue(values[field]);
+        }
+
+        if (cursorField === PaginationDefaultCursorField) {
+            const id = parsed[cursorField];
+            if (typeof id !== 'string') {
                 throw new PaginationInvalidCursorDataException();
             }
 
-            if (cursorField === PaginationDefaultCursorField) {
-                const isValidId = this.databaseUtil.checkIdIsValid(
-                    decoded.cursor
-                );
-                if (!isValidId) {
-                    throw new PaginationInvalidCursorDataException();
-                }
+            const isValidId = this.databaseUtil.checkIdIsValid(id);
+            if (!isValidId) {
+                throw new PaginationInvalidCursorDataException();
             }
-
-            return decoded as IPaginationCursorValue;
-        } catch (error) {
-            if (error instanceof AppBaseException) {
-                throw error;
-            }
-
-            throw new PaginationFailedToDecodeCursorException();
         }
+
+        return { values: parsed, fingerprint: tokenFingerprint, firstPageAt };
+    }
+
+    private keyset(
+        orderBy: IPaginationOrderBy[],
+        values: Record<string, IPaginationCursorScalar>
+    ): { OR: Record<string, unknown>[] } {
+        const terms = this.cursorTerms(orderBy);
+
+        return {
+            OR: terms.flatMap(([field, direction], index) => {
+                const equal = terms
+                    .slice(0, index)
+                    .map(([prior]) => [prior, values[prior]]);
+                const value = values[field];
+                const isAscending =
+                    direction === EnumPaginationOrderDirectionType.asc;
+
+                if (typeof value === 'boolean') {
+                    return value === isAscending
+                        ? []
+                        : [Object.fromEntries([...equal, [field, !value]])];
+                }
+
+                const operator = isAscending ? 'gt' : 'lt';
+
+                return [
+                    Object.fromEntries([
+                        ...equal,
+                        [field, { [operator]: value }],
+                    ]),
+                ];
+            }),
+        };
+    }
+
+    private selectSortFields(
+        select: unknown,
+        orderBy: IPaginationOrderBy[]
+    ): { select: unknown; added: string[] } {
+        if (!select) {
+            return { select, added: [] };
+        }
+
+        const picked = select as Record<string, unknown>;
+        const added = orderBy
+            .flatMap(term => Object.keys(term))
+            .filter(field => picked[field] !== true);
+
+        if (added.length === 0) {
+            return { select, added };
+        }
+
+        return {
+            select: {
+                ...picked,
+                ...Object.fromEntries(added.map(field => [field, true])),
+            },
+            added,
+        };
     }
 
     private resolveOrderBy(
@@ -210,28 +349,32 @@ export class PaginationService {
         const orderBy = this.resolveOrderBy(args.orderBy, cursorField);
         const fingerprint = this.fingerprint(where, orderBy);
 
-        let decodedCursor: IPaginationCursorValue | null = null;
-
+        const { select: readSelect, added } = this.selectSortFields(
+            select,
+            orderBy
+        );
+        let pageWhere: unknown = where;
         if (cursor) {
-            decodedCursor = this.decodeCursor(cursor, cursorField);
-
-            if (decodedCursor.fingerprint !== fingerprint) {
-                throw new PaginationInvalidCursorPaginationParamsException();
-            }
+            const decoded = this.decodeCursor(
+                cursor,
+                fingerprint,
+                orderBy,
+                cursorField
+            );
+            const keyset = this.keyset(orderBy, decoded.values);
+            pageWhere = {
+                AND: [...(where ? [where] : []), keyset],
+            };
         }
 
         const take = limit + 1;
         const queries: Promise<unknown>[] = [
             repository.findMany({
-                where,
+                where: pageWhere,
                 take,
-                ...(decodedCursor && {
-                    cursor: { [cursorField]: decodedCursor.cursor },
-                }),
-                skip: cursor ? 1 : 0,
                 orderBy,
                 include,
-                select,
+                select: readSelect,
             }),
         ];
 
@@ -239,21 +382,46 @@ export class PaginationService {
             queries.push(repository.count({ where }));
         }
 
-        const results = await Promise.all(queries);
-        const items = results[0] as TReturn[];
+        let results: unknown[];
+        try {
+            results = await Promise.all(queries);
+        } catch (error) {
+            if (error instanceof AppBaseException) {
+                throw error;
+            }
+
+            if (cursor && error instanceof Prisma.PrismaClientValidationError) {
+                throw new PaginationInvalidCursorDataException();
+            }
+
+            throw new AppUnknownException(error);
+        }
+        const items = results[0] as Record<string, unknown>[];
         const count = includeCount ? (results[1] as number) : null;
 
         const hasNext = items.length > limit;
-        const data = hasNext ? items.slice(0, limit) : items;
+        const page = hasNext ? items.slice(0, limit) : items;
 
         let nextCursor: string | null = null;
         if (hasNext) {
-            const nextItem = data[data.length - 1] as Record<string, unknown>;
-            nextCursor = this.encodeCursor({
-                cursor: nextItem[cursorField] as string,
+            nextCursor = this.encodeCursor(
+                page[page.length - 1]!,
+                orderBy,
                 fingerprint,
-            });
+                args.firstPageAt
+            );
         }
+
+        const data =
+            added.length === 0
+                ? page
+                : page.map(row =>
+                      Object.fromEntries(
+                          Object.entries(row).filter(
+                              ([field]) => !added.includes(field)
+                          )
+                      )
+                  );
 
         return {
             type: EnumPaginationType.cursor,

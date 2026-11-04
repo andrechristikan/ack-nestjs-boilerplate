@@ -17,10 +17,7 @@ import type {
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
-import type {
-    TermPolicy,
-    TermPolicyContent,
-} from '@generated/prisma-client/client';
+import type { TermPolicyContent } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyUtil {
@@ -55,11 +52,22 @@ export class TermPolicyUtil {
         return size <= this.contentMaxSizeInBytes;
     }
 
-    getPath(termPolicy: TermPolicy): string {
+    getPath(type: EnumTermPolicyType, version: number): string {
         return this.helperStringService.fillPattern(this.uploadContentPath, {
-            type: termPolicy.type,
-            version: termPolicy.version.toString(),
+            type,
+            version: version.toString(),
         });
+    }
+
+    /** True when the key sits under the storage path of the type and version. */
+    isContentKeyInPath(
+        type: EnumTermPolicyType,
+        version: number,
+        key: string
+    ): boolean {
+        const path = this.getPath(type, version);
+
+        return key.startsWith(`${path}/`);
     }
 
     /** Builds the private S3 key `{path}/{language}.{ext}`, stripping any leading slash. */

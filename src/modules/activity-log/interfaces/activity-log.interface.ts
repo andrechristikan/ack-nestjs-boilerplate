@@ -76,6 +76,17 @@ export interface IActivityLogIpGroup {
     count: number;
 }
 
+export interface IActivityLogUserGroup {
+    userId: string;
+    count: number;
+}
+
+export interface IActivityLogIpUserGroup {
+    ipAddress: string | null;
+    userId: string;
+    count: number;
+}
+
 export interface IActivityLogAnalyticList {
     id: string;
     userId: string;

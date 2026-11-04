@@ -1,14 +1,13 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import type {
     IPaginationOrderBy,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IActivityLogAnalyticList } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { ISessionAnalyticSession } from '@modules/session/interfaces/session.interface';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
@@ -32,6 +31,7 @@ export interface IAnalyticAnomalyDomainDoubles {
     analyticFraudUtil: MockProxy<AnalyticFraudUtil>;
     paginationService: MockProxy<PaginationService>;
     configService: MockProxy<ConfigService>;
+    helperArrayService: MockProxy<HelperArrayService>;
     helperDateService: MockProxy<HelperDateService>;
     sessionAnalyticDomain: MockProxy<SessionAnalyticDomain>;
     userAnalyticDomain: MockProxy<UserAnalyticDomain>;
@@ -65,6 +65,10 @@ export async function createAnalyticAnomalyDomain(
             },
             { provide: PaginationService, useValue: doubles.paginationService },
             { provide: ConfigService, useValue: doubles.configService },
+            {
+                provide: HelperArrayService,
+                useValue: doubles.helperArrayService,
+            },
             { provide: HelperDateService, useValue: doubles.helperDateService },
             {
                 provide: SessionAnalyticDomain,
@@ -96,23 +100,6 @@ export function buildAnalyticSession(
     userAgent: UserAgent
 ): ISessionAnalyticSession {
     return { id, userId, ipAddress: null, createdAt, geoLocation, userAgent };
-}
-
-export function buildAnalyticActivityLog(
-    id: string,
-    userId: string,
-    ipAddress: string | null,
-    createdAt: Date
-): IActivityLogAnalyticList {
-    return {
-        id,
-        userId,
-        action: EnumActivityLogAction.userLoginCredential,
-        ipAddress,
-        createdAt,
-        workspaceId: null,
-        userAgent: null,
-    };
 }
 
 export function buildAnalyticOffsetParams(

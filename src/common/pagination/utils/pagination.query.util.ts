@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
+    PaginationCursorDateKey,
+    PaginationCursorEncryptionContext,
+    PaginationCursorEncryptionPurpose,
     PaginationDefaultCursorField,
     PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
@@ -16,6 +21,8 @@ import {
 } from '@common/pagination/enums/pagination.enum';
 import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import type { PaginationOffsetQueryDto } from '@common/pagination/dtos/pagination.offset-query.dto';
+import { PaginationFailedToDecodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-decode-cursor.exception';
+import { PaginationInvalidCursorDataException } from '@common/pagination/exceptions/pagination.invalid-cursor-data.exception';
 import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
 import { PaginationFilterInvalidValueEnumException } from '@common/pagination/exceptions/pagination.filter-invalid-value-enum.exception';
 import { PaginationFilterInvalidValueException } from '@common/pagination/exceptions/pagination.filter-invalid-value.exception';
@@ -29,6 +36,8 @@ import { PaginationPageExceedsMaximumException } from '@common/pagination/except
 import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
 import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
 import type {
+    IPaginationCursorJson,
+    IPaginationCursorToken,
     IPaginationDate,
     IPaginationEqual,
     IPaginationIn,
@@ -57,7 +66,9 @@ import { Prisma } from '@generated/prisma-client/client';
 export class PaginationQueryUtil {
     constructor(
         private readonly helperDateService: HelperDateService,
-        private readonly helperArrayService: HelperArrayService
+        private readonly helperArrayService: HelperArrayService,
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly configService: ConfigService
     ) {}
 
     private equal<TField extends string>(
@@ -309,6 +320,84 @@ export class PaginationQueryUtil {
         return trimmed;
     }
 
+    sealCursor(token: IPaginationCursorToken): string {
+        const secret = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
+        const sealed = this.helperEncryptionService.aes256Encrypt(
+            JSON.stringify({
+                ...token,
+                firstPageAt: {
+                    [PaginationCursorDateKey]: token.firstPageAt.toISOString(),
+                },
+            }),
+            secret,
+            PaginationCursorEncryptionPurpose,
+            PaginationCursorEncryptionContext
+        );
+
+        return Buffer.from(sealed).toString('base64url');
+    }
+
+    openCursor(cursor: string): IPaginationCursorToken {
+        const secret = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
+        const sealed = Buffer.from(cursor, 'base64url');
+        if (sealed.toString('base64url') !== cursor) {
+            throw new PaginationFailedToDecodeCursorException();
+        }
+
+        let decoded: IPaginationCursorJson;
+        try {
+            const plain = this.helperEncryptionService.aes256Decrypt(
+                sealed.toString(),
+                secret,
+                PaginationCursorEncryptionPurpose,
+                PaginationCursorEncryptionContext
+            );
+            decoded = JSON.parse(plain) as IPaginationCursorJson;
+        } catch {
+            throw new PaginationFailedToDecodeCursorException();
+        }
+
+        if (
+            decoded === null ||
+            typeof decoded !== 'object' ||
+            Array.isArray(decoded)
+        ) {
+            throw new PaginationInvalidCursorDataException();
+        }
+
+        const { values, fingerprint, firstPageAt } = decoded;
+        const iso =
+            firstPageAt !== null &&
+            typeof firstPageAt === 'object' &&
+            !Array.isArray(firstPageAt) &&
+            Object.keys(firstPageAt).length === 1
+                ? firstPageAt[PaginationCursorDateKey]
+                : null;
+        if (
+            typeof fingerprint !== 'string' ||
+            fingerprint === '' ||
+            values === null ||
+            typeof values !== 'object' ||
+            Array.isArray(values) ||
+            typeof iso !== 'string'
+        ) {
+            throw new PaginationInvalidCursorDataException();
+        }
+
+        const isIso = this.helperDateService.checkIso(iso);
+        if (!isIso) {
+            throw new PaginationInvalidCursorDataException();
+        }
+
+        const date = this.helperDateService.createFromIso(iso);
+
+        return { values, fingerprint, firstPageAt: date };
+    }
+
     offset<TArgsWhere = unknown>(
         dto: PaginationOffsetQueryDto & { orderBy?: IPaginationOrderByQuery },
         options: IPaginationQueryOffsetOptions
@@ -379,6 +468,13 @@ export class PaginationQueryUtil {
             const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
             const cursorField =
                 options.cursorField ?? PaginationDefaultCursorField;
+            let firstPageAt: Date;
+            if (cursor) {
+                const token = this.openCursor(cursor);
+                firstPageAt = token.firstPageAt;
+            } else {
+                firstPageAt = this.helperDateService.create();
+            }
 
             return {
                 params: {
@@ -387,6 +483,7 @@ export class PaginationQueryUtil {
                     ...(cursor && { cursor }),
                     cursorField,
                     orderBy,
+                    firstPageAt,
                 } as IPaginationQueryCursorParams<TArgsWhere>,
                 storePatch: {
                     perPage,

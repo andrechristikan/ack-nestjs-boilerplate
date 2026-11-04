@@ -4,6 +4,7 @@
  */
 export enum EnumWorkspaceProcess {
     expireStaleInvites = 'expireStaleInvites',
+    expireStaleJoinRequests = 'expireStaleJoinRequests',
 }
 
 /**

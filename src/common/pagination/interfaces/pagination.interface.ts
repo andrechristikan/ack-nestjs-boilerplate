@@ -71,6 +71,11 @@ export interface IPaginationQueryCursorParams<
 > extends IPaginationQueryReturn<TArgsWhere> {
     cursor?: string;
     cursorField?: string;
+    /**
+     * Clock of this cursor read: the first page's time, carried by the token.
+     * A time filter in `where` uses it, never `HelperDateService`, or the next page answers 422.
+     */
+    firstPageAt: Date;
 }
 
 export type IPaginationShape =
@@ -156,9 +161,26 @@ export interface IPaginationRepository {
     count(args?: unknown): Promise<number>;
 }
 
+export type IPaginationCursorScalar = string | number | boolean | Date;
+
 export interface IPaginationCursorValue {
-    cursor: string;
+    values: Record<string, IPaginationCursorScalar>;
     fingerprint: string;
+    firstPageAt: Date;
+}
+
+export type IPaginationCursorJson =
+    | string
+    | number
+    | boolean
+    | null
+    | IPaginationCursorJson[]
+    | { [key: string]: IPaginationCursorJson };
+
+export interface IPaginationCursorToken {
+    values: Record<string, IPaginationCursorJson>;
+    fingerprint: string;
+    firstPageAt: Date;
 }
 
 /**

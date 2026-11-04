@@ -81,16 +81,16 @@ export const WorkspaceActiveFilter: IWorkspaceActiveFilter = [
 ];
 
 /**
- * Pattern of `WorkspaceInvite.pendingKey`, set while the invite is pending.
+ * Pattern hashed into `WorkspaceInvite.nonce` while the invite is pending.
  * @public
  */
-export const WorkspaceInvitePendingKeyPattern = '{workspaceId}:{email}';
+export const WorkspaceInviteNoncePattern = '{workspaceId}:{email}';
 
 /**
- * Pattern of `WorkspaceJoinRequest.pendingKey`, set while the join request is pending.
+ * Pattern hashed into `WorkspaceJoinRequest.nonce` while the join request is pending.
  * @public
  */
-export const WorkspaceJoinRequestPendingKeyPattern = '{workspaceId}:{userId}';
+export const WorkspaceJoinRequestNoncePattern = '{workspaceId}:{userId}';
 
 /**
  * Columns a user-scope workspace invite list read returns; the invite token is never among them.

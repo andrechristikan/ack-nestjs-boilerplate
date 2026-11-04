@@ -1,7 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type {
     IPaginationCursorReturn,
     IPaginationIn,
@@ -32,7 +32,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
-        private readonly helperArrayService: HelperArrayService,
+        private readonly helperHashService: HelperHashService,
         private readonly paginationService: PaginationService,
         private readonly configService: ConfigService
     ) {
@@ -41,44 +41,51 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         )!;
     }
 
-    /** Flips truly-expired `pending` invites to `expired`, each row's `pendingKey` becoming its own id; returns the count updated. */
-    async expireStalePending(): Promise<number> {
-        const today = this.helperDateService.create();
-
-        const stale =
-            await this.databaseService.client.workspaceInvite.findMany({
+    private async expireOne(id: string, today: Date): Promise<number> {
+        const nonce = this.helperHashService.sha256Hash(id);
+        const { count } =
+            await this.databaseService.client.workspaceInvite.updateMany({
                 where: {
+                    id,
                     status: EnumWorkspaceInviteStatus.pending,
                     expiredAt: {
                         lt: today,
                     },
                 },
-                select: { id: true },
+                data: {
+                    status: EnumWorkspaceInviteStatus.expired,
+                    nonce,
+                },
             });
-        const chunks = this.helperArrayService.chunk(
-            stale,
-            this.expireChunkSize
-        );
+
+        return count;
+    }
+
+    /** Flips truly-expired `pending` invites to `expired`, each row's `nonce` becoming the digest of its id; returns the count updated. */
+    async expireStalePending(): Promise<number> {
+        const today = this.helperDateService.create();
 
         let total = 0;
-        for (const chunk of chunks) {
+        let fetched: number;
+        do {
             // Sequential by design: fan-out over an unbounded collection runs in bounded chunks
-            const results = await Promise.all(
-                chunk.map(({ id }) =>
-                    this.databaseService.client.workspaceInvite.updateMany({
-                        where: {
-                            id,
-                            status: EnumWorkspaceInviteStatus.pending,
+            const stale =
+                await this.databaseService.client.workspaceInvite.findMany({
+                    where: {
+                        status: EnumWorkspaceInviteStatus.pending,
+                        expiredAt: {
+                            lt: today,
                         },
-                        data: {
-                            status: EnumWorkspaceInviteStatus.expired,
-                            pendingKey: id,
-                        },
-                    })
-                )
+                    },
+                    select: { id: true },
+                    take: this.expireChunkSize,
+                });
+            const counts = await Promise.all(
+                stale.map(({ id }) => this.expireOne(id, today))
             );
-            total += results.reduce((sum, { count }) => sum + count, 0);
-        }
+            total += counts.reduce((sum, count) => sum + count, 0);
+            fetched = stale.length;
+        } while (fetched === this.expireChunkSize);
 
         return total;
     }
@@ -96,6 +103,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         });
 
         for (const { id } of pending) {
+            const nonce = this.helperHashService.sha256Hash(id);
             await tx.workspaceInvite.updateMany({
                 where: {
                     id,
@@ -103,7 +111,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 },
                 data: {
                     status: EnumWorkspaceInviteStatus.revoked,
-                    pendingKey: id,
+                    nonce,
                 },
             });
         }
@@ -189,22 +197,48 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         reference,
         expiredAt,
         invitedByUserId,
-        pendingKey,
+        nonce,
     }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite> {
-        return this.databaseService.client.workspaceInvite.create({
-            data: {
-                id: workspaceInviteId,
-                workspaceId,
-                email,
-                workspaceRole,
-                projectId,
-                projectRole,
-                token: hashedToken,
-                reference,
-                expiredAt,
-                invitedByUserId,
-                pendingKey,
-            },
+        const now = this.helperDateService.create();
+
+        return this.databaseService.withTransaction(async tx => {
+            const stale = await tx.workspaceInvite.findFirst({
+                where: {
+                    nonce,
+                    status: EnumWorkspaceInviteStatus.pending,
+                    expiredAt: { lt: now },
+                },
+                select: { id: true },
+            });
+            if (stale) {
+                const staleNonce = this.helperHashService.sha256Hash(stale.id);
+                await tx.workspaceInvite.updateMany({
+                    where: {
+                        id: stale.id,
+                        status: EnumWorkspaceInviteStatus.pending,
+                    },
+                    data: {
+                        status: EnumWorkspaceInviteStatus.expired,
+                        nonce: staleNonce,
+                    },
+                });
+            }
+
+            return tx.workspaceInvite.create({
+                data: {
+                    id: workspaceInviteId,
+                    workspaceId,
+                    email,
+                    workspaceRole,
+                    projectId,
+                    projectRole,
+                    token: hashedToken,
+                    reference,
+                    expiredAt,
+                    invitedByUserId,
+                    nonce,
+                },
+            });
         });
     }
 
@@ -212,13 +246,17 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         workspaceInviteId: string,
         hashedToken: string,
         reference: string,
-        expiredAt: Date
+        expiredAt: Date,
+        resentAt: Date
     ): Promise<WorkspaceInvite | null> {
         return this.databaseService.withTransaction(async tx => {
             const { count } = await tx.workspaceInvite.updateMany({
                 where: {
                     id: workspaceInviteId,
                     status: EnumWorkspaceInviteStatus.pending,
+                    expiredAt: {
+                        gt: resentAt,
+                    },
                 },
                 data: {
                     token: hashedToken,
@@ -236,7 +274,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         });
     }
 
-    async revoke(workspaceInviteId: string): Promise<boolean> {
+    async revoke(workspaceInviteId: string, nonce: string): Promise<boolean> {
         const { count } =
             await this.databaseService.client.workspaceInvite.updateMany({
                 where: {
@@ -245,7 +283,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 },
                 data: {
                     status: EnumWorkspaceInviteStatus.revoked,
-                    pendingKey: workspaceInviteId,
+                    nonce,
                 },
             });
 
@@ -255,6 +293,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
     async acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string,
+        nonce: string,
         userId: string,
         acceptedAt: Date
     ): Promise<boolean> {
@@ -268,7 +307,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             },
             data: {
                 status: EnumWorkspaceInviteStatus.accepted,
-                pendingKey: workspaceInviteId,
+                nonce,
                 acceptedAt,
                 acceptedByUserId: userId,
                 updatedBy: userId,

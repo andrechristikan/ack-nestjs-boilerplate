@@ -61,5 +61,4 @@ export type {
     IAnalyticBackupCodeNewDevice,
     IAnalyticApiKeyBurst,
     IAnalyticFraudSignalRows,
-    IAnalyticFraudUserCount,
 } from '@modules/analytic/interfaces/analytic.fraud.interface';

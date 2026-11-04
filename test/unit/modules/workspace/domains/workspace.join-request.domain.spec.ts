@@ -1,5 +1,7 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { Duration } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
@@ -8,6 +10,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -23,7 +26,7 @@ import type {
     WorkspaceJoinRequest,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { WorkspaceJoinRequestPendingKeyPattern } from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -53,6 +56,15 @@ describe('WorkspaceJoinRequestDomain', () => {
         mock<HelperDateService>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const configGet = vi.fn<(key: string) => unknown>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const pendingNonce = 'a'.repeat(64);
+    const joinRequestNonce = 'b'.repeat(64);
+    const expiredAt = new Date('2026-01-09T00:00:00.000Z');
 
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const reviewedAt = new Date('2026-01-02T00:00:00.000Z');
@@ -84,7 +96,8 @@ describe('WorkspaceJoinRequestDomain', () => {
         rejectReasonCode: null,
         reviewedByUserId: null,
         reviewedAt: null,
-        pendingKey: 'workspace-1:user-2',
+        expiredAt,
+        nonce: pendingNonce,
     };
 
     const workspaceMember: WorkspaceMember = {
@@ -105,6 +118,16 @@ describe('WorkspaceJoinRequestDomain', () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(reviewedAt);
         helperStringService.fillPattern.mockReturnValue('workspace-1:user-2');
+        helperHashService.sha256Hash.mockImplementation(value =>
+            value === 'workspace-1:user-2' ? pendingNonce : joinRequestNonce
+        );
+        configGet.mockImplementation((key: string) =>
+            key === 'workspace.joinRequest.expiresInMs' ? 604800000 : null
+        );
+        helperDateService.forward.mockReturnValue(expiredAt);
+        helperDateService.createDuration.mockReturnValue(
+            Duration.fromMillis(604800000)
+        );
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
@@ -127,6 +150,8 @@ describe('WorkspaceJoinRequestDomain', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: HelperStringService, useValue: helperStringService },
+                { provide: HelperHashService, useValue: helperHashService },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
@@ -217,7 +242,7 @@ describe('WorkspaceJoinRequestDomain', () => {
     });
 
     describe('createJoinRequest', () => {
-        it('creates the pending join request keyed by workspace and user', async () => {
+        it('creates the pending join request with the hashed nonce and the configured expiry', async () => {
             const create: IWorkspaceJoinRequestCreate = {
                 workspaceId: 'workspace-1',
                 message: 'Please let me in',
@@ -235,16 +260,27 @@ describe('WorkspaceJoinRequestDomain', () => {
                 workspaceId: 'workspace-1',
                 userId: 'user-2',
                 message: 'Please let me in',
-                pendingKey: 'workspace-1:user-2',
+                expiredAt,
+                nonce: pendingNonce,
             });
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                WorkspaceJoinRequestPendingKeyPattern,
+                WorkspaceJoinRequestNoncePattern,
                 { workspaceId: 'workspace-1', userId: 'user-2' }
+            );
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'workspace-1:user-2'
+            );
+            expect(helperDateService.createDuration).toHaveBeenCalledWith({
+                milliseconds: 604800000,
+            });
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                reviewedAt,
+                Duration.fromMillis(604800000)
             );
         });
 
-        it('throws WorkspaceJoinRequestDuplicateException when the pending key collides', async () => {
-            const collision = new Error('pendingKey');
+        it('throws WorkspaceJoinRequestDuplicateException when the nonce collides', async () => {
+            const collision = new Error('nonce');
             workspaceJoinRequestRepository.createPending.mockRejectedValue(
                 collision
             );
@@ -267,8 +303,31 @@ describe('WorkspaceJoinRequestDomain', () => {
             });
             expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
                 collision,
-                'pendingKey'
+                'nonce'
             );
+        });
+
+        it('throws WorkspaceJoinRequestDuplicateException on a write conflict', async () => {
+            const conflict = new Error('write-conflict');
+            workspaceJoinRequestRepository.createPending.mockRejectedValue(
+                conflict
+            );
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.createJoinRequest('user-2', {
+                    workspaceId: 'workspace-1',
+                    message: null,
+                })
+            ).rejects.toMatchObject({
+                constructor: WorkspaceJoinRequestDuplicateException,
+                statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
+                messagePath: 'workspace.error.joinRequestDuplicate',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps another create failure in AppUnknownException', async () => {
@@ -292,7 +351,11 @@ describe('WorkspaceJoinRequestDomain', () => {
 
     describe('getJoinRequestsList', () => {
         const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput> =
-            { limit: 20, orderBy: [] };
+            {
+                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                limit: 20,
+                orderBy: [],
+            };
         const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
             type: EnumPaginationType.cursor,
             perPage: 20,
@@ -419,6 +482,7 @@ describe('WorkspaceJoinRequestDomain', () => {
             ).toHaveBeenCalledWith(
                 tx,
                 'join-request-1',
+                joinRequestNonce,
                 'reviewer-1',
                 reviewedAt
             );
@@ -510,6 +574,7 @@ describe('WorkspaceJoinRequestDomain', () => {
 
             expect(workspaceJoinRequestRepository.reject).toHaveBeenCalledWith(
                 'join-request-1',
+                joinRequestNonce,
                 'reviewer-1',
                 EnumWorkspaceJoinRejectReason.wrongWorkspace,
                 reviewedAt
@@ -532,6 +597,21 @@ describe('WorkspaceJoinRequestDomain', () => {
                     EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
                 messagePath: 'workspace.error.joinRequestAlreadyProcessed',
             });
+        });
+    });
+
+    describe('expireStalePending', () => {
+        it('returns the count the repository sweep expired', async () => {
+            workspaceJoinRequestRepository.expireStalePending.mockResolvedValue(
+                3
+            );
+
+            const result = await domain.expireStalePending();
+
+            expect(result).toBe(3);
+            expect(
+                workspaceJoinRequestRepository.expireStalePending
+            ).toHaveBeenCalledWith();
         });
     });
 

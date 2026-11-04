@@ -38,6 +38,7 @@
     },
     "queue": {
         "expireStaleInvites": "Processed stale workspace invite expiry sweep.",
+        "expireStaleJoinRequests": "Processed stale workspace join request expiry sweep.",
         "error": {
             "unknownProcess": "No {process} job handler exists."
         }

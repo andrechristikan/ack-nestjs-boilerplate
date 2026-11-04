@@ -159,6 +159,26 @@ describe('AuthCache', () => {
             expect(keyv.deserializeData).not.toHaveBeenCalled();
         });
 
+        it('returns null when the claimed value deserializes to nothing', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.getDel.mockResolvedValue('serialized-challenge');
+            keyv.deserializeData.mockResolvedValue(undefined);
+
+            const result = await cache.consumeTwoFactorChallenge('token-value');
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null when the deserialized entry carries no value', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.getDel.mockResolvedValue('serialized-challenge');
+            keyv.deserializeData.mockResolvedValue({ value: undefined });
+
+            const result = await cache.consumeTwoFactorChallenge('token-value');
+
+            expect(result).toBeNull();
+        });
+
         it('throws RedisUnavailableException when the store fails, not the invalid-challenge exception', async () => {
             const client = stubStoreClient({ keyv, store });
             client.getDel.mockRejectedValue(new Error('redis down'));

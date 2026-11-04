@@ -20,6 +20,7 @@ export interface IConfigAnalytic {
     anomaly: {
         minSample: number;
         lookbackInMs: number;
+        concurrency: number;
         impossibleTravel: {
             minDistanceKm: number;
             maxDeltaInMs: number;
@@ -122,6 +123,7 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
     anomaly: {
         minSample: 5,
         lookbackInMs: ms('30d'),
+        concurrency: 10,
         impossibleTravel: {
             minDistanceKm: 500,
             maxDeltaInMs: ms('1h'),

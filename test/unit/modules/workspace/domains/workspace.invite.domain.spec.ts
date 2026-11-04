@@ -30,7 +30,7 @@ import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enu
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
-import { WorkspaceInvitePendingKeyPattern } from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
@@ -85,6 +85,9 @@ describe('WorkspaceInviteDomain', () => {
         isPublic: false,
     };
 
+    const pendingNonce = 'a'.repeat(64);
+    const invite1Nonce = 'b'.repeat(64);
+
     const baseInvite: WorkspaceInvite = {
         id: 'invite-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -103,7 +106,7 @@ describe('WorkspaceInviteDomain', () => {
         invitedByUserId: 'user-1',
         acceptedAt: null,
         acceptedByUserId: null,
-        pendingKey: 'workspace-1:invitee@example.com',
+        nonce: pendingNonce,
     };
 
     const baseProject: Project = {
@@ -145,6 +148,13 @@ describe('WorkspaceInviteDomain', () => {
         configGet.mockImplementation((key: string) => configValues[key]);
         helperStringService.fillPattern.mockReturnValue(
             'workspace-1:invitee@example.com'
+        );
+        helperHashService.sha256Hash.mockImplementation(value =>
+            value === 'workspace-1:invitee@example.com'
+                ? pendingNonce
+                : value === 'invite-1'
+                  ? invite1Nonce
+                  : 'hashed-token'
         );
 
         const module: TestingModule = await Test.createTestingModule({
@@ -347,7 +357,11 @@ describe('WorkspaceInviteDomain', () => {
 
     describe('getInvitesList', () => {
         const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
-            { limit: 20, orderBy: [] };
+            {
+                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                limit: 20,
+                orderBy: [],
+            };
         const page: IResponsePaginationReturn<never> = {
             type: EnumPaginationType.cursor,
             perPage: 20,
@@ -475,7 +489,7 @@ describe('WorkspaceInviteDomain', () => {
     });
 
     describe('createInvite', () => {
-        const pendingKeyCollision = new Error('pendingKey');
+        const nonceCollision = new Error('nonce');
         const tokenCollision = new Error('token');
         const referenceCollision = new Error('reference');
         const retriedTokenData: IWorkspaceInviteTokenData = {
@@ -489,7 +503,7 @@ describe('WorkspaceInviteDomain', () => {
             workspaceUtil.createInviteTokenData.mockReturnValue(tokenData);
         });
 
-        it('draws the token data and creates the pending invite keyed by workspace and email', async () => {
+        it('draws the token data and creates the pending invite with the hashed nonce of workspace and email', async () => {
             workspaceInviteRepository.createPending.mockResolvedValue(
                 baseInvite
             );
@@ -506,8 +520,11 @@ describe('WorkspaceInviteDomain', () => {
                 14
             );
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                WorkspaceInvitePendingKeyPattern,
+                WorkspaceInviteNoncePattern,
                 { workspaceId: 'workspace-1', email: 'invitee@example.com' }
+            );
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'workspace-1:invitee@example.com'
             );
             expect(
                 workspaceInviteRepository.createPending
@@ -522,16 +539,16 @@ describe('WorkspaceInviteDomain', () => {
                 reference: 'WIN-abc123',
                 expiredAt: tokenData.expiredAt,
                 invitedByUserId: 'user-1',
-                pendingKey: 'workspace-1:invitee@example.com',
+                nonce: pendingNonce,
             });
         });
 
-        it('throws WorkspaceInviteDuplicateException when the pending key collides', async () => {
+        it('throws WorkspaceInviteDuplicateException when the nonce collides', async () => {
             workspaceInviteRepository.createPending.mockRejectedValue(
-                pendingKeyCollision
+                nonceCollision
             );
             databaseUtil.isUniqueCollision.mockImplementation(
-                (_error, target) => target === 'pendingKey'
+                (_error, target) => target === 'nonce'
             );
 
             await expect(
@@ -634,6 +651,27 @@ describe('WorkspaceInviteDomain', () => {
             ).rejects.toBe(failure);
         });
 
+        it('throws WorkspaceInviteDuplicateException on a write conflict without retrying', async () => {
+            const conflict = new Error('write-conflict');
+            workspaceInviteRepository.createPending.mockRejectedValue(conflict);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.createInvite('workspace-1', 'user-1', baseCreate)
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteDuplicateException,
+                statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
+                messagePath: 'workspace.error.inviteDuplicate',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(
+                workspaceInviteRepository.createPending
+            ).toHaveBeenCalledTimes(1);
+        });
+
         it('wraps another failure in AppUnknownException without retrying', async () => {
             const cause = new Error('db-down');
             workspaceInviteRepository.createPending.mockRejectedValue(cause);
@@ -704,15 +742,64 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
+    describe('getResendableById', () => {
+        it('throws WorkspaceInviteInvalidException when the pending invite reached its expiry', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            helperDateService.create.mockReturnValue(baseInvite.expiredAt);
+
+            await expect(
+                domain.getResendableById('invite-1', 'workspace-1')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteInvalidException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
+                messagePath: 'workspace.error.inviteInvalid',
+            });
+        });
+
+        it('throws WorkspaceInviteAlreadyProcessedException when the invite is no longer pending', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue({
+                ...baseInvite,
+                status: EnumWorkspaceInviteStatus.expired,
+            });
+
+            await expect(
+                domain.getResendableById('invite-1', 'workspace-1')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteAlreadyProcessedException,
+            });
+        });
+
+        it('returns the pending invite before its expiry', async () => {
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-31T23:59:59.000Z')
+            );
+
+            const result = await domain.getResendableById(
+                'invite-1',
+                'workspace-1'
+            );
+
+            expect(result).toBe(baseInvite);
+        });
+    });
+
     describe('resendInvite', () => {
         const retriedTokenData: IWorkspaceInviteTokenData = {
             ...tokenData,
             hashedToken: 'hashed-token-2',
             reference: 'WIN-def456',
         };
+        const resentAt = new Date('2026-01-15T00:00:00.000Z');
 
         beforeEach(() => {
             workspaceUtil.createInviteTokenData.mockReturnValue(tokenData);
+            helperDateService.create.mockReturnValue(resentAt);
         });
 
         it('draws the token data, rotates the token, and returns the rotated invite with the stored token data', async () => {
@@ -732,7 +819,8 @@ describe('WorkspaceInviteDomain', () => {
                 'invite-1',
                 'hashed-token',
                 'WIN-abc123',
-                tokenData.expiredAt
+                tokenData.expiredAt,
+                resentAt
             );
         });
 
@@ -774,7 +862,8 @@ describe('WorkspaceInviteDomain', () => {
                 'invite-1',
                 'hashed-token-2',
                 'WIN-def456',
-                tokenData.expiredAt
+                tokenData.expiredAt,
+                resentAt
             );
         });
 
@@ -836,7 +925,8 @@ describe('WorkspaceInviteDomain', () => {
             await domain.revokeInvite('invite-1');
 
             expect(workspaceInviteRepository.revoke).toHaveBeenCalledWith(
-                'invite-1'
+                'invite-1',
+                invite1Nonce
             );
         });
 
@@ -872,6 +962,7 @@ describe('WorkspaceInviteDomain', () => {
             expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledWith(
                 tx,
                 'invite-1',
+                invite1Nonce,
                 'user-2',
                 acceptedAt
             );
@@ -962,6 +1053,7 @@ describe('WorkspaceInviteDomain', () => {
             expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledWith(
                 tx,
                 'invite-1',
+                invite1Nonce,
                 'user-2',
                 new Date('2026-01-01T00:00:00.000Z')
             );

@@ -106,6 +106,13 @@ describe('AnalyticFraudDomain', () => {
         data: [],
     };
 
+    const emptyPage = {
+        type: EnumPaginationType.cursor as const,
+        perPage: 5000,
+        hasNext: false,
+        data: [],
+    };
+
     const configValues: Record<string, number | string> = {
         'analytic.fraud.concurrency': 10,
         'analytic.fraud.credentialStuffing.windowInMs': 86400000,
@@ -141,16 +148,6 @@ describe('AnalyticFraudDomain', () => {
         'analytic.fraud.riskScore.lookbackInMs': 3600000,
     };
 
-    const activityLogRow = {
-        id: 'log-1',
-        userId: 'user-1',
-        action: EnumActivityLogAction.userLoginFailed,
-        ipAddress: null,
-        createdAt: startDate,
-        workspaceId: null,
-        userAgent: null,
-    };
-
     let domain: AnalyticFraudDomain;
 
     beforeEach(async () => {
@@ -176,10 +173,14 @@ describe('AnalyticFraudDomain', () => {
         });
         analyticAnomalyUtil.groupByIp.mockReturnValue(new Map());
         analyticBucketUtil.toBuckets.mockReturnValue([]);
-        analyticFraudUtil.countByUser.mockReturnValue([]);
         analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
         paginationService.offsetPage.mockReturnValue(offsetPage);
-        activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue([]);
+        activityLogAnalyticDomain.getPageByActionsInRange.mockResolvedValue(
+            emptyPage
+        );
+        activityLogAnalyticDomain.getGroupIpUserByActions.mockResolvedValue([]);
+        activityLogAnalyticDomain.getGroupUserByActions.mockResolvedValue([]);
+        activityLogAnalyticDomain.getGroupUserIdByIps.mockResolvedValue([]);
         activityLogAnalyticDomain.getGroupIpByActions.mockResolvedValue([]);
         analyticAnomalyDomain.getImpossibleTravelUserIds.mockResolvedValue([]);
         passwordHistoryAnalyticDomain.getByTypeInRange.mockResolvedValue([]);
@@ -249,10 +250,6 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             const result = await domain.credentialStuffingSummary(600000);
 
             expect(result).toEqual({
@@ -269,10 +266,6 @@ describe('AnalyticFraudDomain', () => {
 
     describe('credentialStuffingList', () => {
         it('pages computed rows', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             const result = await domain.credentialStuffingList(
                 null,
                 pagination
@@ -282,9 +275,6 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('pages the sorted slice and total the sort util returns', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
             const sorted = [
                 { ipAddress: '10.0.0.1', uniqueUsers: 4, failCount: 9 },
                 { ipAddress: '10.0.0.2', uniqueUsers: 2, failCount: 5 },
@@ -645,10 +635,6 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             const result = await domain.sessionAfterAdminSummary(
                 startDate,
                 endDate
@@ -660,20 +646,12 @@ describe('AnalyticFraudDomain', () => {
 
     describe('sessionAfterAdminList', () => {
         it('chunks the revokes by analytic.fraud.concurrency', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             await domain.sessionAfterAdminList(startDate, endDate, pagination);
 
             expect(helperArrayService.chunk).toHaveBeenCalledWith([], 10);
         });
 
         it('pages computed rows', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             expect(
                 await domain.sessionAfterAdminList(
                     startDate,
@@ -684,9 +662,6 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('pages the sorted slice and total the sort util returns', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
             const sorted = [
                 {
                     userId: 'user-1',
@@ -804,10 +779,6 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             const result = await domain.refreshSpikeSummary(null);
 
             expect(result).toEqual({ count: 0, window: '86400000' });
@@ -816,19 +787,12 @@ describe('AnalyticFraudDomain', () => {
 
     describe('refreshSpikeList', () => {
         it('pages computed rows', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             expect(await domain.refreshSpikeList(null, pagination)).toEqual(
                 offsetPage
             );
         });
 
         it('pages the sorted slice and total the sort util returns', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
             const sorted = [
                 { userId: 'user-1', count: 9 },
                 { userId: 'user-2', count: 5 },
@@ -872,10 +836,6 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             const result = await domain.backupCodeNewDeviceSummary(null);
 
             expect(result).toEqual({ count: 0, window: '86400000' });
@@ -884,29 +844,18 @@ describe('AnalyticFraudDomain', () => {
 
     describe('backupCodeNewDeviceList', () => {
         it('chunks the regenerations by analytic.fraud.concurrency', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             await domain.backupCodeNewDeviceList(null, pagination);
 
             expect(helperArrayService.chunk).toHaveBeenCalledWith([], 10);
         });
 
         it('pages computed rows', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             expect(
                 await domain.backupCodeNewDeviceList(null, pagination)
             ).toEqual(offsetPage);
         });
 
         it('pages the sorted slice and total the sort util returns', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
             const sorted = [
                 { userId: 'user-1', regeneratedAt: startDate },
                 { userId: 'user-2', regeneratedAt: endDate },
@@ -948,10 +897,6 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             const result = await domain.apiKeyBurstSummary(null);
 
             expect(result).toEqual({ count: 0, window: '86400000' });
@@ -960,19 +905,12 @@ describe('AnalyticFraudDomain', () => {
 
     describe('apiKeyBurstList', () => {
         it('pages computed rows', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
-
             expect(await domain.apiKeyBurstList(null, pagination)).toEqual(
                 offsetPage
             );
         });
 
         it('pages the sorted slice and total the sort util returns', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
             const sorted = [
                 { userId: 'user-1', count: 9 },
                 { userId: 'user-2', count: 5 },
@@ -1253,9 +1191,6 @@ describe('AnalyticFraudDomain', () => {
 
     describe('collectSignalUsers', () => {
         it('collects the users flagged by credential stuffing and by sign-up from a flagged ip', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                []
-            );
             analyticAnomalyUtil.groupByIp.mockReturnValue(
                 new Map([
                     [
@@ -1285,15 +1220,13 @@ describe('AnalyticFraudDomain', () => {
 
     describe('groupFlaggedCredentialStuffing', () => {
         it('keeps ips at or above the unique-account minimum', async () => {
-            const logs = [
-                {
-                    ...activityLogRow,
-                    ipAddress: '10.0.0.1',
-                },
+            const pairs = [
+                { ipAddress: '10.0.0.1', userId: 'user-1', count: 2 },
+                { ipAddress: '10.0.0.1', userId: 'user-2', count: 1 },
             ];
             const wide = { users: new Set(['user-1', 'user-2']), count: 3 };
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                logs
+            activityLogAnalyticDomain.getGroupIpUserByActions.mockResolvedValue(
+                pairs
             );
             analyticAnomalyUtil.groupByIp.mockReturnValue(
                 new Map([
@@ -1308,7 +1241,7 @@ describe('AnalyticFraudDomain', () => {
             expect(result).toEqual(new Map([['10.0.0.1', wide]]));
             expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
-                activityLogAnalyticDomain.getManyByActionsInRange
+                activityLogAnalyticDomain.getGroupIpUserByActions
             ).toHaveBeenCalledWith(
                 [
                     EnumActivityLogAction.userLoginFailed,
@@ -1318,7 +1251,7 @@ describe('AnalyticFraudDomain', () => {
                 startDate,
                 now
             );
-            expect(analyticAnomalyUtil.groupByIp).toHaveBeenCalledWith(logs);
+            expect(analyticAnomalyUtil.groupByIp).toHaveBeenCalledWith(pairs);
         });
     });
 
@@ -1435,7 +1368,7 @@ describe('AnalyticFraudDomain', () => {
 
             expect(result).toEqual(new Set());
             expect(
-                activityLogAnalyticDomain.getManyByActionsInRange
+                activityLogAnalyticDomain.getGroupUserIdByIps
             ).not.toHaveBeenCalled();
         });
 
@@ -1446,48 +1379,25 @@ describe('AnalyticFraudDomain', () => {
             analyticBucketUtil.toBuckets.mockReturnValue([
                 { key: '10.0.0.1', count: 6 },
             ]);
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                [
-                    {
-                        ...activityLogRow,
-                        userId: 'user-1',
-                        action: EnumActivityLogAction.userSignedUp,
-                        ipAddress: '10.0.0.1',
-                    },
-                    {
-                        ...activityLogRow,
-                        userId: 'user-2',
-                        action: EnumActivityLogAction.userCreated,
-                        ipAddress: '10.0.0.1',
-                    },
-                    {
-                        ...activityLogRow,
-                        userId: 'user-3',
-                        action: EnumActivityLogAction.userSignedUp,
-                        ipAddress: '10.0.0.7',
-                    },
-                    {
-                        ...activityLogRow,
-                        userId: 'user-4',
-                        action: EnumActivityLogAction.userSignedUp,
-                        ipAddress: null,
-                    },
-                ]
-            );
+            activityLogAnalyticDomain.getGroupUserIdByIps.mockResolvedValue([
+                'user-1',
+                'user-2',
+            ]);
 
             const result =
                 await domain['collectMassRegistrationUsers'](86400000);
 
             expect(result).toEqual(new Set(['user-1', 'user-2']));
             expect(
-                activityLogAnalyticDomain.getManyByActionsInRange
+                activityLogAnalyticDomain.getGroupUserIdByIps
             ).toHaveBeenCalledWith(
                 [
                     EnumActivityLogAction.userSignedUp,
                     EnumActivityLogAction.userCreated,
                 ],
                 startDate,
-                now
+                now,
+                ['10.0.0.1']
             );
         });
     });
@@ -1521,40 +1431,53 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('computeSessionAfterAdmin', () => {
-        it('flags a login for the same user inside the revoke window', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange
-                .mockResolvedValueOnce([
-                    {
-                        id: 'rev-1',
-                        userId: 'user-1',
-                        action: EnumActivityLogAction.userRevokeSessionByAdmin,
-                        ipAddress: null,
-                        createdAt: startDate,
-                        workspaceId: null,
-                        userAgent: null,
-                    },
-                    {
-                        id: 'rev-2',
-                        userId: 'user-2',
-                        action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                        ipAddress: null,
-                        createdAt: startDate,
-                        workspaceId: null,
-                        userAgent: null,
-                    },
-                ])
-                .mockResolvedValueOnce([
-                    {
-                        id: 'login-1',
-                        userId: 'user-1',
-                        action: EnumActivityLogAction.userLoginCredential,
-                        ipAddress: null,
-                        createdAt: windowEnd,
-                        workspaceId: null,
-                        userAgent: null,
-                    },
-                ])
-                .mockResolvedValueOnce([]);
+        it('flags a login for the same user inside the revoke window, reading the revokes page by page', async () => {
+            const revokeActions = [
+                EnumActivityLogAction.userRevokeSessionByAdmin,
+                EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+            ];
+            activityLogAnalyticDomain.getPageByActionsInRange
+                .mockResolvedValueOnce({
+                    ...emptyPage,
+                    hasNext: true,
+                    cursor: 'cursor-1',
+                    data: [
+                        {
+                            id: 'rev-1',
+                            userId: 'user-1',
+                            action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                            ipAddress: null,
+                            createdAt: startDate,
+                            workspaceId: null,
+                            userAgent: null,
+                        },
+                    ],
+                })
+                .mockResolvedValueOnce({
+                    ...emptyPage,
+                    data: [
+                        {
+                            id: 'rev-2',
+                            userId: 'user-2',
+                            action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                            ipAddress: null,
+                            createdAt: startDate,
+                            workspaceId: null,
+                            userAgent: null,
+                        },
+                    ],
+                });
+            activityLogAnalyticDomain.getOneByUserActionsInRange
+                .mockResolvedValueOnce({
+                    id: 'login-1',
+                    userId: 'user-1',
+                    action: EnumActivityLogAction.userLoginCredential,
+                    ipAddress: null,
+                    createdAt: windowEnd,
+                    workspaceId: null,
+                    userAgent: null,
+                })
+                .mockResolvedValueOnce(null);
 
             const result = await domain['computeSessionAfterAdmin'](
                 startDate,
@@ -1569,9 +1492,37 @@ describe('AnalyticFraudDomain', () => {
                 },
             ]);
             expect(
-                activityLogAnalyticDomain.getManyByActionsInRange
+                activityLogAnalyticDomain.getPageByActionsInRange
+            ).toHaveBeenNthCalledWith(
+                1,
+                revokeActions,
+                startDate,
+                endDate,
+                null
+            );
+            expect(
+                activityLogAnalyticDomain.getPageByActionsInRange
             ).toHaveBeenNthCalledWith(
                 2,
+                revokeActions,
+                startDate,
+                endDate,
+                'cursor-1'
+            );
+            expect(
+                activityLogAnalyticDomain.getOneByUserActionsInRange
+            ).toHaveBeenNthCalledWith(
+                1,
+                'user-1',
+                UserLoginAnalyticActions,
+                startDate,
+                windowEnd
+            );
+            expect(
+                activityLogAnalyticDomain.getOneByUserActionsInRange
+            ).toHaveBeenNthCalledWith(
+                2,
+                'user-2',
                 UserLoginAnalyticActions,
                 startDate,
                 windowEnd
@@ -1596,52 +1547,62 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('computeRefreshSpike', () => {
-        it('returns the users the fraud util counts at or above the min count', async () => {
-            const logs = [{ ...activityLogRow }];
+        it('returns the users the database counts at or above the min count', async () => {
             const counted = [{ userId: 'user-1', count: 2 }];
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                logs
+            activityLogAnalyticDomain.getGroupUserByActions.mockResolvedValue(
+                counted
             );
-            analyticFraudUtil.countByUser.mockReturnValue(counted);
 
             const result = await domain['computeRefreshSpike'](86400000);
 
             expect(result).toBe(counted);
             expect(
-                activityLogAnalyticDomain.getManyByActionsInRange
+                activityLogAnalyticDomain.getGroupUserByActions
             ).toHaveBeenCalledWith(
                 [EnumActivityLogAction.userRefreshToken],
                 startDate,
-                now
+                now,
+                2
             );
-            expect(analyticFraudUtil.countByUser).toHaveBeenCalledWith(logs, 2);
         });
     });
 
     describe('computeBackupCodeNewDevice', () => {
-        it('flags a regeneration followed by a new device for the same user', async () => {
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                [
-                    {
-                        id: 'regenerate-1',
-                        userId: 'user-1',
-                        action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                        ipAddress: null,
-                        createdAt: startDate,
-                        workspaceId: null,
-                        userAgent: null,
-                    },
-                    {
-                        id: 'regenerate-2',
-                        userId: 'user-2',
-                        action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                        ipAddress: null,
-                        createdAt: startDate,
-                        workspaceId: null,
-                        userAgent: null,
-                    },
-                ]
-            );
+        it('flags a regeneration followed by a new device for the same user, reading the regenerations page by page', async () => {
+            const regenerateActions = [
+                EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+            ];
+            activityLogAnalyticDomain.getPageByActionsInRange
+                .mockResolvedValueOnce({
+                    ...emptyPage,
+                    hasNext: true,
+                    cursor: 'cursor-1',
+                    data: [
+                        {
+                            id: 'regenerate-1',
+                            userId: 'user-1',
+                            action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                            ipAddress: null,
+                            createdAt: startDate,
+                            workspaceId: null,
+                            userAgent: null,
+                        },
+                    ],
+                })
+                .mockResolvedValueOnce({
+                    ...emptyPage,
+                    data: [
+                        {
+                            id: 'regenerate-2',
+                            userId: 'user-2',
+                            action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                            ipAddress: null,
+                            createdAt: startDate,
+                            workspaceId: null,
+                            userAgent: null,
+                        },
+                    ],
+                });
             deviceAnalyticDomain.getCreatedInRangeByUser
                 .mockResolvedValueOnce([
                     {
@@ -1658,6 +1619,24 @@ describe('AnalyticFraudDomain', () => {
             expect(result).toEqual([
                 { userId: 'user-1', regeneratedAt: startDate },
             ]);
+            expect(
+                activityLogAnalyticDomain.getPageByActionsInRange
+            ).toHaveBeenNthCalledWith(
+                1,
+                regenerateActions,
+                startDate,
+                now,
+                null
+            );
+            expect(
+                activityLogAnalyticDomain.getPageByActionsInRange
+            ).toHaveBeenNthCalledWith(
+                2,
+                regenerateActions,
+                startDate,
+                now,
+                'cursor-1'
+            );
             expect(helperDateService.forward).toHaveBeenCalledWith(
                 startDate,
                 Duration.fromMillis(7200000)
@@ -1669,33 +1648,26 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('computeApiKeyBurst', () => {
-        it('returns the users the fraud util counts at or above the min count', async () => {
-            const logs = [
-                {
-                    ...activityLogRow,
-                    action: EnumActivityLogAction.adminApiKeyCreate,
-                },
-            ];
+        it('returns the users the database counts at or above the min count', async () => {
             const counted = [{ userId: 'user-1', count: 2 }];
-            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
-                logs
+            activityLogAnalyticDomain.getGroupUserByActions.mockResolvedValue(
+                counted
             );
-            analyticFraudUtil.countByUser.mockReturnValue(counted);
 
             const result = await domain['computeApiKeyBurst'](86400000);
 
             expect(result).toBe(counted);
             expect(
-                activityLogAnalyticDomain.getManyByActionsInRange
+                activityLogAnalyticDomain.getGroupUserByActions
             ).toHaveBeenCalledWith(
                 [
                     EnumActivityLogAction.adminApiKeyCreate,
                     EnumActivityLogAction.adminApiKeyReset,
                 ],
                 startDate,
-                now
+                now,
+                2
             );
-            expect(analyticFraudUtil.countByUser).toHaveBeenCalledWith(logs, 2);
         });
     });
 });

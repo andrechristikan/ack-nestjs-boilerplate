@@ -5,11 +5,20 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { ConfigService } from '@nestjs/config';
+import {
+    expectOpenCursorError,
+    sealRawCursor,
+} from '@test/unit/helpers/test.unit.pagination-cursor.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import {
     PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
     PaginationDefaultOrderBy,
+    PaginationCursorEncryptionContext,
+    PaginationCursorEncryptionPurpose,
     PaginationDefaultPerPage,
     PaginationMaxCursorLength,
 } from '@common/pagination/constants/pagination.constant';
@@ -27,14 +36,28 @@ describe('PaginationQueryUtil', () => {
         mock<HelperDateService>();
     const helperArrayService: MockProxy<HelperArrayService> =
         mock<HelperArrayService>();
+    const helperEncryptionService = new HelperEncryptionService();
+    const secret = Buffer.alloc(48, 7).toString('base64url');
+    const firstPageAt = new Date('2026-01-02T03:04:05.678Z');
 
     let util: PaginationQueryUtil;
+    let configService: MockProxy<ConfigService>;
 
     beforeEach(async () => {
         vi.resetAllMocks();
         helperArrayService.unique.mockImplementation((array: unknown[]) =>
             Array.from(new Set(array))
         );
+        helperDateService.create.mockReturnValue(firstPageAt);
+        helperDateService.checkIso.mockImplementation(
+            iso => !Number.isNaN(Date.parse(iso))
+        );
+        helperDateService.createFromIso.mockImplementation(
+            iso => new Date(iso)
+        );
+        configService = buildConfigService({
+            'app.encryptionSecretKey': secret,
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -47,6 +70,11 @@ describe('PaginationQueryUtil', () => {
                     provide: HelperArrayService,
                     useValue: helperArrayService,
                 },
+                {
+                    provide: HelperEncryptionService,
+                    useValue: helperEncryptionService,
+                },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
@@ -193,6 +221,7 @@ describe('PaginationQueryUtil', () => {
                 cursor: undefined,
                 cursorField: 'id',
                 orderBy: [...PaginationDefaultOrderBy],
+                firstPageAt,
             });
             expect(storePatch).toEqual({
                 perPage: PaginationDefaultPerPage,
@@ -238,14 +267,40 @@ describe('PaginationQueryUtil', () => {
             expect(params.cursorField).toBe('slug');
         });
 
-        it('sanitizes a sent cursor', () => {
+        it('sanitizes a sent cursor and takes firstPageAt from its token, not the clock', () => {
+            const tokenFirstPageAt = new Date('2025-05-06T07:08:09.010Z');
+            const cursor = util.sealCursor({
+                values: { id: 'a'.repeat(24) },
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                firstPageAt: tokenFirstPageAt,
+            });
+
             const { params, storePatch } = util.cursor(
-                { cursor: 'Ab-_1' },
+                { cursor },
                 { availableOrderBy: [] }
             );
 
-            expect(params.cursor).toBe('Ab-_1');
-            expect(storePatch.cursor).toBe('Ab-_1');
+            expect(params.cursor).toBe(cursor);
+            expect(storePatch.cursor).toBe(cursor);
+            expect(params.firstPageAt).toEqual(tokenFirstPageAt);
+            expect(helperDateService.create).not.toHaveBeenCalled();
+        });
+
+        it('takes firstPageAt from the clock when no cursor is sent', () => {
+            const { params } = util.cursor({}, { availableOrderBy: [] });
+
+            expect(params.firstPageAt).toBe(firstPageAt);
+        });
+
+        it('answers a pagination 422 for a well-formed cursor that is not a sealed token', () => {
+            expect(() =>
+                util.cursor({ cursor: 'Ab-_1' }, { availableOrderBy: [] })
+            ).toThrowError(
+                expect.objectContaining({
+                    module: 'pagination',
+                    httpStatus: 422,
+                })
+            );
         });
 
         it('builds a search where clause and carries search in the store patch when available', () => {
@@ -285,7 +340,7 @@ describe('PaginationQueryUtil', () => {
             let error: unknown;
             try {
                 util.cursor(
-                    { cursor: 'a'.repeat(300) },
+                    { cursor: 'a'.repeat(PaginationMaxCursorLength + 1) },
                     { availableOrderBy: [] }
                 );
             } catch (caught) {
@@ -330,6 +385,140 @@ describe('PaginationQueryUtil', () => {
                 messagePath: 'pagination.error.invalidCursorPaginationParams',
             });
         });
+    });
+
+    describe('sealCursor', () => {
+        const payload = {
+            values: {
+                createdAt: { $date: '2026-01-02T03:04:05.000Z' },
+                id: 'x',
+            },
+            fingerprint: 'aaaaaaaaaaaaaaaa',
+            firstPageAt,
+        };
+
+        it('returns a token of URL-safe characters only', () => {
+            const token = util.sealCursor(payload);
+
+            expect(token).toMatch(/^[A-Za-z0-9_-]+$/);
+        });
+
+        it('seals under the cursor purpose and context with the app secret', () => {
+            const token = util.sealCursor(payload);
+
+            const plain = helperEncryptionService.aes256Decrypt(
+                Buffer.from(token, 'base64url').toString(),
+                secret,
+                PaginationCursorEncryptionPurpose,
+                PaginationCursorEncryptionContext
+            );
+            expect(JSON.parse(plain)).toEqual({
+                values: payload.values,
+                fingerprint: payload.fingerprint,
+                firstPageAt: { $date: '2026-01-02T03:04:05.678Z' },
+            });
+        });
+
+        it('returns a different token on each call for one payload', () => {
+            expect(util.sealCursor(payload)).not.toBe(util.sealCursor(payload));
+        });
+    });
+
+    describe('openCursor', () => {
+        const payload = {
+            values: {
+                createdAt: { $date: '2026-01-02T03:04:05.000Z' },
+                id: 'x',
+            },
+            fingerprint: 'aaaaaaaaaaaaaaaa',
+            firstPageAt,
+        };
+
+        it('returns the sealed payload with firstPageAt a Date at the same millisecond', () => {
+            const opened = util.openCursor(util.sealCursor(payload));
+
+            expect(opened).toEqual(payload);
+            expect(opened.firstPageAt).toBeInstanceOf(Date);
+            expect(opened.firstPageAt.getTime()).toBe(firstPageAt.getTime());
+        });
+
+        it('answers 422 for a token with one changed character', () => {
+            const token = util.sealCursor(payload);
+            const flipped = token[20] === 'A' ? 'B' : 'A';
+            const tampered = `${token.slice(0, 20)}${flipped}${token.slice(21)}`;
+
+            expect(() => util.openCursor(tampered)).toThrowError(
+                expect.objectContaining({
+                    module: 'pagination',
+                    httpStatus: 422,
+                })
+            );
+        });
+
+        it('answers failedToDecodeCursor for a token sealed under another purpose', () => {
+            expectOpenCursorError(
+                util,
+                sealRawCursor(
+                    secret,
+                    {
+                        ...payload,
+                        firstPageAt: { $date: '2026-01-02T03:04:05.678Z' },
+                    },
+                    'OtherPurpose'
+                ),
+                EnumPaginationStatusCodeError.failedToDecodeCursor
+            );
+        });
+
+        it('answers failedToDecodeCursor for a plain base64 JSON token', () => {
+            expectOpenCursorError(
+                util,
+                Buffer.from(JSON.stringify(payload)).toString('base64url'),
+                EnumPaginationStatusCodeError.failedToDecodeCursor
+            );
+        });
+
+        const valid = {
+            values: { id: 'x' },
+            fingerprint: 'aaaaaaaaaaaaaaaa',
+            firstPageAt: { $date: '2026-01-02T03:04:05.678Z' },
+        };
+
+        it.each([
+            ['null', null],
+            ['a number', 5],
+            ['no fingerprint', { ...valid, fingerprint: undefined }],
+            ['an empty fingerprint', { ...valid, fingerprint: '' }],
+            ['a non-string fingerprint', { ...valid, fingerprint: 5 }],
+            ['no values', { ...valid, values: undefined }],
+            ['null values', { ...valid, values: null }],
+            ['array values', { ...valid, values: ['x'] }],
+            ['no firstPageAt', { ...valid, firstPageAt: undefined }],
+            [
+                'a bare string firstPageAt',
+                { ...valid, firstPageAt: '2026-01-02T03:04:05.678Z' },
+            ],
+            [
+                'a non-ISO firstPageAt',
+                { ...valid, firstPageAt: { $date: 'nope' } },
+            ],
+            [
+                'an extra key in firstPageAt',
+                {
+                    ...valid,
+                    firstPageAt: { $date: '2026-01-02T03:04:05.678Z', x: 1 },
+                },
+            ],
+        ])(
+            'answers invalidCursorData for a sealed payload with %s',
+            (_label, json) => {
+                expectOpenCursorError(
+                    util,
+                    sealRawCursor(secret, json),
+                    EnumPaginationStatusCodeError.invalidCursorData
+                );
+            }
+        );
     });
 
     describe('equalBoolean', () => {

@@ -2,6 +2,7 @@
 name: ack-harness
 description: >-
     Reworks the AI configuration (.claude/**, AGENTS.md, .github/copilot-instructions.md) through the harness agent from a requirement settled with the owner, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-work, ack-spec), docs/ (ack-doc), or prisma/ (ack-work).
+blurb: '.claude, AGENTS.md, copilot-instructions.md'
 disable-model-invocation: true
 argument-hint: '<settled requirement: files, the change, expected outcomes> | diagnose [session id | last]'
 ---
@@ -20,7 +21,7 @@ With `diagnose`:
 - Invoke `superpowers:diagnosing-superpowers` on it.
 - Put its findings (a skill not invoked, a step skipped, an agent working outside its dispatch, a plan ignored, tokens spent on noise) to the owner with `AskUserQuestion` as candidate changes. The ones the owner keeps become the requirement.
 
-Without `diagnose`: ask with `AskUserQuestion` what changes, which files, what stays out, and what the expected outcome is, until nothing material is open. Do not re-ask what the owner named.
+Without `diagnose`: ask with `AskUserQuestion` what changes, which files, what stays out, and what the expected outcome is, until nothing material is open. Do not re-ask what the owner named. The settled requirement takes the shape of `references/example-requirement.md`.
 
 When the files list contains a `.claude/skills/**/SKILL.md`, invoke `superpowers:writing-skills` here and carry the points that apply into the dispatch under `Writing rules`: the description states what the skill does, when to use it, and what it is not for, with no workflow summary; the critical steps come first; the file stays within its word budget; long material goes to `references/`.
 
@@ -54,7 +55,8 @@ Invoke `superpowers:verification-before-completion`, then run and quote the outp
 jq . .claude/settings.json .claude/hooks/*.json >/dev/null
 for f in .claude/hooks/*.sh; do bash -n "$f" && test -x "$f"; done
 echo '{}' | bash .claude/hooks/roster.sh
-echo '{"command_name":"ack-work","command_args":"verify the router prints nothing"}' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh route   # no key: one "Jev: off" systemMessage, no reminder
+echo '{"prompt":"verify the router prints one off line"}' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh route   # no key: one "Jev: off" systemMessage, no reminder
+echo '{"prompt":"/ack-work x"}' | bash .claude/hooks/jev.sh route   # a slash command: no output
 grep -rnE 'N[E]VER|A[L]WAYS|M[U]ST|H[A]RD' .claude AGENTS.md .github/copilot-instructions.md --exclude-dir=worktrees   # all-caps emphasis: empty
 wc -w .claude/CLAUDE.md AGENTS.md .github/copilot-instructions.md .claude/rules/*.md .claude/agents/*.md .claude/skills/*/SKILL.md .claude/skills/*/references/*.md
 ```

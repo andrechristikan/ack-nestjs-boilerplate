@@ -52,6 +52,7 @@ describe('ProjectMemberHttpService', () => {
 
     const pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput> =
         {
+            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
             where: {},
             orderBy: [],
             limit: 20,

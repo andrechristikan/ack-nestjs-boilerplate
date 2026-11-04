@@ -369,14 +369,13 @@ export class NotificationProcessorService {
 
         while (hasNextPage) {
             // Sequential by design: bounded chunks, the chunks in turn
-            const pageUsers =
+            const { data: pageUsers, ...pageCursor } =
                 await this.userDomain.getListActiveRecipientCursor(
                     cursor,
                     batchSize,
                     createdBefore
                 );
-            const lastUserId = pageUsers.at(-1)?.id ?? null;
-            if (lastUserId === null) {
+            if (pageUsers.length === 0) {
                 break;
             }
 
@@ -403,8 +402,8 @@ export class NotificationProcessorService {
             index += pendingBatches + freshBatches;
             candidateCounts += pageUsers.length;
             createdCounts += page.freshUsers.length;
-            cursor = lastUserId;
-            hasNextPage = pageUsers.length === batchSize;
+            cursor = pageCursor.cursor ?? null;
+            hasNextPage = pageCursor.hasNext;
         }
 
         const message = this.messageService.setMessage(

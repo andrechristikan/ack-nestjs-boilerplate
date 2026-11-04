@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PreToolUse Write|Edit|MultiEdit|NotebookEdit: deny secrets, generated trees, and any .superpowers/ path outside .superpowers/plans/.
+# PreToolUse Write|Edit|MultiEdit|NotebookEdit: deny secrets, generated trees, and any .superpowers/ path outside specs/, plans/, and sdd/.
 set -euo pipefail
 
 path=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty')
@@ -14,7 +14,7 @@ deny() {
     exit 0
 }
 
-skill_output="A plan goes to .superpowers/plans/YYYY-MM-DD-<feature-name>.md; nothing else goes under .superpowers/. generated/docs/ holds agent reports, the sweep log, and PR, comment, and version text."
+skill_output="Under .superpowers/, a plan goes to plans/YYYY-MM-DD-<slug>.md, a design to specs/YYYY-MM-DD-<topic>-design.md, and the subagent-driven-development workspace to sdd/<plan-basename>/; nothing else goes under .superpowers/. generated/docs/ holds agent reports, the sweep log, and PR, comment, and version text."
 
 case "$rel" in
     .env.example|*/.env.example) ;;
@@ -38,9 +38,11 @@ case "$rel" in
     docs/superpowers/*|*/docs/superpowers/*)
         deny "docs/ is tracked project documentation. $skill_output"
         ;;
+    .superpowers/specs/*|*/.superpowers/specs/*) ;;
     .superpowers/plans/*|*/.superpowers/plans/*) ;;
+    .superpowers/sdd/*|*/.superpowers/sdd/*) ;;
     .superpowers/*|*/.superpowers/*)
-        deny "$rel is outside .superpowers/plans/. $skill_output"
+        deny "$rel is outside .superpowers/specs/, plans/, and sdd/. $skill_output"
         ;;
 esac
 

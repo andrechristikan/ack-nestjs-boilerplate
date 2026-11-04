@@ -215,7 +215,7 @@ describe('UserCreateUtil', () => {
                 invitedByUserId: 'inviter-harbor',
                 acceptedAt: null,
                 acceptedByUserId: null,
-                pendingKey: 'workspace-harbor:harbor@example.com',
+                nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             };
 
             expect(util.buildInviteWorkspaceContext(invite)).toEqual({
@@ -248,7 +248,7 @@ describe('UserCreateUtil', () => {
                 invitedByUserId: 'inviter-harbor',
                 acceptedAt: null,
                 acceptedByUserId: null,
-                pendingKey: 'workspace-harbor:harbor@example.com',
+                nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             };
 
             expect(util.buildInviteWorkspaceContext(invite)).toMatchObject({

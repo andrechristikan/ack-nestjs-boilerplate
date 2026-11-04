@@ -39,11 +39,11 @@ The questions, the same ones Jev answers:
 
 ## 3. Docs, through `writer`
 
-With a non-empty docs scope, dispatch `writer` with the template in `.claude/skills/ack-doc/SKILL.md`, step 2: `Scope` the pages, `Context` the paragraph, `Diagram: none`, plus the Every dispatch block. Then run that skill's step 3 reader test and step 4 for each CONFLICT. `writer` runs on its frontmatter model.
+With a non-empty docs scope, dispatch `writer` with the template in `.claude/skills/ack-doc/SKILL.md`, step 2: `Scope` the pages, `Context` the paragraph, `Diagram: none`, `Decisions:` pasted from the plan file, plus the Every dispatch block. Then run that skill's step 3 reader test and step 4 for each CONFLICT. `writer` runs on its frontmatter model.
 
 ## 4. Harness, through `harness`
 
-On the owner's yes, dispatch `harness` with the template in `.claude/skills/ack-harness/SKILL.md`, step 2, the requirement drafted from the paragraph and every file named, then run that skill's step 3 verify block.
+On the owner's yes, dispatch `harness` with the template in `.claude/skills/ack-harness/SKILL.md`, step 2, the requirement drafted from the paragraph, every file named, `Decisions:` pasted from the plan file, and the Every dispatch block, then run that skill's step 3 verify block.
 
 ## Hand back
 

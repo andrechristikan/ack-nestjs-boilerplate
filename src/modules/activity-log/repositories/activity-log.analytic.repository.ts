@@ -1,6 +1,9 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type {
+    IPaginationCursorReturn,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticListSelect } from '@modules/activity-log/constants/activity-log.constant';
@@ -9,6 +12,8 @@ import type {
     IActivityLogAnalyticActionCount,
     IActivityLogAnalyticList,
     IActivityLogIpGroup,
+    IActivityLogIpUserGroup,
+    IActivityLogUserGroup,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
@@ -55,19 +60,120 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         return rows.map(r => ({ action: r.action, count: r._count._all }));
     }
 
-    async findManyByActionsInRange(
+    async findPageByActionsInRange(
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date,
+        cursor: string | null,
+        limit: number
+    ): Promise<IPaginationCursorReturn<IActivityLogAnalyticList>> {
+        return this.paginationService.cursor<
+            IActivityLogAnalyticList,
+            Prisma.ActivityLogWhereInput
+        >(this.databaseService.client.activityLog, {
+            where: {
+                action: { in: actions },
+                createdAt: { gte: startDate, lt: endDate },
+            },
+            orderBy: [{ createdAt: EnumPaginationOrderDirectionType.asc }],
+            limit,
+            firstPageAt: endDate,
+            select: ActivityLogAnalyticListSelect,
+            ...(cursor !== null && { cursor }),
+        });
+    }
+
+    async findOneByUserActionsInRange(
+        userId: string,
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticList[]> {
-        return this.databaseService.client.activityLog.findMany({
+    ): Promise<IActivityLogAnalyticList | null> {
+        return this.databaseService.client.activityLog.findFirst({
             where: {
+                userId,
                 action: { in: actions },
                 createdAt: { gte: startDate, lt: endDate },
             },
             select: ActivityLogAnalyticListSelect,
             orderBy: { createdAt: EnumPaginationOrderDirectionType.asc },
         });
+    }
+
+    async findCreatedAtByUserActionsInRange(
+        userId: string,
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date
+    ): Promise<Date[]> {
+        const rows = await this.databaseService.client.activityLog.findMany({
+            where: {
+                userId,
+                action: { in: actions },
+                createdAt: { gte: startDate, lt: endDate },
+            },
+            select: { createdAt: true },
+            orderBy: { createdAt: EnumPaginationOrderDirectionType.asc },
+        });
+        return rows.map(row => row.createdAt);
+    }
+
+    async groupUserByActions(
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date,
+        min: number
+    ): Promise<IActivityLogUserGroup[]> {
+        const rows = await this.databaseService.client.activityLog.groupBy({
+            by: ['userId'],
+            where: {
+                action: { in: actions },
+                createdAt: { gte: startDate, lt: endDate },
+            },
+            having: { userId: { _count: { gte: min } } },
+            _count: { _all: true },
+        });
+        return rows.map(row => ({
+            userId: row.userId,
+            count: row._count._all,
+        }));
+    }
+
+    async groupUserIdByIps(
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date,
+        ips: string[]
+    ): Promise<string[]> {
+        const rows = await this.databaseService.client.activityLog.groupBy({
+            by: ['userId'],
+            where: {
+                action: { in: actions },
+                ipAddress: { in: ips },
+                createdAt: { gte: startDate, lt: endDate },
+            },
+        });
+        return rows.map(row => row.userId);
+    }
+
+    async groupIpUserByActions(
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date
+    ): Promise<IActivityLogIpUserGroup[]> {
+        const rows = await this.databaseService.client.activityLog.groupBy({
+            by: ['ipAddress', 'userId'],
+            where: {
+                action: { in: actions },
+                createdAt: { gte: startDate, lt: endDate },
+            },
+            _count: { _all: true },
+        });
+        return rows.map(row => ({
+            ipAddress: row.ipAddress,
+            userId: row.userId,
+            count: row._count._all,
+        }));
     }
 
     async groupIpByActions(
@@ -99,14 +205,17 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         startDate: Date | null,
         endDate: Date | null
     ): Promise<number> {
-        return this.databaseService.client.activityLog.count({
+        const result = await this.databaseService.client.activityLog.aggregate({
             where: {
                 workspaceId,
                 action: { notIn: excludedActions },
                 ...(startDate &&
                     endDate && { createdAt: { gte: startDate, lt: endDate } }),
             },
+            _count: { _all: true },
         });
+
+        return result._count._all;
     }
 
     async groupActivityByWorkspaceOffset(

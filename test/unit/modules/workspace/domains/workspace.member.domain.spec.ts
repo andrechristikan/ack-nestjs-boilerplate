@@ -418,7 +418,11 @@ describe('WorkspaceMemberDomain', () => {
     describe('getMembersList', () => {
         it('delegates to the repository cursor listing', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput> =
-                { limit: 20, orderBy: [] };
+                {
+                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    limit: 20,
+                    orderBy: [],
+                };
             const page: IResponsePaginationReturn<IWorkspaceMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -445,7 +449,11 @@ describe('WorkspaceMemberDomain', () => {
 
         it('passes a null role filter when none is given', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput> =
-                { limit: 20, orderBy: [] };
+                {
+                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    limit: 20,
+                    orderBy: [],
+                };
             const page: IResponsePaginationReturn<IWorkspaceMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

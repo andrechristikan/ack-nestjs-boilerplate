@@ -452,6 +452,15 @@ describe('HelperEncryptionService', () => {
             expect(result).toBe(publicPem);
         });
 
+        it('throws when the DER input is empty', () => {
+            expect(() =>
+                service.derBase64ToPem('', EnumHelperPemLabel.privateKey)
+            ).toThrow();
+            expect(() =>
+                service.derBase64ToPem('', EnumHelperPemLabel.publicKey)
+            ).toThrow();
+        });
+
         it('throws when the DER bytes are not a key', () => {
             expect(() =>
                 service.derBase64ToPem(

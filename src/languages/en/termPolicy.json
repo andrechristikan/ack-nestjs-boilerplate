@@ -33,6 +33,7 @@
         "requiredInvalid": "Required field value is invalid.",
         "requiredNotPublished": "A required term policy is not published yet.",
         "statusInvalid": "Term policy status is invalid.",
-        "contentSizeExceeded": "Term policy content is larger than the allowed size."
+        "contentSizeExceeded": "Term policy content is larger than the allowed size.",
+        "contentKeyInvalid": "Term policy content key is outside the policy storage path."
     }
 }

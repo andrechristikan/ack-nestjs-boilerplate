@@ -816,6 +816,46 @@ describe('AwsS3Service', () => {
             );
         });
 
+        it('lists under the directory so a sibling sharing the name start stays', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({});
+
+            await service.deleteDir('term-policies/privacy/v1', {
+                access: EnumAwsS3Accessibility.private,
+            });
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        Prefix: 'term-policies/privacy/v1/',
+                    }),
+                })
+            );
+        });
+
+        it('keeps a path that already ends with "/"', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({});
+
+            await service.deleteDir('users/', {
+                access: EnumAwsS3Accessibility.public,
+            });
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({ Prefix: 'users/' }),
+                })
+            );
+        });
+
         it('skips the delete call when a page carries no contents', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,

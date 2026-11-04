@@ -54,6 +54,24 @@ describe('DatabaseUtil', () => {
             ).toBe('mongodb://localhost:27017/ack');
         });
 
+        it('masks the password of a url that has no path', () => {
+            expect(
+                util.censorUrl('mongodb://admin:hunter2@localhost:27017')
+            ).toBe('mongodb://a***@localhost:27017');
+        });
+
+        it('keeps a url without credentials and without a path as is', () => {
+            expect(util.censorUrl('mongodb://localhost:27017')).toBe(
+                'mongodb://localhost:27017'
+            );
+        });
+
+        it('drops an empty username together with the password', () => {
+            expect(
+                util.censorUrl('mongodb://:hunter2@localhost:27017/ack')
+            ).toBe('mongodb://localhost:27017/ack');
+        });
+
         it('handles the srv scheme', () => {
             expect(
                 util.censorUrl(

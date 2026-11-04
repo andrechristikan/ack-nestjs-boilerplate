@@ -2,12 +2,10 @@ import {
     EnumAnalyticFraudBand,
     EnumAnalyticFraudContributingSignal,
 } from '@modules/analytic/enums/analytic.enum';
-import type { IActivityLogAnalyticList } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     IAnalyticFraudRiskScore,
     IAnalyticFraudSignalRows,
     IAnalyticFraudSignalUsers,
-    IAnalyticFraudUserCount,
     IAnalyticNearLockout,
 } from '@modules/analytic/interfaces/analytic.interface';
 import type { IUserAnalyticRef } from '@modules/user/interfaces/user.interface';
@@ -152,23 +150,6 @@ export class AnalyticFraudUtil {
         const band = this.resolveBand(score);
 
         return { userId: user.id, score, band, contributingSignalCodes };
-    }
-
-    countByUser(
-        activityLogs: IActivityLogAnalyticList[],
-        minCount: number
-    ): IAnalyticFraudUserCount[] {
-        const counts = new Map<string, number>();
-        for (const activityLog of activityLogs) {
-            counts.set(
-                activityLog.userId,
-                (counts.get(activityLog.userId) ?? 0) + 1
-            );
-        }
-
-        return [...counts.entries()]
-            .filter(([, count]) => count >= minCount)
-            .map(([userId, count]) => ({ userId, count }));
     }
 
     toSignalUsers(rows: IAnalyticFraudSignalRows): IAnalyticFraudSignalUsers {

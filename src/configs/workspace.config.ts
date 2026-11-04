@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export interface IConfigWorkspace {
     maxWorkspacesPerUser: number;
@@ -20,6 +21,8 @@ export interface IConfigWorkspace {
     };
     joinRequest: {
         reviewLinkPattern: string;
+        expiresInMs: number;
+        expireChunkSize: number;
     };
 }
 
@@ -43,5 +46,7 @@ export default registerAs('workspace', (): IConfigWorkspace => ({
     },
     joinRequest: {
         reviewLinkPattern: '{homeUrl}/workspace/join-requests/{joinRequestId}',
+        expiresInMs: ms('7d'),
+        expireChunkSize: 100,
     },
 }));

@@ -1,6 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
+    IPaginationCursorReturn,
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
@@ -238,12 +239,12 @@ export class UserDomain {
 
     async getListActiveRecipientCursor(
         cursor: string | null,
-        take: number,
+        limit: number,
         createdBefore: Date
-    ): Promise<IUserRecipient[]> {
+    ): Promise<IPaginationCursorReturn<IUserRecipient>> {
         return this.userRepository.findActiveRecipientsCursor(
             cursor,
-            take,
+            limit,
             createdBefore
         );
     }

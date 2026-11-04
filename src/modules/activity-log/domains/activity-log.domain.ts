@@ -3,6 +3,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -40,7 +41,8 @@ export class ActivityLogDomain {
         private readonly requestStoreService: RequestStoreService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly sentryService: SentryService
     ) {}
 
     private getContract(
@@ -268,16 +270,24 @@ export class ActivityLogDomain {
         const createdAt = this.helperDateService.create();
         const rows: IActivityLogCreate[] = [];
         for (const activityLog of staged) {
-            const row = this.buildFlushCreate(
-                activityLog,
-                payloadUserId,
-                requestLog,
-                createdAt
-            );
-            rows.push(row);
+            try {
+                const row = this.buildFlushCreate(
+                    activityLog,
+                    payloadUserId,
+                    requestLog,
+                    createdAt
+                );
+                rows.push(row);
+            } catch (error: unknown) {
+                this.sentryService.captureException(
+                    new ActivityLogContractInvalidException(error)
+                );
+            }
         }
 
-        await this.activityLogQueue.createMany(rows);
+        if (rows.length > 0) {
+            await this.activityLogQueue.createMany(rows);
+        }
 
         this.requestStoreService.set(ActivityLogStageStoreKey, []);
     }

@@ -21,6 +21,7 @@ import {
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
+import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
@@ -79,6 +80,8 @@ describe('TermPolicyContentDomain', () => {
 
         awsS3Service.isInitialized.mockReturnValue(true);
         termPolicyUtil.toContents.mockReturnValue([existingContent]);
+        termPolicyUtil.isContentKeyInPath.mockReturnValue(true);
+        termPolicyUtil.getContentByLanguage.mockReturnValue(existingContent);
         termPolicyUtil.isContentSizeAllowed.mockImplementation(
             size => size <= contentMaxSizeInBytes
         );
@@ -320,6 +323,49 @@ describe('TermPolicyContentDomain', () => {
             });
         });
 
+        it('throws TermPolicyContentNotFoundException and writes nothing when the language is absent', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+
+            const promise = domain.updateContentByAdmin('term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 2048,
+                key: 'term-policies/privacy/v1/en-2.hbs',
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyContentNotFoundException,
+                statusCode: EnumTermPolicyStatusCodeError.contentNotFound,
+            });
+            expect(termPolicyRepository.updateContent).not.toHaveBeenCalled();
+        });
+
+        it('throws TermPolicyContentKeyInvalidException and writes nothing when the key is outside the policy path', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.isContentKeyInPath.mockReturnValue(false);
+
+            const promise = domain.updateContentByAdmin('term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 2048,
+                key: 'other/path/en.hbs',
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyContentKeyInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'termPolicy.error.contentKeyInvalid',
+            });
+            expect(termPolicyUtil.isContentKeyInPath).toHaveBeenCalledWith(
+                draftTermPolicy.type,
+                draftTermPolicy.version,
+                'other/path/en.hbs'
+            );
+            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+            expect(termPolicyRepository.updateContent).not.toHaveBeenCalled();
+        });
+
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             awsS3Service.isInitialized.mockReturnValue(false);
@@ -442,6 +488,23 @@ describe('TermPolicyContentDomain', () => {
     });
 
     describe('addContentByAdmin', () => {
+        it('throws TermPolicyContentKeyInvalidException and writes nothing when the key is outside the policy path', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.isContentKeyInPath.mockReturnValue(false);
+
+            const promise = domain.addContentByAdmin('term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 1024,
+                key: 'other/path/en.hbs',
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyContentKeyInvalidException,
+                statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
+            });
+            expect(termPolicyRepository.addContent).not.toHaveBeenCalled();
+        });
+
         it('throws TermPolicyContentSizeExceededException and writes nothing when size exceeds the configured max', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
 
@@ -536,6 +599,7 @@ describe('TermPolicyContentDomain', () => {
 
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
             awsS3Service.isInitialized.mockReturnValue(false);
 
             const promise = domain.addContentByAdmin('term-policy-1', {

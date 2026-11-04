@@ -22,7 +22,7 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
-import { WorkspaceInvitePendingKeyPattern } from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
@@ -166,10 +166,11 @@ export class WorkspaceInviteDomain {
         create: IWorkspaceInviteCreate
     ): Promise<IWorkspaceInviteIssued> {
         const workspaceInviteId = this.databaseUtil.createId();
-        const pendingKey = this.helperStringService.fillPattern(
-            WorkspaceInvitePendingKeyPattern,
+        const noncePattern = this.helperStringService.fillPattern(
+            WorkspaceInviteNoncePattern,
             { workspaceId, email: create.email }
         );
+        const nonce = this.helperHashService.sha256Hash(noncePattern);
 
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
             const tokenData = this.workspaceUtil.createInviteTokenData(
@@ -189,14 +190,14 @@ export class WorkspaceInviteDomain {
                         reference: tokenData.reference,
                         expiredAt: tokenData.expiredAt,
                         invitedByUserId: actorId,
-                        pendingKey,
+                        nonce,
                     });
 
                 return { invite, tokenData };
             } catch (err: unknown) {
                 const isDuplicate = this.databaseUtil.isUniqueCollision(
                     err,
-                    'pendingKey'
+                    'nonce'
                 );
                 if (isDuplicate) {
                     throw new WorkspaceInviteDuplicateException();
@@ -214,6 +215,11 @@ export class WorkspaceInviteDomain {
 
                 if (err instanceof AppBaseException) {
                     throw err;
+                }
+
+                const mapped = this.databaseUtil.toException(err);
+                if (mapped instanceof DatabaseWriteConflictException) {
+                    throw new WorkspaceInviteDuplicateException();
                 }
 
                 throw new AppUnknownException(err);
@@ -241,10 +247,28 @@ export class WorkspaceInviteDomain {
         return existing;
     }
 
+    async getResendableById(
+        workspaceInviteId: string,
+        workspaceId: string
+    ): Promise<WorkspaceInvite> {
+        const existing = await this.getPendingById(
+            workspaceInviteId,
+            workspaceId
+        );
+        const now = this.helperDateService.create();
+        if (existing.expiredAt <= now) {
+            throw new WorkspaceInviteInvalidException();
+        }
+
+        return existing;
+    }
+
     async resendInvite(
         workspaceInviteId: string,
         expiryDuration: EnumWorkspaceInviteExpiry | null
     ): Promise<IWorkspaceInviteIssued> {
+        const resentAt = this.helperDateService.create();
+
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
             const tokenData =
                 this.workspaceUtil.createInviteTokenData(expiryDuration);
@@ -255,7 +279,8 @@ export class WorkspaceInviteDomain {
                         workspaceInviteId,
                         tokenData.hashedToken,
                         tokenData.reference,
-                        tokenData.expiredAt
+                        tokenData.expiredAt,
+                        resentAt
                     );
                 if (!invite) {
                     throw new WorkspaceInviteAlreadyProcessedException();
@@ -290,8 +315,11 @@ export class WorkspaceInviteDomain {
     }
 
     async revokeInvite(workspaceInviteId: string): Promise<void> {
-        const revoked =
-            await this.workspaceInviteRepository.revoke(workspaceInviteId);
+        const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
+        const revoked = await this.workspaceInviteRepository.revoke(
+            workspaceInviteId,
+            nonce
+        );
         if (!revoked) {
             throw new WorkspaceInviteAlreadyProcessedException();
         }
@@ -303,10 +331,13 @@ export class WorkspaceInviteDomain {
         userId: string,
         acceptedAt: Date
     ): Promise<void> {
+        const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
+
         try {
             const accepted = await this.workspaceInviteRepository.acceptInTx(
                 tx,
                 workspaceInviteId,
+                nonce,
                 userId,
                 acceptedAt
             );

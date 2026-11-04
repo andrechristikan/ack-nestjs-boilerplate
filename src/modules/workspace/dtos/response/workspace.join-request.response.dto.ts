@@ -42,6 +42,10 @@ export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
         description: 'When the join request was reviewed',
         example: faker.date.recent(),
     }),
+    expiredAt: z.date().meta({
+        description: 'When the pending join request expires',
+        example: faker.date.soon(),
+    }),
 });
 
 /**

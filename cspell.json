@@ -63,6 +63,7 @@
         "randexp",
         "stringbool",
         "requestid",
+        "resendable",
         "safestring",
         "sealedcode",
         "smhd",

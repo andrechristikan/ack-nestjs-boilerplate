@@ -681,7 +681,7 @@ describe('UserDomain', () => {
     });
 
     describe('getListActiveRecipientCursor', () => {
-        it('forwards the cursor, take, and creation bound to the repository', async () => {
+        it('forwards the cursor, limit, and creation bound to the repository', async () => {
             const rows = [
                 {
                     id: 'user-cobalt',
@@ -695,7 +695,14 @@ describe('UserDomain', () => {
                 },
             ];
             const createdBefore = new Date('2026-01-01T00:00:00.000Z');
-            userRepository.findActiveRecipientsCursor.mockResolvedValue(rows);
+            const page = {
+                type: EnumPaginationType.cursor,
+                perPage: 2,
+                hasNext: true,
+                cursor: 'cursor-after-user-indigo',
+                data: rows,
+            } as const;
+            userRepository.findActiveRecipientsCursor.mockResolvedValue(page);
 
             await expect(
                 domain.getListActiveRecipientCursor(
@@ -703,7 +710,7 @@ describe('UserDomain', () => {
                     2,
                     createdBefore
                 )
-            ).resolves.toBe(rows);
+            ).resolves.toBe(page);
             expect(
                 userRepository.findActiveRecipientsCursor
             ).toHaveBeenCalledWith('user-amber', 2, createdBefore);

@@ -1,6 +1,7 @@
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
+    IPaginationCursorReturn,
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
@@ -38,9 +39,9 @@ export interface IUserRepository {
     ): Promise<IResponsePaginationReturn<IUserList>>;
     findActiveRecipientsCursor(
         cursor: string | null,
-        take: number,
+        limit: number,
         createdBefore: Date
-    ): Promise<IUserRecipient[]>;
+    ): Promise<IPaginationCursorReturn<IUserRecipient>>;
     findActiveRecipientsByIds(
         ids: string[],
         createdBefore: Date

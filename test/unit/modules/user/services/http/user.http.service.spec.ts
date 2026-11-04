@@ -961,6 +961,61 @@ describe('UserHttpService', () => {
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
+        it('rethrows an app exception of the lockout write unchanged', async () => {
+            const failure = new UserStatusInvalidException();
+            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
+                false
+            );
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(
+                failure
+            );
+
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('stages and purges nothing and still answers the attempt limit when the lockout write conflicts', async () => {
+            const conflict = new Error('write-conflict');
+            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
+                false
+            );
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+            const failure = new Error('attempt max');
+            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(
+                failure
+            );
+
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps an unknown lockout write failure in AppUnknownException', async () => {
+            const cause = new Error('database exploded');
+            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
+                false
+            );
+            databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.deleteSelf(baseUser, dto)
+            ).rejects.toMatchObject({ rawError: cause });
+
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
         it('hands the stored photo to the profile domain', async () => {
             userDomain.deleteSelfInTx.mockResolvedValue({
                 ...baseUser,

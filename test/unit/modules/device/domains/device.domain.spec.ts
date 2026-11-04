@@ -176,7 +176,11 @@ describe('DeviceDomain', () => {
 
     describe('getListCursor', () => {
         it('delegates to the ownership repository', async () => {
-            const pagination = { limit: 20, orderBy: [] };
+            const pagination = {
+                limit: 20,
+                orderBy: [],
+                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            };
             const page = {
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,

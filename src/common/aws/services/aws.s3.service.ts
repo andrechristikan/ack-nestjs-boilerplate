@@ -711,6 +711,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         const config = this.getConfig(options.access);
+        const prefix = path.endsWith('/') ? path : `${path}/`;
         let continuationToken: string | null = null;
 
         let iterations = 0;
@@ -722,7 +723,7 @@ export class AwsS3Service implements OnModuleInit {
 
             const listCommand: ListObjectsV2Command = new ListObjectsV2Command({
                 Bucket: config.bucket,
-                Prefix: path,
+                Prefix: prefix,
                 MaxKeys: AwsS3MaxFetchItems,
                 ...(continuationToken !== null && {
                     ContinuationToken: continuationToken,

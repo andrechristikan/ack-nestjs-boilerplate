@@ -1,4 +1,5 @@
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
 import { Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
@@ -10,12 +11,16 @@ import { QueueException } from '@queues/exceptions/queue.exception';
 export class WorkspaceProcessorService implements OnModuleInit {
     constructor(
         private readonly workspaceInviteDomain: WorkspaceInviteDomain,
+        private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
         private readonly workspaceQueue: WorkspaceQueue,
         private readonly messageService: MessageService
     ) {}
 
     async onModuleInit(): Promise<void> {
-        await this.workspaceQueue.scheduleInviteExpirySweep();
+        await Promise.all([
+            this.workspaceQueue.scheduleInviteExpirySweep(),
+            this.workspaceQueue.scheduleJoinRequestExpirySweep(),
+        ]);
     }
 
     async processExpireStaleInvites(): Promise<IQueueResponse> {
@@ -30,6 +35,21 @@ export class WorkspaceProcessorService implements OnModuleInit {
             countExpiredInvites: count,
         };
     }
+
+    async processExpireStaleJoinRequests(): Promise<IQueueResponse> {
+        const count =
+            await this.workspaceJoinRequestDomain.expireStalePending();
+
+        const message = this.messageService.setMessage(
+            'workspace.queue.expireStaleJoinRequests'
+        );
+
+        return {
+            message,
+            countExpiredJoinRequests: count,
+        };
+    }
+
     processUnknown(process: string): never {
         const message = this.messageService.setMessage(
             'workspace.queue.error.unknownProcess',

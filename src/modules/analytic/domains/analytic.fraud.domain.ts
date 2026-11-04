@@ -183,8 +183,8 @@ export class AnalyticFraudDomain {
     ): Promise<Map<string, IAnalyticIpGroup>> {
         const { startDate, endDate } =
             this.analyticDateUtil.windowRange(windowMs);
-        const activityLogs =
-            await this.activityLogAnalyticDomain.getManyByActionsInRange(
+        const pairs =
+            await this.activityLogAnalyticDomain.getGroupIpUserByActions(
                 [
                     EnumActivityLogAction.userLoginFailed,
                     EnumActivityLogAction.userReachMaxPasswordAttempt,
@@ -193,7 +193,7 @@ export class AnalyticFraudDomain {
                 startDate,
                 endDate
             );
-        const groups = this.analyticAnomalyUtil.groupByIp(activityLogs);
+        const groups = this.analyticAnomalyUtil.groupByIp(pairs);
 
         return new Map(
             [...groups.entries()].filter(
@@ -288,22 +288,14 @@ export class AnalyticFraudDomain {
         }
         const { startDate, endDate } =
             this.analyticDateUtil.windowRange(windowMs);
-        const ips = new Set(flagged.map(row => row.key));
-        const created =
-            await this.activityLogAnalyticDomain.getManyByActionsInRange(
+        const userIds =
+            await this.activityLogAnalyticDomain.getGroupUserIdByIps(
                 AnalyticMassRegistrationActions,
                 startDate,
-                endDate
+                endDate,
+                flagged.map(row => row.key)
             );
-        return new Set(
-            created
-                .filter(
-                    activityLog =>
-                        activityLog.ipAddress !== null &&
-                        ips.has(activityLog.ipAddress)
-                )
-                .map(activityLog => activityLog.userId)
-        );
+        return new Set(userIds);
     }
 
     private async computePasswordResetEnumeration(
@@ -324,46 +316,52 @@ export class AnalyticFraudDomain {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticSessionAfterAdmin[]> {
-        const revokes =
-            await this.activityLogAnalyticDomain.getManyByActionsInRange(
-                [
-                    EnumActivityLogAction.userRevokeSessionByAdmin,
-                    EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                ],
-                startDate,
-                endDate
-            );
         const flagged: IAnalyticSessionAfterAdmin[] = [];
-        const batches = this.helperArrayService.chunk(
-            revokes,
-            this.concurrency
-        );
-        for (const batch of batches) {
-            const loginPromises = batch.map(revoke => {
-                const windowEnd = this.helperDateService.forward(
-                    revoke.createdAt,
-                    Duration.fromMillis(this.sessionAfterAdminRevokeInMs)
+        let cursor: string | null = null;
+        let hasNext = true;
+        while (hasNext) {
+            const page =
+                await this.activityLogAnalyticDomain.getPageByActionsInRange(
+                    [
+                        EnumActivityLogAction.userRevokeSessionByAdmin,
+                        EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                    ],
+                    startDate,
+                    endDate,
+                    cursor
                 );
-                return this.activityLogAnalyticDomain.getManyByActionsInRange(
-                    UserLoginAnalyticActions,
-                    revoke.createdAt,
-                    windowEnd
-                );
-            });
-            // Sequential by design: bounded chunks, concurrent within a chunk
-            const loginsPerRevoke = await Promise.all(loginPromises);
-            for (const [index, revoke] of batch.entries()) {
-                const hit = loginsPerRevoke[index]!.find(
-                    l => l.userId === revoke.userId
-                );
-                if (hit) {
-                    flagged.push({
-                        userId: revoke.userId,
-                        revokedAt: revoke.createdAt,
-                        loginAt: hit.createdAt,
-                    });
+            const batches = this.helperArrayService.chunk(
+                page.data,
+                this.concurrency
+            );
+            for (const batch of batches) {
+                const loginPromises = batch.map(revoke => {
+                    const windowEnd = this.helperDateService.forward(
+                        revoke.createdAt,
+                        Duration.fromMillis(this.sessionAfterAdminRevokeInMs)
+                    );
+                    return this.activityLogAnalyticDomain.getOneByUserActionsInRange(
+                        revoke.userId,
+                        UserLoginAnalyticActions,
+                        revoke.createdAt,
+                        windowEnd
+                    );
+                });
+                // Sequential by design: bounded chunks, concurrent within a chunk
+                const loginPerRevoke = await Promise.all(loginPromises);
+                for (const [index, revoke] of batch.entries()) {
+                    const hit = loginPerRevoke[index]!;
+                    if (hit) {
+                        flagged.push({
+                            userId: revoke.userId,
+                            revokedAt: revoke.createdAt,
+                            loginAt: hit.createdAt,
+                        });
+                    }
                 }
             }
+            cursor = page.cursor ?? null;
+            hasNext = page.hasNext;
         }
         return flagged;
     }
@@ -390,15 +388,11 @@ export class AnalyticFraudDomain {
     ): Promise<IAnalyticRefreshSpike[]> {
         const { startDate, endDate } =
             this.analyticDateUtil.windowRange(windowMs);
-        const activityLogs =
-            await this.activityLogAnalyticDomain.getManyByActionsInRange(
-                [EnumActivityLogAction.userRefreshToken],
-                startDate,
-                endDate
-            );
 
-        return this.analyticFraudUtil.countByUser(
-            activityLogs,
+        return this.activityLogAnalyticDomain.getGroupUserByActions(
+            [EnumActivityLogAction.userRefreshToken],
+            startDate,
+            endDate,
             this.refreshSpikeMinCount
         );
     }
@@ -408,39 +402,47 @@ export class AnalyticFraudDomain {
     ): Promise<IAnalyticBackupCodeNewDevice[]> {
         const { startDate, endDate } =
             this.analyticDateUtil.windowRange(windowMs);
-        const regenerations =
-            await this.activityLogAnalyticDomain.getManyByActionsInRange(
-                [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
-                startDate,
-                endDate
-            );
         const flagged: IAnalyticBackupCodeNewDevice[] = [];
-        const batches = this.helperArrayService.chunk(
-            regenerations,
-            this.concurrency
-        );
-        for (const batch of batches) {
-            const devicePromises = batch.map(regeneration => {
-                const windowEnd = this.helperDateService.forward(
-                    regeneration.createdAt,
-                    Duration.fromMillis(this.backupCodeNewDeviceAfterInMs)
+        let cursor: string | null = null;
+        let hasNext = true;
+        while (hasNext) {
+            const page =
+                await this.activityLogAnalyticDomain.getPageByActionsInRange(
+                    [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
+                    startDate,
+                    endDate,
+                    cursor
                 );
-                return this.deviceAnalyticDomain.getCreatedInRangeByUser(
-                    regeneration.userId,
-                    regeneration.createdAt,
-                    windowEnd
-                );
-            });
-            // Sequential by design: bounded chunks, concurrent within a chunk
-            const devicesPerRegeneration = await Promise.all(devicePromises);
-            for (const [index, regeneration] of batch.entries()) {
-                if (devicesPerRegeneration[index]!.length > 0) {
-                    flagged.push({
-                        userId: regeneration.userId,
-                        regeneratedAt: regeneration.createdAt,
-                    });
+            const batches = this.helperArrayService.chunk(
+                page.data,
+                this.concurrency
+            );
+            for (const batch of batches) {
+                const devicePromises = batch.map(regeneration => {
+                    const windowEnd = this.helperDateService.forward(
+                        regeneration.createdAt,
+                        Duration.fromMillis(this.backupCodeNewDeviceAfterInMs)
+                    );
+                    return this.deviceAnalyticDomain.getCreatedInRangeByUser(
+                        regeneration.userId,
+                        regeneration.createdAt,
+                        windowEnd
+                    );
+                });
+                // Sequential by design: bounded chunks, concurrent within a chunk
+                const devicesPerRegeneration =
+                    await Promise.all(devicePromises);
+                for (const [index, regeneration] of batch.entries()) {
+                    if (devicesPerRegeneration[index]!.length > 0) {
+                        flagged.push({
+                            userId: regeneration.userId,
+                            regeneratedAt: regeneration.createdAt,
+                        });
+                    }
                 }
             }
+            cursor = page.cursor ?? null;
+            hasNext = page.hasNext;
         }
         return flagged;
     }
@@ -450,18 +452,14 @@ export class AnalyticFraudDomain {
     ): Promise<IAnalyticApiKeyBurst[]> {
         const { startDate, endDate } =
             this.analyticDateUtil.windowRange(windowMs);
-        const activityLogs =
-            await this.activityLogAnalyticDomain.getManyByActionsInRange(
-                [
-                    EnumActivityLogAction.adminApiKeyCreate,
-                    EnumActivityLogAction.adminApiKeyReset,
-                ],
-                startDate,
-                endDate
-            );
 
-        return this.analyticFraudUtil.countByUser(
-            activityLogs,
+        return this.activityLogAnalyticDomain.getGroupUserByActions(
+            [
+                EnumActivityLogAction.adminApiKeyCreate,
+                EnumActivityLogAction.adminApiKeyReset,
+            ],
+            startDate,
+            endDate,
             this.apiKeyBurstMinCount
         );
     }

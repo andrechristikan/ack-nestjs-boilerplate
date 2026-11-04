@@ -321,7 +321,7 @@ describe('UserRegistrationHttpService', () => {
         invitedByUserId: 'user-inviter',
         acceptedAt: null,
         acceptedByUserId: null,
-        pendingKey: 'workspace-invite:bramble@example.com',
+        nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
 
     beforeEach(async () => {

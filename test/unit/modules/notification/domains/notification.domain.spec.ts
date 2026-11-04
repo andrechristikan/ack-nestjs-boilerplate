@@ -94,6 +94,7 @@ describe('NotificationDomain', () => {
         it('returns the paginated notification list from the repository', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput> =
                 {
+                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
                     limit: 20,
                     orderBy: [],
                 };
@@ -123,6 +124,7 @@ describe('NotificationDomain', () => {
         it('passes the types the user disabled for inApp so the repository excludes them', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput> =
                 {
+                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
                     limit: 20,
                     orderBy: [],
                 };

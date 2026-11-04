@@ -248,7 +248,12 @@ describe('ProjectMemberDomain', () => {
         it('delegates to the repository for the given project', async () => {
             const project = baseProject;
             const pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput> =
-                { where: {}, orderBy: [], limit: 20 };
+                {
+                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    where: {},
+                    orderBy: [],
+                    limit: 20,
+                };
             const page: IResponsePaginationReturn<IProjectMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
