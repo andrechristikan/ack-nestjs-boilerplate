@@ -16,18 +16,11 @@ export const AnalyticSharedFingerprintListRequestSchema =
                     ':',
                     z.enum(EnumPaginationOrderDirectionType),
                 ]),
-                z.array(
-                    z.templateLiteral([
-                        z.enum(AnalyticSharedFingerprintAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ])
-                ),
                 z.literal(''),
             ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticSharedFingerprintAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticSharedFingerprintAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticSharedFingerprintAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticSharedFingerprintAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${AnalyticSharedFingerprintAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
     });

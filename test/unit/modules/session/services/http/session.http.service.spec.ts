@@ -12,6 +12,7 @@ import {
 } from '@generated/prisma-client/client';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -20,6 +21,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import {
     SessionCursorAvailableOrderBy,
     SessionDefaultAvailableOrderBy,
+    SessionSharedListCursorScope,
 } from '@modules/session/constants/session.list.constant';
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
@@ -45,6 +47,8 @@ describe('SessionHttpService', () => {
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -177,6 +181,10 @@ describe('SessionHttpService', () => {
                     useValue: paginationQueryUtil,
                 },
                 {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
+                {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
@@ -200,7 +208,7 @@ describe('SessionHttpService', () => {
                 availableSearch: [],
             };
             paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
-            paginationQueryUtil.equalBoolean.mockReturnValue(null);
+            paginationFilterUtil.equalBoolean.mockReturnValue(null);
             const paginationResult: IResponsePaginationReturn<ISessionList> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -230,7 +238,7 @@ describe('SessionHttpService', () => {
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableOrderBy: SessionDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.SessionScalarFieldEnum.isRevoked,
                 undefined
             );
@@ -256,7 +264,7 @@ describe('SessionHttpService', () => {
                 where: { isRevoked: { equals: true } },
                 storeFilter: { isRevoked: true },
             };
-            paginationQueryUtil.equalBoolean.mockReturnValue(isRevokedResult);
+            paginationFilterUtil.equalBoolean.mockReturnValue(isRevokedResult);
             sessionDomain.getListOffsetByAdmin.mockResolvedValue({
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -288,7 +296,7 @@ describe('SessionHttpService', () => {
             const params = {
                 limit: 20,
                 orderBy: [],
-                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                fingerprint: 'aaaaaaaaaaaaaaaa',
             };
             const storePatch = { perPage: 20 };
             paginationQueryUtil.cursor.mockReturnValue({ params, storePatch });
@@ -309,6 +317,7 @@ describe('SessionHttpService', () => {
                 hasNext: false,
             });
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: SessionSharedListCursorScope,
                 availableOrderBy: SessionCursorAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(

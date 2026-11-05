@@ -16,22 +16,6 @@ describe('ProjectMemberListRequestSchema', () => {
         });
     });
 
-    it('parses an array orderBy', () => {
-        const result = ProjectMemberListRequestSchema.parse({
-            orderBy: [
-                `${ProjectMemberDefaultAvailableOrderBy[0]}:desc`,
-                `${ProjectMemberDefaultAvailableOrderBy[0]}:asc`,
-            ],
-        });
-
-        expect(result).toEqual({
-            orderBy: [
-                `${ProjectMemberDefaultAvailableOrderBy[0]}:desc`,
-                `${ProjectMemberDefaultAvailableOrderBy[0]}:asc`,
-            ],
-        });
-    });
-
     it('parses an empty query', () => {
         const result = ProjectMemberListRequestSchema.parse({});
 
@@ -62,7 +46,17 @@ describe('ProjectMemberListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = ProjectMemberDefaultAvailableOrderBy[0];
+
+        expect(
+            ProjectMemberListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = ProjectMemberDefaultAvailableOrderBy[0];
         const last =
             ProjectMemberDefaultAvailableOrderBy[
@@ -71,14 +65,9 @@ describe('ProjectMemberListRequestSchema', () => {
 
         expect(
             ProjectMemberListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            ProjectMemberListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

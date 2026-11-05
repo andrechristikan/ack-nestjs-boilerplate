@@ -48,21 +48,21 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
-        return this.paginationService.cursor<
-            IProjectMember,
-            Prisma.ProjectMemberWhereInput
-        >(this.databaseService.client.projectMember, {
-            ...others,
-            where: {
-                ...where,
-                projectId,
-            },
-            include: {
-                user: {
-                    select: UserRefSelect,
+        return this.paginationService.cursor(
+            this.databaseService.client.projectMember,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    projectId,
                 },
-            },
-        });
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
+                },
+            }
+        );
     }
 
     async create(

@@ -7,6 +7,7 @@ import type { Country } from '@generated/prisma-client/client';
 import {
     CountryDefaultAvailableOrderBy,
     CountryDefaultAvailableSearch,
+    CountryPublicListCursorScope,
 } from '@modules/country/constants/country.list.constant';
 import type { CountryListRequestDto } from '@modules/country/dtos/request/country.list.request.dto';
 import { CountryDomain } from '@modules/country/domains/country.domain';
@@ -25,6 +26,7 @@ export class CountryHttpService {
     ): Promise<IResponsePaginationReturn<Country>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.CountryWhereInput>(query, {
+                scope: CountryPublicListCursorScope,
                 availableSearch: CountryDefaultAvailableSearch,
                 availableOrderBy: CountryDefaultAvailableOrderBy,
             });

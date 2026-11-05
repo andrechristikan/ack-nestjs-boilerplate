@@ -1,61 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
-    PaginationCursorDateKey,
-    PaginationCursorEncryptionContext,
-    PaginationCursorEncryptionPurpose,
-    PaginationDefaultCursorField,
-    PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
     PaginationDefaultOrderBy,
     PaginationDefaultPerPage,
-    PaginationMaxCursorLength,
+    PaginationOrderBySeparator,
 } from '@common/pagination/constants/pagination.constant';
-import {
-    EnumPaginationFilterDateBetweenType,
-    EnumPaginationFilterEnumOperator,
-    EnumPaginationOrderDirectionType,
-} from '@common/pagination/enums/pagination.enum';
+import type { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import type { PaginationOffsetQueryDto } from '@common/pagination/dtos/pagination.offset-query.dto';
-import { PaginationFailedToDecodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-decode-cursor.exception';
-import { PaginationInvalidCursorDataException } from '@common/pagination/exceptions/pagination.invalid-cursor-data.exception';
-import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
-import { PaginationFilterInvalidValueEnumException } from '@common/pagination/exceptions/pagination.filter-invalid-value-enum.exception';
-import { PaginationFilterInvalidValueException } from '@common/pagination/exceptions/pagination.filter-invalid-value.exception';
-import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
-import { PaginationInvalidCursorPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-cursor-pagination-params.exception';
-import { PaginationInvalidOffsetPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-offset-pagination-params.exception';
-import { PaginationInvalidPageException } from '@common/pagination/exceptions/pagination.invalid-page.exception';
 import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
-import { PaginationPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.page-cannot-be-less-than-one.exception';
-import { PaginationPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.page-exceeds-maximum.exception';
 import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
 import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
 import type {
-    IPaginationCursorJson,
-    IPaginationCursorToken,
-    IPaginationDate,
-    IPaginationEqual,
-    IPaginationIn,
-    IPaginationNin,
-    IPaginationNotEqual,
     IPaginationOrderBy,
     IPaginationOrderByQuery,
     IPaginationQueryCursorOptions,
     IPaginationQueryCursorParams,
-    IPaginationQueryFilterDateOptions,
-    IPaginationQueryFilterEqualOptions,
-    IPaginationQueryFilterOptions,
-    IPaginationQueryFilterResult,
     IPaginationQueryOffsetOptions,
     IPaginationQueryOffsetParams,
     IPaginationQueryPatch,
     IPaginationSearchWhere,
 } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationCursorUtil } from '@common/pagination/utils/pagination.cursor.util';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { Prisma } from '@generated/prisma-client/client';
 
@@ -65,106 +32,9 @@ import { Prisma } from '@generated/prisma-client/client';
 @Injectable()
 export class PaginationQueryUtil {
     constructor(
-        private readonly helperDateService: HelperDateService,
-        private readonly helperArrayService: HelperArrayService,
-        private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly configService: ConfigService
+        private readonly paginationCursorUtil: PaginationCursorUtil,
+        private readonly paginationOffsetUtil: PaginationOffsetUtil
     ) {}
-
-    private equal<TField extends string>(
-        field: TField,
-        value: unknown,
-        options?: IPaginationQueryFilterEqualOptions
-    ): IPaginationQueryFilterResult | null {
-        if (typeof value !== 'string' || value.trim() === '') {
-            return null;
-        }
-
-        const finalValue = this.coerceEqualValue(field, value, options);
-        const customField = options?.customField ?? field;
-
-        return {
-            where: {
-                [customField]: {
-                    equals: finalValue,
-                },
-            },
-            storeFilter: { [field]: finalValue },
-        };
-    }
-
-    private coerceEqualValue(
-        field: string,
-        value: string,
-        options?: IPaginationQueryFilterEqualOptions
-    ): string | number | boolean {
-        if (options && 'isBoolean' in options && options.isBoolean) {
-            const booleanString = value.trim();
-            if (booleanString !== 'true' && booleanString !== 'false') {
-                throw new PaginationFilterInvalidValueException(field);
-            }
-
-            return booleanString === 'true';
-        }
-
-        if (options && 'isNumber' in options && options.isNumber) {
-            const parsed = Number.parseFloat(value.trim());
-            if (Number.isNaN(parsed)) {
-                throw new PaginationFilterInvalidValueException(field);
-            }
-
-            return parsed;
-        }
-
-        return value.trim();
-    }
-
-    private enumFilter<T, TField extends string>(
-        field: TField,
-        value: unknown,
-        defaultEnum: T[],
-        operator: EnumPaginationFilterEnumOperator,
-        options?: IPaginationQueryFilterOptions
-    ): IPaginationQueryFilterResult | null {
-        if (
-            typeof value !== 'string' ||
-            value.trim() === '' ||
-            !defaultEnum ||
-            defaultEnum.length === 0
-        ) {
-            return null;
-        }
-
-        const finalValue = this.helperArrayService.unique(
-            value
-                .split(',')
-                .map(entry => entry.trim())
-                .filter(entry => entry !== '')
-        );
-
-        if (finalValue.length === 0) {
-            return null;
-        }
-
-        if (!finalValue.every(entry => defaultEnum.includes(entry as T))) {
-            throw new PaginationFilterInvalidValueEnumException(
-                field,
-                defaultEnum.join(', ')
-            );
-        }
-
-        const customField = options?.customField ?? field;
-
-        return {
-            where: {
-                [customField]:
-                    operator === EnumPaginationFilterEnumOperator.in
-                        ? { in: finalValue }
-                        : { notIn: finalValue },
-            },
-            storeFilter: { [field]: finalValue },
-        };
-    }
 
     private buildSearchObject(
         search: string,
@@ -180,86 +50,23 @@ export class PaginationQueryUtil {
         };
     }
 
-    private extractOrderByToArray(
-        orderBy: string | string[] | null
-    ): Record<string, string>[] {
+    private resolveOrderBy(orderBy: string | null): IPaginationOrderBy[] {
         if (!orderBy) {
-            return [];
-        }
-
-        if (Array.isArray(orderBy)) {
-            return orderBy.map(entry => {
-                const trimmed = entry.toString().split(':');
-
-                return {
-                    [trimmed[0]!]: trimmed[1]?.toLowerCase() ?? '',
-                };
-            });
-        }
-
-        const trimmed = orderBy.toString().split(':');
-        return [
-            {
-                [trimmed[0]!]: trimmed[1]?.toLowerCase() ?? '',
-            },
-        ];
-    }
-
-    private parseOrderBy(
-        orderByExtractFromRequest: Record<string, string>[]
-    ): IPaginationOrderBy[] {
-        const parsedOrderBy: IPaginationOrderBy[] = [];
-
-        for (const entry of orderByExtractFromRequest) {
-            const field = Object.keys(entry)[0]!;
-            const direction = entry[field];
-
-            parsedOrderBy.push({
-                [field]:
-                    EnumPaginationOrderDirectionType[
-                        direction as EnumPaginationOrderDirectionType
-                    ],
-            });
-        }
-
-        return parsedOrderBy;
-    }
-
-    private resolveOrderBy(
-        orderBy: string | string[] | null
-    ): IPaginationOrderBy[] {
-        const orderByExtractFromRequest = this.extractOrderByToArray(orderBy);
-
-        if (orderByExtractFromRequest.length === 0) {
             return [...PaginationDefaultOrderBy];
         }
 
-        return this.parseOrderBy(orderByExtractFromRequest);
+        const [field, direction] = orderBy.split(PaginationOrderBySeparator);
+
+        return [{ [field!]: direction as EnumPaginationOrderDirectionType }];
     }
 
     private validateAndParsePage(page?: number | string): number {
-        let finalPage = page ?? 1;
-
-        if (typeof finalPage === 'string') {
-            finalPage = Number.parseInt(finalPage, 10);
+        const result = this.paginationOffsetUtil.parsePage(page ?? null);
+        if (result instanceof AppBaseException) {
+            throw result;
         }
 
-        if (!Number.isFinite(finalPage) || !Number.isInteger(finalPage)) {
-            throw new PaginationInvalidPageException(PaginationDefaultMaxPage);
-        }
-
-        if (finalPage > PaginationDefaultMaxPage) {
-            throw new PaginationPageExceedsMaximumException(
-                PaginationDefaultMaxPage,
-                finalPage
-            );
-        }
-
-        if (finalPage < 1) {
-            throw new PaginationPageCannotBeLessThanOneException(finalPage);
-        }
-
-        return finalPage;
+        return result;
     }
 
     private validateAndParsePerPage(
@@ -305,97 +112,12 @@ export class PaginationQueryUtil {
             return null;
         }
 
-        if (trimmed.length > PaginationMaxCursorLength) {
-            throw new PaginationCursorTooLongException(
-                PaginationMaxCursorLength
-            );
-        }
-
-        if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
-            throw new PaginationInvalidCursorFormatException(
-                'URL-safe base64 (A-Za-z0-9_-)'
-            );
+        const failure = this.paginationCursorUtil.checkFormat(trimmed);
+        if (failure instanceof AppBaseException) {
+            throw failure;
         }
 
         return trimmed;
-    }
-
-    sealCursor(token: IPaginationCursorToken): string {
-        const secret = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
-        const sealed = this.helperEncryptionService.aes256Encrypt(
-            JSON.stringify({
-                ...token,
-                firstPageAt: {
-                    [PaginationCursorDateKey]: token.firstPageAt.toISOString(),
-                },
-            }),
-            secret,
-            PaginationCursorEncryptionPurpose,
-            PaginationCursorEncryptionContext
-        );
-
-        return Buffer.from(sealed).toString('base64url');
-    }
-
-    openCursor(cursor: string): IPaginationCursorToken {
-        const secret = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
-        const sealed = Buffer.from(cursor, 'base64url');
-        if (sealed.toString('base64url') !== cursor) {
-            throw new PaginationFailedToDecodeCursorException();
-        }
-
-        let decoded: IPaginationCursorJson;
-        try {
-            const plain = this.helperEncryptionService.aes256Decrypt(
-                sealed.toString(),
-                secret,
-                PaginationCursorEncryptionPurpose,
-                PaginationCursorEncryptionContext
-            );
-            decoded = JSON.parse(plain) as IPaginationCursorJson;
-        } catch {
-            throw new PaginationFailedToDecodeCursorException();
-        }
-
-        if (
-            decoded === null ||
-            typeof decoded !== 'object' ||
-            Array.isArray(decoded)
-        ) {
-            throw new PaginationInvalidCursorDataException();
-        }
-
-        const { values, fingerprint, firstPageAt } = decoded;
-        const iso =
-            firstPageAt !== null &&
-            typeof firstPageAt === 'object' &&
-            !Array.isArray(firstPageAt) &&
-            Object.keys(firstPageAt).length === 1
-                ? firstPageAt[PaginationCursorDateKey]
-                : null;
-        if (
-            typeof fingerprint !== 'string' ||
-            fingerprint === '' ||
-            values === null ||
-            typeof values !== 'object' ||
-            Array.isArray(values) ||
-            typeof iso !== 'string'
-        ) {
-            throw new PaginationInvalidCursorDataException();
-        }
-
-        const isIso = this.helperDateService.checkIso(iso);
-        if (!isIso) {
-            throw new PaginationInvalidCursorDataException();
-        }
-
-        const date = this.helperDateService.createFromIso(iso);
-
-        return { values, fingerprint, firstPageAt: date };
     }
 
     offset<TArgsWhere = unknown>(
@@ -405,44 +127,37 @@ export class PaginationQueryUtil {
         params: IPaginationQueryOffsetParams<TArgsWhere>;
         storePatch: IPaginationQueryPatch;
     } {
-        try {
-            const availableSearch = options.availableSearch ?? [];
-            const availableOrderBy = options.availableOrderBy;
-            const page = this.validateAndParsePage(dto.page);
-            const perPage = this.validateAndParsePerPage(
-                dto.perPage,
-                options.defaultPerPage
-            );
-            const search = dto.search?.trim();
-            let where: IPaginationSearchWhere | null = null;
-            if (search && availableSearch.length > 0) {
-                where = this.buildSearchObject(search, availableSearch);
-            }
-            const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
-
-            return {
-                params: {
-                    ...(where && { where }),
-                    limit: perPage,
-                    skip: (page - 1) * perPage,
-                    orderBy,
-                } as IPaginationQueryOffsetParams<TArgsWhere>,
-                storePatch: {
-                    page,
-                    perPage,
-                    orderBy,
-                    availableSearch,
-                    availableOrderBy,
-                    ...(search && availableSearch.length > 0 ? { search } : {}),
-                },
-            };
-        } catch (error) {
-            if (error instanceof AppBaseException) {
-                throw error;
-            }
-
-            throw new PaginationInvalidOffsetPaginationParamsException();
+        const availableSearch = options.availableSearch ?? [];
+        const availableOrderBy = options.availableOrderBy;
+        const page = this.validateAndParsePage(dto.page);
+        const perPage = this.validateAndParsePerPage(
+            dto.perPage,
+            options.defaultPerPage
+        );
+        const search = dto.search?.trim();
+        let where: IPaginationSearchWhere | null = null;
+        if (search && availableSearch.length > 0) {
+            where = this.buildSearchObject(search, availableSearch);
         }
+        const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
+        const skip = this.paginationOffsetUtil.skip(page, perPage);
+
+        return {
+            params: {
+                ...(where && { where }),
+                limit: perPage,
+                skip,
+                orderBy,
+            } as IPaginationQueryOffsetParams<TArgsWhere>,
+            storePatch: {
+                page,
+                perPage,
+                orderBy,
+                availableSearch,
+                availableOrderBy,
+                ...(search && availableSearch.length > 0 ? { search } : {}),
+            },
+        };
     }
 
     cursor<TArgsWhere = unknown>(
@@ -452,198 +167,58 @@ export class PaginationQueryUtil {
         params: IPaginationQueryCursorParams<TArgsWhere>;
         storePatch: IPaginationQueryPatch;
     } {
-        try {
-            const availableSearch = options.availableSearch ?? [];
-            const availableOrderBy = options.availableOrderBy;
-            const perPage = this.validateAndParsePerPage(
-                dto.perPage,
-                options.defaultPerPage
-            );
-            const cursor = this.validateAndSanitizeCursor(dto.cursor);
-            const search = dto.search?.trim();
-            let where: IPaginationSearchWhere | null = null;
-            if (search && availableSearch.length > 0) {
-                where = this.buildSearchObject(search, availableSearch);
-            }
-            const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
-            const cursorField =
-                options.cursorField ?? PaginationDefaultCursorField;
-            let firstPageAt: Date;
-            if (cursor) {
-                const token = this.openCursor(cursor);
-                firstPageAt = token.firstPageAt;
-            } else {
-                firstPageAt = this.helperDateService.create();
-            }
-
-            return {
-                params: {
-                    ...(where && { where }),
-                    limit: perPage,
-                    ...(cursor && { cursor }),
-                    cursorField,
-                    orderBy,
-                    firstPageAt,
-                } as IPaginationQueryCursorParams<TArgsWhere>,
-                storePatch: {
-                    perPage,
-                    ...(cursor && { cursor }),
-                    orderBy,
-                    availableSearch,
-                    availableOrderBy,
-                    ...(search && availableSearch.length > 0 ? { search } : {}),
-                },
-            };
-        } catch (error) {
-            if (error instanceof AppBaseException) {
-                throw error;
-            }
-
-            throw new PaginationInvalidCursorPaginationParamsException();
+        const availableSearch = options.availableSearch ?? [];
+        const availableOrderBy = options.availableOrderBy;
+        const perPage = this.validateAndParsePerPage(
+            dto.perPage,
+            options.defaultPerPage
+        );
+        const cursor = this.validateAndSanitizeCursor(dto.cursor);
+        const search = dto.search?.trim();
+        let where: IPaginationSearchWhere | null = null;
+        if (search && availableSearch.length > 0) {
+            where = this.buildSearchObject(search, availableSearch);
         }
-    }
-
-    equalBoolean<TField extends string>(
-        field: TField,
-        value: unknown,
-        options?: IPaginationQueryFilterOptions
-    ): IPaginationQueryFilterResult<Record<string, IPaginationEqual>> | null {
-        if (typeof value === 'boolean') {
-            const customField = options?.customField ?? field;
-
-            return {
-                where: {
-                    [customField]: {
-                        equals: value,
-                    },
-                },
-                storeFilter: { [field]: value },
-            };
-        }
-
-        return this.equal(field, value, {
-            ...options,
-            isBoolean: true,
-        }) as IPaginationQueryFilterResult<
-            Record<string, IPaginationEqual>
-        > | null;
-    }
-
-    equalString<TField extends string>(
-        field: TField,
-        value: unknown,
-        options?: IPaginationQueryFilterEqualOptions
-    ): IPaginationQueryFilterResult<Record<string, IPaginationEqual>> | null {
-        return this.equal(
-            field,
-            value,
-            options
-        ) as IPaginationQueryFilterResult<
-            Record<string, IPaginationEqual>
-        > | null;
-    }
-
-    equalNumber<TField extends string>(
-        field: TField,
-        value: unknown,
-        options?: IPaginationQueryFilterOptions
-    ): IPaginationQueryFilterResult<Record<string, IPaginationEqual>> | null {
-        return this.equal(field, value, {
-            ...options,
-            isNumber: true,
-        }) as IPaginationQueryFilterResult<
-            Record<string, IPaginationEqual>
-        > | null;
-    }
-
-    notEqual<TField extends string>(
-        field: TField,
-        value: unknown,
-        options?: IPaginationQueryFilterEqualOptions
-    ): IPaginationQueryFilterResult<
-        Record<string, IPaginationNotEqual>
-    > | null {
-        if (typeof value !== 'string' || value.trim() === '') {
-            return null;
-        }
-
-        const finalValue = this.coerceEqualValue(field, value, options);
-        const customField = options?.customField ?? field;
+        const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
+        const fingerprint = this.paginationCursorUtil.fingerprint(
+            options.scope,
+            dto,
+            orderBy
+        );
 
         return {
-            where: {
-                [customField]: {
-                    not: finalValue,
-                },
+            params: {
+                ...(where && { where }),
+                limit: perPage,
+                ...(cursor && { cursor }),
+                orderBy,
+                fingerprint,
+            } as IPaginationQueryCursorParams<TArgsWhere>,
+            storePatch: {
+                perPage,
+                ...(cursor && { cursor }),
+                orderBy,
+                availableSearch,
+                availableOrderBy,
+                ...(search && availableSearch.length > 0 ? { search } : {}),
             },
-            storeFilter: { [field]: finalValue },
         };
     }
 
-    inEnum<T, TField extends string>(
-        field: TField,
-        value: unknown,
-        defaultEnum: T[],
-        options?: IPaginationQueryFilterOptions
-    ): IPaginationQueryFilterResult<Record<string, IPaginationIn>> | null {
-        return this.enumFilter(
-            field,
-            value,
-            defaultEnum,
-            EnumPaginationFilterEnumOperator.in,
-            options
-        ) as IPaginationQueryFilterResult<Record<string, IPaginationIn>> | null;
-    }
+    resolveTiebreak(
+        orderBy: IPaginationOrderBy[],
+        field: string
+    ): IPaginationOrderBy[] {
+        const resolved =
+            orderBy.length === 0 ? [...PaginationDefaultOrderBy] : orderBy;
 
-    ninEnum<T, TField extends string>(
-        field: TField,
-        value: unknown,
-        defaultEnum: T[],
-        options?: IPaginationQueryFilterOptions
-    ): IPaginationQueryFilterResult<Record<string, IPaginationNin>> | null {
-        return this.enumFilter(
-            field,
-            value,
-            defaultEnum,
-            EnumPaginationFilterEnumOperator.notIn,
-            options
-        ) as IPaginationQueryFilterResult<
-            Record<string, IPaginationNin>
-        > | null;
-    }
-
-    dateBetween<TField extends string>(
-        field: TField,
-        value: unknown,
-        options?: IPaginationQueryFilterDateOptions
-    ): IPaginationQueryFilterResult<Record<string, IPaginationDate>> | null {
-        if (typeof value !== 'string' || value.trim() === '') {
-            return null;
+        if (resolved.some(term => field in term)) {
+            return resolved;
         }
 
-        const isIso = this.helperDateService.checkIso(value);
-        if (!isIso) {
-            throw new PaginationFilterInvalidValueException(field);
-        }
+        const lastTerm = resolved[resolved.length - 1]!;
+        const direction = Object.values(lastTerm)[0]!;
 
-        const dayOf = options?.dayOf ?? null;
-        const finalValue = this.helperDateService.createFromIso(value, {
-            ...(dayOf !== null && { dayOf }),
-        });
-        const customField = options?.customField ?? field;
-        const operation = options?.type
-            ? options.type === EnumPaginationFilterDateBetweenType.start
-                ? 'gte'
-                : 'lte'
-            : 'equals';
-
-        return {
-            where: {
-                [customField]: {
-                    [operation]: finalValue,
-                },
-            },
-            storeFilter: { [field]: finalValue },
-        };
+        return [...resolved, { [field]: direction }];
     }
 }

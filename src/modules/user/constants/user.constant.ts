@@ -89,6 +89,12 @@ export const UserRecipientSelect = {
 } satisfies Prisma.UserSelect;
 
 /**
+ * Cursor scope of the internal active-recipient read.
+ * @public
+ */
+export const UserActiveRecipientCursorScope = 'UserActiveRecipientCursorScope';
+
+/**
  * Columns a mobile number summary read returns.
  * @public
  */

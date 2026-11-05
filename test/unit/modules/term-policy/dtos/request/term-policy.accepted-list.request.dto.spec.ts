@@ -28,16 +28,6 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
         expect(result).toEqual({ perPage: 10 });
     });
 
-    it('accepts a repeated orderBy as an array', () => {
-        const result = TermPolicyAcceptedListRequestSchema.parse({
-            orderBy: ['createdAt:asc', 'createdAt:desc'],
-        });
-
-        expect(result).toEqual({
-            orderBy: ['createdAt:asc', 'createdAt:desc'],
-        });
-    });
-
     it('rejects an undeclared key', () => {
         expect(() =>
             TermPolicyAcceptedListRequestSchema.parse({ search: 'x' })
@@ -58,7 +48,17 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = TermPolicyAcceptanceDefaultAvailableOrderBy[0];
+
+        expect(
+            TermPolicyAcceptedListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = TermPolicyAcceptanceDefaultAvailableOrderBy[0];
         const last =
             TermPolicyAcceptanceDefaultAvailableOrderBy[
@@ -67,14 +67,9 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
 
         expect(
             TermPolicyAcceptedListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            TermPolicyAcceptedListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

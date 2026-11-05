@@ -595,7 +595,7 @@ describe('ActivityLogDomain', () => {
             const pagination = {
                 limit: 20,
                 orderBy: [],
-                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                fingerprint: 'aaaaaaaaaaaaaaaa',
             };
             const page = {
                 type: EnumPaginationType.cursor as const,
@@ -654,7 +654,7 @@ describe('ActivityLogDomain', () => {
             const pagination = {
                 limit: 20,
                 orderBy: [],
-                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                fingerprint: 'aaaaaaaaaaaaaaaa',
             };
             const page = {
                 type: EnumPaginationType.cursor as const,

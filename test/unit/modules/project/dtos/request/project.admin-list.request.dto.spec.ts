@@ -23,14 +23,6 @@ describe('ProjectAdminListRequestSchema', () => {
         });
     });
 
-    it('parses an array orderBy', () => {
-        const result = ProjectAdminListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'name:asc'],
-        });
-
-        expect(result).toEqual({ orderBy: ['createdAt:desc', 'name:asc'] });
-    });
-
     it('parses an empty query', () => {
         const result = ProjectAdminListRequestSchema.parse({});
 
@@ -64,7 +56,16 @@ describe('ProjectAdminListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = ProjectDefaultAvailableOrderBy[0];
+
+        expect(
+            ProjectAdminListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = ProjectDefaultAvailableOrderBy[0];
         const last =
             ProjectDefaultAvailableOrderBy[
@@ -72,14 +73,10 @@ describe('ProjectAdminListRequestSchema', () => {
             ];
 
         expect(
-            ProjectAdminListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-        expect(
             ProjectAdminListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

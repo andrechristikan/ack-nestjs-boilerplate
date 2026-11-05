@@ -5,6 +5,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -16,6 +17,7 @@ import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
+    WorkspaceMemberUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
 import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
@@ -37,6 +39,7 @@ export class WorkspaceMemberHttpService {
         private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
         private readonly userDomain: UserDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil
@@ -136,9 +139,12 @@ export class WorkspaceMemberHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceMemberWhereInput>(
                 query,
-                { availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy }
+                {
+                    scope: WorkspaceMemberUserListCursorScope,
+                    availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+                }
             );
-        const role = this.paginationQueryUtil.inEnum(
+        const role = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceMemberScalarFieldEnum.role,
             query.role,
             WorkspaceMemberDefaultRole

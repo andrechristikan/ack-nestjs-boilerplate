@@ -1,4 +1,5 @@
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
@@ -24,6 +25,7 @@ import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceJoinRequestDefaultStatus,
+    WorkspaceJoinRequestUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
@@ -47,6 +49,7 @@ export class WorkspaceJoinRequestHttpService {
         private readonly notificationUtil: NotificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -199,11 +202,12 @@ export class WorkspaceJoinRequestHttpService {
             this.paginationQueryUtil.cursor<Prisma.WorkspaceJoinRequestWhereInput>(
                 query,
                 {
+                    scope: WorkspaceJoinRequestUserListCursorScope,
                     availableOrderBy:
                         WorkspaceJoinRequestDefaultAvailableOrderBy,
                 }
             );
-        const status = this.paginationQueryUtil.inEnum(
+        const status = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceJoinRequestScalarFieldEnum.status,
             query.status,
             WorkspaceJoinRequestDefaultStatus

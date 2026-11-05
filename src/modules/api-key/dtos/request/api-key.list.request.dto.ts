@@ -24,18 +24,11 @@ export const ApiKeyListRequestSchema = PaginationOffsetQuerySchema.extend({
                 ':',
                 z.enum(EnumPaginationOrderDirectionType),
             ]),
-            z.array(
-                z.templateLiteral([
-                    z.enum(ApiKeyDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ])
-            ),
             z.literal(''),
         ])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${ApiKeyDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ApiKeyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            description: `Order by field in \`field:direction\` format (e.g. \`${ApiKeyDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ApiKeyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
             example: `${ApiKeyDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
     isActive: RequestBooleanStringSchema.optional().meta({

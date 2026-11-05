@@ -16,18 +16,11 @@ export const TermPolicyAdminListRequestSchema =
                     ':',
                     z.enum(EnumPaginationOrderDirectionType),
                 ]),
-                z.array(
-                    z.templateLiteral([
-                        z.enum(TermPolicyDefaultAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ])
-                ),
                 z.literal(''),
             ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${TermPolicyDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${TermPolicyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${TermPolicyDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${TermPolicyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${TermPolicyDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
         type: z.string().optional().meta({

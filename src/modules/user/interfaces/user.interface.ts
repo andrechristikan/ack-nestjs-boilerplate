@@ -24,7 +24,6 @@ import type {
 } from '@generated/prisma-client/client';
 import type {
     UserAdminListSelect,
-    UserAdminNearLockoutSelect,
     UserMobileNumberSummarySelect,
     UserRecipientSelect,
 } from '@modules/user/constants/user.constant';
@@ -59,10 +58,6 @@ export type IUserList = Prisma.UserGetPayload<{
 
 export type IUserRecipient = Prisma.UserGetPayload<{
     select: typeof UserRecipientSelect;
-}>;
-
-export type IUserNearLockout = Prisma.UserGetPayload<{
-    select: typeof UserAdminNearLockoutSelect;
 }>;
 
 export interface IUserRef {

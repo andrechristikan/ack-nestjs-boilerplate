@@ -31,10 +31,7 @@ export class RoleRepository implements IRoleRepository {
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
-        return this.paginationService.offset<
-            IRoleWithPolicyCount,
-            Prisma.RoleWhereInput
-        >(this.databaseService.client.role, {
+        return this.paginationService.offset(this.databaseService.client.role, {
             ...params,
             where: {
                 ...where,
@@ -51,10 +48,7 @@ export class RoleRepository implements IRoleRepository {
         }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
-        return this.paginationService.cursor<
-            IRoleWithPolicyCount,
-            Prisma.RoleWhereInput
-        >(this.databaseService.client.role, {
+        return this.paginationService.cursor(this.databaseService.client.role, {
             ...params,
             where: {
                 ...where,

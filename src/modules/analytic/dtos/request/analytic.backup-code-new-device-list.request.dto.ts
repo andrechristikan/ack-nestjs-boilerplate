@@ -18,18 +18,11 @@ export const AnalyticBackupCodeNewDeviceListRequestSchema =
                         ':',
                         z.enum(EnumPaginationOrderDirectionType),
                     ]),
-                    z.array(
-                        z.templateLiteral([
-                            z.enum(AnalyticBackupCodeNewDeviceAvailableOrderBy),
-                            ':',
-                            z.enum(EnumPaginationOrderDirectionType),
-                        ])
-                    ),
                     z.literal(''),
                 ])
                 .optional()
                 .meta({
-                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticBackupCodeNewDeviceAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticBackupCodeNewDeviceAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                     example: `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
                 }),
         })

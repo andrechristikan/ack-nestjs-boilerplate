@@ -104,18 +104,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             role
         );
 
-        return this.paginationService.offset<
-            IWorkspaceMember,
-            Prisma.WorkspaceMemberWhereInput
-        >(this.databaseService.client.workspaceMember, {
-            ...others,
-            where: scopedWhere,
-            include: {
-                user: {
-                    select: UserRefSelect,
+        return this.paginationService.offset(
+            this.databaseService.client.workspaceMember,
+            {
+                ...others,
+                where: scopedWhere,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
                 },
-            },
-        });
+            }
+        );
     }
 
     async findWithPaginationCursor(
@@ -132,18 +132,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             role
         );
 
-        return this.paginationService.cursor<
-            IWorkspaceMember,
-            Prisma.WorkspaceMemberWhereInput
-        >(this.databaseService.client.workspaceMember, {
-            ...others,
-            where: scopedWhere,
-            include: {
-                user: {
-                    select: UserRefSelect,
+        return this.paginationService.cursor(
+            this.databaseService.client.workspaceMember,
+            {
+                ...others,
+                where: scopedWhere,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
                 },
-            },
-        });
+            }
+        );
     }
 
     async createOwnerInTx(

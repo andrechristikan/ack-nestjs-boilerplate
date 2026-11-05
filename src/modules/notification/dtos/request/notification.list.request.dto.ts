@@ -17,18 +17,11 @@ export const NotificationListRequestSchema = PaginationCursorQuerySchema.omit({
                 ':',
                 z.enum(EnumPaginationOrderDirectionType),
             ]),
-            z.array(
-                z.templateLiteral([
-                    z.enum(NotificationDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ])
-            ),
             z.literal(''),
         ])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${NotificationDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${NotificationDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            description: `Order by field in \`field:direction\` format (e.g. \`${NotificationDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${NotificationDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
             example: `${NotificationDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
 });

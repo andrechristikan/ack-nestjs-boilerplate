@@ -62,7 +62,17 @@ describe('AnalyticRefreshSpikeListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = AnalyticUserCountAvailableOrderBy[0];
+
+        expect(
+            AnalyticRefreshSpikeListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = AnalyticUserCountAvailableOrderBy[0];
         const last =
             AnalyticUserCountAvailableOrderBy[
@@ -71,14 +81,9 @@ describe('AnalyticRefreshSpikeListRequestSchema', () => {
 
         expect(
             AnalyticRefreshSpikeListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            AnalyticRefreshSpikeListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

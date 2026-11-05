@@ -16,14 +16,6 @@ describe('AnalyticNearLockoutListRequestSchema', () => {
         });
     });
 
-    it('parses an orderBy array', () => {
-        const result = AnalyticNearLockoutListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'id:asc'],
-        });
-
-        expect(result).toEqual({ orderBy: ['createdAt:desc', 'id:asc'] });
-    });
-
     it('parses an empty object', () => {
         const result = AnalyticNearLockoutListRequestSchema.parse({});
 
@@ -57,7 +49,17 @@ describe('AnalyticNearLockoutListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = AnalyticNearLockoutAvailableOrderBy[0];
+
+        expect(
+            AnalyticNearLockoutListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = AnalyticNearLockoutAvailableOrderBy[0];
         const last =
             AnalyticNearLockoutAvailableOrderBy[
@@ -66,14 +68,9 @@ describe('AnalyticNearLockoutListRequestSchema', () => {
 
         expect(
             AnalyticNearLockoutListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            AnalyticNearLockoutListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

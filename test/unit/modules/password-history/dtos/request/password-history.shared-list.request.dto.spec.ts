@@ -20,16 +20,6 @@ describe('PasswordHistorySharedListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('accepts an array of orderBy fields', () => {
-        const result = PasswordHistorySharedListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'createdAt:asc'],
-        });
-
-        expect(result).toEqual({
-            orderBy: ['createdAt:desc', 'createdAt:asc'],
-        });
-    });
-
     it('rejects an undeclared key', () => {
         expect(() =>
             PasswordHistorySharedListRequestSchema.parse({
@@ -60,7 +50,17 @@ describe('PasswordHistorySharedListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = PasswordHistoryCursorAvailableOrderBy[0];
+
+        expect(
+            PasswordHistorySharedListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = PasswordHistoryCursorAvailableOrderBy[0];
         const last =
             PasswordHistoryCursorAvailableOrderBy[
@@ -69,14 +69,9 @@ describe('PasswordHistorySharedListRequestSchema', () => {
 
         expect(
             PasswordHistorySharedListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            PasswordHistorySharedListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

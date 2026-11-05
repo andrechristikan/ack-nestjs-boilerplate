@@ -16,22 +16,6 @@ describe('AnalyticDeviceProliferationListRequestSchema', () => {
         });
     });
 
-    it('parses an orderBy array', () => {
-        const result = AnalyticDeviceProliferationListRequestSchema.parse({
-            orderBy: [
-                `${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc`,
-                `${AnalyticDeviceProliferationAvailableOrderBy[1]}:asc`,
-            ],
-        });
-
-        expect(result).toEqual({
-            orderBy: [
-                `${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc`,
-                `${AnalyticDeviceProliferationAvailableOrderBy[1]}:asc`,
-            ],
-        });
-    });
-
     it('parses an empty object', () => {
         const result = AnalyticDeviceProliferationListRequestSchema.parse({});
 
@@ -70,7 +54,17 @@ describe('AnalyticDeviceProliferationListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = AnalyticDeviceProliferationAvailableOrderBy[0];
+
+        expect(
+            AnalyticDeviceProliferationListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = AnalyticDeviceProliferationAvailableOrderBy[0];
         const last =
             AnalyticDeviceProliferationAvailableOrderBy[
@@ -79,14 +73,9 @@ describe('AnalyticDeviceProliferationListRequestSchema', () => {
 
         expect(
             AnalyticDeviceProliferationListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            AnalyticDeviceProliferationListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

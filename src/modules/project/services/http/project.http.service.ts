@@ -13,6 +13,7 @@ import {
     ProjectCursorAvailableOrderBy,
     ProjectDefaultAvailableOrderBy,
     ProjectDefaultAvailableSearch,
+    ProjectUserListCursorScope,
 } from '@modules/project/constants/project.list.constant';
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
@@ -43,6 +44,7 @@ export class ProjectHttpService {
     ): Promise<IResponsePaginationReturn<Project>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectWhereInput>(query, {
+                scope: ProjectUserListCursorScope,
                 availableSearch: ProjectDefaultAvailableSearch,
                 availableOrderBy: ProjectCursorAvailableOrderBy,
             });

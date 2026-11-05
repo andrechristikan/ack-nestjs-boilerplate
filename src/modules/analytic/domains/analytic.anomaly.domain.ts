@@ -1,7 +1,7 @@
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
@@ -59,7 +59,7 @@ export class AnalyticAnomalyDomain {
         private readonly analyticAnomalyUtil: AnalyticAnomalyUtil,
         private readonly analyticSortUtil: AnalyticSortUtil,
         private readonly analyticFraudUtil: AnalyticFraudUtil,
-        private readonly paginationService: PaginationService,
+        private readonly paginationOffsetUtil: PaginationOffsetUtil,
         private readonly configService: ConfigService,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
@@ -246,7 +246,7 @@ export class AnalyticAnomalyDomain {
             AnalyticImpossibleTravelAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -299,7 +299,7 @@ export class AnalyticAnomalyDomain {
             AnalyticLoginSpikeIpAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -388,7 +388,7 @@ export class AnalyticAnomalyDomain {
             AnalyticDeviceProliferationAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -433,7 +433,7 @@ export class AnalyticAnomalyDomain {
             AnalyticLoginTimeAnomalyAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });

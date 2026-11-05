@@ -2,7 +2,6 @@
     "error": {
         "invalidPerPage": "The 'perPage' parameter must be between 1 and {maxPerPage}.",
         "invalidCursorPaginationParams": "Invalid cursor pagination parameters provided.",
-        "invalidOffsetPaginationParams": "Invalid offset pagination parameters provided.",
         "cursorTooLong": "The cursor length must not exceed {maxCursorLength} characters.",
         "invalidCursorFormat": "The provided cursor is not in a valid format.",
         "invalidPage": "The 'page' parameter must be a positive integer and maximum {maxPage}.",
@@ -13,8 +12,6 @@
         "perPageExceedsMaximum": "The 'perPage' parameter exceeds the maximum allowed value of {maxPerPage}. Received: {receivedPerPage}.",
         "perPageCannotBeLessThanOne": "The 'perPage' parameter cannot be less than {minPerPage}. Received: {receivedPerPage}.",
         "invalidCursorData": "The provided cursor data is invalid.",
-        "failedToEncodeCursor": "Failed to encode cursor data.",
-        "failedToDecodeCursor": "Failed to decode cursor data.",
-        "paginationConditionsChanged": "The pagination conditions have changed. The provided cursor can no longer be used."
+        "failedToDecodeCursor": "Failed to decode cursor data."
     }
 }

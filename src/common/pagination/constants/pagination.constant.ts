@@ -26,7 +26,7 @@ export const PaginationDefaultMaxSearchLength = 100;
 export const PaginationDefaultMaxPage = 20;
 
 /**
- * Field a cursor is keyed on when a list names no cursor field.
+ * Tiebreak field appended to every offset and cursor `orderBy`.
  * @public
  */
 export const PaginationDefaultCursorField = 'id';
@@ -44,7 +44,7 @@ export const PaginationMaxCursorLength = 2560;
 export const PaginationCursorEncryptionPurpose = 'PaginationCursor';
 
 /**
- * Authenticated context of a sealed cursor token. A token has no owning id, so the context is fixed and the fingerprint binds the token to its query.
+ * Authenticated context of a sealed cursor token; fixed, because the fingerprint binds the token to its request.
  * @public
  */
 export const PaginationCursorEncryptionContext = 'PaginationCursorContext';
@@ -56,11 +56,38 @@ export const PaginationCursorEncryptionContext = 'PaginationCursorContext';
 export const PaginationCursorDateKey = '$date';
 
 /**
- * Hex width of the cursor fingerprint — the leading 64 bits of the sha256 over the
- * canonicalized `{ where, orderBy }` the cursor was issued for.
+ * Hex width of the cursor fingerprint, the leading 64 bits of the sha256 over the canonicalized `{ scope, filters, orderBy }` of the client request.
  * @public
  */
 export const PaginationCursorFingerprintLength = 16;
+
+/**
+ * Alphabet a cursor string must match before it is opened: the base64url characters and the `.` joining the parts of an `aes256Encrypt` payload.
+ * @public
+ */
+export const PaginationCursorFormatRegex = /^[A-Za-z0-9_.-]+$/;
+
+/**
+ * Query DTO fields left out of the cursor fingerprint, because they page or sort the list rather than filter it.
+ * @public
+ */
+export const PaginationFingerprintExcludedFields: readonly string[] = [
+    'cursor',
+    'perPage',
+    'orderBy',
+];
+
+/**
+ * Separator between the values of a comma-separated enum filter.
+ * @public
+ */
+export const PaginationFilterValueSeparator = ',';
+
+/**
+ * Separator between the field and the direction of an `orderBy` term.
+ * @public
+ */
+export const PaginationOrderBySeparator = ':';
 
 /**
  * Default ordering when no `orderBy` is provided: newest `createdAt` first. Frozen, because an

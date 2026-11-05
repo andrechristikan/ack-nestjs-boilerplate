@@ -21,14 +21,6 @@ describe('FeatureFlagSystemListRequestSchema', () => {
         });
     });
 
-    it('parses an array orderBy', () => {
-        const result = FeatureFlagSystemListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'key:asc'],
-        });
-
-        expect(result).toEqual({ orderBy: ['createdAt:desc', 'key:asc'] });
-    });
-
     it('parses an empty query', () => {
         const result = FeatureFlagSystemListRequestSchema.parse({});
 
@@ -57,7 +49,17 @@ describe('FeatureFlagSystemListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = FeatureFlagDefaultAvailableOrderBy[0];
+
+        expect(
+            FeatureFlagSystemListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = FeatureFlagDefaultAvailableOrderBy[0];
         const last =
             FeatureFlagDefaultAvailableOrderBy[
@@ -66,14 +68,9 @@ describe('FeatureFlagSystemListRequestSchema', () => {
 
         expect(
             FeatureFlagSystemListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            FeatureFlagSystemListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

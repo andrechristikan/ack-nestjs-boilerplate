@@ -25,18 +25,11 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
                 ':',
                 z.enum(EnumPaginationOrderDirectionType),
             ]),
-            z.array(
-                z.templateLiteral([
-                    z.enum(UserDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ])
-            ),
             z.literal(''),
         ])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${UserDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${UserDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            description: `Order by field in \`field:direction\` format (e.g. \`${UserDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${UserDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
             example: `${UserDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
     status: z

@@ -172,18 +172,18 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>> {
-        return this.paginationService.cursor<
-            IWorkspaceInviteList,
-            Prisma.WorkspaceInviteWhereInput
-        >(this.databaseService.client.workspaceInvite, {
-            ...others,
-            where: {
-                ...where,
-                ...(status ?? {}),
-                workspaceId,
-            },
-            select: WorkspaceInviteUserListSelect,
-        });
+        return this.paginationService.cursor(
+            this.databaseService.client.workspaceInvite,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...(status ?? {}),
+                    workspaceId,
+                },
+                select: WorkspaceInviteUserListSelect,
+            }
+        );
     }
 
     async createPending({

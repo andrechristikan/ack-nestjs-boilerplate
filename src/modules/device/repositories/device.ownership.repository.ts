@@ -195,18 +195,18 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         const today = this.helperDateService.create();
         const ownershipInclude = this.ownershipInclude(today);
 
-        return this.paginationService.offset<
-            IDeviceOwnership,
-            Prisma.DeviceOwnershipWhereInput
-        >(this.databaseService.client.deviceOwnership, {
-            ...others,
-            where: {
-                ...where,
-                ...isRevoked,
-                userId,
-            },
-            include: ownershipInclude,
-        });
+        return this.paginationService.offset(
+            this.databaseService.client.deviceOwnership,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...isRevoked,
+                    userId,
+                },
+                include: ownershipInclude,
+            }
+        );
     }
 
     async findActiveWithPaginationCursor(
@@ -220,27 +220,27 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         const today = this.helperDateService.create();
         const ownershipInclude = this.ownershipInclude(today);
 
-        return this.paginationService.cursor<
-            IDeviceOwnershipWithSession,
-            Prisma.DeviceOwnershipWhereInput
-        >(this.databaseService.client.deviceOwnership, {
-            ...others,
-            where: {
-                ...where,
-                userId,
-                isRevoked: false,
-            },
-            include: {
-                ...ownershipInclude,
-                sessions: {
-                    where: {
-                        id: sessionId,
-                    },
-                    take: 1,
-                    select: DeviceOwnershipSessionIdSelect,
+        return this.paginationService.cursor(
+            this.databaseService.client.deviceOwnership,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    userId,
+                    isRevoked: false,
                 },
-            },
-        });
+                include: {
+                    ...ownershipInclude,
+                    sessions: {
+                        where: {
+                            id: sessionId,
+                        },
+                        take: 1,
+                        select: DeviceOwnershipSessionIdSelect,
+                    },
+                },
+            }
+        );
     }
 
     async findTokensByUserId(userId: string): Promise<string[]> {

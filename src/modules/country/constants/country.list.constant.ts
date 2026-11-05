@@ -20,3 +20,9 @@ export const CountryDefaultAvailableSearch = [
     Prisma.CountryScalarFieldEnum.alpha3Code,
     Prisma.CountryScalarFieldEnum.continent,
 ] as const satisfies ReadonlyArray<Prisma.CountryScalarFieldEnum>;
+
+/**
+ * Cursor scope of the public country list.
+ * @public
+ */
+export const CountryPublicListCursorScope = 'CountryPublicListCursorScope';

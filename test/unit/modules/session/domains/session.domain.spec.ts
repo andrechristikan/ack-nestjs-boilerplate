@@ -223,7 +223,7 @@ describe('SessionDomain', () => {
         it('delegates to the repository with the cursor pagination params', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput> =
                 {
-                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    fingerprint: 'aaaaaaaaaaaaaaaa',
                     limit: 20,
                     orderBy: [],
                 };

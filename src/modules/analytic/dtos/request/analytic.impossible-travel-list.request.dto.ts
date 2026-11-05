@@ -18,18 +18,11 @@ export const AnalyticImpossibleTravelListRequestSchema =
                         ':',
                         z.enum(EnumPaginationOrderDirectionType),
                     ]),
-                    z.array(
-                        z.templateLiteral([
-                            z.enum(AnalyticImpossibleTravelAvailableOrderBy),
-                            ':',
-                            z.enum(EnumPaginationOrderDirectionType),
-                        ])
-                    ),
                     z.literal(''),
                 ])
                 .optional()
                 .meta({
-                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticImpossibleTravelAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticImpossibleTravelAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticImpossibleTravelAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticImpossibleTravelAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                     example: `${AnalyticImpossibleTravelAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
                 }),
         })

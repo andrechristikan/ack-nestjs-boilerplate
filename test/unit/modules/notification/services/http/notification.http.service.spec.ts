@@ -23,7 +23,10 @@ import { NotificationDomain } from '@modules/notification/domains/notification.d
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationHttpService } from '@modules/notification/services/http/notification.http.service';
-import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
+import {
+    NotificationDefaultAvailableOrderBy,
+    NotificationSharedListCursorScope,
+} from '@modules/notification/constants/notification.list.constant';
 
 describe('NotificationHttpService', () => {
     const notificationDomain: MockProxy<NotificationDomain> =
@@ -40,7 +43,7 @@ describe('NotificationHttpService', () => {
     const cursorParams = {
         limit: 20,
         orderBy: [],
-        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+        fingerprint: 'aaaaaaaaaaaaaaaa',
     };
     const cursorPage = {
         type: EnumPaginationType.cursor as const,
@@ -83,6 +86,7 @@ describe('NotificationHttpService', () => {
             const result = await service.getListCursor('user-id', query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: NotificationSharedListCursorScope,
                 availableOrderBy: NotificationDefaultAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(

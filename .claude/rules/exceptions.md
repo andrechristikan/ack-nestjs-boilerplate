@@ -40,7 +40,7 @@ export class UserNotFoundException extends AppBaseException {
 - A guard, a `*Protected` decorator, and a param decorator throw what `guards.md` states.
 - A controller catches no `AppBaseException` (the filter chain maps it); an HTTP service originates only a mapped write conflict, a mapped unique collision, and the slug retry exhaustion `DatabaseUniqueValueGenerationFailedException` (`service.md`).
 - A processor service originates only `QueueException` and a mapped write conflict; a domain throws `QueueException` for a job failure no subject's exception names (`notification.email.term-policy.domain.ts:216`). `isFatal` (default `false`) decides only the Sentry report; when it reports and how retries run: `queue.md`, Processors.
-- A util maps an error and returns it (`layering.md`, `src/modules/auth/utils/auth.util.ts:117`); `DatabaseUtil.toException` and `RedisUtil.toException` return `null` for an error they do not know. `PaginationQueryUtil` is the one util that throws, and only its own `pagination` exceptions.
+- A util maps an error and returns it (`layering.md`, `src/modules/auth/utils/auth.util.ts:117`); `DatabaseUtil.toException` and `RedisUtil.toException` return `null` for an error they do not know. `PaginationQueryUtil` and `PaginationFilterUtil` are the utils that throw, and only their own `pagination` exceptions.
 - The retry's owner throws `DatabaseUniqueValueGenerationFailedException` (`database.md`, Generated unique values): a repository (its one typed exception), a domain, an HTTP service, or a seed.
 - Framework `HttpException`s (route 404, throttler 429) are the framework's to throw and `AppHttpFilter`'s to handle; multipart limits are the one surface the kit maps onto typed `file` exceptions first (`file.md`).
 

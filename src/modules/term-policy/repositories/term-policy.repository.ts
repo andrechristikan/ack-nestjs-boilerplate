@@ -58,17 +58,17 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         type: Record<string, IPaginationIn> | null,
         status: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.paginationService.offset<
-            TermPolicy,
-            Prisma.TermPolicyWhereInput
-        >(this.databaseService.client.termPolicy, {
-            ...others,
-            where: {
-                ...where,
-                ...type,
-                ...status,
-            },
-        });
+        return this.paginationService.offset(
+            this.databaseService.client.termPolicy,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...type,
+                    ...status,
+                },
+            }
+        );
     }
 
     async findPublished(
@@ -78,17 +78,17 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.paginationService.cursor<
-            TermPolicy,
-            Prisma.TermPolicyWhereInput
-        >(this.databaseService.client.termPolicy, {
-            ...others,
-            where: {
-                ...where,
-                ...type,
-                status: EnumTermPolicyStatus.published,
-            },
-        });
+        return this.paginationService.cursor(
+            this.databaseService.client.termPolicy,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...type,
+                    status: EnumTermPolicyStatus.published,
+                },
+            }
+        );
     }
 
     async findUserAccepted(
@@ -98,17 +98,17 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
-        return this.paginationService.cursor<
-            ITermPolicyUserAcceptance,
-            Prisma.TermPolicyUserAcceptanceWhereInput
-        >(this.databaseService.client.termPolicyUserAcceptance, {
-            ...others,
-            where: {
-                ...where,
-                userId,
-            },
-            include: TermPolicyAcceptanceInclude,
-        });
+        return this.paginationService.cursor(
+            this.databaseService.client.termPolicyUserAcceptance,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    userId,
+                },
+                include: TermPolicyAcceptanceInclude,
+            }
+        );
     }
 
     async findOneById(termPolicyId: string): Promise<TermPolicy | null> {

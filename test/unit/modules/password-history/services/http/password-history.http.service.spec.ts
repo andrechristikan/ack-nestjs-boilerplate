@@ -13,6 +13,7 @@ import type { Prisma } from '@generated/prisma-client/client';
 import {
     PasswordHistoryCursorAvailableOrderBy,
     PasswordHistoryDefaultAvailableOrderBy,
+    PasswordHistorySharedListCursorScope,
 } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import type { PasswordHistoryAdminListRequestDto } from '@modules/password-history/dtos/request/password-history.admin-list.request.dto';
@@ -42,7 +43,7 @@ describe('PasswordHistoryHttpService', () => {
     };
     const cursorParams: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput> =
         {
-            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            fingerprint: 'aaaaaaaaaaaaaaaa',
             limit: 20,
             orderBy: [],
         };
@@ -119,6 +120,7 @@ describe('PasswordHistoryHttpService', () => {
             const result = await service.getListCursor('user-id', query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: PasswordHistorySharedListCursorScope,
                 availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(

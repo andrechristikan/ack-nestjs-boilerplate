@@ -33,3 +33,16 @@ export const ProjectCursorAvailableOrderBy = [
 export const ProjectMemberDefaultAvailableOrderBy = [
     Prisma.ProjectMemberScalarFieldEnum.joinedAt,
 ] as const satisfies ReadonlyArray<Prisma.ProjectMemberScalarFieldEnum>;
+
+/**
+ * Cursor scope of the user project list.
+ * @public
+ */
+export const ProjectUserListCursorScope = 'ProjectUserListCursorScope';
+
+/**
+ * Cursor scope of the user project member list.
+ * @public
+ */
+export const ProjectMemberUserListCursorScope =
+    'ProjectMemberUserListCursorScope';

@@ -35,17 +35,17 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        return this.paginationService.offset<
-            IPasswordHistoryList,
-            Prisma.PasswordHistoryWhereInput
-        >(this.databaseService.client.passwordHistory, {
-            ...others,
-            where: {
-                ...where,
-                userId,
-            },
-            select: PasswordHistoryListSelect,
-        });
+        return this.paginationService.offset(
+            this.databaseService.client.passwordHistory,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    userId,
+                },
+                select: PasswordHistoryListSelect,
+            }
+        );
     }
 
     async findWithPaginationCursor(
@@ -55,17 +55,17 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        return this.paginationService.cursor<
-            IPasswordHistoryList,
-            Prisma.PasswordHistoryWhereInput
-        >(this.databaseService.client.passwordHistory, {
-            ...others,
-            where: {
-                ...where,
-                userId,
-            },
-            select: PasswordHistoryListSelect,
-        });
+        return this.paginationService.cursor(
+            this.databaseService.client.passwordHistory,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    userId,
+                },
+                select: PasswordHistoryListSelect,
+            }
+        );
     }
 
     async findActiveUser(userId: string): Promise<PasswordHistory[]> {

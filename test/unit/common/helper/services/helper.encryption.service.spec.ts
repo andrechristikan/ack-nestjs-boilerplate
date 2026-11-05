@@ -45,6 +45,34 @@ describe('HelperEncryptionService', () => {
             ).toBe('secret message');
         });
 
+        it('produces a different payload on each call for the same input', () => {
+            const first = service.aes256Encrypt(
+                'secret message',
+                secret,
+                purpose,
+                context
+            );
+            const second = service.aes256Encrypt(
+                'secret message',
+                secret,
+                purpose,
+                context
+            );
+
+            expect(first).not.toBe(second);
+        });
+
+        it('joins the 4 payload parts with a literal dot', () => {
+            const payload = service.aes256Encrypt(
+                'secret message',
+                secret,
+                purpose,
+                context
+            );
+
+            expect(payload.split('.')).toHaveLength(4);
+        });
+
         it('throws when the secret is invalid', () => {
             let error: unknown;
             try {
@@ -400,6 +428,37 @@ describe('HelperEncryptionService', () => {
                     secret,
                     purpose,
                     'other-context'
+                );
+            } catch (caught) {
+                error = caught;
+            }
+
+            expect(error).toMatchObject({
+                module: 'helper',
+                statusCode: EnumHelperStatusCodeError.decryptFailed,
+                statusCodeKey:
+                    EnumHelperStatusCodeError[
+                        EnumHelperStatusCodeError.decryptFailed
+                    ],
+                messagePath: 'helper.error.decryptFailed',
+            });
+        });
+
+        it('throws when decrypted under the wrong purpose', () => {
+            const payload = service.aes256Encrypt(
+                'm',
+                secret,
+                purpose,
+                context
+            );
+
+            let error: unknown;
+            try {
+                service.aes256Decrypt(
+                    payload,
+                    secret,
+                    'other-purpose',
+                    context
                 );
             } catch (caught) {
                 error = caught;

@@ -23,3 +23,9 @@ export const RoleDefaultAvailableOrderBy = [
  * @public
  */
 export const RoleDefaultType = Object.values(EnumRoleType);
+
+/**
+ * Cursor scope of the system role list.
+ * @public
+ */
+export const RoleSystemListCursorScope = 'RoleSystemListCursorScope';

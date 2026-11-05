@@ -39,18 +39,18 @@ export class SessionRepository implements ISessionRepository {
         }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        return this.paginationService.offset<
-            ISessionList,
-            Prisma.SessionWhereInput
-        >(this.databaseService.client.session, {
-            ...others,
-            where: {
-                ...where,
-                ...isRevoked,
-                userId,
-            },
-            select: SessionListSelect,
-        });
+        return this.paginationService.offset(
+            this.databaseService.client.session,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...isRevoked,
+                    userId,
+                },
+                select: SessionListSelect,
+            }
+        );
     }
 
     async findActiveWithPaginationCursor(
@@ -60,19 +60,21 @@ export class SessionRepository implements ISessionRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        return this.paginationService.cursor<
-            ISessionList,
-            Prisma.SessionWhereInput
-        >(this.databaseService.client.session, {
-            ...others,
-            where: {
-                ...where,
-                userId,
-                isRevoked: false,
-                expiredAt: { gte: others.firstPageAt },
-            },
-            select: SessionListSelect,
-        });
+        const now = this.helperDateService.create();
+
+        return this.paginationService.cursor(
+            this.databaseService.client.session,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    userId,
+                    isRevoked: false,
+                    expiredAt: { gte: now },
+                },
+                select: SessionListSelect,
+            }
+        );
     }
 
     async existsActiveById(

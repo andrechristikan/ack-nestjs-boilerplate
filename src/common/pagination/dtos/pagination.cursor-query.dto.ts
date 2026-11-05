@@ -13,7 +13,7 @@ export const PaginationCursorQuerySchema = z.strictObject({
     cursor: z.string().optional().meta({
         description: 'The pagination cursor returned from the previous request',
         example:
-            'aW85bVlDVzI3dUVKNzFkeEU0cmVnUS5iQnhZOVZvSklEbGo5MTIyLnlxUG1YYlVJd056OF9mUm5sNlRrNkgzYVRUWWtXdlJ1dk02ejhVT244dUFpMEFETTA5UjNEcHNfU0tjaXVmOWZtZko2V1l2WkswZnVuVDBvbXBtZzFqV21NWDg0a0NSY1pVbm00Y0ZxMUxDZkRiVmh5eXhkM19vNndXUXUzVnhYZjAyNjc1ekZ6UThjV2hyUUdWb1prTnNHZlNmQzgyelpQZ2NMTzJ0XzZmXzNycU0tQXFMcHVrRUdJUGtrUHNYRWFCUUIzb2VOb2Z1T1FpdEtVM2plaTNaZnh2WG9OZkJUVWlkTXBzYklidDA2LmxwNzFpNE5aWnNubjVBSVN2THp5QXc',
+            'io9mYCW27uEJ71dxE4regQ.bBxY9VoJIDlj9122.yqPmXbUIwNz8_fRnl6Tk6H3aTTYkWvRuvM6z8UOn8uAi0ADM09R3Dps_SKciuf9fmfJ6WYvZK0funT0ompmg1jWmMX84kCRcZUnm4cFq1LCfDbVhyyxd3_o6wWQu3VxXf02675zFzQ8cWhrQGVoZkNsGfSfC82zZPgcLO2t_6f_3rqM-AqLpukEGIPkkPsXEaBQB3oeNofuOQitKU3jei3ZfxvXoNfBTUidMpsbIbt06.lp71i4NZZsnn5AISvLzyAw',
     }),
     perPage: z.coerce
         .number()

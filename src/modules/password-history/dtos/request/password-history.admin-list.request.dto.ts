@@ -16,18 +16,11 @@ export const PasswordHistoryAdminListRequestSchema =
                     ':',
                     z.enum(EnumPaginationOrderDirectionType),
                 ]),
-                z.array(
-                    z.templateLiteral([
-                        z.enum(PasswordHistoryDefaultAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ])
-                ),
                 z.literal(''),
             ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${PasswordHistoryDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${PasswordHistoryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${PasswordHistoryDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${PasswordHistoryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${PasswordHistoryDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
     });

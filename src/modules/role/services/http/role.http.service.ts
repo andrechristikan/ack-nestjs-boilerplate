@@ -4,6 +4,7 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
@@ -14,6 +15,7 @@ import {
     RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
     RoleDefaultType,
+    RoleSystemListCursorScope,
 } from '@modules/role/constants/role.list.constant';
 import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.system-list.request.dto';
@@ -32,6 +34,7 @@ export class RoleHttpService {
     constructor(
         private readonly roleDomain: RoleDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly roleUtil: RoleUtil,
         private readonly activityLogDomain: ActivityLogDomain,
@@ -60,7 +63,7 @@ export class RoleHttpService {
                 availableSearch: RoleDefaultAvailableSearch,
                 availableOrderBy: RoleDefaultAvailableOrderBy,
             });
-        const type = this.paginationQueryUtil.inEnum(
+        const type = this.paginationFilterUtil.inEnum(
             Prisma.RoleScalarFieldEnum.type,
             query.type,
             RoleDefaultType
@@ -95,10 +98,11 @@ export class RoleHttpService {
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.RoleWhereInput>(query, {
+                scope: RoleSystemListCursorScope,
                 availableSearch: RoleDefaultAvailableSearch,
                 availableOrderBy: RoleDefaultAvailableOrderBy,
             });
-        const type = this.paginationQueryUtil.inEnum(
+        const type = this.paginationFilterUtil.inEnum(
             Prisma.RoleScalarFieldEnum.type,
             query.type,
             RoleDefaultType

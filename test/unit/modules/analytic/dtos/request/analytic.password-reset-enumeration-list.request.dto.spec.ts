@@ -66,7 +66,17 @@ describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = AnalyticKeyCountAvailableOrderBy[0];
+
+        expect(
+            AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = AnalyticKeyCountAvailableOrderBy[0];
         const last =
             AnalyticKeyCountAvailableOrderBy[
@@ -75,14 +85,9 @@ describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
 
         expect(
             AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

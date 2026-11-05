@@ -156,7 +156,7 @@ describe('RoleDomain', () => {
         it('delegates the cursor pagination read to the repository', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
                 {
-                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    fingerprint: 'aaaaaaaaaaaaaaaa',
                     limit: 20,
                     orderBy: [],
                 };
@@ -181,7 +181,7 @@ describe('RoleDomain', () => {
         it('forwards the type filter to the repository', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
                 {
-                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    fingerprint: 'aaaaaaaaaaaaaaaa',
                     limit: 20,
                     orderBy: [],
                 };

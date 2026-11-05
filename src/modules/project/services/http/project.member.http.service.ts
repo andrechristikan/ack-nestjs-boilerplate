@@ -20,7 +20,10 @@ import { ProjectMemberDomain } from '@modules/project/domains/project.member.dom
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { Injectable } from '@nestjs/common';
-import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
+import {
+    ProjectMemberDefaultAvailableOrderBy,
+    ProjectMemberUserListCursorScope,
+} from '@modules/project/constants/project.list.constant';
 
 @Injectable()
 export class ProjectMemberHttpService {
@@ -40,7 +43,10 @@ export class ProjectMemberHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectMemberWhereInput>(
                 query,
-                { availableOrderBy: ProjectMemberDefaultAvailableOrderBy }
+                {
+                    scope: ProjectMemberUserListCursorScope,
+                    availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
+                }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

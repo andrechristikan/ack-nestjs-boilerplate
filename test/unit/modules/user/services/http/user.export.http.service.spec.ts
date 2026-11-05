@@ -11,7 +11,7 @@ import {
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import { UserImportDomain } from '@modules/user/domains/user.import.domain';
@@ -23,8 +23,8 @@ describe('UserExportHttpService', () => {
     const userImportDomain: MockProxy<UserImportDomain> =
         mock<UserImportDomain>();
     const fileService: MockProxy<FileService> = mock<FileService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -84,8 +84,8 @@ describe('UserExportHttpService', () => {
                 { provide: UserImportDomain, useValue: userImportDomain },
                 { provide: FileService, useValue: fileService },
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
                 },
                 {
                     provide: RequestStoreService,
@@ -100,11 +100,11 @@ describe('UserExportHttpService', () => {
         const query: UserExportRequestDto = {};
 
         it('merges every filter into the pagination store and writes a csv', async () => {
-            paginationQueryUtil.inEnum.mockReturnValue({
+            paginationFilterUtil.inEnum.mockReturnValue({
                 where: { status: { in: [EnumUserStatus.active] } },
                 storeFilter: { status: [EnumUserStatus.active] },
             });
-            paginationQueryUtil.equalString
+            paginationFilterUtil.equalString
                 .mockReturnValueOnce({
                     where: { roleId: { equals: 'role-fable' } },
                     storeFilter: { roleId: 'role-fable' },
@@ -159,15 +159,15 @@ describe('UserExportHttpService', () => {
         });
 
         it('defaults the status filter and a missing photo when no filter or photo applies', async () => {
-            paginationQueryUtil.inEnum.mockReturnValue(null);
-            paginationQueryUtil.equalString.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.equalString.mockReturnValue(null);
             const user = { ...baseUser, photo: null };
             userImportDomain.exportByAdmin.mockResolvedValue([user]);
             fileService.writeCsv.mockReturnValue('csv-content');
 
             await service.exportByAdmin(query);
 
-            expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 'status',
                 query.status,
                 UserDefaultStatus

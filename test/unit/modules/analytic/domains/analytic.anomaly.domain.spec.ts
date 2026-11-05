@@ -7,7 +7,7 @@ import {
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -45,8 +45,8 @@ describe('AnalyticAnomalyDomain', () => {
         mock<AnalyticSortUtil>();
     const analyticFraudUtil: MockProxy<AnalyticFraudUtil> =
         mock<AnalyticFraudUtil>();
-    const paginationService: MockProxy<PaginationService> =
-        mock<PaginationService>();
+    const paginationOffsetUtil: MockProxy<PaginationOffsetUtil> =
+        mock<PaginationOffsetUtil>();
     const configGet = vi.fn<(key: string) => number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -113,7 +113,7 @@ describe('AnalyticAnomalyDomain', () => {
         analyticAnomalyUtil,
         analyticSortUtil,
         analyticFraudUtil,
-        paginationService,
+        paginationOffsetUtil,
         configService,
         helperArrayService,
         helperDateService,
@@ -162,7 +162,7 @@ describe('AnalyticAnomalyDomain', () => {
         activityLogAnalyticDomain.getGroupIpUserByActions.mockResolvedValue([]);
         activityLogAnalyticDomain.getGroupUserByActions.mockResolvedValue([]);
         analyticSortUtil.sortPage.mockReturnValue({ data: [], total: 0 });
-        paginationService.offsetPage.mockReturnValue(offsetPage);
+        paginationOffsetUtil.page.mockReturnValue(offsetPage);
 
         domain = await createAnalyticAnomalyDomain(doubles);
     });
@@ -205,7 +205,7 @@ describe('AnalyticAnomalyDomain', () => {
     });
 
     describe('impossibleTravelList', () => {
-        it('pages the computed rows through PaginationService.offsetPage', async () => {
+        it('pages the computed rows through PaginationOffsetUtil.page', async () => {
             sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue([]);
 
             const result = await domain.impossibleTravelList(
@@ -220,7 +220,7 @@ describe('AnalyticAnomalyDomain', () => {
                 pagination,
                 AnalyticImpossibleTravelAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith([], 0, {
                 skip: 0,
                 limit: 20,
             });
@@ -264,7 +264,7 @@ describe('AnalyticAnomalyDomain', () => {
                 },
                 AnalyticImpossibleTravelAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -321,7 +321,7 @@ describe('AnalyticAnomalyDomain', () => {
                 pagination,
                 AnalyticLoginSpikeIpAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith([], 0, {
                 skip: 0,
                 limit: 20,
             });
@@ -352,7 +352,7 @@ describe('AnalyticAnomalyDomain', () => {
                 },
                 AnalyticLoginSpikeIpAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -456,7 +456,7 @@ describe('AnalyticAnomalyDomain', () => {
     });
 
     describe('deviceProliferationList', () => {
-        it('pages outlier rows through PaginationService.offsetPage', async () => {
+        it('pages outlier rows through PaginationOffsetUtil.page', async () => {
             const rows = [
                 { userId: 'user-1', deviceCount: 8, zScore: 3.1 },
                 { userId: 'user-2', deviceCount: 9, zScore: 3.4 },
@@ -488,7 +488,7 @@ describe('AnalyticAnomalyDomain', () => {
                 },
                 AnalyticDeviceProliferationAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [rows[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -526,7 +526,7 @@ describe('AnalyticAnomalyDomain', () => {
                 },
                 AnalyticDeviceProliferationAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [rows[1]],
                 2,
                 { skip: 0, limit: 1 }
@@ -557,7 +557,7 @@ describe('AnalyticAnomalyDomain', () => {
     });
 
     describe('loginTimeList', () => {
-        it('pages login-time anomalies through PaginationService.offsetPage', async () => {
+        it('pages login-time anomalies through PaginationOffsetUtil.page', async () => {
             const result = await domain.loginTimeList(
                 startDate,
                 endDate,
@@ -570,7 +570,7 @@ describe('AnalyticAnomalyDomain', () => {
                 pagination,
                 AnalyticLoginTimeAnomalyAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith([], 0, {
                 skip: 0,
                 limit: 20,
             });
@@ -609,7 +609,7 @@ describe('AnalyticAnomalyDomain', () => {
                 },
                 AnalyticLoginTimeAnomalyAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }

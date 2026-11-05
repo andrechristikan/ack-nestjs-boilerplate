@@ -16,3 +16,9 @@ export const DeviceDefaultAvailableOrderBy = [
 export const DeviceCursorAvailableOrderBy = [
     Prisma.DeviceOwnershipScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.DeviceOwnershipScalarFieldEnum>;
+
+/**
+ * Cursor scope of the shared device list.
+ * @public
+ */
+export const DeviceSharedListCursorScope = 'DeviceSharedListCursorScope';

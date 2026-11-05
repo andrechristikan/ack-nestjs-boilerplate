@@ -22,19 +22,19 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     async findWithPaginationOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        return this.paginationService.offset<
-            FeatureFlag,
-            Prisma.FeatureFlagWhereInput
-        >(this.databaseService.client.featureFlag, pagination);
+        return this.paginationService.offset(
+            this.databaseService.client.featureFlag,
+            pagination
+        );
     }
 
     async findWithPaginationCursor(
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        return this.paginationService.cursor<
-            FeatureFlag,
-            Prisma.FeatureFlagWhereInput
-        >(this.databaseService.client.featureFlag, pagination);
+        return this.paginationService.cursor(
+            this.databaseService.client.featureFlag,
+            pagination
+        );
     }
 
     async findOneByKey(key: string): Promise<FeatureFlag | null> {

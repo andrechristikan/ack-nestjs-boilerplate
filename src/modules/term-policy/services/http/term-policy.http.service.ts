@@ -1,6 +1,7 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
@@ -19,6 +20,7 @@ import {
     TermPolicyDefaultAvailableOrderBy,
     TermPolicyDefaultStatus,
     TermPolicyDefaultType,
+    TermPolicyPublicListCursorScope,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 import type { TermPolicyPublicListRequestDto } from '@modules/term-policy/dtos/request/term-policy.public-list.request.dto';
@@ -31,6 +33,7 @@ export class TermPolicyHttpService {
     constructor(
         private readonly termPolicyDomain: TermPolicyDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly activityLogDomain: ActivityLogDomain,
@@ -64,12 +67,12 @@ export class TermPolicyHttpService {
                 query,
                 { availableOrderBy: TermPolicyDefaultAvailableOrderBy }
             );
-        const type = this.paginationQueryUtil.inEnum(
+        const type = this.paginationFilterUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,
             query.type,
             TermPolicyDefaultType
         );
-        const status = this.paginationQueryUtil.inEnum(
+        const status = this.paginationFilterUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.status,
             query.status,
             TermPolicyDefaultStatus
@@ -100,9 +103,12 @@ export class TermPolicyHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.TermPolicyWhereInput>(
                 query,
-                { availableOrderBy: TermPolicyDefaultAvailableOrderBy }
+                {
+                    scope: TermPolicyPublicListCursorScope,
+                    availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+                }
             );
-        const type = this.paginationQueryUtil.inEnum(
+        const type = this.paginationFilterUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,
             query.type,
             TermPolicyDefaultType

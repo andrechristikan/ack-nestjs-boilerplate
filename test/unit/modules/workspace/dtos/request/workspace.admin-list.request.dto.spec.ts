@@ -64,7 +64,17 @@ describe('WorkspaceAdminListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = WorkspaceDefaultAvailableOrderBy[0];
+
+        expect(
+            WorkspaceAdminListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = WorkspaceDefaultAvailableOrderBy[0];
         const last =
             WorkspaceDefaultAvailableOrderBy[
@@ -73,14 +83,9 @@ describe('WorkspaceAdminListRequestSchema', () => {
 
         expect(
             WorkspaceAdminListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            WorkspaceAdminListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

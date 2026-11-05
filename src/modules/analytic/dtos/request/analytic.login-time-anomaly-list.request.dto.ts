@@ -18,18 +18,11 @@ export const AnalyticLoginTimeAnomalyListRequestSchema =
                         ':',
                         z.enum(EnumPaginationOrderDirectionType),
                     ]),
-                    z.array(
-                        z.templateLiteral([
-                            z.enum(AnalyticLoginTimeAnomalyAvailableOrderBy),
-                            ':',
-                            z.enum(EnumPaginationOrderDirectionType),
-                        ])
-                    ),
                     z.literal(''),
                 ])
                 .optional()
                 .meta({
-                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticLoginTimeAnomalyAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticLoginTimeAnomalyAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticLoginTimeAnomalyAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticLoginTimeAnomalyAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                     example: `${AnalyticLoginTimeAnomalyAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
                 }),
         })

@@ -199,7 +199,7 @@ describe('TermPolicyDomain', () => {
             const params = {
                 limit: 20,
                 orderBy: [],
-                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                fingerprint: 'aaaaaaaaaaaaaaaa',
             };
             const page = {
                 type: EnumPaginationType.cursor as const,
@@ -223,7 +223,7 @@ describe('TermPolicyDomain', () => {
         it('passes a null type filter when none is given', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput> =
                 {
-                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    fingerprint: 'aaaaaaaaaaaaaaaa',
                     limit: 20,
                     orderBy: [],
                 };

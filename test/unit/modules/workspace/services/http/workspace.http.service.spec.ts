@@ -11,6 +11,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -37,6 +38,7 @@ import {
     WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
+    WorkspaceUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
@@ -66,6 +68,8 @@ describe('WorkspaceHttpService', () => {
         mock<ActivityLogDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
@@ -110,7 +114,7 @@ describe('WorkspaceHttpService', () => {
         { skip: 0, limit: 20, orderBy: [] };
     const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput> =
         {
-            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            fingerprint: 'aaaaaaaaaaaaaaaa',
             limit: 20,
             orderBy: [],
         };
@@ -157,6 +161,10 @@ describe('WorkspaceHttpService', () => {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
                 },
+                {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -179,6 +187,7 @@ describe('WorkspaceHttpService', () => {
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: WorkspaceUserListCursorScope,
                 availableSearch: WorkspaceDefaultAvailableSearch,
                 availableOrderBy: WorkspaceCursorAvailableOrderBy,
             });
@@ -597,7 +606,7 @@ describe('WorkspaceHttpService', () => {
                 where: { isPublic: { equals: true } },
                 storeFilter: { isPublic: true },
             };
-            paginationQueryUtil.equalBoolean.mockReturnValue(isPublicFilter);
+            paginationFilterUtil.equalBoolean.mockReturnValue(isPublicFilter);
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -617,7 +626,7 @@ describe('WorkspaceHttpService', () => {
                 availableSearch: WorkspaceDefaultAvailableSearch,
                 availableOrderBy: WorkspaceDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.WorkspaceScalarFieldEnum.isPublic,
                 true
             );
@@ -633,7 +642,7 @@ describe('WorkspaceHttpService', () => {
 
         it('merges an empty filter set when isPublic is absent', async () => {
             const query: WorkspaceAdminListRequestDto = {};
-            paginationQueryUtil.equalBoolean.mockReturnValue(null);
+            paginationFilterUtil.equalBoolean.mockReturnValue(null);
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.offset,
                 count: 0,

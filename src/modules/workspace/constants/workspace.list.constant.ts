@@ -88,3 +88,30 @@ export const WorkspaceJoinRequestDefaultAvailableOrderBy = [
 export const WorkspaceJoinRequestDefaultStatus = Object.values(
     EnumWorkspaceJoinRequestStatus
 );
+
+/**
+ * Cursor scope of the user workspace list.
+ * @public
+ */
+export const WorkspaceUserListCursorScope = 'WorkspaceUserListCursorScope';
+
+/**
+ * Cursor scope of the user workspace member list.
+ * @public
+ */
+export const WorkspaceMemberUserListCursorScope =
+    'WorkspaceMemberUserListCursorScope';
+
+/**
+ * Cursor scope of the user workspace invite list.
+ * @public
+ */
+export const WorkspaceInviteUserListCursorScope =
+    'WorkspaceInviteUserListCursorScope';
+
+/**
+ * Cursor scope of the user workspace join-request list.
+ * @public
+ */
+export const WorkspaceJoinRequestUserListCursorScope =
+    'WorkspaceJoinRequestUserListCursorScope';

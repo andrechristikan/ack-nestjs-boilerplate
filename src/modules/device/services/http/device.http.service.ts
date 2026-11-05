@@ -7,6 +7,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -29,6 +30,7 @@ import { Injectable } from '@nestjs/common';
 import {
     DeviceCursorAvailableOrderBy,
     DeviceDefaultAvailableOrderBy,
+    DeviceSharedListCursorScope,
 } from '@modules/device/constants/device.list.constant';
 
 @Injectable()
@@ -41,6 +43,7 @@ export class DeviceHttpService {
         private readonly sessionQueue: SessionQueue,
         private readonly deviceUtil: DeviceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
@@ -98,7 +101,7 @@ export class DeviceHttpService {
                 query,
                 { availableOrderBy: DeviceDefaultAvailableOrderBy }
             );
-        const isRevoked = this.paginationQueryUtil.equalBoolean(
+        const isRevoked = this.paginationFilterUtil.equalBoolean(
             Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
             query.isRevoked
         );
@@ -138,7 +141,10 @@ export class DeviceHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.DeviceOwnershipWhereInput>(
                 query,
-                { availableOrderBy: DeviceCursorAvailableOrderBy }
+                {
+                    scope: DeviceSharedListCursorScope,
+                    availableOrderBy: DeviceCursorAvailableOrderBy,
+                }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

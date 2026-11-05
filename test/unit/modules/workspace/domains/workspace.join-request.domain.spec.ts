@@ -352,7 +352,7 @@ describe('WorkspaceJoinRequestDomain', () => {
     describe('getJoinRequestsList', () => {
         const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput> =
             {
-                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                fingerprint: 'aaaaaaaaaaaaaaaa',
                 limit: 20,
                 orderBy: [],
             };

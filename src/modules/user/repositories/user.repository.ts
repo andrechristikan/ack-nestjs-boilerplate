@@ -14,6 +14,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import {
+    UserActiveRecipientCursorScope,
     UserAdminListSelect,
     UserNotDeletedWhere,
     UserRecipientSelect,
@@ -88,20 +89,17 @@ export class UserRepository implements IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
-            this.databaseService.client.user,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    ...status,
-                    ...countryId,
-                    ...roleId,
-                    deletedAt: null,
-                },
-                select: UserAdminListSelect,
-            }
-        );
+        return this.paginationService.offset(this.databaseService.client.user, {
+            ...params,
+            where: {
+                ...where,
+                ...status,
+                ...countryId,
+                ...roleId,
+                deletedAt: null,
+            },
+            select: UserAdminListSelect,
+        });
     }
 
     async findActiveRecipientsCursor(
@@ -109,10 +107,7 @@ export class UserRepository implements IUserRepository {
         limit: number,
         createdBefore: Date
     ): Promise<IPaginationCursorReturn<IUserRecipient>> {
-        return this.paginationService.cursor<
-            IUserRecipient,
-            Prisma.UserWhereInput
-        >(this.databaseService.client.user, {
+        return this.paginationService.cursor(this.databaseService.client.user, {
             where: {
                 ...UserNotDeletedWhere,
                 status: EnumUserStatus.active,
@@ -120,7 +115,7 @@ export class UserRepository implements IUserRepository {
             },
             orderBy: [{ id: EnumPaginationOrderDirectionType.asc }],
             limit,
-            firstPageAt: createdBefore,
+            fingerprint: UserActiveRecipientCursorScope,
             select: UserRecipientSelect,
             ...(cursor !== null && { cursor }),
         });

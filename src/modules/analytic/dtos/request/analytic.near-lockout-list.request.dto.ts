@@ -16,18 +16,11 @@ export const AnalyticNearLockoutListRequestSchema =
                     ':',
                     z.enum(EnumPaginationOrderDirectionType),
                 ]),
-                z.array(
-                    z.templateLiteral([
-                        z.enum(AnalyticNearLockoutAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ])
-                ),
                 z.literal(''),
             ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticNearLockoutAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticNearLockoutAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticNearLockoutAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticNearLockoutAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${AnalyticNearLockoutAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
     });

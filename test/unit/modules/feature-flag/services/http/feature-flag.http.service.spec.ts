@@ -11,6 +11,7 @@ import type { FeatureFlag } from '@generated/prisma-client/client';
 import {
     FeatureFlagDefaultAvailableOrderBy,
     FeatureFlagDefaultAvailableSearch,
+    FeatureFlagSystemListCursorScope,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
@@ -28,7 +29,7 @@ describe('FeatureFlagHttpService', () => {
         mock<RequestStoreService>();
 
     const pagination = {
-        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+        fingerprint: 'aaaaaaaaaaaaaaaa',
         skip: 0,
         limit: 20,
         orderBy: [],
@@ -131,6 +132,7 @@ describe('FeatureFlagHttpService', () => {
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: FeatureFlagSystemListCursorScope,
                 availableSearch: FeatureFlagDefaultAvailableSearch,
                 availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
             });

@@ -11,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import {
     PasswordHistoryCursorAvailableOrderBy,
     PasswordHistoryDefaultAvailableOrderBy,
+    PasswordHistorySharedListCursorScope,
 } from '@modules/password-history/constants/password-history.list.constant';
 
 @Injectable()
@@ -51,7 +52,10 @@ export class PasswordHistoryHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.PasswordHistoryWhereInput>(
                 query,
-                { availableOrderBy: PasswordHistoryCursorAvailableOrderBy }
+                {
+                    scope: PasswordHistorySharedListCursorScope,
+                    availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
+                }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

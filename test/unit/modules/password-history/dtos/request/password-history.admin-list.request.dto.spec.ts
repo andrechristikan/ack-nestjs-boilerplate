@@ -20,16 +20,6 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('accepts an array of orderBy fields', () => {
-        const result = PasswordHistoryAdminListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'expiredAt:asc'],
-        });
-
-        expect(result).toEqual({
-            orderBy: ['createdAt:desc', 'expiredAt:asc'],
-        });
-    });
-
     it('rejects an undeclared key', () => {
         expect(() =>
             PasswordHistoryAdminListRequestSchema.parse({
@@ -60,7 +50,17 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = PasswordHistoryDefaultAvailableOrderBy[0];
+
+        expect(
+            PasswordHistoryAdminListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = PasswordHistoryDefaultAvailableOrderBy[0];
         const last =
             PasswordHistoryDefaultAvailableOrderBy[
@@ -69,14 +69,9 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
 
         expect(
             PasswordHistoryAdminListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            PasswordHistoryAdminListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

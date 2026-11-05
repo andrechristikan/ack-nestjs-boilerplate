@@ -158,7 +158,7 @@ describe('ProjectDomain', () => {
     describe('getListCursorByMember', () => {
         const pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput> =
             {
-                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                fingerprint: 'aaaaaaaaaaaaaaaa',
                 where: {},
                 orderBy: [],
                 limit: 20,

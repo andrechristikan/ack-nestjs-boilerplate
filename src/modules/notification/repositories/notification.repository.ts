@@ -85,22 +85,22 @@ export class NotificationRepository implements INotificationRepository {
         }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
         excludedTypes: EnumNotificationType[]
     ): Promise<IResponsePaginationReturn<Notification>> {
-        return this.paginationService.cursor<
-            Notification,
-            Prisma.NotificationWhereInput
-        >(this.databaseService.client.notification, {
-            ...params,
-            where: {
-                ...where,
-                userId,
-                deliveries: {
-                    some: { channel: EnumNotificationChannel.inApp },
+        return this.paginationService.cursor(
+            this.databaseService.client.notification,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    userId,
+                    deliveries: {
+                        some: { channel: EnumNotificationChannel.inApp },
+                    },
+                    ...(excludedTypes.length > 0 && {
+                        type: { notIn: excludedTypes },
+                    }),
                 },
-                ...(excludedTypes.length > 0 && {
-                    type: { notIn: excludedTypes },
-                }),
-            },
-        });
+            }
+        );
     }
 
     async findIsReadById(

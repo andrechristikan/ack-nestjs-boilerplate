@@ -10,6 +10,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -58,6 +59,8 @@ describe('UserHttpService', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
@@ -157,6 +160,10 @@ describe('UserHttpService', () => {
                     useValue: paginationQueryUtil,
                 },
                 {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
+                {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
@@ -223,11 +230,11 @@ describe('UserHttpService', () => {
                 params,
                 storePatch: { filters: {} },
             });
-            paginationQueryUtil.inEnum.mockReturnValue({
+            paginationFilterUtil.inEnum.mockReturnValue({
                 where: { status: { in: [EnumUserStatus.active] } },
                 storeFilter: { status: [EnumUserStatus.active] },
             });
-            paginationQueryUtil.equalString
+            paginationFilterUtil.equalString
                 .mockReturnValueOnce({
                     where: { roleId: { equals: 'role-cinder' } },
                     storeFilter: { roleId: 'role-cinder' },
@@ -269,8 +276,8 @@ describe('UserHttpService', () => {
                 params,
                 storePatch: { filters: {} },
             });
-            paginationQueryUtil.inEnum.mockReturnValue(null);
-            paginationQueryUtil.equalString.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.equalString.mockReturnValue(null);
             userDomain.getListOffsetByAdmin.mockResolvedValue(response);
 
             await service.getListOffsetByAdmin(query);

@@ -1,7 +1,7 @@
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
@@ -16,23 +16,23 @@ export class UserExportHttpService {
     constructor(
         private readonly userImportDomain: UserImportDomain,
         private readonly fileService: FileService,
-        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async exportByAdmin(
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        const status = this.paginationQueryUtil.inEnum(
+        const status = this.paginationFilterUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,
             query.status,
             UserDefaultStatus
         );
-        const roleId = this.paginationQueryUtil.equalString(
+        const roleId = this.paginationFilterUtil.equalString(
             Prisma.UserScalarFieldEnum.roleId,
             query.roleId
         );
-        const countryId = this.paginationQueryUtil.equalString(
+        const countryId = this.paginationFilterUtil.equalString(
             Prisma.UserScalarFieldEnum.countryId,
             query.countryId
         );

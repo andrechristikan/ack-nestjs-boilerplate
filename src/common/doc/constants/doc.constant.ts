@@ -159,10 +159,6 @@ export const DocPaginationCursorErrorResponses = {
         statusCode: EnumPaginationStatusCodeError.invalidCursorData,
         messagePath: 'pagination.error.invalidCursorData',
     }),
-    failedToEncodeCursor: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
-        statusCode: EnumPaginationStatusCodeError.failedToEncodeCursor,
-        messagePath: 'pagination.error.failedToEncodeCursor',
-    }),
     failedToDecodeCursor: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.failedToDecodeCursor,
         messagePath: 'pagination.error.failedToDecodeCursor',
@@ -174,14 +170,6 @@ export const DocPaginationCursorErrorResponses = {
  * @public
  */
 export const DocPaginationOffsetErrorResponses = {
-    invalidOffsetPaginationParams: DocResponseError(
-        HttpStatus.UNPROCESSABLE_ENTITY,
-        {
-            statusCode:
-                EnumPaginationStatusCodeError.invalidOffsetPaginationParams,
-            messagePath: 'pagination.error.invalidOffsetPaginationParams',
-        }
-    ),
     invalidPage: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.invalidPage,
         messagePath: 'pagination.error.invalidPage',

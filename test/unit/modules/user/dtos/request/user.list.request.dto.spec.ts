@@ -54,19 +54,24 @@ describe('UserListRequestSchema', () => {
         );
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = UserDefaultAvailableOrderBy[0];
+
+        expect(
+            UserListRequestSchema.safeParse({ orderBy: `${first}:asc` }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = UserDefaultAvailableOrderBy[0];
         const last =
             UserDefaultAvailableOrderBy[UserDefaultAvailableOrderBy.length - 1];
 
         expect(
-            UserListRequestSchema.safeParse({ orderBy: `${first}:asc` }).success
-        ).toBe(true);
-        expect(
             UserListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

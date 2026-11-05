@@ -62,7 +62,17 @@ describe('AnalyticFraudRiskScoresListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = AnalyticFraudRiskScoreAvailableOrderBy[0];
+
+        expect(
+            AnalyticFraudRiskScoresListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = AnalyticFraudRiskScoreAvailableOrderBy[0];
         const last =
             AnalyticFraudRiskScoreAvailableOrderBy[
@@ -71,14 +81,9 @@ describe('AnalyticFraudRiskScoresListRequestSchema', () => {
 
         expect(
             AnalyticFraudRiskScoresListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            AnalyticFraudRiskScoresListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

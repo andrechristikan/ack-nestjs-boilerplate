@@ -5,8 +5,12 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { ActivityLogAnalyticListSelect } from '@modules/activity-log/constants/activity-log.constant';
+import {
+    ActivityLogActionRangeCursorScope,
+    ActivityLogAnalyticListSelect,
+} from '@modules/activity-log/constants/activity-log.constant';
 import type { IActivityLogAnalyticRepository } from '@modules/activity-log/interfaces/activity-log.analytic-repository.interface';
 import type {
     IActivityLogAnalyticActionCount,
@@ -24,7 +28,8 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 export class ActivityLogAnalyticRepository implements IActivityLogAnalyticRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly paginationOffsetUtil: PaginationOffsetUtil
     ) {}
 
     async countByActionsInRange(
@@ -67,20 +72,20 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         cursor: string | null,
         limit: number
     ): Promise<IPaginationCursorReturn<IActivityLogAnalyticList>> {
-        return this.paginationService.cursor<
-            IActivityLogAnalyticList,
-            Prisma.ActivityLogWhereInput
-        >(this.databaseService.client.activityLog, {
-            where: {
-                action: { in: actions },
-                createdAt: { gte: startDate, lt: endDate },
-            },
-            orderBy: [{ createdAt: EnumPaginationOrderDirectionType.asc }],
-            limit,
-            firstPageAt: endDate,
-            select: ActivityLogAnalyticListSelect,
-            ...(cursor !== null && { cursor }),
-        });
+        return this.paginationService.cursor(
+            this.databaseService.client.activityLog,
+            {
+                where: {
+                    action: { in: actions },
+                    createdAt: { gte: startDate, lt: endDate },
+                },
+                orderBy: [{ createdAt: EnumPaginationOrderDirectionType.asc }],
+                limit,
+                fingerprint: ActivityLogActionRangeCursorScope,
+                select: ActivityLogAnalyticListSelect,
+                ...(cursor !== null && { cursor }),
+            }
+        );
     }
 
     async findOneByUserActionsInRange(
@@ -261,7 +266,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
                 count: row._count._all,
             }));
 
-        return this.paginationService.offsetPage(data, groups.length, {
+        return this.paginationOffsetUtil.page(data, groups.length, {
             skip,
             limit,
         });

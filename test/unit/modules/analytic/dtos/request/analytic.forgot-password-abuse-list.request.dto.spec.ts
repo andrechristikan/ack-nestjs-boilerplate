@@ -64,7 +64,17 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = AnalyticForgotPasswordAbuseAvailableOrderBy[0];
+
+        expect(
+            AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = AnalyticForgotPasswordAbuseAvailableOrderBy[0];
         const last =
             AnalyticForgotPasswordAbuseAvailableOrderBy[
@@ -73,14 +83,9 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
 
         expect(
             AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

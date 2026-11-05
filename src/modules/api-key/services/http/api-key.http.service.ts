@@ -1,6 +1,7 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
@@ -35,6 +36,7 @@ export class ApiKeyHttpService {
         private readonly apiKeyDomain: ApiKeyDomain,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseUtil: DatabaseUtil,
@@ -65,11 +67,11 @@ export class ApiKeyHttpService {
                 availableSearch: ApiKeyDefaultAvailableSearch,
                 availableOrderBy: ApiKeyDefaultAvailableOrderBy,
             });
-        const isActive = this.paginationQueryUtil.equalBoolean(
+        const isActive = this.paginationFilterUtil.equalBoolean(
             Prisma.ApiKeyScalarFieldEnum.isActive,
             query.isActive
         );
-        const type = this.paginationQueryUtil.inEnum(
+        const type = this.paginationFilterUtil.inEnum(
             Prisma.ApiKeyScalarFieldEnum.type,
             query.type,
             ApiKeyDefaultType

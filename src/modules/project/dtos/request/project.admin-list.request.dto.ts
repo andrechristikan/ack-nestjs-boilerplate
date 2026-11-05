@@ -25,18 +25,11 @@ export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
                     ':',
                     z.enum(EnumPaginationOrderDirectionType),
                 ]),
-                z.array(
-                    z.templateLiteral([
-                        z.enum(ProjectDefaultAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ])
-                ),
                 z.literal(''),
             ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${ProjectDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ProjectDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${ProjectDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ProjectDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${ProjectDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
         workspaceId: RequestMongoIdSchema.optional().meta({

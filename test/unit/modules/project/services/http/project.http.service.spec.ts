@@ -24,6 +24,7 @@ import {
     ProjectCursorAvailableOrderBy,
     ProjectDefaultAvailableOrderBy,
     ProjectDefaultAvailableSearch,
+    ProjectUserListCursorScope,
 } from '@modules/project/constants/project.list.constant';
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -54,7 +55,7 @@ describe('ProjectHttpService', () => {
 
     const paginationCursor: IPaginationQueryCursorParams<Prisma.ProjectWhereInput> =
         {
-            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            fingerprint: 'aaaaaaaaaaaaaaaa',
             where: {},
             orderBy: [],
             limit: 20,
@@ -157,6 +158,7 @@ describe('ProjectHttpService', () => {
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: ProjectUserListCursorScope,
                 availableSearch: ProjectDefaultAvailableSearch,
                 availableOrderBy: ProjectCursorAvailableOrderBy,
             });

@@ -9,7 +9,7 @@ import type {
 import type { ISessionAnalyticSession } from '@modules/session/interfaces/session.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import type { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
@@ -29,7 +29,7 @@ export interface IAnalyticAnomalyDomainDoubles {
     analyticAnomalyUtil: MockProxy<AnalyticAnomalyUtil>;
     analyticSortUtil: MockProxy<AnalyticSortUtil>;
     analyticFraudUtil: MockProxy<AnalyticFraudUtil>;
-    paginationService: MockProxy<PaginationService>;
+    paginationOffsetUtil: MockProxy<PaginationOffsetUtil>;
     configService: MockProxy<ConfigService>;
     helperArrayService: MockProxy<HelperArrayService>;
     helperDateService: MockProxy<HelperDateService>;
@@ -63,7 +63,10 @@ export async function createAnalyticAnomalyDomain(
                 provide: AnalyticFraudUtil,
                 useValue: doubles.analyticFraudUtil,
             },
-            { provide: PaginationService, useValue: doubles.paginationService },
+            {
+                provide: PaginationOffsetUtil,
+                useValue: doubles.paginationOffsetUtil,
+            },
             { provide: ConfigService, useValue: doubles.configService },
             {
                 provide: HelperArrayService,

@@ -16,3 +16,10 @@ export const PasswordHistoryDefaultAvailableOrderBy = [
 export const PasswordHistoryCursorAvailableOrderBy = [
     Prisma.PasswordHistoryScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.PasswordHistoryScalarFieldEnum>;
+
+/**
+ * Cursor scope of the shared password-history list.
+ * @public
+ */
+export const PasswordHistorySharedListCursorScope =
+    'PasswordHistorySharedListCursorScope';

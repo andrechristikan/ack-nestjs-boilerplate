@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -43,6 +44,7 @@ import { DeviceHttpService } from '@modules/device/services/http/device.http.ser
 import {
     DeviceCursorAvailableOrderBy,
     DeviceDefaultAvailableOrderBy,
+    DeviceSharedListCursorScope,
 } from '@modules/device/constants/device.list.constant';
 
 describe('DeviceHttpService', () => {
@@ -59,6 +61,8 @@ describe('DeviceHttpService', () => {
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -68,7 +72,7 @@ describe('DeviceHttpService', () => {
         skip: 0,
         limit: 20,
         orderBy: [],
-        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+        fingerprint: 'aaaaaaaaaaaaaaaa',
     };
     const storePatch = { perPage: 20 };
     const deviceOwnership: IDeviceOwnership = {
@@ -183,6 +187,10 @@ describe('DeviceHttpService', () => {
                     useValue: paginationQueryUtil,
                 },
                 {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
+                {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
@@ -196,7 +204,7 @@ describe('DeviceHttpService', () => {
         it('enriches each row with a resting isCurrentDevice and merges the isRevoked filter', async () => {
             const query: DeviceAdminListRequestDto = { isRevoked: true };
             paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
-            paginationQueryUtil.equalBoolean.mockReturnValue({
+            paginationFilterUtil.equalBoolean.mockReturnValue({
                 where: { isRevoked: { equals: true } },
                 storeFilter: { isRevoked: true },
             });
@@ -223,7 +231,7 @@ describe('DeviceHttpService', () => {
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableOrderBy: DeviceDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
                 true
             );
@@ -241,7 +249,7 @@ describe('DeviceHttpService', () => {
         it('merges an empty filter object when isRevoked is not given', async () => {
             const query: DeviceAdminListRequestDto = {};
             paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
-            paginationQueryUtil.equalBoolean.mockReturnValue(null);
+            paginationFilterUtil.equalBoolean.mockReturnValue(null);
             deviceDomain.getListOffsetByAdmin.mockResolvedValue({
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -296,6 +304,7 @@ describe('DeviceHttpService', () => {
                 },
             ]);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: DeviceSharedListCursorScope,
                 availableOrderBy: DeviceCursorAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(

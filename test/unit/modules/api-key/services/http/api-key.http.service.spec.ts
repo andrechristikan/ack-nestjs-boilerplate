@@ -6,6 +6,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -38,6 +39,8 @@ describe('ApiKeyHttpService', () => {
     const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -97,6 +100,10 @@ describe('ApiKeyHttpService', () => {
                     useValue: paginationQueryUtil,
                 },
                 {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
+                {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
@@ -123,8 +130,8 @@ describe('ApiKeyHttpService', () => {
                 where: { type: { in: [EnumApiKeyType.default] } },
                 storeFilter: { type: [EnumApiKeyType.default] },
             };
-            paginationQueryUtil.equalBoolean.mockReturnValue(isActiveFilter);
-            paginationQueryUtil.inEnum.mockReturnValue(typeFilter);
+            paginationFilterUtil.equalBoolean.mockReturnValue(isActiveFilter);
+            paginationFilterUtil.inEnum.mockReturnValue(typeFilter);
             const page: IPaginationOffsetReturn<IApiKey> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -158,11 +165,11 @@ describe('ApiKeyHttpService', () => {
                 availableSearch: ApiKeyDefaultAvailableSearch,
                 availableOrderBy: ApiKeyDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.ApiKeyScalarFieldEnum.isActive,
                 query.isActive
             );
-            expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.ApiKeyScalarFieldEnum.type,
                 query.type,
                 ApiKeyDefaultType
@@ -185,8 +192,8 @@ describe('ApiKeyHttpService', () => {
 
         it('merges an empty filter set when isActive and type are both absent', async () => {
             const query: ApiKeyListRequestDto = {};
-            paginationQueryUtil.equalBoolean.mockReturnValue(null);
-            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.equalBoolean.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
             const emptyPage: IPaginationOffsetReturn<IApiKey> = {
                 type: EnumPaginationType.offset,
                 count: 0,

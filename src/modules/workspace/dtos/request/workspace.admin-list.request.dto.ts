@@ -24,18 +24,11 @@ export const WorkspaceAdminListRequestSchema =
                     ':',
                     z.enum(EnumPaginationOrderDirectionType),
                 ]),
-                z.array(
-                    z.templateLiteral([
-                        z.enum(WorkspaceDefaultAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ])
-                ),
                 z.literal(''),
             ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${WorkspaceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${WorkspaceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${WorkspaceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${WorkspaceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${WorkspaceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
         isPublic: RequestBooleanStringSchema.optional().meta({

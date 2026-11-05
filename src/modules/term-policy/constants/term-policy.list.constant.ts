@@ -34,3 +34,17 @@ export const TermPolicyDefaultAvailableOrderBy = [
 export const TermPolicyAcceptanceDefaultAvailableOrderBy = [
     Prisma.TermPolicyUserAcceptanceScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.TermPolicyUserAcceptanceScalarFieldEnum>;
+
+/**
+ * Cursor scope of the public term-policy list.
+ * @public
+ */
+export const TermPolicyPublicListCursorScope =
+    'TermPolicyPublicListCursorScope';
+
+/**
+ * Cursor scope of the shared term-policy acceptance list.
+ * @public
+ */
+export const TermPolicyAcceptanceSharedListCursorScope =
+    'TermPolicyAcceptanceSharedListCursorScope';

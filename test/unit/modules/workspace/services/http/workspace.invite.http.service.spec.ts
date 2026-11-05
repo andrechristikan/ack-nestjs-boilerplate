@@ -10,6 +10,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -56,6 +57,7 @@ import {
     WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
     WorkspaceInviteDefaultStatus,
+    WorkspaceInviteUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
@@ -109,6 +111,8 @@ describe('WorkspaceInviteHttpService', () => {
     const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -256,7 +260,7 @@ describe('WorkspaceInviteHttpService', () => {
 
     const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
         {
-            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            fingerprint: 'aaaaaaaaaaaaaaaa',
             limit: 20,
             orderBy: [],
         };
@@ -310,6 +314,10 @@ describe('WorkspaceInviteHttpService', () => {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
                 },
+                {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -337,7 +345,7 @@ describe('WorkspaceInviteHttpService', () => {
                 where: { status: { in: [EnumWorkspaceInviteStatus.pending] } },
                 storeFilter: { status: [EnumWorkspaceInviteStatus.pending] },
             };
-            paginationQueryUtil.inEnum.mockReturnValue(statusFilter);
+            paginationFilterUtil.inEnum.mockReturnValue(statusFilter);
             const page: IResponsePaginationReturn<IWorkspaceInviteList> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -349,10 +357,11 @@ describe('WorkspaceInviteHttpService', () => {
             await service.getInvitesList('workspace-1', query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: WorkspaceInviteUserListCursorScope,
                 availableSearch: WorkspaceInviteDefaultAvailableSearch,
                 availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceInviteScalarFieldEnum.status,
                 'pending',
                 WorkspaceInviteDefaultStatus
@@ -369,7 +378,7 @@ describe('WorkspaceInviteHttpService', () => {
         });
 
         it('merges an empty filter set when status is absent', async () => {
-            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
             const page: IResponsePaginationReturn<IWorkspaceInviteList> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

@@ -24,15 +24,6 @@ describe('CountryListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('parses orderBy as a list of fields', () => {
-        const result = CountryListRequestSchema.parse({
-            ...payload,
-            orderBy: ['name:desc', 'alpha2Code:asc'],
-        });
-
-        expect(result.orderBy).toEqual(['name:desc', 'alpha2Code:asc']);
-    });
-
     it('coerces a numeric string perPage into an integer', () => {
         const result = CountryListRequestSchema.parse({
             ...payload,
@@ -63,7 +54,16 @@ describe('CountryListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = CountryDefaultAvailableOrderBy[0];
+
+        expect(
+            CountryListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = CountryDefaultAvailableOrderBy[0];
         const last =
             CountryDefaultAvailableOrderBy[
@@ -71,14 +71,10 @@ describe('CountryListRequestSchema', () => {
             ];
 
         expect(
-            CountryListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-        expect(
             CountryListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

@@ -19,3 +19,10 @@ export const ActivityLogAnalyticListSelect = {
     userAgent: true,
     workspaceId: true,
 } satisfies Prisma.ActivityLogSelect;
+
+/**
+ * Cursor scope of the internal activity-log action-range read.
+ * @public
+ */
+export const ActivityLogActionRangeCursorScope =
+    'ActivityLogActionRangeCursorScope';

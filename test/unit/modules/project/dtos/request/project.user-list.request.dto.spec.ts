@@ -21,22 +21,6 @@ describe('ProjectUserListRequestSchema', () => {
         });
     });
 
-    it('parses an array orderBy', () => {
-        const result = ProjectUserListRequestSchema.parse({
-            orderBy: [
-                `${ProjectCursorAvailableOrderBy[0]}:desc`,
-                `${ProjectCursorAvailableOrderBy[0]}:asc`,
-            ],
-        });
-
-        expect(result).toEqual({
-            orderBy: [
-                `${ProjectCursorAvailableOrderBy[0]}:desc`,
-                `${ProjectCursorAvailableOrderBy[0]}:asc`,
-            ],
-        });
-    });
-
     it('parses an empty query', () => {
         const result = ProjectUserListRequestSchema.parse({});
 
@@ -64,7 +48,16 @@ describe('ProjectUserListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = ProjectCursorAvailableOrderBy[0];
+
+        expect(
+            ProjectUserListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = ProjectCursorAvailableOrderBy[0];
         const last =
             ProjectCursorAvailableOrderBy[
@@ -72,14 +65,10 @@ describe('ProjectUserListRequestSchema', () => {
             ];
 
         expect(
-            ProjectUserListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-        expect(
             ProjectUserListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

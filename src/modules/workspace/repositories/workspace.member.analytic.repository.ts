@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type {
@@ -16,7 +16,7 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyticRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationOffsetUtil: PaginationOffsetUtil
     ) {}
 
     async groupByRole(
@@ -75,7 +75,7 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
             count: row._count._all,
         }));
 
-        return this.paginationService.offsetPage(data, groups.length, {
+        return this.paginationOffsetUtil.page(data, groups.length, {
             skip,
             limit,
         });

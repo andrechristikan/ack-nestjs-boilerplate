@@ -11,7 +11,11 @@ import type { ActivityLogAdminWorkspaceListRequestDto } from '@modules/activity-
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ActivityLogHttpService } from '@modules/activity-log/services/http/activity-log.http.service';
-import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
+import {
+    ActivityLogDefaultAvailableOrderBy,
+    ActivityLogSharedUserListCursorScope,
+    ActivityLogSharedWorkspaceListCursorScope,
+} from '@modules/activity-log/constants/activity-log.list.constant';
 
 describe('ActivityLogHttpService', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -25,7 +29,7 @@ describe('ActivityLogHttpService', () => {
         skip: 0,
         limit: 20,
         orderBy: [],
-        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+        fingerprint: 'aaaaaaaaaaaaaaaa',
     };
     const storePatch = { perPage: 20 };
     const offsetQuery: ActivityLogAdminListRequestDto = {};
@@ -117,6 +121,7 @@ describe('ActivityLogHttpService', () => {
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(
                 cursorQuery,
                 {
+                    scope: ActivityLogSharedUserListCursorScope,
                     availableOrderBy: ActivityLogDefaultAvailableOrderBy,
                 }
             );
@@ -186,7 +191,10 @@ describe('ActivityLogHttpService', () => {
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(
                 cursorQuery,
-                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
+                {
+                    scope: ActivityLogSharedWorkspaceListCursorScope,
+                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+                }
             );
             expect(
                 activityLogDomain.getListCursorByWorkspace

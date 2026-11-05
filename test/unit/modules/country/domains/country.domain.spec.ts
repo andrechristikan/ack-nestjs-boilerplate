@@ -45,7 +45,7 @@ describe('CountryDomain', () => {
     describe('getListCursor', () => {
         it('returns the paginated cursor result from the repository', async () => {
             const pagination = {
-                firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                fingerprint: 'aaaaaaaaaaaaaaaa',
                 limit: 20,
                 orderBy: [],
             };

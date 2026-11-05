@@ -5,6 +5,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -38,6 +39,7 @@ import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceJoinRequestDefaultStatus,
+    WorkspaceJoinRequestUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
@@ -71,6 +73,8 @@ describe('WorkspaceJoinRequestHttpService', () => {
     const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -167,7 +171,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
 
     const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput> =
         {
-            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            fingerprint: 'aaaaaaaaaaaaaaaa',
             limit: 20,
             orderBy: [],
         };
@@ -208,6 +212,10 @@ describe('WorkspaceJoinRequestHttpService', () => {
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
+                },
+                {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -453,7 +461,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
                     status: [EnumWorkspaceJoinRequestStatus.pending],
                 },
             };
-            paginationQueryUtil.inEnum.mockReturnValue(statusFilter);
+            paginationFilterUtil.inEnum.mockReturnValue(statusFilter);
             const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -467,9 +475,10 @@ describe('WorkspaceJoinRequestHttpService', () => {
             await service.getJoinRequestsList('workspace-1', query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: WorkspaceJoinRequestUserListCursorScope,
                 availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceJoinRequestScalarFieldEnum.status,
                 'pending',
                 WorkspaceJoinRequestDefaultStatus
@@ -492,7 +501,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
         });
 
         it('merges an empty filter set when status is absent', async () => {
-            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
             const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

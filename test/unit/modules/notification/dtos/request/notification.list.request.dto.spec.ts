@@ -20,16 +20,6 @@ describe('NotificationListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('accepts an array of orderBy fields', () => {
-        const result = NotificationListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'createdAt:asc'],
-        });
-
-        expect(result).toEqual({
-            orderBy: ['createdAt:desc', 'createdAt:asc'],
-        });
-    });
-
     it('rejects an undeclared key', () => {
         expect(() =>
             NotificationListRequestSchema.parse({ ...payload, page: 1 })
@@ -54,7 +44,16 @@ describe('NotificationListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = NotificationDefaultAvailableOrderBy[0];
+
+        expect(
+            NotificationListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = NotificationDefaultAvailableOrderBy[0];
         const last =
             NotificationDefaultAvailableOrderBy[
@@ -62,14 +61,10 @@ describe('NotificationListRequestSchema', () => {
             ];
 
         expect(
-            NotificationListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-        expect(
             NotificationListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

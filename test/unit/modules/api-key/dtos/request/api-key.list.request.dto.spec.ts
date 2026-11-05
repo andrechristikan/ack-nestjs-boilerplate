@@ -57,7 +57,16 @@ describe('ApiKeyListRequestSchema', () => {
         );
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = ApiKeyDefaultAvailableOrderBy[0];
+
+        expect(
+            ApiKeyListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = ApiKeyDefaultAvailableOrderBy[0];
         const last =
             ApiKeyDefaultAvailableOrderBy[
@@ -65,14 +74,10 @@ describe('ApiKeyListRequestSchema', () => {
             ];
 
         expect(
-            ApiKeyListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-        expect(
             ApiKeyListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

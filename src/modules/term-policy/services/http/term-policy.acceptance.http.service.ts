@@ -16,7 +16,10 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
-import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
+import {
+    TermPolicyAcceptanceDefaultAvailableOrderBy,
+    TermPolicyAcceptanceSharedListCursorScope,
+} from '@modules/term-policy/constants/term-policy.list.constant';
 
 @Injectable()
 export class TermPolicyAcceptanceHttpService {
@@ -39,6 +42,7 @@ export class TermPolicyAcceptanceHttpService {
             this.paginationQueryUtil.cursor<Prisma.TermPolicyUserAcceptanceWhereInput>(
                 query,
                 {
+                    scope: TermPolicyAcceptanceSharedListCursorScope,
                     availableOrderBy:
                         TermPolicyAcceptanceDefaultAvailableOrderBy,
                 }

@@ -17,7 +17,7 @@ export class CountryRepository implements ICountryRepository {
     async findWithPaginationCursor(
         pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
     ): Promise<IResponsePaginationReturn<Country>> {
-        return this.paginationService.cursor<Country, Prisma.CountryWhereInput>(
+        return this.paginationService.cursor(
             this.databaseService.client.country,
             pagination
         );

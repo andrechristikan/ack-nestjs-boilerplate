@@ -10,6 +10,7 @@ import type { FeatureFlag } from '@generated/prisma-client/client';
 import {
     FeatureFlagDefaultAvailableOrderBy,
     FeatureFlagDefaultAvailableSearch,
+    FeatureFlagSystemListCursorScope,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
@@ -55,6 +56,7 @@ export class FeatureFlagHttpService {
             this.paginationQueryUtil.cursor<Prisma.FeatureFlagWhereInput>(
                 query,
                 {
+                    scope: FeatureFlagSystemListCursorScope,
                     availableSearch: FeatureFlagDefaultAvailableSearch,
                     availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
                 }

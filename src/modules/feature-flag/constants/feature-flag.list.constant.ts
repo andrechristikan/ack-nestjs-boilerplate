@@ -18,3 +18,10 @@ export const FeatureFlagDefaultAvailableOrderBy = [
     Prisma.FeatureFlagScalarFieldEnum.createdAt,
     Prisma.FeatureFlagScalarFieldEnum.key,
 ] as const satisfies ReadonlyArray<Prisma.FeatureFlagScalarFieldEnum>;
+
+/**
+ * Cursor scope of the system feature-flag list.
+ * @public
+ */
+export const FeatureFlagSystemListCursorScope =
+    'FeatureFlagSystemListCursorScope';

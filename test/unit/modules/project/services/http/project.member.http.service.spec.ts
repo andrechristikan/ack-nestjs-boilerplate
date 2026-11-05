@@ -35,7 +35,10 @@ import type {
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { ProjectMemberHttpService } from '@modules/project/services/http/project.member.http.service';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
-import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
+import {
+    ProjectMemberDefaultAvailableOrderBy,
+    ProjectMemberUserListCursorScope,
+} from '@modules/project/constants/project.list.constant';
 
 describe('ProjectMemberHttpService', () => {
     const projectMemberDomain: MockProxy<ProjectMemberDomain> =
@@ -52,7 +55,7 @@ describe('ProjectMemberHttpService', () => {
 
     const pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput> =
         {
-            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            fingerprint: 'aaaaaaaaaaaaaaaa',
             where: {},
             orderBy: [],
             limit: 20,
@@ -175,6 +178,7 @@ describe('ProjectMemberHttpService', () => {
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: ProjectMemberUserListCursorScope,
                 availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(

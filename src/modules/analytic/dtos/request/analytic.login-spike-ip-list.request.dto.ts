@@ -18,18 +18,11 @@ export const AnalyticLoginSpikeIpListRequestSchema =
                         ':',
                         z.enum(EnumPaginationOrderDirectionType),
                     ]),
-                    z.array(
-                        z.templateLiteral([
-                            z.enum(AnalyticLoginSpikeIpAvailableOrderBy),
-                            ':',
-                            z.enum(EnumPaginationOrderDirectionType),
-                        ])
-                    ),
                     z.literal(''),
                 ])
                 .optional()
                 .meta({
-                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticLoginSpikeIpAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticLoginSpikeIpAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticLoginSpikeIpAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticLoginSpikeIpAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                     example: `${AnalyticLoginSpikeIpAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
                 }),
         })

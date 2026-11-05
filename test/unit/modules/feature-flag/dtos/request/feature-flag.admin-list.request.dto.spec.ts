@@ -21,14 +21,6 @@ describe('FeatureFlagAdminListRequestSchema', () => {
         });
     });
 
-    it('parses an array orderBy', () => {
-        const result = FeatureFlagAdminListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'key:asc'],
-        });
-
-        expect(result).toEqual({ orderBy: ['createdAt:desc', 'key:asc'] });
-    });
-
     it('parses an empty query', () => {
         const result = FeatureFlagAdminListRequestSchema.parse({});
 
@@ -56,7 +48,17 @@ describe('FeatureFlagAdminListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = FeatureFlagDefaultAvailableOrderBy[0];
+
+        expect(
+            FeatureFlagAdminListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = FeatureFlagDefaultAvailableOrderBy[0];
         const last =
             FeatureFlagDefaultAvailableOrderBy[
@@ -65,14 +67,9 @@ describe('FeatureFlagAdminListRequestSchema', () => {
 
         expect(
             FeatureFlagAdminListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            FeatureFlagAdminListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

@@ -4,6 +4,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
@@ -35,6 +36,7 @@ import {
     WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
     WorkspaceInviteDefaultStatus,
+    WorkspaceInviteUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
@@ -72,6 +74,7 @@ export class WorkspaceInviteHttpService {
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly projectUtil: ProjectUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
@@ -197,11 +200,12 @@ export class WorkspaceInviteHttpService {
             this.paginationQueryUtil.cursor<Prisma.WorkspaceInviteWhereInput>(
                 query,
                 {
+                    scope: WorkspaceInviteUserListCursorScope,
                     availableSearch: WorkspaceInviteDefaultAvailableSearch,
                     availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
                 }
             );
-        const status = this.paginationQueryUtil.inEnum(
+        const status = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceInviteScalarFieldEnum.status,
             query.status,
             WorkspaceInviteDefaultStatus

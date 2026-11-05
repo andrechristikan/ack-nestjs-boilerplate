@@ -22,16 +22,6 @@ describe('ActivityLogSharedListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('accepts an array of orderBy fields', () => {
-        const result = ActivityLogSharedListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'createdAt:asc'],
-        });
-
-        expect(result).toEqual({
-            orderBy: ['createdAt:desc', 'createdAt:asc'],
-        });
-    });
-
     it('rejects an undeclared key', () => {
         expect(() =>
             ActivityLogSharedListRequestSchema.parse({ extra: true })
@@ -58,7 +48,17 @@ describe('ActivityLogSharedListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = ActivityLogDefaultAvailableOrderBy[0];
+
+        expect(
+            ActivityLogSharedListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = ActivityLogDefaultAvailableOrderBy[0];
         const last =
             ActivityLogDefaultAvailableOrderBy[
@@ -67,14 +67,9 @@ describe('ActivityLogSharedListRequestSchema', () => {
 
         expect(
             ActivityLogSharedListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            ActivityLogSharedListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

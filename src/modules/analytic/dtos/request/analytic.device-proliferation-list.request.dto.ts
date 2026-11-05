@@ -16,18 +16,11 @@ export const AnalyticDeviceProliferationListRequestSchema =
                     ':',
                     z.enum(EnumPaginationOrderDirectionType),
                 ]),
-                z.array(
-                    z.templateLiteral([
-                        z.enum(AnalyticDeviceProliferationAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ])
-                ),
                 z.literal(''),
             ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticDeviceProliferationAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticDeviceProliferationAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${AnalyticDeviceProliferationAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
     });

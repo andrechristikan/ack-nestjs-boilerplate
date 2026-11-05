@@ -10,7 +10,6 @@ import type { IUserAnalyticRepository } from '@modules/user/interfaces/user.anal
 import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
-    IUserNearLockout,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -239,10 +238,7 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const { where, ...rest } = params;
-        return this.paginationService.offset<
-            IUserNearLockout,
-            Prisma.UserWhereInput
-        >(this.databaseService.client.user, {
+        return this.paginationService.offset(this.databaseService.client.user, {
             ...rest,
             where: {
                 AND: [

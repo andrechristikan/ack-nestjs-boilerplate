@@ -33,7 +33,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
         isActive: Record<string, IPaginationEqual> | null,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IApiKey>> {
-        return this.paginationService.offset<IApiKey, Prisma.ApiKeyWhereInput>(
+        return this.paginationService.offset(
             this.databaseService.client.apiKey,
             {
                 ...params,

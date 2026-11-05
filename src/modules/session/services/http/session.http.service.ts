@@ -4,6 +4,7 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -18,6 +19,7 @@ import { Injectable } from '@nestjs/common';
 import {
     SessionCursorAvailableOrderBy,
     SessionDefaultAvailableOrderBy,
+    SessionSharedListCursorScope,
 } from '@modules/session/constants/session.list.constant';
 
 @Injectable()
@@ -25,6 +27,7 @@ export class SessionHttpService {
     constructor(
         private readonly sessionDomain: SessionDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly roleDomain: RoleDomain,
         private readonly activityLogDomain: ActivityLogDomain,
@@ -41,7 +44,7 @@ export class SessionHttpService {
             this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
                 availableOrderBy: SessionDefaultAvailableOrderBy,
             });
-        const isRevoked = this.paginationQueryUtil.equalBoolean(
+        const isRevoked = this.paginationFilterUtil.equalBoolean(
             Prisma.SessionScalarFieldEnum.isRevoked,
             query.isRevoked
         );
@@ -71,6 +74,7 @@ export class SessionHttpService {
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.SessionWhereInput>(query, {
+                scope: SessionSharedListCursorScope,
                 availableOrderBy: SessionCursorAvailableOrderBy,
             });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);

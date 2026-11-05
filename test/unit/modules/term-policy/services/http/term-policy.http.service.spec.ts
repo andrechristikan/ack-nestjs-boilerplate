@@ -6,6 +6,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -26,6 +27,7 @@ import {
     TermPolicyDefaultAvailableOrderBy,
     TermPolicyDefaultStatus,
     TermPolicyDefaultType,
+    TermPolicyPublicListCursorScope,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { TermPolicyHttpService } from '@modules/term-policy/services/http/term-policy.http.service';
@@ -38,6 +40,8 @@ describe('TermPolicyHttpService', () => {
         mock<TermPolicyDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
@@ -70,7 +74,7 @@ describe('TermPolicyHttpService', () => {
     const cursorParams = {
         limit: 20,
         orderBy: [],
-        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+        fingerprint: 'aaaaaaaaaaaaaaaa',
     };
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const termPolicy: TermPolicy = {
@@ -130,6 +134,10 @@ describe('TermPolicyHttpService', () => {
                     useValue: paginationQueryUtil,
                 },
                 {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
+                {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
@@ -153,7 +161,7 @@ describe('TermPolicyHttpService', () => {
                 params: offsetParams,
                 storePatch: { filters: { existing: true } },
             });
-            paginationQueryUtil.inEnum
+            paginationFilterUtil.inEnum
                 .mockReturnValueOnce({
                     where: { type: { in: TermPolicyDefaultType } },
                     storeFilter: { type: 'privacy' },
@@ -170,13 +178,13 @@ describe('TermPolicyHttpService', () => {
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableOrderBy: TermPolicyDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.inEnum).toHaveBeenNthCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenNthCalledWith(
                 1,
                 Prisma.TermPolicyScalarFieldEnum.type,
                 query.type,
                 TermPolicyDefaultType
             );
-            expect(paginationQueryUtil.inEnum).toHaveBeenNthCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenNthCalledWith(
                 2,
                 Prisma.TermPolicyScalarFieldEnum.status,
                 query.status,
@@ -204,7 +212,7 @@ describe('TermPolicyHttpService', () => {
                 params: offsetParams,
                 storePatch: {},
             });
-            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
             termPolicyDomain.getListByAdmin.mockResolvedValue(offsetPage);
 
             await service.getListByAdmin(query);
@@ -229,7 +237,7 @@ describe('TermPolicyHttpService', () => {
                 params: cursorParams,
                 storePatch: { filters: { existing: true } },
             });
-            paginationQueryUtil.inEnum.mockReturnValue({
+            paginationFilterUtil.inEnum.mockReturnValue({
                 where: { type: { in: TermPolicyDefaultType } },
                 storeFilter: { type: 'privacy' },
             });
@@ -239,9 +247,10 @@ describe('TermPolicyHttpService', () => {
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: TermPolicyPublicListCursorScope,
                 availableOrderBy: TermPolicyDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.TermPolicyScalarFieldEnum.type,
                 query.type,
                 TermPolicyDefaultType
@@ -261,7 +270,7 @@ describe('TermPolicyHttpService', () => {
                 params: cursorParams,
                 storePatch: {},
             });
-            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
             termPolicyDomain.getListPublished.mockResolvedValue(cursorPage);
 
             await service.getListPublished(query);

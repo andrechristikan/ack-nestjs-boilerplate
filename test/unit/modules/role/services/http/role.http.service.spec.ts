@@ -6,6 +6,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -21,6 +22,7 @@ import {
     RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
     RoleDefaultType,
+    RoleSystemListCursorScope,
 } from '@modules/role/constants/role.list.constant';
 import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.system-list.request.dto';
@@ -48,6 +50,8 @@ describe('RoleHttpService', () => {
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -124,7 +128,7 @@ describe('RoleHttpService', () => {
         { skip: 0, limit: 20, orderBy: [] };
     const cursorPagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
         {
-            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            fingerprint: 'aaaaaaaaaaaaaaaa',
             limit: 20,
             orderBy: [],
         };
@@ -154,6 +158,10 @@ describe('RoleHttpService', () => {
                     useValue: paginationQueryUtil,
                 },
                 {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
+                {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
@@ -174,7 +182,7 @@ describe('RoleHttpService', () => {
                 where: { type: { in: [EnumRoleType.admin] } },
                 storeFilter: { type: [EnumRoleType.admin] },
             };
-            paginationQueryUtil.inEnum.mockReturnValue(typeFilter);
+            paginationFilterUtil.inEnum.mockReturnValue(typeFilter);
             const offsetPage: IPaginationOffsetReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -203,7 +211,7 @@ describe('RoleHttpService', () => {
                 availableSearch: RoleDefaultAvailableSearch,
                 availableOrderBy: RoleDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.RoleScalarFieldEnum.type,
                 query.type,
                 RoleDefaultType
@@ -220,7 +228,7 @@ describe('RoleHttpService', () => {
 
         it('merges an empty filter set when type is absent', async () => {
             const query: RoleAdminListRequestDto = {};
-            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
             const emptyOffsetPage: IPaginationOffsetReturn<IRoleWithPolicyCount> =
                 {
                     type: EnumPaginationType.offset,
@@ -254,7 +262,7 @@ describe('RoleHttpService', () => {
                 where: { type: { in: [EnumRoleType.admin] } },
                 storeFilter: { type: [EnumRoleType.admin] },
             };
-            paginationQueryUtil.inEnum.mockReturnValue(typeFilter);
+            paginationFilterUtil.inEnum.mockReturnValue(typeFilter);
             const cursorPage: IPaginationCursorReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -272,6 +280,7 @@ describe('RoleHttpService', () => {
                 data: [{ ...role, policies: 2 }],
             });
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: RoleSystemListCursorScope,
                 availableSearch: RoleDefaultAvailableSearch,
                 availableOrderBy: RoleDefaultAvailableOrderBy,
             });
@@ -283,7 +292,7 @@ describe('RoleHttpService', () => {
 
         it('merges an empty filter set when type is absent', async () => {
             const query: RoleSystemListRequestDto = {};
-            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
             const emptyCursorPage: IPaginationCursorReturn<IRoleWithPolicyCount> =
                 {
                     type: EnumPaginationType.cursor,

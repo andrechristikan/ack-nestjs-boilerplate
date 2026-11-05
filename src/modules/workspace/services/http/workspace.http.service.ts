@@ -1,6 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
@@ -17,6 +18,7 @@ import {
     WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
+    WorkspaceUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
@@ -43,6 +45,7 @@ export class WorkspaceHttpService {
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService
@@ -54,6 +57,7 @@ export class WorkspaceHttpService {
     ): Promise<IResponsePaginationReturn<Workspace>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceWhereInput>(query, {
+                scope: WorkspaceUserListCursorScope,
                 availableSearch: WorkspaceDefaultAvailableSearch,
                 availableOrderBy: WorkspaceCursorAvailableOrderBy,
             });
@@ -243,7 +247,7 @@ export class WorkspaceHttpService {
                 availableSearch: WorkspaceDefaultAvailableSearch,
                 availableOrderBy: WorkspaceDefaultAvailableOrderBy,
             });
-        const isPublic = this.paginationQueryUtil.equalBoolean(
+        const isPublic = this.paginationFilterUtil.equalBoolean(
             Prisma.WorkspaceScalarFieldEnum.isPublic,
             query.isPublic
         );

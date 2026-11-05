@@ -44,7 +44,17 @@ describe('SessionSharedListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = SessionCursorAvailableOrderBy[0];
+
+        expect(
+            SessionSharedListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = SessionCursorAvailableOrderBy[0];
         const last =
             SessionCursorAvailableOrderBy[
@@ -53,14 +63,9 @@ describe('SessionSharedListRequestSchema', () => {
 
         expect(
             SessionSharedListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            SessionSharedListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

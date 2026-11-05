@@ -16,3 +16,9 @@ export const SessionDefaultAvailableOrderBy = [
 export const SessionCursorAvailableOrderBy = [
     Prisma.SessionScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.SessionScalarFieldEnum>;
+
+/**
+ * Cursor scope of the shared session list.
+ * @public
+ */
+export const SessionSharedListCursorScope = 'SessionSharedListCursorScope';

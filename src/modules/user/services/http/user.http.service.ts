@@ -5,6 +5,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -76,6 +77,7 @@ export class UserHttpService {
         private readonly userProfileDomain: UserProfileDomain,
         private readonly userUtil: UserUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
@@ -183,16 +185,16 @@ export class UserHttpService {
                 availableSearch: UserDefaultAvailableSearch,
                 availableOrderBy: UserDefaultAvailableOrderBy,
             });
-        const status = this.paginationQueryUtil.inEnum(
+        const status = this.paginationFilterUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,
             query.status,
             UserDefaultStatus
         );
-        const roleId = this.paginationQueryUtil.equalString(
+        const roleId = this.paginationFilterUtil.equalString(
             Prisma.UserScalarFieldEnum.roleId,
             query.roleId
         );
-        const countryId = this.paginationQueryUtil.equalString(
+        const countryId = this.paginationFilterUtil.equalString(
             Prisma.UserScalarFieldEnum.countryId,
             query.countryId
         );

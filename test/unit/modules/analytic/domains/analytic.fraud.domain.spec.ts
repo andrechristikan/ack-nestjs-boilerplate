@@ -7,7 +7,7 @@ import {
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -64,8 +64,8 @@ describe('AnalyticFraudDomain', () => {
         mock<AnalyticAnomalyUtil>();
     const analyticBucketUtil: MockProxy<AnalyticBucketUtil> =
         mock<AnalyticBucketUtil>();
-    const paginationService: MockProxy<PaginationService> =
-        mock<PaginationService>();
+    const paginationOffsetUtil: MockProxy<PaginationOffsetUtil> =
+        mock<PaginationOffsetUtil>();
     const configGet = vi.fn<(key: string) => number | string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -174,7 +174,7 @@ describe('AnalyticFraudDomain', () => {
         analyticAnomalyUtil.groupByIp.mockReturnValue(new Map());
         analyticBucketUtil.toBuckets.mockReturnValue([]);
         analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
-        paginationService.offsetPage.mockReturnValue(offsetPage);
+        paginationOffsetUtil.page.mockReturnValue(offsetPage);
         activityLogAnalyticDomain.getPageByActionsInRange.mockResolvedValue(
             emptyPage
         );
@@ -208,7 +208,10 @@ describe('AnalyticFraudDomain', () => {
                     useValue: analyticAnomalyUtil,
                 },
                 { provide: AnalyticBucketUtil, useValue: analyticBucketUtil },
-                { provide: PaginationService, useValue: paginationService },
+                {
+                    provide: PaginationOffsetUtil,
+                    useValue: paginationOffsetUtil,
+                },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperArrayService, useValue: helperArrayService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -299,7 +302,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticCredentialStuffingAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -395,7 +398,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticAccountTakeoverAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -455,7 +458,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticKeyCountAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -517,7 +520,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticKeyCountAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -562,7 +565,7 @@ describe('AnalyticFraudDomain', () => {
             });
 
             expect(result).toEqual(offsetPage);
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [
                     {
                         fingerprint: 'fp-1',
@@ -616,7 +619,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticSharedFingerprintAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -694,7 +697,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticSessionAfterAdminAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -762,7 +765,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticForgotPasswordAbuseAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -817,7 +820,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticUserCountAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -880,7 +883,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticBackupCodeNewDeviceAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -935,7 +938,7 @@ describe('AnalyticFraudDomain', () => {
                 },
                 AnalyticUserCountAvailableOrderBy
             );
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [sorted[1]],
                 2,
                 { skip: 1, limit: 1 }
@@ -1181,7 +1184,7 @@ describe('AnalyticFraudDomain', () => {
 
             await domain.riskScores(null, { skip: 1, limit: 1, orderBy });
 
-            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(
                 [lowScore],
                 2,
                 { skip: 1, limit: 1 }

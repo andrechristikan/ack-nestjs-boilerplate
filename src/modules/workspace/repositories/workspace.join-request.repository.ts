@@ -103,17 +103,17 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>> {
-        return this.paginationService.cursor<
-            WorkspaceJoinRequest,
-            Prisma.WorkspaceJoinRequestWhereInput
-        >(this.databaseService.client.workspaceJoinRequest, {
-            ...others,
-            where: {
-                ...where,
-                ...(status ?? {}),
-                workspaceId,
-            },
-        });
+        return this.paginationService.cursor(
+            this.databaseService.client.workspaceJoinRequest,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...(status ?? {}),
+                    workspaceId,
+                },
+            }
+        );
     }
 
     async createPending({

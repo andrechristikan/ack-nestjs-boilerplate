@@ -81,19 +81,19 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
     ): Promise<IPaginationCursorReturn<Workspace>> {
-        return this.paginationService.cursor<
-            Workspace,
-            Prisma.WorkspaceWhereInput
-        >(this.databaseService.client.workspace, {
-            ...others,
-            where: {
-                AND: [
-                    where ?? {},
-                    { OR: WorkspaceActiveFilter },
-                    { members: { some: { userId } } },
-                ],
-            },
-        });
+        return this.paginationService.cursor(
+            this.databaseService.client.workspace,
+            {
+                ...others,
+                where: {
+                    AND: [
+                        where ?? {},
+                        { OR: WorkspaceActiveFilter },
+                        { members: { some: { userId } } },
+                    ],
+                },
+            }
+        );
     }
 
     async findWithPaginationOffsetByAdmin(
@@ -103,16 +103,16 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.paginationService.offset<
-            Workspace,
-            Prisma.WorkspaceWhereInput
-        >(this.databaseService.client.workspace, {
-            ...others,
-            where: {
-                ...where,
-                ...isPublic,
-            },
-        });
+        return this.paginationService.offset(
+            this.databaseService.client.workspace,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...isPublic,
+                },
+            }
+        );
     }
 
     async createInTx(

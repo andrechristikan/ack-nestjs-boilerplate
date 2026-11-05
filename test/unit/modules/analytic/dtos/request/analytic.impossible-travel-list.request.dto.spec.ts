@@ -69,7 +69,17 @@ describe('AnalyticImpossibleTravelListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+    it('accepts a single orderBy built from the allow-list', () => {
+        const first = AnalyticImpossibleTravelAvailableOrderBy[0];
+
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+    });
+
+    it('rejects a repeated orderBy built from the allow-list', () => {
         const first = AnalyticImpossibleTravelAvailableOrderBy[0];
         const last =
             AnalyticImpossibleTravelAvailableOrderBy[
@@ -78,14 +88,9 @@ describe('AnalyticImpossibleTravelListRequestSchema', () => {
 
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-        expect(
-            AnalyticImpossibleTravelListRequestSchema.safeParse({
                 orderBy: [`${first}:asc`, `${last}:desc`],
             }).success
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it.each([

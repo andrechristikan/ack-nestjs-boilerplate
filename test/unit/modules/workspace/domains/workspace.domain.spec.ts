@@ -138,7 +138,7 @@ describe('WorkspaceDomain', () => {
         it('delegates to the repository cursor listing', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput> =
                 {
-                    firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+                    fingerprint: 'aaaaaaaaaaaaaaaa',
                     limit: 20,
                     orderBy: [],
                 };

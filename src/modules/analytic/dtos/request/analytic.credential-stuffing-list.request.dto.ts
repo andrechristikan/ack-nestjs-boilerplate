@@ -18,18 +18,11 @@ export const AnalyticCredentialStuffingListRequestSchema =
                         ':',
                         z.enum(EnumPaginationOrderDirectionType),
                     ]),
-                    z.array(
-                        z.templateLiteral([
-                            z.enum(AnalyticCredentialStuffingAvailableOrderBy),
-                            ':',
-                            z.enum(EnumPaginationOrderDirectionType),
-                        ])
-                    ),
                     z.literal(''),
                 ])
                 .optional()
                 .meta({
-                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticCredentialStuffingAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticCredentialStuffingAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticCredentialStuffingAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticCredentialStuffingAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                     example: `${AnalyticCredentialStuffingAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
                 }),
         })

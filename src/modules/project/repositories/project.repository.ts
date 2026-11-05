@@ -59,7 +59,7 @@ export class ProjectRepository implements IProjectRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
+        return this.paginationService.cursor(
             this.databaseService.client.project,
             {
                 ...others,
@@ -84,7 +84,7 @@ export class ProjectRepository implements IProjectRepository {
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId: string | null
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
+        return this.paginationService.offset(
             this.databaseService.client.project,
             {
                 ...others,

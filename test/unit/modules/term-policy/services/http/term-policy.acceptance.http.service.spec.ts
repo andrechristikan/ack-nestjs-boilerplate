@@ -32,7 +32,10 @@ import type {
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
+import {
+    TermPolicyAcceptanceDefaultAvailableOrderBy,
+    TermPolicyAcceptanceSharedListCursorScope,
+} from '@modules/term-policy/constants/term-policy.list.constant';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('TermPolicyAcceptanceHttpService', () => {
@@ -55,7 +58,7 @@ describe('TermPolicyAcceptanceHttpService', () => {
     const cursorParams = {
         limit: 20,
         orderBy: [],
-        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+        fingerprint: 'aaaaaaaaaaaaaaaa',
     };
     const cursorPage = {
         type: EnumPaginationType.cursor as const,
@@ -156,6 +159,7 @@ describe('TermPolicyAcceptanceHttpService', () => {
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: TermPolicyAcceptanceSharedListCursorScope,
                 availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(

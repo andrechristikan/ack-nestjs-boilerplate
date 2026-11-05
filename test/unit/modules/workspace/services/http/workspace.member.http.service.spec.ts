@@ -13,6 +13,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -34,6 +35,7 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
+    WorkspaceMemberUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
 import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
@@ -50,6 +52,8 @@ describe('WorkspaceMemberHttpService', () => {
         mock<ActivityLogDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const projectMemberDomain: MockProxy<ProjectMemberDomain> =
@@ -83,7 +87,7 @@ describe('WorkspaceMemberHttpService', () => {
 
     const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput> =
         {
-            firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+            fingerprint: 'aaaaaaaaaaaaaaaa',
             limit: 20,
             orderBy: [],
         };
@@ -116,6 +120,10 @@ describe('WorkspaceMemberHttpService', () => {
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
+                },
+                {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ProjectMemberDomain, useValue: projectMemberDomain },
@@ -323,7 +331,7 @@ describe('WorkspaceMemberHttpService', () => {
                 where: { role: { in: [EnumWorkspaceMemberRole.admin] } },
                 storeFilter: { role: [EnumWorkspaceMemberRole.admin] },
             };
-            paginationQueryUtil.inEnum.mockReturnValue(roleFilter);
+            paginationFilterUtil.inEnum.mockReturnValue(roleFilter);
             const page: IResponsePaginationReturn<IWorkspaceMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -335,9 +343,10 @@ describe('WorkspaceMemberHttpService', () => {
             await service.getMembersList('workspace-1', query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: WorkspaceMemberUserListCursorScope,
                 availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
             });
-            expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
+            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceMemberScalarFieldEnum.role,
                 'admin',
                 WorkspaceMemberDefaultRole
@@ -354,7 +363,7 @@ describe('WorkspaceMemberHttpService', () => {
         });
 
         it('merges an empty filter set when role is absent', async () => {
-            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationFilterUtil.inEnum.mockReturnValue(null);
             const page: IResponsePaginationReturn<IWorkspaceMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

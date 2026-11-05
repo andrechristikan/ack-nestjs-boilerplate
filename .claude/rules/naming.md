@@ -23,7 +23,7 @@ Role suffixes: `.domain .service .repository .controller .guard .strategy .decor
 | `<module>.enum.ts`, every enum the module owns; `<module>.status-code.enum.ts` alone | `Enum<Module><Concern>`; `Enum<Module>StatusCodeError` |
 | `contracts/<module>.<concept>.contract.ts` | `<Module><Concept>Contract` + row `I<Module><Concept>Contract`, one per file |
 
-A DTO's `<concern>` is an action, a noun, or absent for the module's canonical shape; the direction segment is not optional, and file and exports agree on it. A list request DTO is `<module>.list.request.dto.ts`, or one `<module>.<scope>-list.request.dto.ts` per scope when several scopes list. At most two constants files: `<module>.constant.ts` (store keys, selects, everything the module owns) and `<module>.list.constant.ts` (list allow-lists and filter defaults, only with a list endpoint); a data constant never lives in a class file. `I*` declarations live under `interfaces/`: the repository port alone, data shapes collected in `<module>[.<concern>].interface.ts`.
+A DTO's `<concern>` is an action, a noun, or absent for the module's canonical shape; the direction segment is not optional, and file and exports agree on it. A list request DTO is `<module>.list.request.dto.ts`, or one `<module>.<scope>-list.request.dto.ts` per scope when several scopes list. At most two constants files: `<module>.constant.ts` (store keys, selects, everything the module owns) and `<module>.list.constant.ts` (list allow-lists, filter defaults, and a list's cursor scope, only with a list endpoint); a data constant never lives in a class file. An internal read's cursor scope sits beside its select in `<module>.constant.ts`. `I*` declarations live under `interfaces/`: the repository port alone, data shapes collected in `<module>[.<concern>].interface.ts`.
 
 The user module's sign-in and sign-up flows are two HTTP services:
 
@@ -43,6 +43,7 @@ Under `test/`, a spec with a subject file is that file's name plus `.spec.ts` an
 | constant of any kind | PascalCase | `UserDefaultAvailableSearch`, `AuthJwtAccessGuardKey` |
 | injected field | the class name in camelCase | `authDomain: AuthDomain` |
 | metadata key; CLS store key; passport strategy key | `<Module>[<Concern>]MetaKey`, `StoreKey`, `GuardKey`; the value equals the name | `PolicyRequiredMetaKey = 'PolicyRequiredMetaKey'`; `UserStoreKey = 'UserStoreKey'` |
+| cursor scope | `<Module><Endpoint>CursorScope`, PascalCase; the value equals the name | `SessionSharedListCursorScope = 'SessionSharedListCursorScope'` |
 | guard-mounting decorator; param decorator | `<Module>[<Concern>]Protected()`; `<Module>[<Concern>]Current(field?)` for what a guard stored, `<Module>[<Concern>]Payload(field?)` for the authenticated credential | `WorkspaceMemberProtected()`; `WorkspaceCurrent()`, `AuthJwtPayload('sessionId')` |
 | repository read; domain or HTTP service read | `find*`, `count*`, `exists*`, `group*`; `get*` | `findOneById`; `getListOffsetByAdmin` |
 | method serving one audience | `By<Audience>` suffix | `createByAdmin`, `getListCursorBySystem` |

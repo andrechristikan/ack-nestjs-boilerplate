@@ -11,6 +11,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import {
     CountryDefaultAvailableOrderBy,
     CountryDefaultAvailableSearch,
+    CountryPublicListCursorScope,
 } from '@modules/country/constants/country.list.constant';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { CountryHttpService } from '@modules/country/services/http/country.http.service';
@@ -37,7 +38,7 @@ describe('CountryHttpService', () => {
     };
 
     const pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput> = {
-        firstPageAt: new Date('2026-01-01T00:00:00.000Z'),
+        fingerprint: 'aaaaaaaaaaaaaaaa',
         limit: 20,
         orderBy: [],
     };
@@ -85,6 +86,7 @@ describe('CountryHttpService', () => {
 
             expect(result).toBe(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                scope: CountryPublicListCursorScope,
                 availableSearch: CountryDefaultAvailableSearch,
                 availableOrderBy: CountryDefaultAvailableOrderBy,
             });

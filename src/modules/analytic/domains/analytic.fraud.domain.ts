@@ -1,7 +1,7 @@
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
@@ -93,7 +93,7 @@ export class AnalyticFraudDomain {
         private readonly analyticFraudUtil: AnalyticFraudUtil,
         private readonly analyticAnomalyUtil: AnalyticAnomalyUtil,
         private readonly analyticBucketUtil: AnalyticBucketUtil,
-        private readonly paginationService: PaginationService,
+        private readonly paginationOffsetUtil: PaginationOffsetUtil,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly helperArrayService: HelperArrayService,
@@ -598,7 +598,7 @@ export class AnalyticFraudDomain {
             AnalyticCredentialStuffingAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -643,7 +643,7 @@ export class AnalyticFraudDomain {
             AnalyticAccountTakeoverAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -693,7 +693,7 @@ export class AnalyticFraudDomain {
             AnalyticKeyCountAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -743,7 +743,7 @@ export class AnalyticFraudDomain {
             AnalyticKeyCountAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -785,7 +785,7 @@ export class AnalyticFraudDomain {
             AnalyticSharedFingerprintAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -830,7 +830,7 @@ export class AnalyticFraudDomain {
             AnalyticSessionAfterAdminAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -880,7 +880,7 @@ export class AnalyticFraudDomain {
             AnalyticForgotPasswordAbuseAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -930,7 +930,7 @@ export class AnalyticFraudDomain {
             AnalyticUserCountAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -980,7 +980,7 @@ export class AnalyticFraudDomain {
             AnalyticBackupCodeNewDeviceAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -1030,7 +1030,7 @@ export class AnalyticFraudDomain {
             AnalyticUserCountAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
@@ -1083,7 +1083,7 @@ export class AnalyticFraudDomain {
             AnalyticFraudRiskScoreAvailableOrderBy
         );
 
-        return this.paginationService.offsetPage(data, total, {
+        return this.paginationOffsetUtil.page(data, total, {
             skip: params.skip,
             limit: params.limit,
         });
