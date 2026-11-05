@@ -22,6 +22,7 @@ export interface IMigrationRoleData {
     name: string;
     description: string | null;
     type: EnumRoleType;
+    isImmutable: boolean;
 }
 
 export interface IMigrationTermPolicyData {

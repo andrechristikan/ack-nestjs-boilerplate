@@ -70,6 +70,7 @@ describe('UserDomain', () => {
         name: 'user',
         description: null,
         type: EnumRoleType.user,
+        isImmutable: false,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -596,6 +597,30 @@ describe('UserDomain', () => {
         });
     });
 
+    describe('getEmailByIdInTx', () => {
+        it('returns the email the repository reads on the given transaction', async () => {
+            userRepository.findEmailByIdInTx.mockResolvedValue(
+                'cobalt@example.com'
+            );
+
+            await expect(
+                domain.getEmailByIdInTx(tx, 'user-cobalt')
+            ).resolves.toBe('cobalt@example.com');
+            expect(userRepository.findEmailByIdInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt'
+            );
+        });
+
+        it('returns null when the user has no row', async () => {
+            userRepository.findEmailByIdInTx.mockResolvedValue(null);
+
+            await expect(
+                domain.getEmailByIdInTx(tx, 'user-cobalt')
+            ).resolves.toBeNull();
+        });
+    });
+
     describe('resetPasswordAttempt', () => {
         it('delegates to the repository', async () => {
             const user = baseUser;
@@ -759,6 +784,7 @@ describe('UserDomain', () => {
         const role1: IRole = {
             id: 'role-cobalt',
             type: EnumRoleType.user,
+            isImmutable: false,
             name: 'user',
         };
         const input = {
@@ -1002,6 +1028,27 @@ describe('UserDomain', () => {
                 statusCode: EnumUserStatusCodeError.notFound,
                 messagePath: 'user.error.notFound',
             });
+        });
+    });
+
+    describe('assertSelfDeletable', () => {
+        it('passes when the util does not refuse the user', () => {
+            userUtil.isDeleteSelfRefused.mockReturnValue(false);
+
+            expect(() => domain.assertSelfDeletable(baseUser)).not.toThrow();
+            expect(userUtil.isDeleteSelfRefused).toHaveBeenCalledWith(baseUser);
+        });
+
+        it('throws UserDeleteSelfForbiddenException when the util refuses the user', () => {
+            userUtil.isDeleteSelfRefused.mockReturnValue(true);
+
+            expect(() => domain.assertSelfDeletable(baseUser)).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.deleteSelfForbidden,
+                    messagePath: 'user.error.deleteSelfForbidden',
+                })
+            );
         });
     });
 

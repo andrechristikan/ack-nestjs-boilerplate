@@ -35,13 +35,16 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         )!;
     }
 
-    private async expireOne(id: string): Promise<number> {
+    private async expireOne(id: string, today: Date): Promise<number> {
         const nonce = this.helperHashService.sha256Hash(id);
         const { count } =
             await this.databaseService.client.workspaceJoinRequest.updateMany({
                 where: {
                     id,
                     status: EnumWorkspaceJoinRequestStatus.pending,
+                    expiredAt: {
+                        lte: today,
+                    },
                 },
                 data: {
                     status: EnumWorkspaceJoinRequestStatus.expired,
@@ -66,7 +69,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                         where: {
                             status: EnumWorkspaceJoinRequestStatus.pending,
                             expiredAt: {
-                                lt: today,
+                                lte: today,
                             },
                         },
                         select: { id: true },
@@ -74,7 +77,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                     }
                 );
             const counts = await Promise.all(
-                stale.map(({ id }) => this.expireOne(id))
+                stale.map(({ id }) => this.expireOne(id, today))
             );
             total += counts.reduce((sum, count) => sum + count, 0);
             fetched = stale.length;
@@ -130,7 +133,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 where: {
                     nonce,
                     status: EnumWorkspaceJoinRequestStatus.pending,
-                    expiredAt: { lt: now },
+                    expiredAt: { lte: now },
                 },
                 select: { id: true },
             });
@@ -163,15 +166,15 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
     async acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceJoinRequestId: string,
-        nonce: string,
         reviewerId: string,
         reviewedAt: Date
     ): Promise<boolean> {
+        const nonce = this.helperHashService.sha256Hash(workspaceJoinRequestId);
         const { count } = await tx.workspaceJoinRequest.updateMany({
             where: {
                 id: workspaceJoinRequestId,
                 status: EnumWorkspaceJoinRequestStatus.pending,
-                expiredAt: { gte: reviewedAt },
+                expiredAt: { gt: reviewedAt },
             },
             data: {
                 status: EnumWorkspaceJoinRequestStatus.accepted,
@@ -186,17 +189,17 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
 
     async reject(
         workspaceJoinRequestId: string,
-        nonce: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
     ): Promise<boolean> {
+        const nonce = this.helperHashService.sha256Hash(workspaceJoinRequestId);
         const { count } =
             await this.databaseService.client.workspaceJoinRequest.updateMany({
                 where: {
                     id: workspaceJoinRequestId,
                     status: EnumWorkspaceJoinRequestStatus.pending,
-                    expiredAt: { gte: reviewedAt },
+                    expiredAt: { gt: reviewedAt },
                 },
                 data: {
                     status: EnumWorkspaceJoinRequestStatus.rejected,
@@ -214,15 +217,16 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         tx: IDatabaseTransactionClient,
         workspaceId: string
     ): Promise<void> {
+        const now = this.helperDateService.create();
         const pending = await tx.workspaceJoinRequest.findMany({
             where: {
                 workspaceId,
                 status: EnumWorkspaceJoinRequestStatus.pending,
             },
-            select: { id: true },
+            select: { id: true, expiredAt: true },
         });
 
-        for (const { id } of pending) {
+        for (const { id, expiredAt } of pending) {
             const nonce = this.helperHashService.sha256Hash(id);
             await tx.workspaceJoinRequest.updateMany({
                 where: {
@@ -230,7 +234,41 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                     status: EnumWorkspaceJoinRequestStatus.pending,
                 },
                 data: {
-                    status: EnumWorkspaceJoinRequestStatus.cancelled,
+                    status:
+                        expiredAt <= now
+                            ? EnumWorkspaceJoinRequestStatus.expired
+                            : EnumWorkspaceJoinRequestStatus.cancelled,
+                    nonce,
+                },
+            });
+        }
+    }
+
+    async cancelPendingByRequesterInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        const now = this.helperDateService.create();
+        const pending = await tx.workspaceJoinRequest.findMany({
+            where: {
+                userId,
+                status: EnumWorkspaceJoinRequestStatus.pending,
+            },
+            select: { id: true, expiredAt: true },
+        });
+
+        for (const { id, expiredAt } of pending) {
+            const nonce = this.helperHashService.sha256Hash(id);
+            await tx.workspaceJoinRequest.updateMany({
+                where: {
+                    id,
+                    status: EnumWorkspaceJoinRequestStatus.pending,
+                },
+                data: {
+                    status:
+                        expiredAt <= now
+                            ? EnumWorkspaceJoinRequestStatus.expired
+                            : EnumWorkspaceJoinRequestStatus.cancelled,
                     nonce,
                 },
             });
@@ -242,13 +280,14 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         workspaceId: string,
         userId: string
     ): Promise<number> {
+        const now = this.helperDateService.create();
         const pending = await tx.workspaceJoinRequest.findFirst({
             where: {
                 workspaceId,
                 userId,
                 status: EnumWorkspaceJoinRequestStatus.pending,
             },
-            select: { id: true },
+            select: { id: true, expiredAt: true },
         });
         if (!pending) {
             return 0;
@@ -261,7 +300,10 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 status: EnumWorkspaceJoinRequestStatus.pending,
             },
             data: {
-                status: EnumWorkspaceJoinRequestStatus.cancelled,
+                status:
+                    pending.expiredAt <= now
+                        ? EnumWorkspaceJoinRequestStatus.expired
+                        : EnumWorkspaceJoinRequestStatus.cancelled,
                 nonce,
             },
         });

@@ -4,7 +4,10 @@ import type {
     UserMobileNumber,
 } from '@generated/prisma-client/client';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
-import type { IUserMobileNumberSummary } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserMobileNumber,
+    IUserMobileNumberSummary,
+} from '@modules/user/interfaces/user.interface';
 
 export interface IUserMobileNumberRepository {
     findOneMobileNumber(
@@ -30,7 +33,7 @@ export interface IUserMobileNumberRepository {
     deleteInTx(
         tx: IDatabaseTransactionClient,
         mobileNumberId: string
-    ): Promise<UserMobileNumber & { country: Country }>;
+    ): Promise<IUserMobileNumber | null>;
     deleteByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string

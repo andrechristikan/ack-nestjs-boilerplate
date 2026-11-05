@@ -49,6 +49,7 @@ describe('UserImportDomain', () => {
     const role: IRole = {
         id: 'role-thistle',
         type: EnumRoleType.user,
+        isImmutable: false,
         name: 'user',
     };
     const roleWithPolicies: IRoleWithPolicies = {
@@ -56,6 +57,7 @@ describe('UserImportDomain', () => {
         name: role.name,
         description: null,
         type: role.type,
+        isImmutable: false,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),

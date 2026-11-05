@@ -2,6 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationIn,
@@ -14,6 +15,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
+import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -26,15 +28,24 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceMemberDomain {
+    private readonly maxWorkspacesPerUser: number;
+
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceUtil: WorkspaceUtil,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.maxWorkspacesPerUser = this.configService.get<number>(
+            'workspace.maxWorkspacesPerUser'
+        )!;
+    }
 
     private assertPeerActionAllowed(
         actorMember: WorkspaceMember,
@@ -52,18 +63,40 @@ export class WorkspaceMemberDomain {
     private async transferOwnershipGuarded(
         workspaceId: string,
         fromMemberId: string,
-        toMemberId: string
+        targetMember: WorkspaceMember
     ): Promise<void> {
         try {
-            const transferred =
-                await this.workspaceMemberRepository.transferOwnership(
-                    workspaceId,
-                    fromMemberId,
-                    toMemberId
-                );
-            if (!transferred) {
-                throw new WorkspaceMemberPeerForbiddenException();
-            }
+            await this.databaseService.withTransaction(async tx => {
+                const ownedCount =
+                    await this.workspaceRepository.countByOwnerInTx(
+                        tx,
+                        targetMember.userId
+                    );
+                if (ownedCount >= this.maxWorkspacesPerUser) {
+                    throw new WorkspaceCapReachedException();
+                }
+
+                const promoted =
+                    await this.workspaceMemberRepository.promoteToOwnerInTx(
+                        tx,
+                        workspaceId,
+                        fromMemberId,
+                        targetMember.id
+                    );
+                if (!promoted) {
+                    throw new WorkspaceMemberPeerForbiddenException();
+                }
+
+                const demoted =
+                    await this.workspaceMemberRepository.demoteOwnerInTx(
+                        tx,
+                        workspaceId,
+                        fromMemberId
+                    );
+                if (!demoted) {
+                    throw new WorkspaceMemberPeerForbiddenException();
+                }
+            });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -117,6 +150,28 @@ export class WorkspaceMemberDomain {
         );
     }
 
+    async resolveLastWorkspaceId(
+        userId: string,
+        lastWorkspaceId: string | null
+    ): Promise<string | null> {
+        if (lastWorkspaceId === null) {
+            return null;
+        }
+
+        const [workspace, member] = await Promise.all([
+            this.workspaceRepository.findActiveById(lastWorkspaceId),
+            this.workspaceMemberRepository.findOneByWorkspaceAndUser(
+                lastWorkspaceId,
+                userId
+            ),
+        ]);
+        if (!workspace || !member) {
+            return null;
+        }
+
+        return lastWorkspaceId;
+    }
+
     async createInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
@@ -163,7 +218,7 @@ export class WorkspaceMemberDomain {
         await this.transferOwnershipGuarded(
             workspaceId,
             actorMember.id,
-            targetMember.id
+            targetMember
         );
     }
 
@@ -176,19 +231,10 @@ export class WorkspaceMemberDomain {
 
     async leaveWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
         member: WorkspaceMember
     ): Promise<void> {
         if (member.role === EnumWorkspaceMemberRole.owner) {
-            // Sequential by design: gate before the work it guards
-            const ownerCount =
-                await this.workspaceMemberRepository.countOwnersInTx(
-                    tx,
-                    workspaceId
-                );
-            if (ownerCount <= 1) {
-                throw new WorkspaceLastOwnerException();
-            }
+            throw new WorkspaceLastOwnerException();
         }
 
         const removed = await this.workspaceMemberRepository.removeMemberInTx(

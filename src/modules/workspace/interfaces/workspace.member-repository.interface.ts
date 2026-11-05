@@ -22,10 +22,6 @@ export interface IWorkspaceMemberRepository {
         workspaceMemberId: string,
         workspaceId: string
     ): Promise<WorkspaceMember | null>;
-    countOwnersInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceId: string
-    ): Promise<number>;
     findReviewersByWorkspace(
         workspaceId: string
     ): Promise<{ userId: string }[]>;
@@ -71,9 +67,15 @@ export interface IWorkspaceMemberRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<number>;
-    transferOwnership(
+    promoteToOwnerInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         fromMemberId: string,
         toMemberId: string
+    ): Promise<boolean>;
+    demoteOwnerInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        fromMemberId: string
     ): Promise<boolean>;
 }

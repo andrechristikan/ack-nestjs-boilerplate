@@ -190,7 +190,9 @@ describe('AnalyticFraudDomain', () => {
         userAnalyticDomain.getNearLockout.mockResolvedValue([]);
         userAnalyticDomain.getManyByIds.mockResolvedValue([]);
         deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([]);
-        deviceAnalyticDomain.getCreatedInRangeByUser.mockResolvedValue([]);
+        deviceAnalyticDomain.existsCreatedInRangeByUser.mockResolvedValue(
+            false
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -1294,16 +1296,9 @@ describe('AnalyticFraudDomain', () => {
                     createdAt: startDate,
                 },
             ]);
-            deviceAnalyticDomain.getCreatedInRangeByUser
-                .mockResolvedValueOnce([
-                    {
-                        id: 'own-1',
-                        userId: 'user-1',
-                        deviceId: 'device-1',
-                        createdAt: windowEnd,
-                    },
-                ])
-                .mockResolvedValueOnce([]);
+            deviceAnalyticDomain.existsCreatedInRangeByUser
+                .mockResolvedValueOnce(true)
+                .mockResolvedValueOnce(false);
 
             const result = await domain['computeAccountTakeover'](
                 startDate,
@@ -1318,10 +1313,10 @@ describe('AnalyticFraudDomain', () => {
                 },
             ]);
             expect(
-                deviceAnalyticDomain.getCreatedInRangeByUser
+                deviceAnalyticDomain.existsCreatedInRangeByUser
             ).toHaveBeenCalledWith('user-1', startDate, windowEnd);
             expect(
-                deviceAnalyticDomain.getCreatedInRangeByUser
+                deviceAnalyticDomain.existsCreatedInRangeByUser
             ).toHaveBeenCalledWith('user-2', startDate, windowEnd);
             expect(
                 passwordHistoryAnalyticDomain.getByTypeInRange
@@ -1534,7 +1529,7 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('computeForgotPasswordAbuse', () => {
-        it('keeps users at or above the unused-token minimum', async () => {
+        it('passes the unused-token minimum and maps every row it gets back', async () => {
             userForgotPasswordAnalyticDomain.getUnusedTokenCountsByUser.mockResolvedValue(
                 [
                     { userId: 'user-1', count: 2 },
@@ -1544,8 +1539,14 @@ describe('AnalyticFraudDomain', () => {
 
             const result = await domain['computeForgotPasswordAbuse'](86400000);
 
-            expect(result).toEqual([{ userId: 'user-1', tokenCount: 2 }]);
+            expect(result).toEqual([
+                { userId: 'user-1', tokenCount: 2 },
+                { userId: 'user-2', tokenCount: 1 },
+            ]);
             expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
+            expect(
+                userForgotPasswordAnalyticDomain.getUnusedTokenCountsByUser
+            ).toHaveBeenCalledWith(startDate, now, 2);
         });
     });
 
@@ -1606,16 +1607,9 @@ describe('AnalyticFraudDomain', () => {
                         },
                     ],
                 });
-            deviceAnalyticDomain.getCreatedInRangeByUser
-                .mockResolvedValueOnce([
-                    {
-                        id: 'own-1',
-                        userId: 'user-1',
-                        deviceId: 'device-1',
-                        createdAt: windowEnd,
-                    },
-                ])
-                .mockResolvedValueOnce([]);
+            deviceAnalyticDomain.existsCreatedInRangeByUser
+                .mockResolvedValueOnce(true)
+                .mockResolvedValueOnce(false);
 
             const result = await domain['computeBackupCodeNewDevice'](86400000);
 
@@ -1645,7 +1639,7 @@ describe('AnalyticFraudDomain', () => {
                 Duration.fromMillis(7200000)
             );
             expect(
-                deviceAnalyticDomain.getCreatedInRangeByUser
+                deviceAnalyticDomain.existsCreatedInRangeByUser
             ).toHaveBeenCalledWith('user-2', startDate, windowEnd);
         });
     });

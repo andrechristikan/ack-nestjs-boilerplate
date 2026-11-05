@@ -35,7 +35,7 @@ describe('NotificationUtil', () => {
     });
 
     describe('toStepFailure', () => {
-        it('keeps an Error reason as the raw error with its message', () => {
+        it('keeps an Error reason as the raw error', () => {
             const rawError = new Error('down');
 
             const failure = util.toStepFailure(
@@ -45,7 +45,6 @@ describe('NotificationUtil', () => {
 
             expect(failure).toEqual({
                 step: EnumNotificationStep.sendEmail,
-                message: 'down',
                 rawError,
             });
             expect(failure.rawError).toBe(rawError);
@@ -58,7 +57,6 @@ describe('NotificationUtil', () => {
             );
 
             expect(failure.step).toBe(EnumNotificationStep.sendPush);
-            expect(failure.message).toBe('boom');
             expect(failure.rawError).toBeInstanceOf(Error);
             expect(failure.rawError.message).toBe('boom');
         });
@@ -75,12 +73,10 @@ describe('NotificationUtil', () => {
                 util.toStepSummary([
                     {
                         step: EnumNotificationStep.sendEmail,
-                        message: 'prisma secret',
                         rawError: new Error('prisma secret'),
                     },
                     {
                         step: EnumNotificationStep.sendPush,
-                        message: 'boom',
                         rawError: new Error('boom'),
                     },
                 ])
@@ -203,7 +199,6 @@ describe('NotificationUtil', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.sendPush,
-                        message: 'down',
                         rawError,
                     },
                 ],

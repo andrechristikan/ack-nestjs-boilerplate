@@ -19,6 +19,7 @@ import type { Prisma, Workspace } from '@generated/prisma-client/client';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
+import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
 import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
 import type {
@@ -516,32 +517,91 @@ describe('WorkspaceDomain', () => {
         it('soft-deletes the workspace row on the given transaction', async () => {
             const tx = {} as IDatabaseTransactionClient;
             const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+            workspaceRepository.softDeleteInTx.mockResolvedValue(true);
 
-            await domain.softDeleteInTx(tx, 'workspace-1', deletedAt);
+            await domain.softDeleteInTx(tx, 'workspace-1', deletedAt, 'user-1');
 
             expect(workspaceRepository.softDeleteInTx).toHaveBeenCalledWith(
                 tx,
                 'workspace-1',
-                deletedAt
+                deletedAt,
+                'user-1'
             );
+        });
+
+        it('throws WorkspaceNotFoundException when the guarded write misses', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+            const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+            workspaceRepository.softDeleteInTx.mockResolvedValue(false);
+
+            await expect(
+                domain.softDeleteInTx(tx, 'workspace-1', deletedAt, 'user-1')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceNotFoundException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.notFound
+                    ],
+                messagePath: 'workspace.error.notFound',
+            });
         });
     });
 
-    describe('softDeleteSolelyOwnedByUserInTx', () => {
-        it('soft-deletes the workspaces the user solely owns on the given transaction and returns their ids', async () => {
+    describe('softDeleteOwnedByUserInTx', () => {
+        it('soft-deletes every live workspace the user owns on the given transaction and returns their ids', async () => {
             const tx = {} as IDatabaseTransactionClient;
             const deletedAt = new Date('2026-01-01T00:00:00.000Z');
-            workspaceRepository.softDeleteSolelyOwnedByUserInTx.mockResolvedValue(
-                ['workspace-1', 'workspace-2']
-            );
+            workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([
+                'workspace-1',
+                'workspace-2',
+            ]);
 
             await expect(
-                domain.softDeleteSolelyOwnedByUserInTx(tx, 'user-1', deletedAt)
+                domain.softDeleteOwnedByUserInTx(tx, 'user-1', deletedAt)
             ).resolves.toEqual(['workspace-1', 'workspace-2']);
 
             expect(
-                workspaceRepository.softDeleteSolelyOwnedByUserInTx
+                workspaceRepository.softDeleteOwnedByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', deletedAt);
+        });
+    });
+
+    describe('assertOwnedHasNoOtherMembersInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+
+        it('throws WorkspaceOwnerTransferRequiredException when an owned workspace has another member', async () => {
+            workspaceRepository.existsOwnedWithOtherMembersInTx.mockResolvedValue(
+                true
+            );
+
+            await expect(
+                domain.assertOwnedHasNoOtherMembersInTx(tx, 'user-1')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceOwnerTransferRequiredException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.ownerTransferRequired,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.ownerTransferRequired
+                    ],
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'workspace.error.ownerTransferRequired',
+            });
+            expect(
+                workspaceRepository.existsOwnedWithOtherMembersInTx
+            ).toHaveBeenCalledWith(tx, 'user-1');
+        });
+
+        it('resolves when no owned workspace has another member', async () => {
+            workspaceRepository.existsOwnedWithOtherMembersInTx.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                domain.assertOwnedHasNoOtherMembersInTx(tx, 'user-1')
+            ).resolves.toBeUndefined();
         });
     });
 

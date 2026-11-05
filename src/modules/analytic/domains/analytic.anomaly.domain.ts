@@ -46,6 +46,7 @@ export class AnalyticAnomalyDomain {
     private readonly loginSpikeIpMinUniqueAccounts: number;
     private readonly loginSpikeIpWindowInMs: number;
     private readonly loginTimeAnomalyHistoricalFrequencyPercent: number;
+    private readonly loginTimeAnomalyHistoryLimit: number;
     private readonly loginTimeAnomalyMinSample: number;
     private readonly loginTimeAnomalyLookbackInMs: number;
     private readonly concurrency: number;
@@ -84,6 +85,9 @@ export class AnalyticAnomalyDomain {
             this.configService.get<number>(
                 'analytic.anomaly.loginTimeAnomaly.historicalFrequencyPercent'
             )!;
+        this.loginTimeAnomalyHistoryLimit = this.configService.get<number>(
+            'analytic.anomaly.loginTimeAnomaly.historyLimit'
+        )!;
         this.loginTimeAnomalyMinSample = this.configService.get<number>(
             'analytic.anomaly.minSample'
         )!;
@@ -175,7 +179,8 @@ export class AnalyticAnomalyDomain {
                     user.userId,
                     UserLoginAnalyticActions,
                     start,
-                    end
+                    end,
+                    this.loginTimeAnomalyHistoryLimit
                 )
             );
             // Sequential by design: bounded chunks, concurrent within a chunk

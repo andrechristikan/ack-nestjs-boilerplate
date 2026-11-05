@@ -36,6 +36,7 @@ describe('RoleGuard', () => {
         name: 'manager',
         description: null,
         type: EnumRoleType.user,
+        isImmutable: false,
         createdAt: now,
         createdBy: null,
         updatedAt: now,

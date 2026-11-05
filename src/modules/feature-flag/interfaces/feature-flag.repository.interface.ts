@@ -20,7 +20,7 @@ export interface IFeatureFlagRepository {
     updateStatus(
         id: string,
         { isEnable, rolloutPercent, targetUserIds }: IFeatureFlagUpdateStatus
-    ): Promise<FeatureFlag>;
+    ): Promise<FeatureFlag | null>;
     updateMetadata(
         id: string,
         { metadata }: FeatureFlagUpdateMetadataRequestDto

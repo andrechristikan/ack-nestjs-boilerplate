@@ -16,7 +16,13 @@ export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 export const UserStoreKey = 'UserStoreKey';
 
 /**
- * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`); `guardMissing` documents a guard or param decorator that reads the user store; `photoSizeExceeded` documents the profile photo presign route.
+ * Characters a valid username holds: letters, digits, dash, and underscore.
+ * @public
+ */
+export const UserUsernameRegex = /^[a-zA-Z0-9-_]+$/;
+
+/**
+ * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`); `guardMissing` documents a guard or param decorator that reads the user store; `notFound` documents the self-delete and workspace create routes; `photoSizeExceeded` documents the profile photo presign route; `deleteSelfForbidden` documents the self-delete route.
  * @public
  */
 export const DocUserErrorResponses = {
@@ -47,9 +53,17 @@ export const DocUserErrorResponses = {
         statusCode: EnumUserStatusCodeError.guardMissing,
         messagePath: 'user.error.guardMissing',
     }),
+    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
+        statusCode: EnumUserStatusCodeError.notFound,
+        messagePath: 'user.error.notFound',
+    }),
     photoSizeExceeded: DocResponseError(HttpStatus.BAD_REQUEST, {
         statusCode: EnumUserStatusCodeError.photoSizeExceeded,
         messagePath: 'user.error.photoSizeExceeded',
+    }),
+    deleteSelfForbidden: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumUserStatusCodeError.deleteSelfForbidden,
+        messagePath: 'user.error.deleteSelfForbidden',
     }),
 } as const;
 

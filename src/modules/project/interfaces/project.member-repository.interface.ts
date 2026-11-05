@@ -36,9 +36,14 @@ export interface IProjectMemberRepository {
     ): Promise<IProjectMember>;
     updateRole(
         targetMemberId: string,
+        expectedRole: EnumProjectMemberRole,
         newRole: EnumProjectMemberRole
-    ): Promise<void>;
-    removeMember(targetMemberId: string): Promise<void>;
+    ): Promise<boolean>;
+    removeMember(
+        targetMemberId: string,
+        expectedRole: EnumProjectMemberRole
+    ): Promise<boolean>;
+    removeById(memberId: string): Promise<boolean>;
     removeByWorkspaceAndUserInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,

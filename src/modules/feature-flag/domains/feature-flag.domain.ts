@@ -145,13 +145,11 @@ export class FeatureFlagDomain {
         id: string,
         data: IFeatureFlagUpdateStatus
     ): Promise<FeatureFlag> {
-        // Sequential by design: gate before the work it guards
-        const featureFlag = await this.featureFlagRepository.findOneById(id);
-        if (!featureFlag) {
+        const updated = await this.featureFlagRepository.updateStatus(id, data);
+        if (!updated) {
             throw new FeatureFlagNotFoundException();
         }
 
-        const updated = await this.featureFlagRepository.updateStatus(id, data);
         await this.featureFlagCache.deleteFeatureFlag(updated.key);
 
         return updated;

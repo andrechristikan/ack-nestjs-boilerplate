@@ -130,7 +130,7 @@ describe('SessionDomain', () => {
             const login: ISessionCache = {
                 userId: 'user-1',
                 sessionId: 'session-1',
-                jti: 'jti-value',
+                jtiDigest: 'jti-digest',
             };
             sessionCache.getLogin.mockResolvedValue(login);
 
@@ -379,13 +379,13 @@ describe('SessionDomain', () => {
         });
     });
 
-    describe('revokeOnReuse', () => {
+    describe('revokeIfActive', () => {
         it('revokes the session as its own user and returns the revoked ref', async () => {
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
             sessionRepository.revoke.mockResolvedValue(true);
 
-            const result = await domain.revokeOnReuse('user-1', 'session-1');
+            const result = await domain.revokeIfActive('user-1', 'session-1');
 
             expect(result).toEqual([{ id: 'session-1' }]);
             expect(sessionRepository.revoke).toHaveBeenCalledWith(
@@ -402,7 +402,7 @@ describe('SessionDomain', () => {
             );
             sessionRepository.revoke.mockResolvedValue(false);
 
-            const result = await domain.revokeOnReuse('user-1', 'session-1');
+            const result = await domain.revokeIfActive('user-1', 'session-1');
 
             expect(result).toEqual([]);
         });

@@ -14,6 +14,7 @@ import { PaginationDefaultCursorField } from '@common/pagination/constants/pagin
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('PaginationService', () => {
     const paginationCursorUtil: MockProxy<PaginationCursorUtil> =
@@ -71,7 +72,7 @@ describe('PaginationService', () => {
                 hasPrevious: false,
                 data: rows,
             };
-            const deferredCount = Promise.withResolvers<number>();
+            const deferredCount = buildDeferred<number>();
             roleDelegate.count.mockReturnValue(deferredCount.promise as never);
             roleDelegate.findMany.mockResolvedValue(rows as never);
             paginationOffsetUtil.page.mockReturnValue(page);
@@ -262,7 +263,7 @@ describe('PaginationService', () => {
             roleDelegate.findMany.mockResolvedValue([
                 { id: '1', name: 'a' },
             ] as never);
-            const deferredCount = Promise.withResolvers<number>();
+            const deferredCount = buildDeferred<number>();
             roleDelegate.count.mockReturnValue(deferredCount.promise as never);
 
             const pending = service.cursor(roleDelegate, {

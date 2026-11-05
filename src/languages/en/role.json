@@ -10,6 +10,7 @@
         "used": "This role is currently in use and cannot be deleted.",
         "forbidden": "Sorry, your role doesn't grant access to this resource.",
         "rankForbidden": "Sorry, your role doesn't outrank the role you are acting on.",
-        "selfForbidden": "Sorry, you cannot modify the role you hold."
+        "selfForbidden": "Sorry, you cannot modify the role you hold.",
+        "immutable": "This role is protected: it cannot be deleted and its type cannot change."
     }
 }

@@ -21,6 +21,7 @@ import type {
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
+import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
@@ -51,6 +52,7 @@ export class WorkspaceInviteDomain {
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
@@ -63,7 +65,13 @@ export class WorkspaceInviteDomain {
         )!;
     }
 
+    /** Gates on `workspace.invitationAllowed`, then reads the pending invite of a token. */
     async validateInviteToken(token: string): Promise<WorkspaceInvite> {
+        // Sequential by design: gate before the work it guards
+        await this.featureFlagDomain.validateFeatureFlagMetadata(
+            'workspace',
+            'invitationAllowed'
+        );
         const hashedToken = this.helperHashService.sha256Hash(token);
         const invite =
             await this.workspaceInviteRepository.findPendingByHashedToken(
@@ -76,7 +84,7 @@ export class WorkspaceInviteDomain {
         return invite;
     }
 
-    /** Reads the pending invite of a token that belongs to the sign-up email. */
+    /** Reads the pending invite of a token that belongs to the email. */
     async validateInviteForEmail(
         token: string,
         email: string
@@ -91,6 +99,18 @@ export class WorkspaceInviteDomain {
         }
 
         return invite;
+    }
+
+    /** Reads the invite a sign-up carries; null when it carries no token. */
+    async getSignUpInvite(
+        token: string | null,
+        email: string
+    ): Promise<WorkspaceInvite | null> {
+        if (!token) {
+            return null;
+        }
+
+        return this.validateInviteForEmail(token, email);
     }
 
     async assertInviteeNotMember(
@@ -121,6 +141,18 @@ export class WorkspaceInviteDomain {
         );
     }
 
+    async revokePendingByEmailInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        email: string
+    ): Promise<void> {
+        await this.workspaceInviteRepository.revokePendingByEmailInTx(
+            tx,
+            workspaceId,
+            email
+        );
+    }
+
     async clearProjectInTx(
         tx: IDatabaseTransactionClient,
         projectId: string
@@ -133,6 +165,12 @@ export class WorkspaceInviteDomain {
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
+        // Sequential by design: gate before the work it guards
+        await this.featureFlagDomain.validateFeatureFlagMetadata(
+            'workspace',
+            'invitationAllowed'
+        );
+
         return this.workspaceInviteRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
@@ -140,10 +178,16 @@ export class WorkspaceInviteDomain {
         );
     }
 
-    assertProjectRolePaired({
+    /** Gates on `workspace.invitationAllowed`, then asserts the project id and role come together. */
+    async assertProjectRolePaired({
         projectId,
         projectRole,
-    }: IWorkspaceInviteCreate): void {
+    }: IWorkspaceInviteCreate): Promise<void> {
+        // Sequential by design: gate before the work it guards
+        await this.featureFlagDomain.validateFeatureFlagMetadata(
+            'workspace',
+            'invitationAllowed'
+        );
         const hasProjectId = projectId !== null;
         const hasProjectRole = projectRole !== null;
         if (hasProjectId !== hasProjectRole) {
@@ -229,10 +273,16 @@ export class WorkspaceInviteDomain {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
+    /** Gates on `workspace.invitationAllowed`, then reads the pending invite of the workspace. */
     async getPendingById(
         workspaceInviteId: string,
         workspaceId: string
     ): Promise<WorkspaceInvite> {
+        // Sequential by design: gate before the work it guards
+        await this.featureFlagDomain.validateFeatureFlagMetadata(
+            'workspace',
+            'invitationAllowed'
+        );
         const existing =
             await this.workspaceInviteRepository.findByIdAndWorkspace(
                 workspaceInviteId,
@@ -315,11 +365,8 @@ export class WorkspaceInviteDomain {
     }
 
     async revokeInvite(workspaceInviteId: string): Promise<void> {
-        const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
-        const revoked = await this.workspaceInviteRepository.revoke(
-            workspaceInviteId,
-            nonce
-        );
+        const revoked =
+            await this.workspaceInviteRepository.revoke(workspaceInviteId);
         if (!revoked) {
             throw new WorkspaceInviteAlreadyProcessedException();
         }
@@ -331,13 +378,10 @@ export class WorkspaceInviteDomain {
         userId: string,
         acceptedAt: Date
     ): Promise<void> {
-        const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
-
         try {
             const accepted = await this.workspaceInviteRepository.acceptInTx(
                 tx,
                 workspaceInviteId,
-                nonce,
                 userId,
                 acceptedAt
             );

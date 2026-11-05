@@ -9,4 +9,5 @@ export enum EnumRoleStatusCodeError {
     used = 50503,
     rankForbidden = 50504,
     selfForbidden = 50505,
+    immutable = 50506,
 }

@@ -61,4 +61,10 @@ describe('RoleSchema', () => {
 
         expect(result).toEqual(row);
     });
+
+    it('strips isImmutable from a stored role', () => {
+        const result = RoleSchema.parse({ ...row, isImmutable: true });
+
+        expect(result).toEqual(row);
+    });
 });

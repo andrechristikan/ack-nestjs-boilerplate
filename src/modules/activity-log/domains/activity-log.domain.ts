@@ -30,11 +30,13 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { Workspace } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ActivityLogDomain {
+    private readonly logger = new Logger(ActivityLogDomain.name);
+
     constructor(
         private readonly activityLogRepository: ActivityLogRepository,
         private readonly activityLogUtil: ActivityLogUtil,
@@ -263,14 +265,15 @@ export class ActivityLogDomain {
 
         const requestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
-        if (!requestLog) {
-            throw new ActivityLogContractInvalidException();
-        }
 
         const createdAt = this.helperDateService.create();
         const rows: IActivityLogCreate[] = [];
         for (const activityLog of staged) {
             try {
+                if (!requestLog) {
+                    throw new ActivityLogContractInvalidException();
+                }
+
                 const row = this.buildFlushCreate(
                     activityLog,
                     payloadUserId,
@@ -279,17 +282,19 @@ export class ActivityLogDomain {
                 );
                 rows.push(row);
             } catch (error: unknown) {
-                this.sentryService.captureException(
-                    new ActivityLogContractInvalidException(error)
+                const exception = new ActivityLogContractInvalidException(
+                    error
                 );
+                this.sentryService.captureException(exception);
+                this.logger.error(exception, 'Staged activity log row invalid');
             }
         }
+
+        this.requestStoreService.set(ActivityLogStageStoreKey, []);
 
         if (rows.length > 0) {
             await this.activityLogQueue.createMany(rows);
         }
-
-        this.requestStoreService.set(ActivityLogStageStoreKey, []);
     }
 
     async createMany(rows: IActivityLogCreate[]): Promise<void> {

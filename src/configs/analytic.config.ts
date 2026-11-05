@@ -34,6 +34,7 @@ export interface IConfigAnalytic {
         };
         loginTimeAnomaly: {
             historicalFrequencyPercent: number;
+            historyLimit: number;
         };
     };
     device: {
@@ -137,6 +138,7 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         },
         loginTimeAnomaly: {
             historicalFrequencyPercent: 5,
+            historyLimit: 1000,
         },
     },
     device: {

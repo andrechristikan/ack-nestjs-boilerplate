@@ -42,7 +42,8 @@ export interface IActivityLogAnalyticRepository {
         userId: string,
         actions: EnumActivityLogAction[],
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        limit: number
     ): Promise<Date[]>;
     groupUserByActions(
         actions: EnumActivityLogAction[],

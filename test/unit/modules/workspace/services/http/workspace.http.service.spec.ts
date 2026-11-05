@@ -1,9 +1,13 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -51,6 +55,7 @@ import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceHttpService } from '@modules/workspace/services/http/workspace.http.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('WorkspaceHttpService', () => {
     const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
@@ -73,9 +78,13 @@ describe('WorkspaceHttpService', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
+    const configValues: Record<string, unknown> = {
+        'workspace.delete.timeoutInMs': 10000,
+    };
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const deletedAt = new Date('2026-01-01T00:00:00.000Z');
 
@@ -166,6 +175,11 @@ describe('WorkspaceHttpService', () => {
                     useValue: paginationFilterUtil,
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(configValues),
+                },
             ],
         }).compile();
 
@@ -551,7 +565,8 @@ describe('WorkspaceHttpService', () => {
             expect(workspaceDomain.softDeleteInTx).toHaveBeenCalledWith(
                 tx,
                 'workspace-1',
-                deletedAt
+                deletedAt,
+                'user-1'
             );
             expect(
                 projectDomain.softDeleteByWorkspaceInTx
@@ -586,6 +601,7 @@ describe('WorkspaceHttpService', () => {
             await expect(
                 service.softDeleteWorkspace('workspace-1', 'user-1')
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 projectDomain.softDeleteByWorkspaceInTx
             ).not.toHaveBeenCalled();
@@ -595,6 +611,39 @@ describe('WorkspaceHttpService', () => {
             expect(
                 workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx
             ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('opens the transaction with workspace.delete.timeoutInMs', async () => {
+            await service.softDeleteWorkspace('workspace-1', 'user-1');
+
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+                expect.any(Function),
+                { timeout: 10000 }
+            );
+        });
+
+        it('answers WorkspaceNotFoundException on a write conflict and stages no row', async () => {
+            const conflict = new Error('conflict');
+            workspaceDomain.softDeleteInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.softDeleteWorkspace('workspace-1', 'user-1')
+            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps an unknown error', async () => {
+            workspaceDomain.softDeleteInTx.mockRejectedValue(new Error('boom'));
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.softDeleteWorkspace('workspace-1', 'user-1')
+            ).rejects.toBeInstanceOf(AppUnknownException);
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });

@@ -321,13 +321,20 @@ describe('ActivityLogDomain', () => {
             expect(activityLogQueue.createMany).not.toHaveBeenCalled();
         });
 
-        it('throws when the request log is missing', async () => {
+        it('reports every staged row and clears the store when the request log is missing', async () => {
             const staged: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
                     userId: 'user-1',
                     createdBy: 'creator-1',
+                    workspaceId: null,
+                },
+                {
+                    action: EnumActivityLogAction.userUpdateProfile,
+                    metadata: {},
+                    userId: null,
+                    createdBy: null,
                     workspaceId: null,
                 },
             ];
@@ -339,20 +346,19 @@ describe('ActivityLogDomain', () => {
                     return null;
                 }
             );
+            helperDateService.create.mockReturnValue(createdAt);
 
-            await expect(
-                domain.flushStaged({ payloadUserId: null })
-            ).rejects.toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
+            await domain.flushStaged({ payloadUserId: 'payload-user-1' });
+
+            expect(sentryService.captureException).toHaveBeenCalledTimes(2);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.any(ActivityLogContractInvalidException)
+            );
             expect(activityLogQueue.createMany).not.toHaveBeenCalled();
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                ActivityLogStageStoreKey,
+                []
+            );
         });
 
         it('enqueues once every staged activity log as a row with an id and createdAt', async () => {
@@ -422,7 +428,7 @@ describe('ActivityLogDomain', () => {
             );
         });
 
-        it('reports an invalid entry to Sentry, enqueues the valid rest, and clears the store', async () => {
+        it('reports an invalid row and enqueues the valid ones', async () => {
             const staged: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userUpdateProfile,
@@ -505,7 +511,7 @@ describe('ActivityLogDomain', () => {
             );
         });
 
-        it('keeps the staged list when the enqueue fails', async () => {
+        it('clears the store when the enqueue fails', async () => {
             const staged: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
@@ -535,7 +541,10 @@ describe('ActivityLogDomain', () => {
             const rejection = domain.flushStaged({ payloadUserId: null });
 
             await expect(rejection).rejects.toBe(failure);
-            expect(requestStoreService.set).not.toHaveBeenCalled();
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                ActivityLogStageStoreKey,
+                []
+            );
         });
     });
 

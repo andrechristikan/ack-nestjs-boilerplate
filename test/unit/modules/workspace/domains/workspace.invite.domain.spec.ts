@@ -26,6 +26,8 @@ import type {
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
@@ -54,6 +56,8 @@ describe('WorkspaceInviteDomain', () => {
         mock<WorkspaceRepository>();
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
         mock<WorkspaceMemberDomain>();
+    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
+        mock<FeatureFlagDomain>();
     const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -86,7 +90,6 @@ describe('WorkspaceInviteDomain', () => {
     };
 
     const pendingNonce = 'a'.repeat(64);
-    const invite1Nonce = 'b'.repeat(64);
 
     const baseInvite: WorkspaceInvite = {
         id: 'invite-1',
@@ -152,9 +155,7 @@ describe('WorkspaceInviteDomain', () => {
         helperHashService.sha256Hash.mockImplementation(value =>
             value === 'workspace-1:invitee@example.com'
                 ? pendingNonce
-                : value === 'invite-1'
-                  ? invite1Nonce
-                  : 'hashed-token'
+                : 'hashed-token'
         );
 
         const module: TestingModule = await Test.createTestingModule({
@@ -169,6 +170,7 @@ describe('WorkspaceInviteDomain', () => {
                     provide: WorkspaceMemberDomain,
                     useValue: workspaceMemberDomain,
                 },
+                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -182,6 +184,26 @@ describe('WorkspaceInviteDomain', () => {
     });
 
     describe('validateInviteToken', () => {
+        it('throws FeatureFlagDisabledException and reads no invite when workspace invitations are off', async () => {
+            featureFlagDomain.validateFeatureFlagMetadata.mockRejectedValue(
+                new FeatureFlagDisabledException()
+            );
+
+            await expect(
+                domain.validateInviteToken('raw-token')
+            ).rejects.toMatchObject({
+                constructor: FeatureFlagDisabledException,
+                module: 'featureFlag',
+                messagePath: 'featureFlag.error.disabled',
+            });
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            expect(
+                workspaceInviteRepository.findPendingByHashedToken
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws WorkspaceInviteInvalidException when no pending invite matches the token', async () => {
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 null
@@ -215,12 +237,35 @@ describe('WorkspaceInviteDomain', () => {
 
             expect(result).toBe(baseInvite);
             expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            expect(
                 workspaceInviteRepository.findPendingByHashedToken
             ).toHaveBeenCalledWith('hashed-token');
         });
     });
 
     describe('validateInviteForEmail', () => {
+        it('throws FeatureFlagDisabledException and reads no invite when workspace invitations are off', async () => {
+            featureFlagDomain.validateFeatureFlagMetadata.mockRejectedValue(
+                new FeatureFlagDisabledException()
+            );
+
+            await expect(
+                domain.validateInviteForEmail('raw-token', 'user@example.com')
+            ).rejects.toMatchObject({
+                constructor: FeatureFlagDisabledException,
+                module: 'featureFlag',
+                messagePath: 'featureFlag.error.disabled',
+            });
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            expect(
+                workspaceInviteRepository.findPendingByHashedToken
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws WorkspaceInviteInvalidException when no pending invite matches the token', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
@@ -272,6 +317,48 @@ describe('WorkspaceInviteDomain', () => {
             );
 
             expect(result).toBe(baseInvite);
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('getSignUpInvite', () => {
+        it('returns null and gates nothing when the sign-up carries no invite token', async () => {
+            const result = await domain.getSignUpInvite(
+                null,
+                'invitee@example.com'
+            );
+
+            expect(result).toBeNull();
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).not.toHaveBeenCalled();
+            expect(
+                workspaceInviteRepository.findPendingByHashedToken
+            ).not.toHaveBeenCalled();
+        });
+
+        it('gates on the invitation flag and returns the pending invite of the sign-up email', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
+                baseInvite
+            );
+            workspaceUtil.isInviteEmailMatch.mockReturnValue(true);
+
+            const result = await domain.getSignUpInvite(
+                'raw-token',
+                'invitee@example.com'
+            );
+
+            expect(result).toBe(baseInvite);
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            expect(workspaceUtil.isInviteEmailMatch).toHaveBeenCalledWith(
+                'invitee@example.com',
+                'invitee@example.com'
+            );
         });
     });
 
@@ -343,6 +430,22 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
+    describe('revokePendingByEmailInTx', () => {
+        it('revokes the pending invite of the workspace and email on the given transaction', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+
+            await domain.revokePendingByEmailInTx(
+                tx,
+                'workspace-1',
+                'invitee@example.com'
+            );
+
+            expect(
+                workspaceInviteRepository.revokePendingByEmailInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'invitee@example.com');
+        });
+    });
+
     describe('clearProjectInTx', () => {
         it('clears the project from the pending invites on the given transaction', async () => {
             const tx = {} as IDatabaseTransactionClient;
@@ -369,7 +472,27 @@ describe('WorkspaceInviteDomain', () => {
             data: [],
         };
 
-        it('delegates to the repository with a null status filter', async () => {
+        it('throws FeatureFlagDisabledException and reads no page when workspace invitations are off', async () => {
+            featureFlagDomain.validateFeatureFlagMetadata.mockRejectedValue(
+                new FeatureFlagDisabledException()
+            );
+
+            await expect(
+                domain.getInvitesList('workspace-1', pagination)
+            ).rejects.toMatchObject({
+                constructor: FeatureFlagDisabledException,
+                module: 'featureFlag',
+                messagePath: 'featureFlag.error.disabled',
+            });
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            expect(
+                workspaceInviteRepository.findWithPaginationCursor
+            ).not.toHaveBeenCalled();
+        });
+
+        it('gates on the invitation flag and delegates to the repository with a null status filter', async () => {
             workspaceInviteRepository.findWithPaginationCursor.mockResolvedValue(
                 page
             );
@@ -380,6 +503,9 @@ describe('WorkspaceInviteDomain', () => {
             );
 
             expect(result).toBe(page);
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
             expect(
                 workspaceInviteRepository.findWithPaginationCursor
             ).toHaveBeenCalledWith('workspace-1', pagination, null);
@@ -405,50 +531,69 @@ describe('WorkspaceInviteDomain', () => {
     });
 
     describe('assertProjectRolePaired', () => {
-        it('throws WorkspaceInviteRoleRequiredException when only projectId is given', () => {
-            expect(() =>
+        it('throws FeatureFlagDisabledException before the pairing check when workspace invitations are off', async () => {
+            featureFlagDomain.validateFeatureFlagMetadata.mockRejectedValue(
+                new FeatureFlagDisabledException()
+            );
+
+            await expect(
                 domain.assertProjectRolePaired({
                     ...baseCreate,
                     projectId: 'project-1',
                 })
-            ).toThrow(
-                expect.objectContaining({
-                    constructor: WorkspaceInviteRoleRequiredException,
-                    module: 'workspace',
-                    statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
-                    statusCodeKey:
-                        EnumWorkspaceStatusCodeError[
-                            EnumWorkspaceStatusCodeError.inviteRoleRequired
-                        ],
-                    messagePath: 'workspace.error.inviteRoleRequired',
-                })
-            );
+            ).rejects.toMatchObject({
+                constructor: FeatureFlagDisabledException,
+                module: 'featureFlag',
+                messagePath: 'featureFlag.error.disabled',
+            });
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
         });
 
-        it('throws WorkspaceInviteRoleRequiredException when only projectRole is given', () => {
-            expect(() =>
+        it('throws WorkspaceInviteRoleRequiredException when only projectId is given', async () => {
+            await expect(
+                domain.assertProjectRolePaired({
+                    ...baseCreate,
+                    projectId: 'project-1',
+                })
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteRoleRequiredException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.inviteRoleRequired
+                    ],
+                messagePath: 'workspace.error.inviteRoleRequired',
+            });
+        });
+
+        it('throws WorkspaceInviteRoleRequiredException when only projectRole is given', async () => {
+            await expect(
                 domain.assertProjectRolePaired({
                     ...baseCreate,
                     projectRole: EnumProjectMemberRole.member,
                 })
-            ).toThrow(
-                expect.objectContaining({
-                    constructor: WorkspaceInviteRoleRequiredException,
-                })
-            );
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteRoleRequiredException,
+            });
         });
 
-        it('passes when both or neither are given', () => {
-            expect(() =>
+        it('gates on the invitation flag and passes when both or neither are given', async () => {
+            await expect(
                 domain.assertProjectRolePaired(baseCreate)
-            ).not.toThrow();
-            expect(() =>
+            ).resolves.toBeUndefined();
+            await expect(
                 domain.assertProjectRolePaired({
                     ...baseCreate,
                     projectId: 'project-1',
                     projectRole: EnumProjectMemberRole.member,
                 })
-            ).not.toThrow();
+            ).resolves.toBeUndefined();
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
         });
     });
 
@@ -690,6 +835,26 @@ describe('WorkspaceInviteDomain', () => {
     });
 
     describe('getPendingById', () => {
+        it('throws FeatureFlagDisabledException and reads no invite when workspace invitations are off', async () => {
+            featureFlagDomain.validateFeatureFlagMetadata.mockRejectedValue(
+                new FeatureFlagDisabledException()
+            );
+
+            await expect(
+                domain.getPendingById('invite-1', 'workspace-1')
+            ).rejects.toMatchObject({
+                constructor: FeatureFlagDisabledException,
+                module: 'featureFlag',
+                messagePath: 'featureFlag.error.disabled',
+            });
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            expect(
+                workspaceInviteRepository.findByIdAndWorkspace
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws WorkspaceInviteNotFoundException when the invite does not exist', async () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 null
@@ -786,6 +951,9 @@ describe('WorkspaceInviteDomain', () => {
             );
 
             expect(result).toBe(baseInvite);
+            expect(
+                featureFlagDomain.validateFeatureFlagMetadata
+            ).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -925,8 +1093,10 @@ describe('WorkspaceInviteDomain', () => {
             await domain.revokeInvite('invite-1');
 
             expect(workspaceInviteRepository.revoke).toHaveBeenCalledWith(
-                'invite-1',
-                invite1Nonce
+                'invite-1'
+            );
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
+                'invite-1'
             );
         });
 
@@ -962,9 +1132,11 @@ describe('WorkspaceInviteDomain', () => {
             expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledWith(
                 tx,
                 'invite-1',
-                invite1Nonce,
                 'user-2',
                 acceptedAt
+            );
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
+                'invite-1'
             );
         });
 
@@ -1053,7 +1225,6 @@ describe('WorkspaceInviteDomain', () => {
             expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledWith(
                 tx,
                 'invite-1',
-                invite1Nonce,
                 'user-2',
                 new Date('2026-01-01T00:00:00.000Z')
             );

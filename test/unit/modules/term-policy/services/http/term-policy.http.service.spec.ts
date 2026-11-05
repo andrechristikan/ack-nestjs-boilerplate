@@ -34,6 +34,7 @@ import { TermPolicyHttpService } from '@modules/term-policy/services/http/term-p
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 import type { TermPolicyPublicListRequestDto } from '@modules/term-policy/dtos/request/term-policy.public-list.request.dto';
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('TermPolicyHttpService', () => {
     const termPolicyDomain: MockProxy<TermPolicyDomain> =
@@ -438,6 +439,29 @@ describe('TermPolicyHttpService', () => {
                 },
                 'user-1'
             );
+        });
+
+        it('enqueues both side effects concurrently', async () => {
+            const deferredCopy = buildDeferred<void>();
+            termPolicyDomain.publishByAdmin.mockResolvedValue({
+                termPolicy: publishedTermPolicy,
+                copy,
+            });
+            termPolicyQueue.copyContent.mockReturnValue(deferredCopy.promise);
+            notificationQueue.sendPublishTermPolicy.mockImplementation(
+                async () => {
+                    deferredCopy.resolve();
+                }
+            );
+
+            await expect(
+                service.publishByAdmin('term-policy-1', 'user-1')
+            ).resolves.toEqual({});
+
+            expect(termPolicyQueue.copyContent).toHaveBeenCalledWith(copy);
+            expect(
+                notificationQueue.sendPublishTermPolicy
+            ).toHaveBeenCalledTimes(1);
         });
 
         it('stages and enqueues nothing when the domain rejects', async () => {

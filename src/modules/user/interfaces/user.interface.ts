@@ -394,6 +394,10 @@ export interface IUserDeletePhotoPayload {
     access: string;
 }
 
+export interface IUserLockoutPayload {
+    userId: string;
+}
+
 export type IUserField = Extract<keyof IUser, string>;
 
 export type IUserFieldValue = NonNullable<IUser[IUserField]>;

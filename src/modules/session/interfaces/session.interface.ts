@@ -26,7 +26,7 @@ export interface ISessionPurgeLoginsPayload {
 export interface ISessionCache {
     userId: string;
     sessionId: string;
-    jti: string;
+    jtiDigest: string;
 }
 
 export interface ISessionAnalyticSession {

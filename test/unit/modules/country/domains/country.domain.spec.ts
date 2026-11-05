@@ -84,6 +84,10 @@ describe('CountryDomain', () => {
             await expect(domain.getIdByAlpha2Code('ZZ')).rejects.toMatchObject({
                 module: 'country',
                 statusCode: EnumCountryStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumCountryStatusCodeError[
+                        EnumCountryStatusCodeError.notFound
+                    ],
                 messagePath: 'country.error.notFound',
             });
         });

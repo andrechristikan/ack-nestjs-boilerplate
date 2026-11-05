@@ -82,11 +82,11 @@ describe('UserForgotPasswordAnalyticDomain', () => {
             );
 
             await expect(
-                domain.getUnusedTokenCountsByUser(startDate, endDate)
+                domain.getUnusedTokenCountsByUser(startDate, endDate, 2)
             ).resolves.toBe(rows);
             expect(
                 userForgotPasswordAnalyticRepository.groupUnusedTokenByUser
-            ).toHaveBeenCalledWith(startDate, endDate);
+            ).toHaveBeenCalledWith(startDate, endDate, 2);
         });
     });
 });

@@ -11,13 +11,17 @@ import type { IRoleRank } from '@modules/role/interfaces/role.interface';
 export const RoleRequiredMetaKey = 'RoleRequiredMetaKey';
 
 /**
- * Role guard error kit for `@RoleProtected`.
+ * Role error kit: `forbidden` for `@RoleProtected`, `immutable` for the update and delete routes.
  * @public
  */
 export const DocRoleErrorResponses = {
     forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
         statusCode: EnumRoleStatusCodeError.forbidden,
         messagePath: 'role.error.forbidden',
+    }),
+    immutable: DocResponseError(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumRoleStatusCodeError.immutable,
+        messagePath: 'role.error.immutable',
     }),
 } as const;
 

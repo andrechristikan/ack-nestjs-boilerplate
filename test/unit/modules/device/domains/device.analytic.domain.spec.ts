@@ -134,29 +134,21 @@ describe('DeviceAnalyticDomain', () => {
         });
     });
 
-    describe('getCreatedInRangeByUser', () => {
-        it('delegates to the ownership analytic repository with the user and range', async () => {
-            const rows = [
-                {
-                    id: 'ownership-1',
-                    userId: 'user-1',
-                    deviceId: 'device-1',
-                    createdAt: startDate,
-                },
-            ];
-            deviceOwnershipAnalyticRepository.findCreatedInRangeByUser.mockResolvedValue(
-                rows
+    describe('existsCreatedInRangeByUser', () => {
+        it('forwards the user and window and returns the repository answer', async () => {
+            deviceOwnershipAnalyticRepository.existsCreatedInRangeByUser.mockResolvedValue(
+                true
             );
 
-            const result = await domain.getCreatedInRangeByUser(
+            const result = await domain.existsCreatedInRangeByUser(
                 'user-1',
                 startDate,
                 endDate
             );
 
-            expect(result).toBe(rows);
+            expect(result).toBe(true);
             expect(
-                deviceOwnershipAnalyticRepository.findCreatedInRangeByUser
+                deviceOwnershipAnalyticRepository.existsCreatedInRangeByUser
             ).toHaveBeenCalledWith('user-1', startDate, endDate);
         });
     });

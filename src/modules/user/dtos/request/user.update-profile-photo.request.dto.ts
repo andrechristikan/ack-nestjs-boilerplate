@@ -6,7 +6,7 @@ import { AwsS3PresignRequestSchema } from '@common/aws/dtos/request/aws.s3-presi
  * @public
  */
 export const UserUpdateProfilePhotoRequestSchema =
-    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+    AwsS3PresignRequestSchema.pick({ key: true }).extend({
         key: AwsS3PresignRequestSchema.shape.key.meta({
             description:
                 'Key of the uploaded profile photo, as returned by the presign step',

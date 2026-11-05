@@ -49,7 +49,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                     id,
                     status: EnumWorkspaceInviteStatus.pending,
                     expiredAt: {
-                        lt: today,
+                        lte: today,
                     },
                 },
                 data: {
@@ -74,7 +74,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                     where: {
                         status: EnumWorkspaceInviteStatus.pending,
                         expiredAt: {
-                            lt: today,
+                            lte: today,
                         },
                     },
                     select: { id: true },
@@ -94,15 +94,16 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         tx: IDatabaseTransactionClient,
         workspaceId: string
     ): Promise<void> {
+        const now = this.helperDateService.create();
         const pending = await tx.workspaceInvite.findMany({
             where: {
                 workspaceId,
                 status: EnumWorkspaceInviteStatus.pending,
             },
-            select: { id: true },
+            select: { id: true, expiredAt: true },
         });
 
-        for (const { id } of pending) {
+        for (const { id, expiredAt } of pending) {
             const nonce = this.helperHashService.sha256Hash(id);
             await tx.workspaceInvite.updateMany({
                 where: {
@@ -110,11 +111,48 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                     status: EnumWorkspaceInviteStatus.pending,
                 },
                 data: {
-                    status: EnumWorkspaceInviteStatus.revoked,
+                    status:
+                        expiredAt <= now
+                            ? EnumWorkspaceInviteStatus.expired
+                            : EnumWorkspaceInviteStatus.revoked,
                     nonce,
                 },
             });
         }
+    }
+
+    async revokePendingByEmailInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        email: string
+    ): Promise<void> {
+        const now = this.helperDateService.create();
+        const pending = await tx.workspaceInvite.findFirst({
+            where: {
+                workspaceId,
+                email,
+                status: EnumWorkspaceInviteStatus.pending,
+            },
+            select: { id: true, expiredAt: true },
+        });
+        if (!pending) {
+            return;
+        }
+
+        const nonce = this.helperHashService.sha256Hash(pending.id);
+        await tx.workspaceInvite.updateMany({
+            where: {
+                id: pending.id,
+                status: EnumWorkspaceInviteStatus.pending,
+            },
+            data: {
+                status:
+                    pending.expiredAt <= now
+                        ? EnumWorkspaceInviteStatus.expired
+                        : EnumWorkspaceInviteStatus.revoked,
+                nonce,
+            },
+        });
     }
 
     async clearProjectInTx(
@@ -206,7 +244,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 where: {
                     nonce,
                     status: EnumWorkspaceInviteStatus.pending,
-                    expiredAt: { lt: now },
+                    expiredAt: { lte: now },
                 },
                 select: { id: true },
             });
@@ -274,7 +312,8 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         });
     }
 
-    async revoke(workspaceInviteId: string, nonce: string): Promise<boolean> {
+    async revoke(workspaceInviteId: string): Promise<boolean> {
+        const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
         const { count } =
             await this.databaseService.client.workspaceInvite.updateMany({
                 where: {
@@ -293,10 +332,10 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
     async acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string,
-        nonce: string,
         userId: string,
         acceptedAt: Date
     ): Promise<boolean> {
+        const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
         const { count } = await tx.workspaceInvite.updateMany({
             where: {
                 id: workspaceInviteId,

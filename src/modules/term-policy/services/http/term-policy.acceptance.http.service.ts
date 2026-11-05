@@ -69,7 +69,6 @@ export class TermPolicyAcceptanceHttpService {
                 action: EnumActivityLogAction.userAcceptTermPolicy,
             }),
         ];
-        // Sequential by design: write must not run if an earlier step throws
         const [tokens, settings] = await Promise.all([
             this.deviceDomain.getNotificationTokens(user.id),
             this.notificationDomain.getListUserSetting(user.id),
@@ -80,6 +79,7 @@ export class TermPolicyAcceptanceHttpService {
             tokens,
             settings
         );
+        // Sequential by design: write must not run if an earlier step throws
         const accepted = await this.termPolicyAcceptanceDomain.userAccept(
             user.id,
             type

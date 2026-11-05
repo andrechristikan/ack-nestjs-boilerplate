@@ -148,7 +148,8 @@ export class TermPolicyContentDomain {
             const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
                 contents,
-                mappedContent
+                mappedContent,
+                termPolicy.updatedAt
             );
             if (!updated) {
                 throw new TermPolicyStatusInvalidException();
@@ -244,7 +245,8 @@ export class TermPolicyContentDomain {
             const removed = await this.termPolicyRepository.removeContent(
                 termPolicyId,
                 contents,
-                { language }
+                { language },
+                termPolicy.updatedAt
             );
             if (!removed) {
                 throw new TermPolicyStatusInvalidException();

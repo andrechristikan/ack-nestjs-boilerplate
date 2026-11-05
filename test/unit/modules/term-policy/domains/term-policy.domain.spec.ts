@@ -498,6 +498,44 @@ describe('TermPolicyDomain', () => {
             });
         });
 
+        it('throws TermPolicyExistException on a version collision', async () => {
+            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
+                false
+            );
+            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            awsS3Service.mapPresign.mockReturnValue({ ...contentEn });
+            const collision = new Error('unique violation');
+            termPolicyRepository.create.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await expect(
+                domain.createByAdmin('term-policy-1', {
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                    contents: [
+                        {
+                            language: EnumMessageLanguage.en,
+                            size: 1024,
+                            key: 'a.hbs',
+                        },
+                    ],
+                })
+            ).rejects.toMatchObject({
+                constructor: TermPolicyExistException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.exist,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.exist
+                    ],
+                messagePath: 'termPolicy.error.exist',
+            });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'version'
+            );
+        });
+
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
@@ -506,6 +544,7 @@ describe('TermPolicyDomain', () => {
             awsS3Service.mapPresign.mockReturnValue({ ...contentEn });
             const cause = new Error('write failed');
             termPolicyRepository.create.mockRejectedValue(cause);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 domain.createByAdmin('term-policy-1', {

@@ -92,6 +92,8 @@ export class TermPolicyAdminController {
     }
 
     @Doc({ summary: 'create a new term or policy' })
+    @DocTermPolicyErrorResponses.contentKeyInvalid
+    @DocTermPolicyErrorResponses.contentSizeExceeded
     @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -164,6 +166,8 @@ export class TermPolicyAdminController {
     }
 
     @Doc({ summary: 'update content of a term or policy by ID' })
+    @DocTermPolicyErrorResponses.contentKeyInvalid
+    @DocTermPolicyErrorResponses.contentSizeExceeded
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -189,6 +193,8 @@ export class TermPolicyAdminController {
     }
 
     @Doc({ summary: 'add content to a term or policy by ID' })
+    @DocTermPolicyErrorResponses.contentKeyInvalid
+    @DocTermPolicyErrorResponses.contentSizeExceeded
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({

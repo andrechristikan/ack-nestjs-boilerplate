@@ -53,6 +53,7 @@ describe('UserProfileDomain', () => {
         name: 'user',
         description: null,
         type: EnumRoleType.user,
+        isImmutable: false,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),

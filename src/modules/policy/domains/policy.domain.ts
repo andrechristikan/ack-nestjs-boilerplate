@@ -71,26 +71,29 @@ export class PolicyDomain {
         id: string,
         data: PolicyUpdateRequestDto
     ): Promise<Policy> {
-        const policyExists = await this.policyRepository.existsByRoleIdAndId(
-            roleId,
-            id
-        );
-        if (!policyExists) {
+        const updated = await this.policyRepository.update(roleId, id, data);
+        if (!updated) {
             throw new PolicyNotFoundException();
         }
 
-        return this.policyRepository.update(id, data);
+        return updated;
     }
 
     async deleteByAdmin(roleId: string, id: string): Promise<Policy> {
-        const policyExists = await this.policyRepository.existsByRoleIdAndId(
+        // Sequential by design: gate before the work it guards
+        const policy = await this.policyRepository.findOneByRoleIdAndId(
             roleId,
             id
         );
-        if (!policyExists) {
+        if (!policy) {
             throw new PolicyNotFoundException();
         }
 
-        return this.policyRepository.delete(id);
+        const deleted = await this.policyRepository.delete(roleId, id);
+        if (!deleted) {
+            throw new PolicyNotFoundException();
+        }
+
+        return policy;
     }
 }

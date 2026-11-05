@@ -118,7 +118,7 @@ describe('AuthJwtAccessStrategy', () => {
         const login: ISessionCache = {
             userId: 'user-1',
             sessionId: 'session-1',
-            jti: 'jti-value',
+            jtiDigest: 'jti-digest',
         };
 
         it('checks the payload, reads the login through SessionDomain, then checks the session', async () => {
@@ -138,7 +138,7 @@ describe('AuthJwtAccessStrategy', () => {
             );
             expect(authDomain.validateJwtAccessSession).toHaveBeenCalledWith(
                 identified,
-                'jti-value'
+                'jti-digest'
             );
             expect(authDomain.validateJwtAccessStrategy).toHaveBeenCalledBefore(
                 sessionDomain.getLogin

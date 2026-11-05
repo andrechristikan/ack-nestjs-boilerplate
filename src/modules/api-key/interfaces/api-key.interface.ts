@@ -33,13 +33,6 @@ export interface IApiKeyCreated extends IApiKey {
     secret: string;
 }
 
-export interface IApiKeyAnalyticCreated {
-    id: string;
-    type: EnumApiKeyType;
-    createdAt: Date;
-    createdBy: string | null;
-}
-
 export type IApiKeyField = Extract<keyof ApiKey, string>;
 
 export type IApiKeyFieldValue = NonNullable<ApiKey[IApiKeyField]>;

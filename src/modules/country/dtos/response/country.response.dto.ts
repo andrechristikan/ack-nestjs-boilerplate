@@ -34,7 +34,15 @@ export const CountryResponseSchema = DatabaseResponseSchema.omit({
     }),
     continent: z.string().meta({
         description: 'Continent the country belongs to',
-        example: faker.location.country(),
+        example: faker.helpers.arrayElement([
+            'Africa',
+            'Antarctica',
+            'Asia',
+            'Europe',
+            'North America',
+            'Oceania',
+            'South America',
+        ]),
     }),
     timezone: z.string().meta({
         description: 'Timezone of the country',

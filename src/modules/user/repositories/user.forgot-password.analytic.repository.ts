@@ -24,7 +24,8 @@ export class UserForgotPasswordAnalyticRepository implements IUserForgotPassword
 
     async groupUnusedTokenByUser(
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        min: number
     ): Promise<IUserForgotPasswordAnalyticUserCount[]> {
         const rows = await this.databaseService.client.forgotPassword.groupBy({
             by: ['userId'],
@@ -33,6 +34,7 @@ export class UserForgotPasswordAnalyticRepository implements IUserForgotPassword
                 createdAt: { gte: startDate, lt: endDate },
             },
             _count: { _all: true },
+            having: { userId: { _count: { gte: min } } },
         });
         return rows.map(r => ({ userId: r.userId, count: r._count._all }));
     }

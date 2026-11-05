@@ -1,6 +1,8 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumUserStatus } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
@@ -41,6 +43,7 @@ export class UserTwoFactorDomain {
         private readonly userRepository: UserRepository,
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly sentryService: SentryService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
         this.maxAttempt = this.configService.get<number>(
@@ -286,23 +289,32 @@ export class UserTwoFactorDomain {
         return pendingSecret;
     }
 
-    /** Makes the pending authenticator the account's secret and issues a fresh set of backup codes. */
+    /** Makes the pending authenticator the account's secret and issues a fresh set of backup codes; a pending secret that moved on, or a write conflict over it, answers that setup is required. */
     async enableTwoFactor(
         userId: string,
         pendingSecret: string
     ): Promise<string[]> {
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.userTwoFactorRepository.enableTwoFactor(
-                userId,
-                pendingSecret,
-                backupCodes.hashes
-            );
+            const isEnabled =
+                await this.userTwoFactorRepository.enableTwoFactor(
+                    userId,
+                    pendingSecret,
+                    backupCodes.hashes
+                );
+            if (!isEnabled) {
+                throw new AuthTwoFactorSetupRequiredException();
+            }
 
             return backupCodes.codes;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new AuthTwoFactorSetupRequiredException();
             }
 
             throw new AppUnknownException(err);
@@ -334,7 +346,11 @@ export class UserTwoFactorDomain {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void> {
-        await this.userTwoFactorRepository.disableTwoFactorInTx(tx, userId);
+        const isDisabled =
+            await this.userTwoFactorRepository.disableTwoFactorInTx(tx, userId);
+        if (!isDisabled) {
+            throw new AuthTwoFactorNotEnabledException();
+        }
     }
 
     async removeInTx(
@@ -389,10 +405,14 @@ export class UserTwoFactorDomain {
     async regenerateTwoFactorBackupCodes(userId: string): Promise<string[]> {
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.userTwoFactorRepository.regenerateTwoFactorBackupCodes(
-                userId,
-                backupCodes.hashes
-            );
+            const isRegenerated =
+                await this.userTwoFactorRepository.regenerateTwoFactorBackupCodes(
+                    userId,
+                    backupCodes.hashes
+                );
+            if (!isRegenerated) {
+                throw new AuthTwoFactorNotEnabledException();
+            }
 
             return backupCodes.codes;
         } catch (err: unknown) {

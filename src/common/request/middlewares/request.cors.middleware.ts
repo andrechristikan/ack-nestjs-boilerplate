@@ -81,7 +81,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
 
     /**
      * Matches an origin against patterns by scheme (when the pattern names one), hostname, and
-     * port, with the default port of the scheme normalised, or by wildcard subdomain.
+     * port, with the default port of the scheme normalized, or by wildcard subdomain.
      */
     private isOriginAllowed(origin: string, patterns: string[]): boolean {
         const isValidOrigin = this.isValidOrigin(origin);

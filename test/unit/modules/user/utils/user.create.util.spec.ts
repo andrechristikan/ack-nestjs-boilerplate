@@ -55,6 +55,7 @@ describe('UserCreateUtil', () => {
         name: 'user',
         description: null,
         type: EnumRoleType.user,
+        isImmutable: false,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -195,7 +196,28 @@ describe('UserCreateUtil', () => {
         });
     });
 
-    describe('buildInviteWorkspaceContext', () => {
+    describe('buildSignUpWorkspaceContext', () => {
+        it('builds the personal workspace context of the username when the sign-up carries no invite', () => {
+            databaseUtil.createId.mockReturnValueOnce('workspace-one');
+            helperStringService.generateSlugCandidates.mockReturnValueOnce([
+                'w-one-a',
+                'w-one-b',
+                'w-one-c',
+            ]);
+
+            const result = util.buildSignUpWorkspaceContext(
+                null,
+                'harborFinch'
+            );
+
+            expect(result).toEqual({
+                type: EnumUserSignUpWorkspaceContextType.personal,
+                workspaceId: 'workspace-one',
+                slugCandidates: ['w-one-a', 'w-one-b', 'w-one-c'],
+                name: "harborFinch's Workspace",
+            });
+        });
+
         it('maps a pending invite onto the invite sign-up context', () => {
             const invite: WorkspaceInvite = {
                 id: 'invite-harbor',
@@ -218,7 +240,12 @@ describe('UserCreateUtil', () => {
                 nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             };
 
-            expect(util.buildInviteWorkspaceContext(invite)).toEqual({
+            const result = util.buildSignUpWorkspaceContext(
+                invite,
+                'harborFinch'
+            );
+
+            expect(result).toEqual({
                 type: EnumUserSignUpWorkspaceContextType.invite,
                 workspaceId: 'workspace-harbor',
                 workspaceInviteId: 'invite-harbor',
@@ -251,7 +278,12 @@ describe('UserCreateUtil', () => {
                 nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             };
 
-            expect(util.buildInviteWorkspaceContext(invite)).toMatchObject({
+            const result = util.buildSignUpWorkspaceContext(
+                invite,
+                'harborFinch'
+            );
+
+            expect(result).toMatchObject({
                 projectId: null,
                 projectMemberRole: null,
             });

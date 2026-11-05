@@ -31,11 +31,13 @@ export class UserForgotPasswordAnalyticDomain {
 
     getUnusedTokenCountsByUser(
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        min: number
     ): Promise<IUserForgotPasswordAnalyticUserCount[]> {
         return this.userForgotPasswordAnalyticRepository.groupUnusedTokenByUser(
             startDate,
-            endDate
+            endDate,
+            min
         );
     }
 }

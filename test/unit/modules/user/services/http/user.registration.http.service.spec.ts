@@ -33,7 +33,6 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -109,8 +108,6 @@ describe('UserRegistrationHttpService', () => {
         mock<ProjectMemberDomain>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
     const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
-    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
-        mock<FeatureFlagDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
@@ -192,6 +189,7 @@ describe('UserRegistrationHttpService', () => {
             name: 'user',
             description: null,
             type: EnumRoleType.user,
+            isImmutable: false,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -302,6 +300,7 @@ describe('UserRegistrationHttpService', () => {
         id: 'role-bramble',
         name: 'user',
         type: EnumRoleType.user,
+        isImmutable: false,
     };
     const invite: WorkspaceInvite = {
         id: 'invite-bramble',
@@ -377,7 +376,6 @@ describe('UserRegistrationHttpService', () => {
                 { provide: ProjectMemberDomain, useValue: projectMemberDomain },
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: CountryDomain, useValue: countryDomain },
-                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -414,9 +412,10 @@ describe('UserRegistrationHttpService', () => {
         };
 
         beforeEach(() => {
-            userCreateUtil.buildPersonalWorkspaceContexts.mockReturnValue([
-                personalContext,
-            ]);
+            workspaceInviteDomain.getSignUpInvite.mockResolvedValue(null);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
+                personalContext
+            );
             userAuthDomain.prepareSignUp.mockResolvedValue({
                 input,
                 emailVerification,
@@ -429,9 +428,13 @@ describe('UserRegistrationHttpService', () => {
         it('commits the new user on one transaction, stages the created rows, sends the welcome, and returns an empty envelope', async () => {
             await expect(service.signUp(dto)).resolves.toEqual({});
 
+            expect(workspaceInviteDomain.getSignUpInvite).toHaveBeenCalledWith(
+                null,
+                'bramble@example.com'
+            );
             expect(
-                userCreateUtil.buildPersonalWorkspaceContexts
-            ).toHaveBeenCalledWith(['bramble2fox']);
+                userCreateUtil.buildSignUpWorkspaceContext
+            ).toHaveBeenCalledWith(null, 'bramble2fox');
             expect(roleDomain.getByName).toHaveBeenCalledWith('user');
             expect(countryDomain.getOne).toHaveBeenCalledWith(
                 'country-bramble'
@@ -486,10 +489,8 @@ describe('UserRegistrationHttpService', () => {
         });
 
         it('forwards the name and reads the invite before the role when a token is present', async () => {
-            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue(
-                invite
-            );
-            userCreateUtil.buildInviteWorkspaceContext.mockReturnValue(
+            workspaceInviteDomain.getSignUpInvite.mockResolvedValue(invite);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
 
@@ -499,18 +500,13 @@ describe('UserRegistrationHttpService', () => {
                 inviteToken: 'raw-token',
             });
 
+            expect(workspaceInviteDomain.getSignUpInvite).toHaveBeenCalledWith(
+                'raw-token',
+                'bramble@example.com'
+            );
             expect(
-                featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
-            expect(
-                workspaceInviteDomain.validateInviteForEmail
-            ).toHaveBeenCalledWith('raw-token', 'bramble@example.com');
-            expect(
-                userCreateUtil.buildInviteWorkspaceContext
-            ).toHaveBeenCalledWith(invite);
-            expect(
-                userCreateUtil.buildPersonalWorkspaceContexts
-            ).not.toHaveBeenCalled();
+                userCreateUtil.buildSignUpWorkspaceContext
+            ).toHaveBeenCalledWith(invite, 'bramble2fox');
             expect(userAuthDomain.prepareSignUp).toHaveBeenCalledWith(
                 {
                     ...signUpInput,
@@ -522,7 +518,7 @@ describe('UserRegistrationHttpService', () => {
         });
 
         it('throws the disabled exception before any read when invitations are closed', async () => {
-            featureFlagDomain.validateFeatureFlagMetadata.mockRejectedValue(
+            workspaceInviteDomain.getSignUpInvite.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
 
@@ -538,13 +534,13 @@ describe('UserRegistrationHttpService', () => {
                 messagePath: 'featureFlag.error.disabled',
             });
             expect(
-                workspaceInviteDomain.validateInviteForEmail
+                userCreateUtil.buildSignUpWorkspaceContext
             ).not.toHaveBeenCalled();
             expect(roleDomain.getByName).not.toHaveBeenCalled();
         });
 
         it('throws the invite exception before the role read when the invite does not resolve', async () => {
-            workspaceInviteDomain.validateInviteForEmail.mockRejectedValue(
+            workspaceInviteDomain.getSignUpInvite.mockRejectedValue(
                 new WorkspaceInviteInvalidException()
             );
 

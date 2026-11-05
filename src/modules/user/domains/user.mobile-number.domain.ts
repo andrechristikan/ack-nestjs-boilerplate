@@ -1,5 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -177,6 +178,10 @@ export class UserMobileNumberDomain {
                         tx,
                         mobileNumberId
                     );
+                if (!mobileNumber) {
+                    throw new UserMobileNumberNotFoundException();
+                }
+
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
 
                 return mobileNumber;
@@ -186,6 +191,11 @@ export class UserMobileNumberDomain {
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new UserMobileNumberNotFoundException();
             }
 
             throw new AppUnknownException(err);

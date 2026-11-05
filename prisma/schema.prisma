@@ -38,6 +38,7 @@ model Role {
   name        String
   description String?
   type        EnumRoleType @default(user)
+  isImmutable Boolean      @default(false)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -246,7 +247,7 @@ model ActivityLog {
   @@index(fields: [userId, workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [action, createdAt(sort: Desc)])
+  @@index(fields: [action, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [createdAt(sort: Desc), workspaceId])
   @@map("ActivityLogs")
 }

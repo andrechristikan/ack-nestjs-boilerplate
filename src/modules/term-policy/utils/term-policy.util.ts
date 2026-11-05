@@ -59,15 +59,16 @@ export class TermPolicyUtil {
         });
     }
 
-    /** True when the key sits under the storage path of the type and version. */
+    /** True when the key names a file under the storage path of the type and version. */
     isContentKeyInPath(
         type: EnumTermPolicyType,
         version: number,
         key: string
     ): boolean {
         const path = this.getPath(type, version);
+        const prefix = `${path}/`;
 
-        return key.startsWith(`${path}/`);
+        return key.startsWith(prefix) && key.length > prefix.length;
     }
 
     /** Builds the private S3 key `{path}/{language}.{ext}`, stripping any leading slash. */

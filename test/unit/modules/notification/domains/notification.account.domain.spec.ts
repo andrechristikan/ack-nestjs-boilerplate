@@ -226,7 +226,6 @@ describe('NotificationAccountDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -258,7 +257,6 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],
@@ -500,7 +498,6 @@ describe('NotificationAccountDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendWelcomeEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -534,7 +531,6 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],
@@ -773,7 +769,6 @@ describe('NotificationAccountDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -803,7 +798,6 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],
@@ -1006,7 +1000,6 @@ describe('NotificationAccountDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -1037,7 +1030,6 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],
@@ -1249,7 +1241,6 @@ describe('NotificationAccountDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendVerificationEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -1280,7 +1271,6 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],
@@ -1508,7 +1498,6 @@ describe('NotificationAccountDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -1539,7 +1528,6 @@ describe('NotificationAccountDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],

@@ -17,7 +17,7 @@ import type {
     IUser,
     IUserCreateContract,
     IUserCreateWithWorkspaceInput,
-    IUserSignUpWorkspaceInvite,
+    IUserSignUpWorkspaceContext,
     IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -142,9 +142,19 @@ export class UserCreateUtil {
         });
     }
 
-    buildInviteWorkspaceContext(
-        invite: WorkspaceInvite
-    ): IUserSignUpWorkspaceInvite {
+    /** Builds the workspace context of a sign-up: the invite's when it carries one, otherwise the username's personal workspace. */
+    buildSignUpWorkspaceContext(
+        invite: WorkspaceInvite | null,
+        username: string
+    ): IUserSignUpWorkspaceContext {
+        if (invite === null) {
+            const personalContexts = this.buildPersonalWorkspaceContexts([
+                username,
+            ]);
+
+            return personalContexts[0]!;
+        }
+
         return {
             type: EnumUserSignUpWorkspaceContextType.invite,
             workspaceId: invite.workspaceId,

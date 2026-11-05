@@ -14,7 +14,6 @@ import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import {
     ProjectRoleMetaKey,
     ProjectStoreKey,
-    ProjectWorkspaceBypassStoreKey,
 } from '@modules/project/constants/project.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -75,7 +74,7 @@ describe('ProjectRoleGuard', () => {
             updatedBy: null,
         };
 
-        it('validates with the declared roles, the stored project, and workspace member, then stores the bypass flag', async () => {
+        it('validates with the declared roles, the stored project, and workspace member, and writes nothing to the request store', async () => {
             const project = stubProject;
             const workspaceMember = stubWorkspaceMember;
             reflector.get.mockReturnValue([EnumProjectMemberRole.admin]);
@@ -88,9 +87,7 @@ describe('ProjectRoleGuard', () => {
 
                 return null;
             });
-            projectMemberDomain.validateProjectRoleGuard.mockResolvedValue(
-                true
-            );
+            projectMemberDomain.validateProjectRoleGuard.mockResolvedValue();
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             executionContext.getHandler.mockReturnValue(vi.fn());
@@ -107,10 +104,7 @@ describe('ProjectRoleGuard', () => {
             ).toHaveBeenCalledWith(project.id, workspaceMember, [
                 EnumProjectMemberRole.admin,
             ]);
-            expect(requestStoreService.set).toHaveBeenCalledWith(
-                ProjectWorkspaceBypassStoreKey,
-                true
-            );
+            expect(requestStoreService.set).not.toHaveBeenCalled();
         });
 
         it('validates with an empty role list when the handler declares none', async () => {
@@ -124,9 +118,7 @@ describe('ProjectRoleGuard', () => {
 
                 return null;
             });
-            projectMemberDomain.validateProjectRoleGuard.mockResolvedValue(
-                false
-            );
+            projectMemberDomain.validateProjectRoleGuard.mockResolvedValue();
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             executionContext.getHandler.mockReturnValue(vi.fn());
@@ -136,10 +128,6 @@ describe('ProjectRoleGuard', () => {
             expect(
                 projectMemberDomain.validateProjectRoleGuard
             ).toHaveBeenCalledWith(stubProject.id, stubWorkspaceMember, []);
-            expect(requestStoreService.set).toHaveBeenCalledWith(
-                ProjectWorkspaceBypassStoreKey,
-                false
-            );
         });
 
         it('throws ProjectGuardMissingException before the domain call when the project store is empty', async () => {

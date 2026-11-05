@@ -51,9 +51,14 @@ export interface IWorkspaceRepository {
     softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        deletedAt: Date
-    ): Promise<void>;
-    softDeleteSolelyOwnedByUserInTx(
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<boolean>;
+    existsOwnedWithOtherMembersInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<boolean>;
+    softDeleteOwnedByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         deletedAt: Date

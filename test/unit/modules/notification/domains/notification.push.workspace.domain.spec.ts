@@ -186,7 +186,6 @@ describe('NotificationPushWorkspaceDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.updateSentAt,
-                    message: 'notification.queue.push.error.deliveryNotFound',
                     rawError: expect.any(UnrecoverableError),
                 },
             ]);

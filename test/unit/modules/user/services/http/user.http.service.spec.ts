@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -9,6 +10,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -26,6 +28,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -39,9 +42,11 @@ import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.delete-self-forbidden.exception';
 import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import { UserHttpService } from '@modules/user/services/http/user.http.service';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
@@ -54,6 +59,7 @@ import {
     UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
 } from '@modules/user/constants/user.list.constant';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserHttpService', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
@@ -74,6 +80,7 @@ describe('UserHttpService', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const userProfileDomain: MockProxy<UserProfileDomain> =
         mock<UserProfileDomain>();
@@ -96,6 +103,9 @@ describe('UserHttpService', () => {
     const projectMemberDomain: MockProxy<ProjectMemberDomain> =
         mock<ProjectMemberDomain>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const configValues: Record<string, unknown> = {
+        'user.deleteSelf.timeoutInMs': 30000,
+    };
 
     let service: UserHttpService;
 
@@ -135,6 +145,7 @@ describe('UserHttpService', () => {
             name: 'user',
             description: null,
             type: EnumRoleType.user,
+            isImmutable: false,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -174,6 +185,7 @@ describe('UserHttpService', () => {
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
+                { provide: UserQueue, useValue: userQueue },
                 { provide: SessionUtil, useValue: sessionUtil },
                 { provide: UserProfileDomain, useValue: userProfileDomain },
                 { provide: UserUtil, useValue: userUtil },
@@ -206,6 +218,10 @@ describe('UserHttpService', () => {
                     useValue: projectMemberDomain,
                 },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(configValues),
+                },
             ],
         }).compile();
         service = module.get(UserHttpService);
@@ -677,9 +693,7 @@ describe('UserHttpService', () => {
             userUtil.hasPassword.mockReturnValue(true);
             userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(true);
             userAuthDomain.verifyCredential.mockResolvedValue(true);
-            workspaceDomain.softDeleteSolelyOwnedByUserInTx.mockResolvedValue(
-                []
-            );
+            workspaceDomain.softDeleteOwnedByUserInTx.mockResolvedValue([]);
             userDomain.deleteSelfInTx.mockResolvedValue({
                 ...baseUser,
                 photo: null,
@@ -687,7 +701,31 @@ describe('UserHttpService', () => {
             sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revoked);
         });
 
-        it('verifies the password, cascades the solely owned workspaces and every membership on one transaction, purges after commit, and stages the revoke-all row before the delete row', async () => {
+        it('throws UserDeleteSelfForbiddenException for a superAdmin before the password check', async () => {
+            const superAdmin: IUser = {
+                ...baseUser,
+                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
+            };
+            const failure = new UserDeleteSelfForbiddenException();
+            userDomain.assertSelfDeletable.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(service.deleteSelf(superAdmin, dto)).rejects.toBe(
+                failure
+            );
+
+            expect(userDomain.assertSelfDeletable).toHaveBeenCalledWith(
+                superAdmin
+            );
+            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+            expect(
+                userPasswordDomain.incrementPasswordAttempt
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('verifies the password, cascades the owned workspaces and every membership on one transaction, purges after commit, and stages the revoke-all row before the delete row', async () => {
             const calls: string[] = [];
             databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
@@ -708,7 +746,12 @@ describe('UserHttpService', () => {
 
                 return true;
             });
-            workspaceDomain.softDeleteSolelyOwnedByUserInTx.mockImplementation(
+            workspaceDomain.assertOwnedHasNoOtherMembersInTx.mockImplementation(
+                async () => {
+                    calls.push('assertNoOtherMembers');
+                }
+            );
+            workspaceDomain.softDeleteOwnedByUserInTx.mockImplementationOnce(
                 async () => {
                     calls.push('softDeleteWorkspaces');
 
@@ -728,6 +771,11 @@ describe('UserHttpService', () => {
             workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx.mockImplementation(
                 async (_tx, workspaceId) => {
                     calls.push(`joinRequests:${workspaceId}`);
+                }
+            );
+            workspaceJoinRequestDomain.cancelPendingByRequesterInTx.mockImplementation(
+                async () => {
+                    calls.push('cancelOwnJoinRequests');
                 }
             );
             workspaceMemberDomain.removeByUserInTx.mockImplementation(
@@ -783,7 +831,7 @@ describe('UserHttpService', () => {
                 true
             );
             expect(
-                workspaceDomain.softDeleteSolelyOwnedByUserInTx
+                workspaceDomain.softDeleteOwnedByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-cinder', now);
             expect(
                 projectDomain.softDeleteByWorkspaceInTx
@@ -827,6 +875,7 @@ describe('UserHttpService', () => {
                 'countAttempt',
                 'verifyPassword',
                 'begin',
+                'assertNoOtherMembers',
                 'softDeleteWorkspaces',
                 'projects:workspace-one',
                 'invites:workspace-one',
@@ -834,6 +883,7 @@ describe('UserHttpService', () => {
                 'projects:workspace-two',
                 'invites:workspace-two',
                 'joinRequests:workspace-two',
+                'cancelOwnJoinRequests',
                 'removeMemberships',
                 'removeProjectMemberships',
                 'removeMobileNumbers',
@@ -863,10 +913,140 @@ describe('UserHttpService', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
                 activityLog,
+                activityLog,
+                activityLog,
             ]);
         });
 
-        it('cascades no workspace when the user solely owns none', async () => {
+        it('throws WorkspaceOwnerTransferRequiredException and writes nothing when an owned workspace has another member', async () => {
+            const failure = new WorkspaceOwnerTransferRequiredException();
+            workspaceDomain.assertOwnedHasNoOtherMembersInTx.mockRejectedValue(
+                failure
+            );
+
+            await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(
+                failure
+            );
+
+            expect(
+                workspaceDomain.softDeleteOwnedByUserInTx
+            ).not.toHaveBeenCalled();
+            expect(userDomain.deleteSelfInTx).not.toHaveBeenCalled();
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('cascades a workspace with no other member', async () => {
+            workspaceDomain.softDeleteOwnedByUserInTx.mockResolvedValue([
+                'workspace-one',
+            ]);
+
+            await expect(service.deleteSelf(baseUser, dto)).resolves.toEqual(
+                {}
+            );
+
+            expect(
+                workspaceDomain.assertOwnedHasNoOtherMembersInTx
+            ).toHaveBeenCalledWith(tx, 'user-cinder');
+            expect(
+                projectDomain.softDeleteByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-one', now, 'user-cinder');
+            expect(
+                workspaceInviteDomain.revokePendingByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-one');
+            expect(
+                workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-one');
+        });
+
+        it("cancels the user's own pending join requests on the same tx", async () => {
+            await service.deleteSelf(baseUser, dto);
+
+            expect(
+                workspaceJoinRequestDomain.cancelPendingByRequesterInTx
+            ).toHaveBeenCalledWith(tx, 'user-cinder');
+        });
+
+        it('opens the transaction with user.deleteSelf.timeoutInMs', async () => {
+            await service.deleteSelf(baseUser, dto);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+                expect.any(Function),
+                { timeout: 30000 }
+            );
+        });
+
+        it('answers UserNotFoundException on a write conflict', async () => {
+            const conflict = new Error('write-conflict');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.deleteSelf(baseUser, dto)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+                messagePath: 'user.error.notFound',
+            });
+
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('stages one workspaceDeleted row per deleted workspace after the purge', async () => {
+            const calls: string[] = [];
+            workspaceDomain.softDeleteOwnedByUserInTx.mockResolvedValueOnce([
+                'workspace-one',
+                'workspace-two',
+            ]);
+            sessionQueue.purgeLogins.mockImplementation(async () => {
+                calls.push('purge');
+            });
+            activityLogDomain.prepare.mockImplementation(input => {
+                calls.push(`prepare:${input.action}`);
+
+                return activityLog;
+            });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                calls.push('stage');
+            });
+
+            await service.deleteSelf(baseUser, dto);
+
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.workspaceDeleted,
+                userId: 'user-cinder',
+                createdBy: 'user-cinder',
+                workspaceId: 'workspace-one',
+            });
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.workspaceDeleted,
+                userId: 'user-cinder',
+                createdBy: 'user-cinder',
+                workspaceId: 'workspace-two',
+            });
+            expect(calls).toEqual([
+                `prepare:${EnumActivityLogAction.userRevokeAllSessions}`,
+                `prepare:${EnumActivityLogAction.userDeleteSelf}`,
+                'purge',
+                `prepare:${EnumActivityLogAction.workspaceDeleted}`,
+                `prepare:${EnumActivityLogAction.workspaceDeleted}`,
+                'stage',
+            ]);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+                activityLog,
+                activityLog,
+                activityLog,
+            ]);
+        });
+
+        it('cascades no workspace when the user owns none', async () => {
             await service.deleteSelf(baseUser, dto);
 
             expect(
@@ -916,111 +1096,48 @@ describe('UserHttpService', () => {
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('locks the account out, purges, and stages both rows before the attempt limit is answered, deleting nothing', async () => {
+        it('enqueues the lockout and stages both rows before the attempt limit is answered, deleting nothing', async () => {
+            const calls: string[] = [];
+            const failure = new Error('attempt max');
             userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
                 false
             );
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(true);
-            const failure = new Error('attempt max');
             userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
+                calls.push('assert');
+
                 throw failure;
+            });
+            userQueue.lockout.mockImplementation(async () => {
+                calls.push('lockout');
+            });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                calls.push('stage');
             });
 
             await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(
                 failure
             );
 
-            expect(userDomain.deactivateForMaxAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cinder'
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-cinder',
-                revoked
-            );
+            expect(userQueue.lockout).toHaveBeenCalledWith('user-cinder');
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId: 'user-cinder',
+                createdBy: 'user-cinder',
+            });
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userReachMaxPasswordAttempt,
                 userId: 'user-cinder',
                 createdBy: 'user-cinder',
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+            expect(calls).toEqual(['lockout', 'stage', 'assert']);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userAuthDomain.verifyCredential).not.toHaveBeenCalled();
             expect(userDomain.deleteSelfInTx).not.toHaveBeenCalled();
             expect(
-                workspaceDomain.softDeleteSolelyOwnedByUserInTx
+                workspaceDomain.softDeleteOwnedByUserInTx
             ).not.toHaveBeenCalled();
-        });
-
-        it('stages and purges nothing when the lockout write finds the account already deactivated', async () => {
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
-                false
-            );
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(false);
-            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
-                throw new Error('attempt max');
-            });
-
-            await expect(service.deleteSelf(baseUser, dto)).rejects.toThrow(
-                'attempt max'
-            );
-
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('rethrows an app exception of the lockout write unchanged', async () => {
-            const failure = new UserStatusInvalidException();
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
-                false
-            );
-            databaseService.withTransaction.mockRejectedValue(failure);
-
-            await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(
-                failure
-            );
-
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('stages and purges nothing and still answers the attempt limit when the lockout write conflicts', async () => {
-            const conflict = new Error('write-conflict');
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
-                false
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-            const failure = new Error('attempt max');
-            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
-                throw failure;
-            });
-
-            await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(
-                failure
-            );
-
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('wraps an unknown lockout write failure in AppUnknownException', async () => {
-            const cause = new Error('database exploded');
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
-                false
-            );
-            databaseService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
-
-            await expect(
-                service.deleteSelf(baseUser, dto)
-            ).rejects.toMatchObject({ rawError: cause });
-
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('hands the stored photo to the profile domain', async () => {
@@ -1037,11 +1154,17 @@ describe('UserHttpService', () => {
             );
         });
 
-        it('purges and stages nothing when the transaction fails', async () => {
+        it('wraps an unknown error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
 
-            await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(cause);
+            await expect(
+                service.deleteSelf(baseUser, dto)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userProfileDomain.deleteOwnedPhoto).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();

@@ -1853,6 +1853,26 @@ describe('AwsS3Service', () => {
             });
 
             expect(send).toHaveBeenCalledTimes(1);
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        CORSConfiguration: {
+                            CORSRules: [
+                                expect.objectContaining({
+                                    ExposeHeaders: [
+                                        'ETag',
+                                        'Content-Length',
+                                        'Content-Type',
+                                    ],
+                                }),
+                                expect.objectContaining({
+                                    ExposeHeaders: ['ETag', 'Content-Length'],
+                                }),
+                            ],
+                        },
+                    }),
+                })
+            );
         });
 
         it('sets the restricted CORS rules for the private bucket', async () => {
@@ -1868,6 +1888,29 @@ describe('AwsS3Service', () => {
             });
 
             expect(send).toHaveBeenCalledTimes(1);
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        CORSConfiguration: {
+                            CORSRules: [
+                                expect.objectContaining({
+                                    ExposeHeaders: [
+                                        'ETag',
+                                        'Content-Length',
+                                        'Content-Type',
+                                        'Content-Range',
+                                        'Accept-Ranges',
+                                        'Last-Modified',
+                                        'x-amz-server-side-encryption',
+                                        'x-amz-request-id',
+                                        'x-amz-id-2',
+                                    ],
+                                }),
+                            ],
+                        },
+                    }),
+                })
+            );
         });
     });
 

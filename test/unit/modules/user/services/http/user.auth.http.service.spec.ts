@@ -76,10 +76,12 @@ import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.en
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
@@ -91,7 +93,6 @@ import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user
 import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
-import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type {
     IUser,
@@ -109,6 +110,7 @@ import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -118,7 +120,6 @@ import {
     stubUserRefreshSession,
 } from '@test/unit/helpers/test.unit.user-refresh.helper';
 import type { IUserRefreshSessionDoubles } from '@test/unit/helpers/test.unit.user-refresh.helper';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('UserAuthHttpService', () => {
@@ -143,6 +144,8 @@ describe('UserAuthHttpService', () => {
     const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
     const workspaceInviteDomain: MockProxy<WorkspaceInviteDomain> =
         mock<WorkspaceInviteDomain>();
+    const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
+        mock<WorkspaceMemberDomain>();
     const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const projectMemberDomain: MockProxy<ProjectMemberDomain> =
         mock<ProjectMemberDomain>();
@@ -154,6 +157,7 @@ describe('UserAuthHttpService', () => {
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const authJwtDomain: MockProxy<AuthJwtDomain> = mock<AuthJwtDomain>();
     const authTwoFactorDomain: MockProxy<AuthTwoFactorDomain> =
         mock<AuthTwoFactorDomain>();
@@ -273,6 +277,7 @@ describe('UserAuthHttpService', () => {
             name: 'user',
             description: null,
             type: EnumRoleType.user,
+            isImmutable: false,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -413,6 +418,7 @@ describe('UserAuthHttpService', () => {
         id: 'role-bramble',
         name: 'user',
         type: EnumRoleType.user,
+        isImmutable: false,
     };
     const invite: WorkspaceInvite = {
         id: 'invite-bramble',
@@ -491,6 +497,7 @@ describe('UserAuthHttpService', () => {
         workspaceUtil.buildOwnedUsers.mockReturnValue([]);
         roleDomain.getByName.mockResolvedValue(role);
         countryDomain.getOne.mockResolvedValue(country);
+        workspaceMemberDomain.resolveLastWorkspaceId.mockResolvedValue(null);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -523,6 +530,10 @@ describe('UserAuthHttpService', () => {
                     provide: WorkspaceInviteDomain,
                     useValue: workspaceInviteDomain,
                 },
+                {
+                    provide: WorkspaceMemberDomain,
+                    useValue: workspaceMemberDomain,
+                },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: ProjectMemberDomain, useValue: projectMemberDomain },
                 { provide: RoleDomain, useValue: roleDomain },
@@ -532,6 +543,7 @@ describe('UserAuthHttpService', () => {
                 { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: SessionDomain, useValue: sessionDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
+                { provide: UserQueue, useValue: userQueue },
                 { provide: AuthJwtDomain, useValue: authJwtDomain },
                 {
                     provide: AuthTwoFactorDomain,
@@ -572,9 +584,10 @@ describe('UserAuthHttpService', () => {
         };
 
         beforeEach(() => {
-            userCreateUtil.buildPersonalWorkspaceContexts.mockReturnValue([
-                personalContext,
-            ]);
+            workspaceInviteDomain.getSignUpInvite.mockResolvedValue(null);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
+                personalContext
+            );
             featureFlagDomain.getMetadataByKey.mockResolvedValue({
                 signUpAllowed: true,
             });
@@ -689,10 +702,8 @@ describe('UserAuthHttpService', () => {
         });
 
         it('creates a new invited user, joins the workspace, and issues tokens', async () => {
-            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue(
-                invite
-            );
-            userCreateUtil.buildInviteWorkspaceContext.mockReturnValue(
+            workspaceInviteDomain.getSignUpInvite.mockResolvedValue(invite);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
             userAuthDomain.prepareSocialCreate.mockReturnValue(inviteInput);
@@ -727,10 +738,8 @@ describe('UserAuthHttpService', () => {
 
         it('leaves no user row when the workspace join fails', async () => {
             const failure = new WorkspaceInviteInvalidException();
-            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue(
-                invite
-            );
-            userCreateUtil.buildInviteWorkspaceContext.mockReturnValue(
+            workspaceInviteDomain.getSignUpInvite.mockResolvedValue(invite);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
             userAuthDomain.prepareSocialCreate.mockReturnValue(inviteInput);
@@ -759,10 +768,8 @@ describe('UserAuthHttpService', () => {
         });
 
         it('passes a null name and forwards the invite token', async () => {
-            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue(
-                invite
-            );
-            userCreateUtil.buildInviteWorkspaceContext.mockReturnValue(
+            workspaceInviteDomain.getSignUpInvite.mockResolvedValue(invite);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
             const dtoWithoutName: UserCreateSocialRequestDto = {
@@ -793,7 +800,7 @@ describe('UserAuthHttpService', () => {
         });
 
         it('skips the invite and the sign-up gates for an existing user', async () => {
-            workspaceInviteDomain.validateInviteForEmail.mockRejectedValue(
+            workspaceInviteDomain.getSignUpInvite.mockRejectedValue(
                 new WorkspaceInviteInvalidException()
             );
             userAuthDomain.getOneByEmail.mockResolvedValue(baseUser);
@@ -807,19 +814,16 @@ describe('UserAuthHttpService', () => {
             ).resolves.toEqual({ data: tokenOutcome });
 
             expect(
-                featureFlagDomain.validateFeatureFlagMetadata
+                workspaceInviteDomain.getSignUpInvite
             ).not.toHaveBeenCalled();
             expect(
-                workspaceInviteDomain.validateInviteForEmail
-            ).not.toHaveBeenCalled();
-            expect(
-                userCreateUtil.buildPersonalWorkspaceContexts
+                userCreateUtil.buildSignUpWorkspaceContext
             ).not.toHaveBeenCalled();
             expect(userAuthDomain.prepareSocialCreate).not.toHaveBeenCalled();
         });
 
         it('resolves the invite once the user is known to be new', async () => {
-            workspaceInviteDomain.validateInviteForEmail.mockRejectedValue(
+            workspaceInviteDomain.getSignUpInvite.mockRejectedValue(
                 new WorkspaceInviteInvalidException()
             );
 
@@ -839,18 +843,16 @@ describe('UserAuthHttpService', () => {
                 messagePath: 'workspace.error.inviteInvalid',
             });
             expect(featureFlagDomain.getMetadataByKey).toHaveBeenCalledBefore(
-                workspaceInviteDomain.validateInviteForEmail
+                workspaceInviteDomain.getSignUpInvite
             );
             expect(userAuthDomain.getOneByEmail).toHaveBeenCalledBefore(
-                workspaceInviteDomain.validateInviteForEmail
+                workspaceInviteDomain.getSignUpInvite
             );
         });
 
         it('validates the invite against the trimmed lowercase email', async () => {
-            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue(
-                invite
-            );
-            userCreateUtil.buildInviteWorkspaceContext.mockReturnValue(
+            workspaceInviteDomain.getSignUpInvite.mockResolvedValue(invite);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
 
@@ -860,9 +862,13 @@ describe('UserAuthHttpService', () => {
                 { ...dto, inviteToken: 'invite-bramble' }
             );
 
+            expect(workspaceInviteDomain.getSignUpInvite).toHaveBeenCalledWith(
+                'invite-bramble',
+                'bramble@example.com'
+            );
             expect(
-                workspaceInviteDomain.validateInviteForEmail
-            ).toHaveBeenCalledWith('invite-bramble', 'bramble@example.com');
+                userCreateUtil.buildSignUpWorkspaceContext
+            ).toHaveBeenCalledWith(invite, dto.username);
         });
 
         it.each([null, { signUpAllowed: false }])(
@@ -977,6 +983,10 @@ describe('UserAuthHttpService', () => {
             user: baseUser,
             hashedPassword: 'hashed-password',
             isAttemptCounted: true,
+        };
+        const lastWorkspace = {
+            lastWorkspaceId: 'workspace-stale',
+            lastWorkspaceChangedAt: new Date('2026-02-01T00:00:00.000Z'),
         };
 
         beforeEach(() => {
@@ -1134,24 +1144,18 @@ describe('UserAuthHttpService', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('locks the account out on one transaction, purges, and stages both rows before the attempt limit is answered', async () => {
+        it('enqueues the lockout and stages both rows before the attempt limit is answered', async () => {
             const spent = { ...counted, isAttemptCounted: false };
             userAuthDomain.incrementCredentialAttempt.mockResolvedValue(spent);
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(true);
-            sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedRef);
             const failure = new Error('attempt max');
+            const callOrder: string[] = [];
             userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
+                callOrder.push('assert');
+
                 throw failure;
             });
-            const callOrder: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
-
-                return result as never;
-            });
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                callOrder.push('purgeLogins');
+            userQueue.lockout.mockImplementation(async () => {
+                callOrder.push('lockout');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1159,26 +1163,7 @@ describe('UserAuthHttpService', () => {
 
             await expect(service.loginCredential(dto)).rejects.toBe(failure);
 
-            expect(userDomain.deactivateForMaxAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble'
-            );
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble',
-                now
-            );
-            expect(deviceDomain.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble',
-                now
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
+            expect(userQueue.lockout).toHaveBeenCalledWith('user-bramble');
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-bramble',
@@ -1193,35 +1178,9 @@ describe('UserAuthHttpService', () => {
                 activityLog,
                 activityLog,
             ]);
-            expect(callOrder).toEqual([
-                'committed',
-                'purgeLogins',
-                'stagePrepared',
-            ]);
-            expect(userAuthDomain.verifyCredential).not.toHaveBeenCalled();
-        });
-
-        it('stages and purges nothing when the lockout write finds the account already deactivated', async () => {
-            const spent = { ...counted, isAttemptCounted: false };
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue(spent);
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(false);
-            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
-                throw new UserPasswordAttemptMaxException();
-            });
-
-            await expect(service.loginCredential(dto)).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordAttemptMax
-                    ],
-                messagePath: 'user.error.passwordAttemptMax',
-            });
-
-            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
+            expect(callOrder).toEqual(['lockout', 'stagePrepared', 'assert']);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(userAuthDomain.verifyCredential).not.toHaveBeenCalled();
         });
 
@@ -1362,6 +1321,110 @@ describe('UserAuthHttpService', () => {
             expect(userTwoFactorDomain.saveSetup).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
+
+        it('returns the resolved lastWorkspaceId on the token outcome', async () => {
+            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+                ...counted,
+                user: { ...baseUser, ...lastWorkspace },
+            });
+            workspaceMemberDomain.resolveLastWorkspaceId.mockResolvedValue(
+                'workspace-resolved'
+            );
+
+            await expect(service.loginCredential(dto)).resolves.toEqual({
+                data: {
+                    ...tokenOutcome,
+                    lastWorkspaceId: 'workspace-resolved',
+                    lastWorkspaceChangedAt:
+                        lastWorkspace.lastWorkspaceChangedAt,
+                },
+            });
+
+            expect(
+                workspaceMemberDomain.resolveLastWorkspaceId
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceMemberDomain.resolveLastWorkspaceId
+            ).toHaveBeenCalledWith('user-bramble', 'workspace-stale');
+        });
+
+        it('returns the resolved lastWorkspaceId on the two-factor outcome', async () => {
+            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+                ...counted,
+                user: { ...twoFactorUser, ...lastWorkspace },
+            });
+            authTwoFactorDomain.createChallenge.mockResolvedValue({
+                challengeToken: 'challenge-token',
+                expiresInMs: 60000,
+            });
+
+            await expect(service.loginCredential(dto)).resolves.toEqual({
+                data: {
+                    isTwoFactorEnable: true,
+                    lastWorkspaceId: null,
+                    lastWorkspaceChangedAt:
+                        lastWorkspace.lastWorkspaceChangedAt,
+                    twoFactor: {
+                        isRequiredSetup: false,
+                        challengeToken: 'challenge-token',
+                        challengeExpiresInMs: 60000,
+                        backupCodesRemaining: 1,
+                    },
+                },
+            });
+
+            expect(
+                workspaceMemberDomain.resolveLastWorkspaceId
+            ).toHaveBeenCalledWith('user-bramble', 'workspace-stale');
+        });
+
+        it('returns the resolved lastWorkspaceId on the two-factor setup outcome', async () => {
+            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+            userUtil.requiresTwoFactorSetup.mockReturnValue(true);
+            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+                ...counted,
+                user: {
+                    ...twoFactorUser,
+                    ...lastWorkspace,
+                    twoFactor: {
+                        ...twoFactor,
+                        enabled: true,
+                        requiredSetup: true,
+                    },
+                },
+            });
+            authTwoFactorDomain.createChallenge.mockResolvedValue({
+                challengeToken: 'challenge-token',
+                expiresInMs: 60000,
+            });
+            userTwoFactorDomain.setup.mockResolvedValue({
+                encryptedSecret: 'encrypted-secret',
+                otpauthUrl: 'otpauth://totp/secret',
+                secret: 'secret',
+            });
+
+            await expect(service.loginCredential(dto)).resolves.toEqual({
+                data: {
+                    isTwoFactorEnable: true,
+                    lastWorkspaceId: null,
+                    lastWorkspaceChangedAt:
+                        lastWorkspace.lastWorkspaceChangedAt,
+                    twoFactor: {
+                        isRequiredSetup: true,
+                        challengeToken: 'challenge-token',
+                        challengeExpiresInMs: 60000,
+                        backupCodesRemaining: 1,
+                        otpauthUrl: 'otpauth://totp/secret',
+                        secret: 'secret',
+                    },
+                },
+            });
+
+            expect(
+                workspaceMemberDomain.resolveLastWorkspaceId
+            ).toHaveBeenCalledWith('user-bramble', 'workspace-stale');
+        });
     });
 
     describe('loginVerifyTwoFactor', () => {
@@ -1482,35 +1545,6 @@ describe('UserAuthHttpService', () => {
             ]);
         });
 
-        it('creates one session when two calls race on one challenge with a valid code', async () => {
-            authTwoFactorDomain.consumeChallenge
-                .mockResolvedValueOnce(challenge)
-                .mockRejectedValueOnce(
-                    new AuthTwoFactorChallengeInvalidException()
-                );
-
-            const outcomes = await Promise.allSettled([
-                service.loginVerifyTwoFactor(dto),
-                service.loginVerifyTwoFactor(dto),
-            ]);
-
-            expect([outcomes[0].status, outcomes[1].status]).toEqual([
-                'fulfilled',
-                'rejected',
-            ]);
-            expect(outcomes[1]).toMatchObject({
-                reason: {
-                    module: 'auth',
-                    statusCode:
-                        EnumAuthStatusCodeError.twoFactorChallengeInvalid,
-                },
-            });
-            expect(sessionDomain.createInTx).toHaveBeenCalledTimes(1);
-            expect(
-                userTwoFactorDomain.recordVerification
-            ).toHaveBeenCalledTimes(1);
-        });
-
         it('claims the challenge once and issues tokens after the setup step left it in place', async () => {
             userTwoFactorDomain.getOneForLoginSetup.mockResolvedValue({
                 user: twoFactorUser,
@@ -1571,22 +1605,16 @@ describe('UserAuthHttpService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('locks the account out on one transaction, purges, and stages both rows before the two-factor attempt limit is answered', async () => {
+        it('enqueues the lockout and stages both rows before the two-factor attempt limit is answered', async () => {
             userTwoFactorDomain.countAttempt.mockResolvedValue(false);
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(true);
-            sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedRef);
+            const callOrder: string[] = [];
             userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
+                callOrder.push('assert');
+
                 throw new AuthTwoFactorAttemptMaxException();
             });
-            const callOrder: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
-
-                return result as never;
-            });
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                callOrder.push('purgeLogins');
+            userQueue.lockout.mockImplementation(async () => {
+                callOrder.push('lockout');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1604,26 +1632,7 @@ describe('UserAuthHttpService', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(userDomain.deactivateForMaxAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble'
-            );
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble',
-                now
-            );
-            expect(deviceDomain.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble',
-                now
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
+            expect(userQueue.lockout).toHaveBeenCalledWith('user-bramble');
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-bramble',
@@ -1638,53 +1647,11 @@ describe('UserAuthHttpService', () => {
                 activityLog,
                 activityLog,
             ]);
-            expect(callOrder).toEqual([
-                'committed',
-                'purgeLogins',
-                'stagePrepared',
-            ]);
+            expect(callOrder).toEqual(['lockout', 'stagePrepared', 'assert']);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
             expect(authTwoFactorDomain.consumeChallenge).not.toHaveBeenCalled();
-        });
-
-        it('stages and purges nothing when the lockout write finds the account already deactivated', async () => {
-            userTwoFactorDomain.countAttempt.mockResolvedValue(false);
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(false);
-            userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
-                throw new AuthTwoFactorAttemptMaxException();
-            });
-
-            await expect(
-                service.loginVerifyTwoFactor(dto)
-            ).rejects.toMatchObject({
-                statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
-            });
-
-            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('answers the two-factor attempt limit when the lockout write conflicts', async () => {
-            const conflict = new Error('write conflict');
-            userTwoFactorDomain.countAttempt.mockResolvedValue(false);
-            databaseService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-            userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
-                throw new AuthTwoFactorAttemptMaxException();
-            });
-
-            await expect(
-                service.loginVerifyTwoFactor(dto)
-            ).rejects.toMatchObject({
-                statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
-            });
-
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('issues nothing and stages nothing when the verification fails', async () => {
@@ -1753,6 +1720,7 @@ describe('UserAuthHttpService', () => {
                 user: twoFactorUser,
                 pendingSecret: 'pending-secret',
             });
+            userTwoFactorDomain.countAttempt.mockResolvedValue(true);
             userTwoFactorDomain.enableTwoFactor.mockResolvedValue([
                 'backup-one',
             ]);
@@ -1808,22 +1776,16 @@ describe('UserAuthHttpService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('locks the account out on one transaction, purges, and stages both rows before the two-factor attempt limit is answered', async () => {
+        it('enqueues the lockout and stages both rows before the two-factor attempt limit is answered', async () => {
             userTwoFactorDomain.countAttempt.mockResolvedValue(false);
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(true);
-            sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedRef);
+            const callOrder: string[] = [];
             userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
+                callOrder.push('assert');
+
                 throw new AuthTwoFactorAttemptMaxException();
             });
-            const callOrder: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
-
-                return result as never;
-            });
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                callOrder.push('purgeLogins');
+            userQueue.lockout.mockImplementation(async () => {
+                callOrder.push('lockout');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1841,26 +1803,7 @@ describe('UserAuthHttpService', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(userDomain.deactivateForMaxAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble'
-            );
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble',
-                now
-            );
-            expect(deviceDomain.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble',
-                now
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
+            expect(userQueue.lockout).toHaveBeenCalledWith('user-bramble');
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-bramble',
@@ -1875,53 +1818,11 @@ describe('UserAuthHttpService', () => {
                 activityLog,
                 activityLog,
             ]);
-            expect(callOrder).toEqual([
-                'committed',
-                'purgeLogins',
-                'stagePrepared',
-            ]);
+            expect(callOrder).toEqual(['lockout', 'stagePrepared', 'assert']);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verifySetupCode).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.enableTwoFactor).not.toHaveBeenCalled();
-        });
-
-        it('stages and purges nothing when the lockout write finds the account already deactivated', async () => {
-            userTwoFactorDomain.countAttempt.mockResolvedValue(false);
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(false);
-            userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
-                throw new AuthTwoFactorAttemptMaxException();
-            });
-
-            await expect(
-                service.loginSetupTwoFactor(dto)
-            ).rejects.toMatchObject({
-                statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
-            });
-
-            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('answers the two-factor attempt limit when the lockout write conflicts', async () => {
-            const conflict = new Error('write conflict');
-            userTwoFactorDomain.countAttempt.mockResolvedValue(false);
-            databaseService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-            userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
-                throw new AuthTwoFactorAttemptMaxException();
-            });
-
-            await expect(
-                service.loginSetupTwoFactor(dto)
-            ).rejects.toMatchObject({
-                statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
-            });
-
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('enables nothing when the setup code is wrong', async () => {
@@ -2040,7 +1941,7 @@ describe('UserAuthHttpService', () => {
                 'session-bramble',
                 'new-jti'
             );
-            expect(sessionDomain.revokeOnReuse).not.toHaveBeenCalled();
+            expect(sessionDomain.revokeIfActive).not.toHaveBeenCalled();
         });
 
         it('revokes the rotated session, purges it, and rethrows when the fresh login entry cannot be written', async () => {
@@ -2054,13 +1955,13 @@ describe('UserAuthHttpService', () => {
             );
             const failure = new RedisUnavailableException();
             sessionDomain.setLogin.mockRejectedValue(failure);
-            sessionDomain.revokeOnReuse.mockResolvedValue(revokedRef);
+            sessionDomain.revokeIfActive.mockResolvedValue(revokedRef);
 
             await expect(
                 service.refresh(baseUser, 'refresh-token')
             ).rejects.toBe(failure);
 
-            expect(sessionDomain.revokeOnReuse).toHaveBeenCalledWith(
+            expect(sessionDomain.revokeIfActive).toHaveBeenCalledWith(
                 'user-bramble',
                 'session-bramble'
             );
@@ -2110,13 +2011,13 @@ describe('UserAuthHttpService', () => {
                 throw new SessionRevokedException();
             });
             sessionDomain.updateJtiInTx.mockResolvedValue(false);
-            sessionDomain.revokeOnReuse.mockResolvedValue([]);
+            sessionDomain.revokeIfActive.mockResolvedValue([]);
 
             await expectSessionRevoked(
                 service.refresh(baseUser, 'refresh-token')
             );
 
-            expect(sessionDomain.revokeOnReuse).toHaveBeenCalledWith(
+            expect(sessionDomain.revokeIfActive).toHaveBeenCalledWith(
                 'user-bramble',
                 'session-bramble'
             );
@@ -2137,7 +2038,7 @@ describe('UserAuthHttpService', () => {
                 throw new SessionRevokedException();
             });
             sessionDomain.updateJtiInTx.mockResolvedValue(false);
-            sessionDomain.revokeOnReuse.mockResolvedValue(revokedRef);
+            sessionDomain.revokeIfActive.mockResolvedValue(revokedRef);
             const callOrder: string[] = [];
             databaseService.withTransaction.mockImplementation(async fn => {
                 const result = await fn(tx);
@@ -2145,8 +2046,8 @@ describe('UserAuthHttpService', () => {
 
                 return result as never;
             });
-            sessionDomain.revokeOnReuse.mockImplementation(async () => {
-                callOrder.push('revokeOnReuse');
+            sessionDomain.revokeIfActive.mockImplementation(async () => {
+                callOrder.push('revokeIfActive');
 
                 return revokedRef;
             });
@@ -2161,7 +2062,7 @@ describe('UserAuthHttpService', () => {
                 service.refresh(baseUser, 'refresh-token')
             );
 
-            expect(sessionDomain.revokeOnReuse).toHaveBeenCalledWith(
+            expect(sessionDomain.revokeIfActive).toHaveBeenCalledWith(
                 'user-bramble',
                 'session-bramble'
             );
@@ -2177,7 +2078,7 @@ describe('UserAuthHttpService', () => {
             expect(sessionDomain.updateLogin).not.toHaveBeenCalled();
             expect(callOrder).toEqual([
                 'committed',
-                'revokeOnReuse',
+                'revokeIfActive',
                 'purgeLogins',
                 'stagePrepared',
             ]);
@@ -2195,7 +2096,7 @@ describe('UserAuthHttpService', () => {
             sessionDomain.updateLogin.mockResolvedValue(
                 EnumSessionCacheUpdate.mismatch
             );
-            sessionDomain.revokeOnReuse.mockResolvedValue(revokedRef);
+            sessionDomain.revokeIfActive.mockResolvedValue(revokedRef);
 
             await expectSessionRevoked(
                 service.refresh(baseUser, 'refresh-token')
@@ -2208,7 +2109,100 @@ describe('UserAuthHttpService', () => {
             expect(sessionDomain.setLogin).not.toHaveBeenCalled();
         });
 
-        it('propagates a failure raised while rotating the session', async () => {
+        it('stages no reuse row when nothing was revoked', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            sessionDomain.getRefreshedTokens.mockImplementation(() => {
+                throw new SessionRevokedException();
+            });
+            sessionDomain.updateJtiInTx.mockResolvedValue(false);
+            sessionDomain.revokeIfActive.mockResolvedValue([]);
+
+            await expectSessionRevoked(
+                service.refresh(baseUser, 'refresh-token')
+            );
+
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-bramble',
+                []
+            );
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('stages the reuse row when a session was revoked', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            sessionDomain.getRefreshedTokens.mockImplementation(() => {
+                throw new SessionRevokedException();
+            });
+            sessionDomain.updateJtiInTx.mockResolvedValue(false);
+            sessionDomain.revokeIfActive.mockResolvedValue(revokedRef);
+
+            await expectSessionRevoked(
+                service.refresh(baseUser, 'refresh-token')
+            );
+
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userRevokeSession,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                activityLog,
+            ]);
+        });
+
+        it('answers SessionRevokedException on a write conflict and revokes nothing', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            sessionDomain.getRefreshedTokens.mockImplementation(() => {
+                throw new SessionRevokedException();
+            });
+            const conflict = new Error('write conflict');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expectSessionRevoked(
+                service.refresh(baseUser, 'refresh-token')
+            );
+
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(sessionDomain.revokeIfActive).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-bramble',
+                []
+            );
+            expect(sessionDomain.getRefreshedTokens).toHaveBeenCalledWith(null);
+            expect(sessionDomain.updateLogin).not.toHaveBeenCalled();
+        });
+
+        it('rethrows an app exception raised while rotating the session unchanged', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            const failure = new SessionRevokedException();
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(
+                service.refresh(baseUser, 'refresh-token')
+            ).rejects.toBe(failure);
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other failure raised while rotating the session in the unknown exception', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -2216,10 +2210,15 @@ describe('UserAuthHttpService', () => {
             });
             const failure = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(failure);
+            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.refresh(baseUser, 'refresh-token')
-            ).rejects.toBe(failure);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: failure,
+            });
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });
@@ -2294,13 +2293,43 @@ describe('UserAuthHttpService', () => {
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('propagates a failure raised while logging out without purging or staging', async () => {
-            const failure = new Error('boom');
-            databaseService.withTransaction.mockRejectedValue(failure);
+        it('answers SessionNotFoundException on a write conflict with one run, no purge, and no staged row', async () => {
+            const conflict = new Error('write conflict');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
 
             await expect(
                 service.logout('user-bramble', 'session-bramble', 'device')
-            ).rejects.toBe(failure);
+            ).rejects.toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.notFound
+                    ],
+                messagePath: 'session.error.notFound',
+            });
+
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other failure raised while logging out in the unknown exception without purging or staging', async () => {
+            const failure = new Error('boom');
+            databaseService.withTransaction.mockRejectedValue(failure);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.logout('user-bramble', 'session-bramble', 'device')
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: failure,
+            });
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
@@ -2319,10 +2348,8 @@ describe('UserAuthHttpService', () => {
         };
 
         beforeEach(() => {
-            workspaceInviteDomain.validateInviteForEmail.mockResolvedValue(
-                invite
-            );
-            userCreateUtil.buildInviteWorkspaceContext.mockReturnValue(
+            workspaceInviteDomain.getSignUpInvite.mockResolvedValue(invite);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
             userCreateUtil.resolveSocialFeatureFlagKey.mockReturnValue(
@@ -2443,9 +2470,9 @@ describe('UserAuthHttpService', () => {
         });
 
         it('accepts no invite for a personal input', async () => {
-            userCreateUtil.buildPersonalWorkspaceContexts.mockReturnValue([
-                personalContext,
-            ]);
+            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
+                personalContext
+            );
             userAuthDomain.prepareSocialCreate.mockReturnValue({
                 ...input,
                 password: null,
@@ -2691,7 +2718,7 @@ describe('UserAuthHttpService', () => {
         it('revokes the new session, purges it, and rethrows when the login cache write rejects, still enqueueing the repeat-device purge and the new-device notice', async () => {
             const failure = new Error('cache down');
             sessionDomain.setLogin.mockRejectedValue(failure);
-            sessionDomain.revokeOnReuse.mockResolvedValue(revokedRef);
+            sessionDomain.revokeIfActive.mockResolvedValue(revokedRef);
 
             await expect(
                 service['createTokenAndSession'](
@@ -2702,7 +2729,7 @@ describe('UserAuthHttpService', () => {
                     loginAt
                 )
             ).rejects.toMatchObject({ rawError: failure });
-            expect(sessionDomain.revokeOnReuse).toHaveBeenCalledWith(
+            expect(sessionDomain.revokeIfActive).toHaveBeenCalledWith(
                 'user-bramble',
                 'session-bramble'
             );
@@ -2722,7 +2749,7 @@ describe('UserAuthHttpService', () => {
         it('rethrows a typed login cache failure unwrapped after the compensating revoke', async () => {
             const failure = new RedisUnavailableException();
             sessionDomain.setLogin.mockRejectedValue(failure);
-            sessionDomain.revokeOnReuse.mockResolvedValue(revokedRef);
+            sessionDomain.revokeIfActive.mockResolvedValue(revokedRef);
 
             await expect(
                 service['createTokenAndSession'](
@@ -2733,7 +2760,7 @@ describe('UserAuthHttpService', () => {
                     loginAt
                 )
             ).rejects.toBe(failure);
-            expect(sessionDomain.revokeOnReuse).toHaveBeenCalledTimes(1);
+            expect(sessionDomain.revokeIfActive).toHaveBeenCalledTimes(1);
         });
 
         it('revokes nothing when the login cache write succeeds', async () => {
@@ -2745,7 +2772,7 @@ describe('UserAuthHttpService', () => {
                 loginAt
             );
 
-            expect(sessionDomain.revokeOnReuse).not.toHaveBeenCalled();
+            expect(sessionDomain.revokeIfActive).not.toHaveBeenCalled();
         });
 
         it('resolves the notification provider from a null platform when the device carries none', async () => {
@@ -2814,89 +2841,6 @@ describe('UserAuthHttpService', () => {
             expect(authJwtDomain.createTokens).not.toHaveBeenCalled();
             expect(sessionDomain.setLogin).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('reachMaxAttempt', () => {
-        it('deactivates the user, revokes sessions and devices on one transaction, and answers the revoked sessions', async () => {
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(true);
-            sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revokedRef);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-
-            await expect(
-                service['reachMaxAttempt']('user-bramble')
-            ).resolves.toBe(revokedRef);
-
-            expect(userDomain.deactivateForMaxAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble'
-            );
-            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble',
-                now
-            );
-            expect(deviceDomain.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble',
-                now
-            );
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-        });
-
-        it('answers null and revokes nothing when the account was already deactivated', async () => {
-            userDomain.deactivateForMaxAttemptInTx.mockResolvedValue(false);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-
-            await expect(
-                service['reachMaxAttempt']('user-bramble')
-            ).resolves.toBeNull();
-
-            expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
-            expect(deviceDomain.revokeAllByUserInTx).not.toHaveBeenCalled();
-        });
-
-        it('answers null when the lockout write conflicts', async () => {
-            const conflict = new Error('write conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            await expect(
-                service['reachMaxAttempt']('user-bramble')
-            ).resolves.toBeNull();
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-        });
-
-        it('rethrows an app exception of the lockout unchanged', async () => {
-            const failure = new AuthTwoFactorAttemptMaxException();
-            databaseService.withTransaction.mockRejectedValue(failure);
-
-            await expect(
-                service['reachMaxAttempt']('user-bramble')
-            ).rejects.toBe(failure);
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
-        });
-
-        it('wraps any other failure of the lockout in the unknown exception', async () => {
-            const failure = new Error('boom');
-            databaseService.withTransaction.mockRejectedValue(failure);
-            databaseUtil.toException.mockReturnValue(null);
-
-            await expect(
-                service['reachMaxAttempt']('user-bramble')
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: failure,
-            });
         });
     });
 });

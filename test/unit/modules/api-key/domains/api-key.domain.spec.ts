@@ -277,9 +277,30 @@ describe('ApiKeyDomain', () => {
             expect(result).toBe(updated);
             expect(apiKeyRepository.updateStatus).toHaveBeenCalledWith(
                 apiKey.id,
+                apiKey.isActive,
                 { isActive: false }
             );
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
+        });
+
+        it('throws ApiKeyNotFoundException when the guarded write misses', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
+            apiKeyUtil.isExpired.mockReturnValue(false);
+            apiKeyRepository.updateStatus.mockResolvedValue(null);
+
+            await expect(
+                domain.updateStatusByAdmin(apiKey.id, false)
+            ).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.notFound
+                    ],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'apiKey.error.notFound',
+            });
+            expect(apiKeyCache.deleteApiKey).not.toHaveBeenCalled();
         });
     });
 
@@ -447,6 +468,25 @@ describe('ApiKeyDomain', () => {
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
             expect(callOrder).toEqual(['updateDates', 'deleteApiKey']);
         });
+
+        it('throws ApiKeyInactiveException when the guarded write misses', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
+            apiKeyRepository.updateDates.mockResolvedValue(null);
+
+            await expect(
+                domain.updateDatesByAdmin(apiKey.id, startAt, endAt)
+            ).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.inactive,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.inactive
+                    ],
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'apiKey.error.inactive',
+            });
+            expect(apiKeyCache.deleteApiKey).not.toHaveBeenCalled();
+        });
     });
 
     describe('resetByAdmin', () => {
@@ -511,6 +551,25 @@ describe('ApiKeyDomain', () => {
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
             expect(callOrder).toEqual(['updateHash', 'deleteApiKey']);
         });
+
+        it('throws ApiKeyInactiveException when the guarded write misses', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
+            apiKeyCredentialUtil.createSecret.mockReturnValue('new-secret');
+            apiKeyCredentialUtil.createHash.mockReturnValue('new-hash');
+            apiKeyRepository.updateHash.mockResolvedValue(null);
+
+            await expect(domain.resetByAdmin(apiKey.id)).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.inactive,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.inactive
+                    ],
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'apiKey.error.inactive',
+            });
+            expect(apiKeyCache.deleteApiKey).not.toHaveBeenCalled();
+        });
     });
 
     describe('deleteByAdmin', () => {
@@ -531,15 +590,34 @@ describe('ApiKeyDomain', () => {
             );
         });
 
-        it('deletes the api key and purges the cache', async () => {
+        it('deletes the api key, purges the cache, and returns the row it read', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyRepository.delete.mockResolvedValue(apiKey);
+            apiKeyRepository.delete.mockResolvedValue(true);
 
             const result = await domain.deleteByAdmin(apiKey.id);
 
             expect(result).toBe(apiKey);
             expect(apiKeyRepository.delete).toHaveBeenCalledWith(apiKey.id);
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
+        });
+
+        it('throws ApiKeyNotFoundException when the guarded write misses', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
+            apiKeyRepository.delete.mockResolvedValue(false);
+
+            await expect(domain.deleteByAdmin(apiKey.id)).rejects.toMatchObject(
+                {
+                    module: 'apiKey',
+                    statusCode: EnumApiKeyStatusCodeError.notFound,
+                    statusCodeKey:
+                        EnumApiKeyStatusCodeError[
+                            EnumApiKeyStatusCodeError.notFound
+                        ],
+                    httpStatus: HttpStatus.NOT_FOUND,
+                    messagePath: 'apiKey.error.notFound',
+                }
+            );
+            expect(apiKeyCache.deleteApiKey).not.toHaveBeenCalled();
         });
     });
 

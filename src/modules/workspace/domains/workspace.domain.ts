@@ -15,6 +15,7 @@ import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
+import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
 import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
 import type {
@@ -213,22 +214,41 @@ export class WorkspaceDomain {
     async softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        deletedAt: Date
+        deletedAt: Date,
+        deletedBy: string
     ): Promise<void> {
-        await this.workspaceRepository.softDeleteInTx(
+        const softDeleted = await this.workspaceRepository.softDeleteInTx(
             tx,
             workspaceId,
-            deletedAt
+            deletedAt,
+            deletedBy
         );
+        if (!softDeleted) {
+            throw new WorkspaceNotFoundException();
+        }
     }
 
-    /** Soft-deletes every live workspace the user is the only owner of and answers their ids. */
-    async softDeleteSolelyOwnedByUserInTx(
+    async assertOwnedHasNoOtherMembersInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        const hasOtherMembers =
+            await this.workspaceRepository.existsOwnedWithOtherMembersInTx(
+                tx,
+                userId
+            );
+        if (hasOtherMembers) {
+            throw new WorkspaceOwnerTransferRequiredException();
+        }
+    }
+
+    /** Soft-deletes every live workspace the user owns and answers their ids. */
+    async softDeleteOwnedByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         deletedAt: Date
     ): Promise<string[]> {
-        return this.workspaceRepository.softDeleteSolelyOwnedByUserInTx(
+        return this.workspaceRepository.softDeleteOwnedByUserInTx(
             tx,
             userId,
             deletedAt

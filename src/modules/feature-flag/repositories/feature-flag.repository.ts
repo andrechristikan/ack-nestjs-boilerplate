@@ -56,17 +56,23 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     async updateStatus(
         id: string,
         { isEnable, rolloutPercent, targetUserIds }: IFeatureFlagUpdateStatus
-    ): Promise<FeatureFlag> {
-        return this.databaseService.client.featureFlag.update({
-            where: {
-                id,
-            },
-            data: {
-                isEnable,
-                rolloutPercent,
-                targetUserIds,
-            },
-        });
+    ): Promise<FeatureFlag | null> {
+        const { count } =
+            await this.databaseService.client.featureFlag.updateMany({
+                where: {
+                    id,
+                },
+                data: {
+                    isEnable,
+                    rolloutPercent,
+                    targetUserIds,
+                },
+            });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.findOneById(id);
     }
 
     async updateMetadata(

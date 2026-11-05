@@ -11,7 +11,7 @@ import type {
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 
 export interface IRoleRepository {
     findWithPaginationOffsetByAdmin(
@@ -34,6 +34,10 @@ export interface IRoleRepository {
     findOneByUserId(userId: string): Promise<IRole | null>;
     existsById(id: string): Promise<boolean>;
     create(roleId: string, data: IRoleCreate): Promise<IRoleWithPolicies>;
-    update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies>;
+    update(
+        id: string,
+        expectedType: EnumRoleType,
+        data: IRoleUpdate
+    ): Promise<IRoleWithPolicies | null>;
     deleteUnused(id: string): Promise<boolean>;
 }

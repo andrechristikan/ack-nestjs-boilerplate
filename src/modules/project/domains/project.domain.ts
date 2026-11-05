@@ -118,9 +118,18 @@ export class ProjectDomain {
     async softDeleteProjectInTx(
         tx: IDatabaseTransactionClient,
         project: Project,
-        deletedAt: Date
+        deletedAt: Date,
+        deletedBy: string
     ): Promise<void> {
-        await this.projectRepository.softDeleteInTx(tx, project.id, deletedAt);
+        const softDeleted = await this.projectRepository.softDeleteInTx(
+            tx,
+            project.id,
+            deletedAt,
+            deletedBy
+        );
+        if (!softDeleted) {
+            throw new ProjectNotFoundException();
+        }
     }
 
     async softDeleteByWorkspaceInTx(

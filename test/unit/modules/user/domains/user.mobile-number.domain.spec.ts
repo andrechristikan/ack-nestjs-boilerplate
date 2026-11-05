@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Country } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -554,6 +555,56 @@ describe('UserMobileNumberDomain', () => {
                     ],
                 messagePath: 'user.error.mobileNumberNotFound',
             });
+        });
+
+        it('throws UserMobileNumberNotFoundException when the guarded delete misses', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
+                mobileNumber
+            );
+            userMobileNumberRepository.deleteInTx.mockResolvedValue(null);
+
+            const call = domain.deleteMobileNumber(
+                'user-marlin',
+                mobileNumber.id
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.mobileNumberNotFound
+                    ],
+                messagePath: 'user.error.mobileNumberNotFound',
+            });
+            expect(userDomain.touchUpdatedByInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws UserMobileNumberNotFoundException on a write conflict', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
+                mobileNumber
+            );
+            const conflict = new Error('write-conflict');
+            databaseService.withTransaction.mockRejectedValueOnce(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            const call = domain.deleteMobileNumber(
+                'user-marlin',
+                mobileNumber.id
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.mobileNumberNotFound
+                    ],
+                messagePath: 'user.error.mobileNumberNotFound',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {

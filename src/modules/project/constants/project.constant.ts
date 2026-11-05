@@ -18,12 +18,6 @@ export const ProjectStoreKey = 'ProjectStoreKey';
 export const ProjectMemberStoreKey = 'ProjectMemberStoreKey';
 
 /**
- * Request-store key holding whether `ProjectRoleGuard` let the caller through on the workspace owner or admin bypass instead of a `ProjectMember` row.
- * @public
- */
-export const ProjectWorkspaceBypassStoreKey = 'ProjectWorkspaceBypassStoreKey';
-
-/**
  * Route metadata key holding the project roles `@ProjectMemberProtected` requires.
  * @public
  */

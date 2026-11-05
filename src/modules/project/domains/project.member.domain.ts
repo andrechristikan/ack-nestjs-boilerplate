@@ -63,11 +63,11 @@ export class ProjectMemberDomain {
         projectId: string,
         workspaceMember: WorkspaceMember,
         allowedProjectRoles: EnumProjectMemberRole[]
-    ): Promise<boolean> {
+    ): Promise<void> {
         const hasWorkspaceBypass =
             this.projectUtil.hasWorkspaceBypass(workspaceMember);
         if (hasWorkspaceBypass) {
-            return true;
+            return;
         }
 
         const member =
@@ -80,8 +80,6 @@ export class ProjectMemberDomain {
         } else if (!allowedProjectRoles.includes(member.role)) {
             throw new ProjectRoleForbiddenException();
         }
-
-        return false;
     }
 
     async getMembersList(
@@ -178,7 +176,14 @@ export class ProjectMemberDomain {
 
         this.assertPeerAllowed(actor, targetMember.role, newRole);
 
-        await this.projectMemberRepository.updateRole(targetMember.id, newRole);
+        const updated = await this.projectMemberRepository.updateRole(
+            targetMember.id,
+            targetMember.role,
+            newRole
+        );
+        if (!updated) {
+            throw new ProjectMemberPeerForbiddenException();
+        }
 
         return targetMember;
     }
@@ -203,12 +208,23 @@ export class ProjectMemberDomain {
 
         this.assertPeerAllowed(actor, targetMember.role);
 
-        await this.projectMemberRepository.removeMember(targetMember.id);
+        const removed = await this.projectMemberRepository.removeMember(
+            targetMember.id,
+            targetMember.role
+        );
+        if (!removed) {
+            throw new ProjectMemberPeerForbiddenException();
+        }
 
         return targetMember;
     }
 
     async leaveProject(member: ProjectMember): Promise<void> {
-        await this.projectMemberRepository.removeMember(member.id);
+        const removed = await this.projectMemberRepository.removeById(
+            member.id
+        );
+        if (!removed) {
+            throw new ProjectMemberNotFoundException();
+        }
     }
 }

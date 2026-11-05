@@ -1,6 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -29,6 +30,7 @@ import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionUtil } from '@modules/session/utils/session.util';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
@@ -37,6 +39,7 @@ import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.memb
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
@@ -53,9 +56,12 @@ import type {
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserHttpService {
+    private readonly deleteSelfTimeoutInMs: number;
+
     constructor(
         private readonly userDomain: UserDomain,
         private readonly userAuthDomain: UserAuthDomain,
@@ -73,6 +79,7 @@ export class UserHttpService {
         private readonly deviceDomain: DeviceDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
+        private readonly userQueue: UserQueue,
         private readonly sessionUtil: SessionUtil,
         private readonly userProfileDomain: UserProfileDomain,
         private readonly userUtil: UserUtil,
@@ -81,54 +88,12 @@ export class UserHttpService {
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
-    ) {}
-
-    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction; answers the revoked sessions, or null when the account was already deactivated or the write conflicted. */
-    private async reachMaxAttempt(
-        userId: string
-    ): Promise<ISessionRef[] | null> {
-        const now = this.helperDateService.create();
-
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const isDeactivated =
-                    await this.userDomain.deactivateForMaxAttemptInTx(
-                        tx,
-                        userId
-                    );
-                if (!isDeactivated) {
-                    return null;
-                }
-
-                const sessions =
-                    await this.sessionDomain.revokeActiveByUserInTx(
-                        tx,
-                        userId,
-                        userId,
-                        now
-                    );
-                await this.deviceDomain.revokeAllByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-
-                return sessions;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                return null;
-            }
-
-            throw new AppUnknownException(err);
-        }
+        private readonly helperDateService: HelperDateService,
+        private readonly configService: ConfigService
+    ) {
+        this.deleteSelfTimeoutInMs = this.configService.get<number>(
+            'user.deleteSelf.timeoutInMs'
+        )!;
     }
 
     /** Counts one password attempt, locks the account out when the budget is spent, and checks the current password of a user that has one. */
@@ -156,12 +121,9 @@ export class UserHttpService {
                     createdBy: user.id,
                 }),
             ];
-            const revoked = await this.reachMaxAttempt(user.id);
-            if (revoked !== null) {
-                await this.sessionQueue.purgeLogins(user.id, revoked);
+            await this.userQueue.lockout(user.id);
 
-                this.activityLogDomain.stagePrepared(lockoutLogs);
-            }
+            this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
         this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);
@@ -175,6 +137,31 @@ export class UserHttpService {
             password
         );
         this.userAuthDomain.assertPasswordMatched(isMatch);
+    }
+
+    /** Soft-deletes the projects and closes the pending invites and join requests of each soft-deleted workspace on the given transaction. */
+    private async cascadeDeletedWorkspacesInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
+        userId: string,
+        now: Date
+    ): Promise<void> {
+        for (const workspaceId of workspaceIds) {
+            await this.projectDomain.softDeleteByWorkspaceInTx(
+                tx,
+                workspaceId,
+                now,
+                userId
+            );
+            await this.workspaceInviteDomain.revokePendingByWorkspaceInTx(
+                tx,
+                workspaceId
+            );
+            await this.workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx(
+                tx,
+                workspaceId
+            );
+        }
     }
 
     async getListOffsetByAdmin(
@@ -350,6 +337,8 @@ export class UserHttpService {
         user: IUser,
         { password }: UserDeleteSelfRequestDto
     ): Promise<IResponseReturn<void>> {
+        this.userDomain.assertSelfDeletable(user);
+
         const userId = user.id;
         const activityLogs = [
             this.activityLogDomain.prepare({
@@ -366,63 +355,103 @@ export class UserHttpService {
         await this.assertPasswordMatched(user, password);
 
         const now = this.helperDateService.create();
-        const { deleted, revoked } = await this.databaseService.withTransaction(
-            async tx => {
-                const workspaceIds =
-                    await this.workspaceDomain.softDeleteSolelyOwnedByUserInTx(
-                        tx,
-                        userId,
-                        now
-                    );
-                for (const workspaceId of workspaceIds) {
-                    await this.projectDomain.softDeleteByWorkspaceInTx(
-                        tx,
-                        workspaceId,
-                        now,
-                        userId
-                    );
-                    await this.workspaceInviteDomain.revokePendingByWorkspaceInTx(
-                        tx,
-                        workspaceId
-                    );
-                    await this.workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx(
-                        tx,
-                        workspaceId
-                    );
-                }
+        let deleted: User;
+        let revoked: ISessionRef[];
+        let workspaceIds: string[];
+        try {
+            ({ deleted, revoked, workspaceIds } =
+                await this.databaseService.withTransaction(
+                    async tx => {
+                        await this.workspaceDomain.assertOwnedHasNoOtherMembersInTx(
+                            tx,
+                            userId
+                        );
+                        const ownedIds =
+                            await this.workspaceDomain.softDeleteOwnedByUserInTx(
+                                tx,
+                                userId,
+                                now
+                            );
+                        await this.cascadeDeletedWorkspacesInTx(
+                            tx,
+                            ownedIds,
+                            userId,
+                            now
+                        );
+                        await this.workspaceJoinRequestDomain.cancelPendingByRequesterInTx(
+                            tx,
+                            userId
+                        );
+                        await this.workspaceMemberDomain.removeByUserInTx(
+                            tx,
+                            userId
+                        );
+                        await this.projectMemberDomain.removeByUserInTx(
+                            tx,
+                            userId
+                        );
+                        await this.userMobileNumberDomain.removeByUserInTx(
+                            tx,
+                            userId
+                        );
+                        await this.userTwoFactorDomain.removeInTx(tx, userId);
+                        const sessions =
+                            await this.sessionDomain.revokeActiveByUserInTx(
+                                tx,
+                                userId,
+                                userId,
+                                now
+                            );
+                        await this.deviceDomain.revokeAllByUserInTx(
+                            tx,
+                            userId,
+                            userId,
+                            now
+                        );
+                        const row = await this.userDomain.deleteSelfInTx(
+                            tx,
+                            userId,
+                            now
+                        );
 
-                await this.workspaceMemberDomain.removeByUserInTx(tx, userId);
-                await this.projectMemberDomain.removeByUserInTx(tx, userId);
-                await this.userMobileNumberDomain.removeByUserInTx(tx, userId);
-                await this.userTwoFactorDomain.removeInTx(tx, userId);
-                const revoked = await this.sessionDomain.revokeActiveByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-                await this.deviceDomain.revokeAllByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-                const deleted = await this.userDomain.deleteSelfInTx(
-                    tx,
-                    userId,
-                    now
-                );
-
-                return { deleted, revoked };
+                        return {
+                            deleted: row,
+                            revoked: sessions,
+                            workspaceIds: ownedIds,
+                        };
+                    },
+                    { timeout: this.deleteSelfTimeoutInMs }
+                ));
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
             }
-        );
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new UserNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         await Promise.all([
             this.sessionQueue.purgeLogins(userId, revoked),
             this.userProfileDomain.deleteOwnedPhoto(userId, deleted.photo),
         ]);
 
-        this.activityLogDomain.stagePrepared(activityLogs);
+        const workspaceActivityLogs = workspaceIds.map(workspaceId =>
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceDeleted,
+                userId,
+                createdBy: userId,
+                workspaceId,
+            })
+        );
+        this.activityLogDomain.stagePrepared([
+            ...activityLogs,
+            ...workspaceActivityLogs,
+        ]);
 
         return {};
     }

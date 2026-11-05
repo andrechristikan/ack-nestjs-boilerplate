@@ -8,7 +8,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import type { TestPaginationCursorDto } from '@test/unit/helpers/test.unit.pagination-cursor.helper';
+import type { ITestPaginationCursorDto } from '@test/unit/helpers/test.unit.pagination-cursor.helper';
 import { PaginationCursorUtil } from '@common/pagination/utils/pagination.cursor.util';
 import {
     PaginationCursorEncryptionContext,
@@ -244,7 +244,7 @@ describe('PaginationCursorUtil', () => {
         const orderBy: IPaginationOrderBy[] = [...PaginationDefaultOrderBy];
 
         it('hashes the exact canonical text and returns the leading characters of the digest', () => {
-            const dto: TestPaginationCursorDto = {
+            const dto: ITestPaginationCursorDto = {
                 search: ' a ',
                 status: ' x,y ',
             };
@@ -269,7 +269,7 @@ describe('PaginationCursorUtil', () => {
             );
         });
 
-        it.each<[string, TestPaginationCursorDto, string]>([
+        it.each<[string, ITestPaginationCursorDto, string]>([
             [
                 'perPage and cursor left out',
                 { search: 'a', perPage: 50, cursor: 'Ab-_1' },

@@ -15,12 +15,13 @@ export class PolicyRepository implements IPolicyRepository {
         });
     }
 
-    async existsByRoleIdAndId(roleId: string, id: string): Promise<boolean> {
-        const count = await this.databaseService.client.policy.count({
+    async findOneByRoleIdAndId(
+        roleId: string,
+        id: string
+    ): Promise<Policy | null> {
+        return this.databaseService.client.policy.findFirst({
             where: { id, roleId },
         });
-
-        return count > 0;
     }
 
     async create(roleId: string, data: PolicyRequestDto): Promise<Policy> {
@@ -29,14 +30,27 @@ export class PolicyRepository implements IPolicyRepository {
         });
     }
 
-    async update(id: string, data: PolicyUpdateRequestDto): Promise<Policy> {
-        return this.databaseService.client.policy.update({
-            where: { id },
+    async update(
+        roleId: string,
+        id: string,
+        data: PolicyUpdateRequestDto
+    ): Promise<Policy | null> {
+        const { count } = await this.databaseService.client.policy.updateMany({
+            where: { id, roleId },
             data,
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.findOneByRoleIdAndId(roleId, id);
     }
 
-    async delete(id: string): Promise<Policy> {
-        return this.databaseService.client.policy.delete({ where: { id } });
+    async delete(roleId: string, id: string): Promise<boolean> {
+        const { count } = await this.databaseService.client.policy.deleteMany({
+            where: { id, roleId },
+        });
+
+        return count > 0;
     }
 }

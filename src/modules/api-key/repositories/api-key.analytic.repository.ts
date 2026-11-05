@@ -1,7 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import type { IApiKeyAnalyticRepository } from '@modules/api-key/interfaces/api-key.analytic-repository.interface';
-import type { IApiKeyAnalyticCreated } from '@modules/api-key/interfaces/api-key.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -41,20 +40,5 @@ export class ApiKeyAnalyticRepository implements IApiKeyAnalyticRepository {
             _count: { _all: true },
         });
         return rows.map(r => ({ key: r.type, count: r._count._all }));
-    }
-
-    async findCreatedInRange(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IApiKeyAnalyticCreated[]> {
-        return this.databaseService.client.apiKey.findMany({
-            where: { createdAt: { gte: startDate, lt: endDate } },
-            select: {
-                id: true,
-                type: true,
-                createdAt: true,
-                createdBy: true,
-            },
-        });
     }
 }

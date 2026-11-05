@@ -65,11 +65,13 @@ describe('SessionHttpService', () => {
         id: 'role-user',
         name: 'user',
         type: EnumRoleType.user,
+        isImmutable: false,
     };
     const superAdminRole: IRole = {
         id: 'role-root',
         name: 'superadmin',
         type: EnumRoleType.superAdmin,
+        isImmutable: false,
     };
     const selfActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userRevokeSession,
@@ -152,6 +154,7 @@ describe('SessionHttpService', () => {
             name: 'admin',
             description: null,
             type: EnumRoleType.admin,
+            isImmutable: false,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),

@@ -317,26 +317,28 @@ describe('ActivityLogAnalyticDomain', () => {
     });
 
     describe('getCreatedAtByUserActionsInRange', () => {
-        it('passes the user, actions, and range to the repository', async () => {
+        it('passes the limit and answers oldest first', async () => {
             activityLogAnalyticRepository.findCreatedAtByUserActionsInRange.mockResolvedValue(
-                [startDate]
+                [endDate, startDate]
             );
 
             const result = await domain.getCreatedAtByUserActionsInRange(
                 'user-1',
                 [EnumActivityLogAction.userLoginCredential],
                 startDate,
-                endDate
+                endDate,
+                1000
             );
 
-            expect(result).toEqual([startDate]);
+            expect(result).toEqual([startDate, endDate]);
             expect(
                 activityLogAnalyticRepository.findCreatedAtByUserActionsInRange
             ).toHaveBeenCalledWith(
                 'user-1',
                 [EnumActivityLogAction.userLoginCredential],
                 startDate,
-                endDate
+                endDate,
+                1000
             );
         });
     });

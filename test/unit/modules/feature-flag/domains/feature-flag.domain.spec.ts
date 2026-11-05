@@ -539,8 +539,8 @@ describe('FeatureFlagDomain', () => {
             targetUserIds: [],
         };
 
-        it('throws the notFound feature flag error when the flag does not exist', async () => {
-            featureFlagRepository.findOneById.mockResolvedValue(null);
+        it('throws FeatureFlagNotFoundException when the statement misses', async () => {
+            featureFlagRepository.updateStatus.mockResolvedValue(null);
 
             await expect(
                 domain.updateStatusByAdmin(
@@ -556,13 +556,16 @@ describe('FeatureFlagDomain', () => {
                     ],
                 messagePath: 'featureFlag.error.notFound',
             });
-            expect(featureFlagRepository.updateStatus).not.toHaveBeenCalled();
+            expect(featureFlagRepository.updateStatus).toHaveBeenCalledWith(
+                '507f1f77bcf86cd799439011',
+                statusUpdate
+            );
+            expect(featureFlagRepository.findOneById).not.toHaveBeenCalled();
+            expect(featureFlagCache.deleteFeatureFlag).not.toHaveBeenCalled();
         });
 
         it('updates the status and deletes the cached flag after the commit', async () => {
-            const stored = baseFlag;
             const updated = { ...baseFlag, isEnable: false };
-            featureFlagRepository.findOneById.mockResolvedValue(stored);
             featureFlagRepository.updateStatus.mockResolvedValue(updated);
 
             const result = await domain.updateStatusByAdmin(
@@ -571,6 +574,7 @@ describe('FeatureFlagDomain', () => {
             );
 
             expect(result).toBe(updated);
+            expect(featureFlagRepository.findOneById).not.toHaveBeenCalled();
             expect(featureFlagRepository.updateStatus).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439011',
                 statusUpdate

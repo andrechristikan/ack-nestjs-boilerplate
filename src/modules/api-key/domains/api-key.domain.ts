@@ -124,9 +124,15 @@ export class ApiKeyDomain {
             throw new ApiKeyExpiredException();
         }
 
-        const updated = await this.apiKeyRepository.updateStatus(id, {
-            isActive,
-        });
+        const updated = await this.apiKeyRepository.updateStatus(
+            id,
+            apiKey.isActive,
+            { isActive }
+        );
+        if (!updated) {
+            throw new ApiKeyNotFoundException();
+        }
+
         await this.apiKeyCache.deleteApiKey(apiKey.key);
 
         return updated;
@@ -165,6 +171,10 @@ export class ApiKeyDomain {
             startAt: newStartAt,
             endAt: newEndAt,
         });
+        if (!updated) {
+            throw new ApiKeyInactiveException();
+        }
+
         await this.apiKeyCache.deleteApiKey(apiKey.key);
 
         return updated;
@@ -181,6 +191,10 @@ export class ApiKeyDomain {
             secret
         );
         const updated = await this.apiKeyRepository.updateHash(id, hash);
+        if (!updated) {
+            throw new ApiKeyInactiveException();
+        }
+
         await this.apiKeyCache.deleteApiKey(apiKey.key);
 
         return { apiKey: updated, secret };
@@ -194,9 +208,13 @@ export class ApiKeyDomain {
         }
 
         const deleted = await this.apiKeyRepository.delete(id);
+        if (!deleted) {
+            throw new ApiKeyNotFoundException();
+        }
+
         await this.apiKeyCache.deleteApiKey(apiKey.key);
 
-        return deleted;
+        return apiKey;
     }
 
     async validateXApiKey(xApiKeyHeader: string | null): Promise<ApiKey> {

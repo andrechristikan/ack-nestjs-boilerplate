@@ -1,4 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
@@ -31,10 +35,14 @@ import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceHttpService {
+    private readonly deleteTimeoutInMs: number;
+
     constructor(
         private readonly workspaceDomain: WorkspaceDomain,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
@@ -48,8 +56,14 @@ export class WorkspaceHttpService {
         private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly databaseService: DatabaseService,
-        private readonly helperDateService: HelperDateService
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService,
+        private readonly configService: ConfigService
+    ) {
+        this.deleteTimeoutInMs = this.configService.get<number>(
+            'workspace.delete.timeoutInMs'
+        )!;
+    }
 
     async getListCursorByMember(
         userId: string,
@@ -212,27 +226,44 @@ export class WorkspaceHttpService {
         ];
 
         const deletedAt = this.helperDateService.create();
-        await this.databaseService.withTransaction(async tx => {
-            await this.workspaceDomain.softDeleteInTx(
-                tx,
-                workspaceId,
-                deletedAt
+        try {
+            await this.databaseService.withTransaction(
+                async tx => {
+                    await this.workspaceDomain.softDeleteInTx(
+                        tx,
+                        workspaceId,
+                        deletedAt,
+                        actorId
+                    );
+                    await this.projectDomain.softDeleteByWorkspaceInTx(
+                        tx,
+                        workspaceId,
+                        deletedAt,
+                        actorId
+                    );
+                    await this.workspaceInviteDomain.revokePendingByWorkspaceInTx(
+                        tx,
+                        workspaceId
+                    );
+                    await this.workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx(
+                        tx,
+                        workspaceId
+                    );
+                },
+                { timeout: this.deleteTimeoutInMs }
             );
-            await this.projectDomain.softDeleteByWorkspaceInTx(
-                tx,
-                workspaceId,
-                deletedAt,
-                actorId
-            );
-            await this.workspaceInviteDomain.revokePendingByWorkspaceInTx(
-                tx,
-                workspaceId
-            );
-            await this.workspaceJoinRequestDomain.cancelPendingByWorkspaceInTx(
-                tx,
-                workspaceId
-            );
-        });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
 

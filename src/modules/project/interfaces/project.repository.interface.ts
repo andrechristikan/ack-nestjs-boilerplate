@@ -45,8 +45,9 @@ export interface IProjectRepository {
     softDeleteInTx(
         tx: IDatabaseTransactionClient,
         projectId: string,
-        deletedAt: Date
-    ): Promise<void>;
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<boolean>;
     softDeleteByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,

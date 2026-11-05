@@ -244,16 +244,16 @@ export class AnalyticFraudDomain {
                         this.accountTakeoverNewDeviceAfterPasswordChangeInMs
                     )
                 );
-                return this.deviceAnalyticDomain.getCreatedInRangeByUser(
+                return this.deviceAnalyticDomain.existsCreatedInRangeByUser(
                     change.userId,
                     change.createdAt,
                     windowEnd
                 );
             });
             // Sequential by design: bounded chunks, concurrent within a chunk
-            const devicesPerChange = await Promise.all(devicePromises);
+            const hasDevicePerChange = await Promise.all(devicePromises);
             for (const [index, change] of batch.entries()) {
-                if (devicesPerChange[index]!.length > 0) {
+                if (hasDevicePerChange[index]) {
                     flagged.push({
                         userId: change.userId,
                         indicatorCodes: ['newDeviceAfterPasswordChange'],
@@ -374,13 +374,10 @@ export class AnalyticFraudDomain {
         const rows =
             await this.userForgotPasswordAnalyticDomain.getUnusedTokenCountsByUser(
                 startDate,
-                endDate
+                endDate,
+                this.forgotPasswordTokenAbuseMinUnusedTokens
             );
-        return rows
-            .filter(
-                r => r.count >= this.forgotPasswordTokenAbuseMinUnusedTokens
-            )
-            .map(r => ({ userId: r.userId, tokenCount: r.count }));
+        return rows.map(r => ({ userId: r.userId, tokenCount: r.count }));
     }
 
     private async computeRefreshSpike(
@@ -423,17 +420,17 @@ export class AnalyticFraudDomain {
                         regeneration.createdAt,
                         Duration.fromMillis(this.backupCodeNewDeviceAfterInMs)
                     );
-                    return this.deviceAnalyticDomain.getCreatedInRangeByUser(
+                    return this.deviceAnalyticDomain.existsCreatedInRangeByUser(
                         regeneration.userId,
                         regeneration.createdAt,
                         windowEnd
                     );
                 });
                 // Sequential by design: bounded chunks, concurrent within a chunk
-                const devicesPerRegeneration =
+                const hasDevicePerRegeneration =
                     await Promise.all(devicePromises);
                 for (const [index, regeneration] of batch.entries()) {
-                    if (devicesPerRegeneration[index]!.length > 0) {
+                    if (hasDevicePerRegeneration[index]) {
                         flagged.push({
                             userId: regeneration.userId,
                             regeneratedAt: regeneration.createdAt,

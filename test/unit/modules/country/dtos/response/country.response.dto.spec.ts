@@ -42,4 +42,18 @@ describe('CountryResponseSchema', () => {
             CountryResponseSchema.parse({ ...row, alpha2Code: 'IDN' })
         ).toThrow();
     });
+
+    it('declares a continent name as the continent example', () => {
+        const { example } = CountryResponseSchema.shape.continent.meta() ?? {};
+
+        expect([
+            'Africa',
+            'Antarctica',
+            'Asia',
+            'Europe',
+            'North America',
+            'Oceania',
+            'South America',
+        ]).toContain(example);
+    });
 });

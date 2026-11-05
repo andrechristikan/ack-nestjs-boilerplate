@@ -52,7 +52,7 @@ export const TermPolicyAcceptanceInclude = {
 } satisfies Prisma.TermPolicyUserAcceptanceInclude;
 
 /**
- * Term-policy error kit: `forbidden` for `@TermPolicyAcceptanceProtected`, `contentSizeExceeded` for the content presign route, `requiredNotPublished` for the sign-up routes.
+ * Term-policy error kit: `forbidden` for `@TermPolicyAcceptanceProtected`, `contentSizeExceeded` for the create, content presign, update-content, and add-content routes, `contentKeyInvalid` for the create, update-content, and add-content routes, `requiredNotPublished` for the sign-up routes.
  * @public
  */
 export const DocTermPolicyErrorResponses = {
@@ -63,6 +63,10 @@ export const DocTermPolicyErrorResponses = {
     contentSizeExceeded: DocResponseError(HttpStatus.BAD_REQUEST, {
         statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
         messagePath: 'termPolicy.error.contentSizeExceeded',
+    }),
+    contentKeyInvalid: DocResponseError(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
+        messagePath: 'termPolicy.error.contentKeyInvalid',
     }),
     requiredNotPublished: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
         statusCode: EnumTermPolicyStatusCodeError.requiredNotPublished,

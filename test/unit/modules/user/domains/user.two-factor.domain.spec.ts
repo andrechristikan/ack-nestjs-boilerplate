@@ -13,7 +13,9 @@ import {
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exceptions/auth.two-factor-secret-unavailable.exception';
@@ -37,6 +39,7 @@ describe('UserTwoFactorDomain', () => {
     const authTwoFactorUtil: MockProxy<AuthTwoFactorUtil> =
         mock<AuthTwoFactorUtil>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -100,6 +103,7 @@ describe('UserTwoFactorDomain', () => {
             name: 'user',
             description: null,
             type: EnumRoleType.user,
+            isImmutable: false,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -133,6 +137,7 @@ describe('UserTwoFactorDomain', () => {
                 { provide: UserRepository, useValue: userRepository },
                 { provide: AuthTwoFactorUtil, useValue: authTwoFactorUtil },
                 { provide: SentryService, useValue: sentryService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -803,10 +808,7 @@ describe('UserTwoFactorDomain', () => {
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
-            userTwoFactorRepository.enableTwoFactor.mockResolvedValue({
-                ...baseTwoFactor,
-                enabled: true,
-            });
+            userTwoFactorRepository.enableTwoFactor.mockResolvedValue(true);
 
             await expect(
                 domain.enableTwoFactor('user-quartz', 'pending-secret')
@@ -814,6 +816,52 @@ describe('UserTwoFactorDomain', () => {
             expect(
                 userTwoFactorRepository.enableTwoFactor
             ).toHaveBeenCalledWith('user-quartz', 'pending-secret', ['hash1']);
+        });
+
+        it('throws AuthTwoFactorSetupRequiredException when the guarded write misses', async () => {
+            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
+                codes: ['CODE1'],
+                hashes: ['hash1'],
+            });
+            userTwoFactorRepository.enableTwoFactor.mockResolvedValue(false);
+
+            await expect(
+                domain.enableTwoFactor('user-quartz', 'pending-secret')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorSetupRequired
+                    ],
+                messagePath: 'auth.error.twoFactorSetupRequired',
+            });
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorSetupRequiredException on a write conflict', async () => {
+            const conflict = new Error('write conflict');
+            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
+                codes: ['CODE1'],
+                hashes: ['hash1'],
+            });
+            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.enableTwoFactor('user-quartz', 'pending-secret')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorSetupRequired
+                    ],
+                messagePath: 'auth.error.twoFactorSetupRequired',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('rethrows an AppBaseException raised while enabling', async () => {
@@ -834,6 +882,7 @@ describe('UserTwoFactorDomain', () => {
                 hashes: ['hash1'],
             });
             userTwoFactorRepository.enableTwoFactor.mockRejectedValue(error);
+            databaseUtil.toException.mockReturnValue(null);
 
             const call = domain.enableTwoFactor('user-quartz', 'pending');
 
@@ -851,6 +900,9 @@ describe('UserTwoFactorDomain', () => {
                 codes: ['CODE1', 'CODE2'],
                 hashes: ['hash1', 'hash2'],
             });
+            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockResolvedValue(
+                true
+            );
 
             await expect(
                 domain.regenerateTwoFactorBackupCodes('user-quartz')
@@ -858,6 +910,28 @@ describe('UserTwoFactorDomain', () => {
             expect(
                 userTwoFactorRepository.regenerateTwoFactorBackupCodes
             ).toHaveBeenCalledWith('user-quartz', ['hash1', 'hash2']);
+        });
+
+        it('throws AuthTwoFactorNotEnabledException when the guarded write misses', async () => {
+            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
+                codes: ['CODE1'],
+                hashes: ['hash1'],
+            });
+            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                domain.regenerateTwoFactorBackupCodes('user-quartz')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorNotEnabled
+                    ],
+                messagePath: 'auth.error.twoFactorNotEnabled',
+            });
         });
 
         it('rethrows an AppBaseException raised while regenerating', async () => {
@@ -961,11 +1035,33 @@ describe('UserTwoFactorDomain', () => {
 
     describe('disableInTx', () => {
         it('disables two-factor on the given transaction', async () => {
+            userTwoFactorRepository.disableTwoFactorInTx.mockResolvedValue(
+                true
+            );
+
             await domain.disableInTx(tx, 'user-quartz');
 
             expect(
                 userTwoFactorRepository.disableTwoFactorInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz');
+        });
+
+        it('throws AuthTwoFactorNotEnabledException when the guarded write misses', async () => {
+            userTwoFactorRepository.disableTwoFactorInTx.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                domain.disableInTx(tx, 'user-quartz')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorNotEnabled
+                    ],
+                messagePath: 'auth.error.twoFactorNotEnabled',
+            });
         });
     });
 

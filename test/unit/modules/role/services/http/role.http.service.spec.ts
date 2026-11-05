@@ -67,6 +67,7 @@ describe('RoleHttpService', () => {
         name: 'manager',
         description: null,
         type: EnumRoleType.admin,
+        isImmutable: false,
         createdAt: now,
         createdBy: 'user-1',
         updatedAt: now,
@@ -368,7 +369,12 @@ describe('RoleHttpService', () => {
             await service.createByAdmin(body, actorUser);
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                { id: role.id, name: 'manager', type: EnumRoleType.admin },
+                {
+                    id: role.id,
+                    name: 'manager',
+                    type: EnumRoleType.admin,
+                    isImmutable: false,
+                },
                 now
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([

@@ -28,7 +28,7 @@ export class WorkspaceQueue extends QueueBase {
     }
 
     /**
-     * Schedules the recurring stale-invite expiry sweep (daily at midnight, in the
+     * Schedules the recurring stale-invite expiry sweep (hourly, on the hour, in the
      * configured timezone). `immediately: true` is BullMQ's native scheduler option
      * to also run the job right now, at every call — safe to re-run on every app
      * bootstrap since the sweep is idempotent (it only flips already-past-due rows).

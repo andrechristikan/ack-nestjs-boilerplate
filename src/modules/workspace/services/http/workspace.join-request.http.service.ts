@@ -156,11 +156,11 @@ export class WorkspaceJoinRequestHttpService {
             }),
         ];
 
-        // Sequential by design: write must not run if an earlier step throws
         const [requester, reviewerRecipients] = await Promise.all([
             this.userDomain.getNameById(userId),
             this.getReviewerRecipients(workspace.id),
         ]);
+        // Sequential by design: write must not run if an earlier step throws
         const joinRequest =
             await this.workspaceJoinRequestDomain.createJoinRequest(userId, {
                 workspaceId,

@@ -3,7 +3,10 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { SentryService } from '@common/sentry/services/sentry.service';
 import type { UserPhoto } from '@generated/prisma-client/client';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
-import type { IUserDeletePhotoPayload } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserDeletePhotoPayload,
+    IUserLockoutPayload,
+} from '@modules/user/interfaces/user.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -13,7 +16,7 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 /**
- * Enqueues the S3 delete of a replaced profile photo, each job under a fresh job id.
+ * Enqueues the S3 delete of a replaced profile photo under a fresh job id, and the lockout of a user that spent its attempt budget without a job id, so every lockout runs.
  */
 @Injectable()
 export class UserQueue extends QueueBase {
@@ -55,6 +58,23 @@ export class UserQueue extends QueueBase {
             {
                 priority: EnumQueuePriority.low,
                 jobId,
+            },
+            description
+        );
+    }
+
+    async lockout(userId: string): Promise<void> {
+        const data: IUserLockoutPayload = { userId };
+
+        const description = this.messageService.setMessage(
+            'user.queue.error.enqueueLockout'
+        );
+
+        await this.addSideEffect(
+            EnumUserProcess.lockout,
+            data,
+            {
+                priority: EnumQueuePriority.high,
             },
             description
         );

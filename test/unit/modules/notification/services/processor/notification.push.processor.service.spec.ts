@@ -76,7 +76,6 @@ describe('NotificationPushProcessorService', () => {
         failedSteps: [
             {
                 step: EnumNotificationStep.cleanupTokens,
-                message: 'redis',
                 rawError: failedRawError,
             },
         ],
@@ -92,7 +91,6 @@ describe('NotificationPushProcessorService', () => {
         failedSteps: [
             {
                 step: EnumNotificationStep.sendMulticast,
-                message: 'notification.queue.push.error.tokensPending',
                 rawError: outageRawError,
             },
         ],

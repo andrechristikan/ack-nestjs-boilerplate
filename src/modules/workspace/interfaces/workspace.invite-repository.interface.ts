@@ -17,6 +17,11 @@ export interface IWorkspaceInviteRepository {
         tx: IDatabaseTransactionClient,
         workspaceId: string
     ): Promise<void>;
+    revokePendingByEmailInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        email: string
+    ): Promise<void>;
     clearProjectInTx(
         tx: IDatabaseTransactionClient,
         projectId: string
@@ -56,11 +61,10 @@ export interface IWorkspaceInviteRepository {
         expiredAt: Date,
         resentAt: Date
     ): Promise<WorkspaceInvite | null>;
-    revoke(workspaceInviteId: string, nonce: string): Promise<boolean>;
+    revoke(workspaceInviteId: string): Promise<boolean>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string,
-        nonce: string,
         userId: string,
         acceptedAt: Date
     ): Promise<boolean>;

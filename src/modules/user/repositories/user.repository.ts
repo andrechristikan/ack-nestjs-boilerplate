@@ -174,6 +174,18 @@ export class UserRepository implements IUserRepository {
         });
     }
 
+    async findEmailByIdInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<string | null> {
+        const user = await tx.user.findUnique({
+            where: { id: userId, deletedAt: null },
+            select: { email: true },
+        });
+
+        return user?.email ?? null;
+    }
+
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null },

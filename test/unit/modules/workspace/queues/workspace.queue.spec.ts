@@ -27,7 +27,7 @@ describe('WorkspaceQueue', () => {
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string> = {
                 'app.timezone': 'UTC',
-                'workspace.invite.expirySweepCron': '0 0 * * *',
+                'workspace.invite.expirySweepCron': '0 * * * *',
             };
 
             return values[key];
@@ -56,7 +56,7 @@ describe('WorkspaceQueue', () => {
             expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
                 EnumWorkspaceProcess.expireStaleJoinRequests,
                 {
-                    pattern: '0 0 * * *',
+                    pattern: '0 * * * *',
                     tz: 'UTC',
                     immediately: true,
                 },
@@ -72,13 +72,13 @@ describe('WorkspaceQueue', () => {
     });
 
     describe('scheduleInviteExpirySweep', () => {
-        it('schedules the daily expiry-sweep job', async () => {
+        it('schedules the hourly expiry-sweep job', async () => {
             await queue.scheduleInviteExpirySweep();
 
             expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
                 EnumWorkspaceProcess.expireStaleInvites,
                 {
-                    pattern: '0 0 * * *',
+                    pattern: '0 * * * *',
                     tz: 'UTC',
                     immediately: true,
                 },

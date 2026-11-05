@@ -149,11 +149,12 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
+    /** Confirms the pending authenticator only while `secretEncrypted` is still the stored pending secret; `false` means nothing was written. */
     async enableTwoFactor(
         userId: string,
         secretEncrypted: string,
         backupCodesHashed: string[]
-    ): Promise<TwoFactor> {
+    ): Promise<boolean> {
         return this.databaseService.withTransaction(async tx => {
             const now = this.helperDateService.create();
             const twoFactor = await tx.twoFactor.findUnique({
@@ -163,8 +164,8 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 },
             });
 
-            return tx.twoFactor.update({
-                where: { userId },
+            const { count } = await tx.twoFactor.updateMany({
+                where: { userId, pendingSecret: secretEncrypted },
                 data: {
                     secret: secretEncrypted,
                     pendingSecret: null,
@@ -177,17 +178,19 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                     updatedBy: userId,
                 },
             });
+
+            return count > 0;
         });
     }
 
+    /** Disables two-factor only while it is enabled; `false` means nothing was written. */
     async disableTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<TwoFactor> {
+    ): Promise<boolean> {
         const now = this.helperDateService.create();
-
-        return tx.twoFactor.update({
-            where: { userId },
+        const { count } = await tx.twoFactor.updateMany({
+            where: { userId, enabled: true },
             data: {
                 enabled: false,
                 requiredSetup: false,
@@ -198,21 +201,26 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 updatedAt: now,
             },
         });
+
+        return count > 0;
     }
 
+    /** Replaces the backup codes only while two-factor is enabled; `false` means nothing was written. */
     async regenerateTwoFactorBackupCodes(
         userId: string,
         backupCodesHashed: string[]
-    ): Promise<TwoFactor> {
+    ): Promise<boolean> {
         const now = this.helperDateService.create();
+        const { count } =
+            await this.databaseService.client.twoFactor.updateMany({
+                where: { userId, enabled: true },
+                data: {
+                    backupCodes: backupCodesHashed,
+                    updatedAt: now,
+                },
+            });
 
-        return this.databaseService.client.twoFactor.update({
-            where: { userId },
-            data: {
-                backupCodes: backupCodesHashed,
-                updatedAt: now,
-            },
-        });
+        return count > 0;
     }
 
     async resetTwoFactorByAdminInTx(

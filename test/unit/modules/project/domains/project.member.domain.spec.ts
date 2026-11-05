@@ -160,7 +160,7 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('validateProjectRoleGuard', () => {
-        it('returns true with no repository lookup when the caller is the workspace owner', async () => {
+        it('resolves with no value and no repository lookup when the caller is the workspace owner', async () => {
             projectUtil.hasWorkspaceBypass.mockReturnValue(true);
             const workspaceMember = baseWorkspaceMember;
 
@@ -170,7 +170,7 @@ describe('ProjectMemberDomain', () => {
                 []
             );
 
-            expect(result).toBe(true);
+            expect(result).toBeUndefined();
             expect(
                 projectMemberRepository.findOneByProjectAndUser
             ).not.toHaveBeenCalled();
@@ -226,7 +226,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('returns false when the member role is allowed', async () => {
+        it('resolves with no value when the member role is allowed', async () => {
             projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue({
                 ...baseProjectMember,
@@ -240,7 +240,7 @@ describe('ProjectMemberDomain', () => {
                 [EnumProjectMemberRole.admin]
             );
 
-            expect(result).toBe(false);
+            expect(result).toBeUndefined();
         });
     });
 
@@ -555,7 +555,7 @@ describe('ProjectMemberDomain', () => {
             expect(projectMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
-        it('updates the role and returns the member it changed', async () => {
+        it('throws ProjectMemberPeerForbiddenException when the guarded write misses', async () => {
             const project = baseProject;
             const targetMember = {
                 ...baseProjectMember,
@@ -565,6 +565,37 @@ describe('ProjectMemberDomain', () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
+            projectMemberRepository.updateRole.mockResolvedValue(false);
+
+            const rejection = domain.updateMemberRole(
+                project,
+                plainActor,
+                targetMember.id,
+                EnumProjectMemberRole.viewer
+            );
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
+                statusCodeKey:
+                    EnumProjectStatusCodeError[
+                        EnumProjectStatusCodeError.memberPeerForbidden
+                    ],
+                messagePath: 'project.error.memberPeerForbidden',
+            });
+        });
+
+        it('updates the role guarded on the role it read and returns the member it changed', async () => {
+            const project = baseProject;
+            const targetMember = {
+                ...baseProjectMember,
+                userId: '507f1f77bcf86cd799439044',
+                role: EnumProjectMemberRole.member,
+            };
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                targetMember
+            );
+            projectMemberRepository.updateRole.mockResolvedValue(true);
 
             const result = await domain.updateMemberRole(
                 project,
@@ -576,6 +607,7 @@ describe('ProjectMemberDomain', () => {
             expect(result).toBe(targetMember);
             expect(projectMemberRepository.updateRole).toHaveBeenCalledWith(
                 targetMember.id,
+                EnumProjectMemberRole.member,
                 EnumProjectMemberRole.admin
             );
         });
@@ -658,7 +690,7 @@ describe('ProjectMemberDomain', () => {
             expect(projectMemberRepository.removeMember).not.toHaveBeenCalled();
         });
 
-        it('removes the member and returns the member it removed', async () => {
+        it('throws ProjectMemberPeerForbiddenException when the guarded write misses', async () => {
             const project = baseProject;
             const targetMember = {
                 ...baseProjectMember,
@@ -668,6 +700,36 @@ describe('ProjectMemberDomain', () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
+            projectMemberRepository.removeMember.mockResolvedValue(false);
+
+            const rejection = domain.removeMember(
+                project,
+                plainActor,
+                targetMember.id
+            );
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
+                statusCodeKey:
+                    EnumProjectStatusCodeError[
+                        EnumProjectStatusCodeError.memberPeerForbidden
+                    ],
+                messagePath: 'project.error.memberPeerForbidden',
+            });
+        });
+
+        it('removes the member guarded on the role it read and returns the member it removed', async () => {
+            const project = baseProject;
+            const targetMember = {
+                ...baseProjectMember,
+                userId: '507f1f77bcf86cd799439044',
+                role: EnumProjectMemberRole.member,
+            };
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                targetMember
+            );
+            projectMemberRepository.removeMember.mockResolvedValue(true);
 
             const result = await domain.removeMember(
                 project,
@@ -677,20 +739,39 @@ describe('ProjectMemberDomain', () => {
 
             expect(result).toBe(targetMember);
             expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
-                targetMember.id
+                targetMember.id,
+                EnumProjectMemberRole.member
             );
         });
     });
 
     describe('leaveProject', () => {
-        it('removes the member', async () => {
+        it('throws ProjectMemberNotFoundException when the row is gone', async () => {
+            projectMemberRepository.removeById.mockResolvedValue(false);
+
+            const rejection = domain.leaveProject(baseProjectMember);
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberNotFound,
+                statusCodeKey:
+                    EnumProjectStatusCodeError[
+                        EnumProjectStatusCodeError.memberNotFound
+                    ],
+                messagePath: 'project.error.memberNotFound',
+            });
+        });
+
+        it('removes the member by id whatever its role', async () => {
             const member = baseProjectMember;
+            projectMemberRepository.removeById.mockResolvedValue(true);
 
             await domain.leaveProject(member);
 
-            expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
+            expect(projectMemberRepository.removeById).toHaveBeenCalledWith(
                 member.id
             );
+            expect(projectMemberRepository.removeMember).not.toHaveBeenCalled();
         });
     });
 

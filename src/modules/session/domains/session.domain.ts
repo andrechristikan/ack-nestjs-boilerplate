@@ -151,7 +151,7 @@ export class SessionDomain {
     }
 
     /** Revokes a session as its own user when its token cannot be honoured (a replayed refresh token, a login entry that could not be written); returns the ref to purge, none when it was already revoked. */
-    async revokeOnReuse(
+    async revokeIfActive(
         userId: string,
         sessionId: string
     ): Promise<ISessionRef[]> {

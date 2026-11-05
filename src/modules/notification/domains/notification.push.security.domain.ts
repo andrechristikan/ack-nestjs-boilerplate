@@ -117,7 +117,6 @@ export class NotificationPushSecurityDomain {
                 );
                 failure = {
                     step: EnumNotificationStep.sendMulticast,
-                    message,
                     rawError: new Error(message),
                 };
             }

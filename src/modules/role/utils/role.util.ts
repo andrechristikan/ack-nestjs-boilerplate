@@ -25,4 +25,8 @@ export class RoleUtil {
             RoleRank[actorRoleType] > RoleRank[targetRoleType]
         );
     }
+
+    changesImmutableType(role: IRole, type: EnumRoleType): boolean {
+        return role.isImmutable && role.type !== type;
+    }
 }

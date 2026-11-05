@@ -15,7 +15,7 @@ import type {
 } from '@modules/role/interfaces/role.interface';
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class RoleRepository implements IRoleRepository {
@@ -70,21 +70,21 @@ export class RoleRepository implements IRoleRepository {
     async findOneById(id: string): Promise<IRole | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
-            select: { id: true, type: true, name: true },
+            select: { id: true, type: true, name: true, isImmutable: true },
         });
     }
 
     async findOneByName(name: string): Promise<IRole | null> {
         return this.databaseService.client.role.findFirst({
             where: { name },
-            select: { id: true, type: true, name: true },
+            select: { id: true, type: true, name: true, isImmutable: true },
         });
     }
 
     async findOneByUserId(userId: string): Promise<IRole | null> {
         return this.databaseService.client.role.findFirst({
             where: { users: { some: { id: userId, deletedAt: null } } },
-            select: { id: true, type: true, name: true },
+            select: { id: true, type: true, name: true, isImmutable: true },
         });
     }
 
@@ -111,18 +111,23 @@ export class RoleRepository implements IRoleRepository {
 
     async update(
         id: string,
+        expectedType: EnumRoleType,
         { description, type }: IRoleUpdate
-    ): Promise<IRoleWithPolicies> {
-        return this.databaseService.client.role.update({
-            where: { id },
+    ): Promise<IRoleWithPolicies | null> {
+        const { count } = await this.databaseService.client.role.updateMany({
+            where: { id, type: expectedType },
             data: { description, type },
-            include: { policies: true },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.findOneWithPoliciesById(id);
     }
 
     async deleteUnused(id: string): Promise<boolean> {
         const { count } = await this.databaseService.client.role.deleteMany({
-            where: { id, users: { none: {} } },
+            where: { id, isImmutable: false, users: { none: {} } },
         });
 
         return count > 0;

@@ -41,6 +41,7 @@ import { WorkspaceInviteAnalyticDomain } from '@modules/workspace/domains/worksp
 import { WorkspaceJoinRequestAnalyticDomain } from '@modules/workspace/domains/workspace.join-request.analytic.domain';
 import { WorkspaceMemberAnalyticDomain } from '@modules/workspace/domains/workspace.member.analytic.domain';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('AnalyticDashboardDomain', () => {
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
@@ -997,7 +998,7 @@ describe('AnalyticDashboardDomain', () => {
                 compliant: 8,
                 rate: 0.8,
             };
-            const deferredActive = Promise.withResolvers<number>();
+            const deferredActive = buildDeferred<number>();
             userAnalyticDomain.getCountActive.mockReturnValue(
                 deferredActive.promise
             );
@@ -1123,7 +1124,7 @@ describe('AnalyticDashboardDomain', () => {
     describe('authTwoFactorAdoption', () => {
         it('reads the active and enabled counts together, then maps the adoption', async () => {
             const adoption = { enabled: 3, total: 9, rate: 0.33 };
-            const deferredActive = Promise.withResolvers<number>();
+            const deferredActive = buildDeferred<number>();
             userAnalyticDomain.getCountActive.mockReturnValue(
                 deferredActive.promise
             );

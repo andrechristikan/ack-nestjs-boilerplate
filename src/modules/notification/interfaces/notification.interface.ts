@@ -332,7 +332,6 @@ export interface INotificationEmailUnregisteredQueuePayload<T = null> {
 
 export interface INotificationStepFailure {
     step: EnumNotificationStep;
-    message: string;
     rawError: Error;
 }
 

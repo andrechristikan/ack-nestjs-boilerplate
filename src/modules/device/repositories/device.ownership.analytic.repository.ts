@@ -1,9 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.fraud.interface';
-import type {
-    IDeviceOwnershipAnalyticCreated,
-    IDeviceOwnershipAnalyticUserCount,
-} from '@modules/device/interfaces/device.interface';
+import type { IDeviceOwnershipAnalyticUserCount } from '@modules/device/interfaces/device.interface';
 import type { IDeviceOwnershipAnalyticRepository } from '@modules/device/interfaces/device.ownership-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -35,23 +32,20 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
         });
     }
 
-    async findCreatedInRangeByUser(
+    async existsCreatedInRangeByUser(
         userId: string,
         startDate: Date,
         endDate: Date
-    ): Promise<IDeviceOwnershipAnalyticCreated[]> {
-        return this.databaseService.client.deviceOwnership.findMany({
-            where: {
-                userId,
-                createdAt: { gte: startDate, lt: endDate },
-            },
-            select: {
-                id: true,
-                userId: true,
-                deviceId: true,
-                createdAt: true,
-            },
-        });
+    ): Promise<boolean> {
+        const ownership =
+            await this.databaseService.client.deviceOwnership.findFirst({
+                where: {
+                    userId,
+                    createdAt: { gte: startDate, lt: endDate },
+                },
+                select: { id: true },
+            });
+        return ownership !== null;
     }
 
     async findSharedFingerprints(

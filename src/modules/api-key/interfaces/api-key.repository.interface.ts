@@ -31,14 +31,15 @@ export interface IApiKeyRepository {
     findOneById(id: string): Promise<IApiKey | null>;
     updateStatus(
         id: string,
+        expectedIsActive: boolean,
         { isActive }: ApiKeyUpdateStatusRequestDto
-    ): Promise<IApiKey>;
+    ): Promise<IApiKey | null>;
     updateName(id: string, name: string): Promise<IApiKey>;
     updateDates(
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
-    ): Promise<IApiKey>;
-    updateHash(id: string, hash: string): Promise<IApiKey>;
-    delete(id: string): Promise<IApiKey>;
+    ): Promise<IApiKey | null>;
+    updateHash(id: string, hash: string): Promise<IApiKey | null>;
+    delete(id: string): Promise<boolean>;
     findOneByKey(key: string): Promise<ApiKey | null>;
 }

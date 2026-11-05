@@ -8,6 +8,9 @@ export interface IConfigWorkspace {
     slugRegex: RegExp;
     slugMaxLength: number;
     slugMaxAttempts: number;
+    delete: {
+        timeoutInMs: number;
+    };
     invite: {
         expiredInDays: number;
         tokenLength: number;
@@ -33,6 +36,9 @@ export default registerAs('workspace', (): IConfigWorkspace => ({
     slugRegex: /^[0-9a-zA-Z-]+$/,
     slugMaxLength: 30,
     slugMaxAttempts: 5,
+    delete: {
+        timeoutInMs: ms('10s'),
+    },
     invite: {
         expiredInDays: 7,
         tokenLength: 100,
@@ -42,7 +48,7 @@ export default registerAs('workspace', (): IConfigWorkspace => ({
         expireChunkSize: 100,
         linkPattern: '{homeUrl}/workspace/invites?inviteToken={token}',
         signUpLinkPattern: '{homeUrl}/sign-up?inviteToken={token}',
-        expirySweepCron: '0 0 * * *',
+        expirySweepCron: '0 * * * *',
     },
     joinRequest: {
         reviewLinkPattern: '{homeUrl}/workspace/join-requests/{joinRequestId}',

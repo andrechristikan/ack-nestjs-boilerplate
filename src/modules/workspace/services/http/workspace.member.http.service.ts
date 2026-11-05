@@ -26,6 +26,7 @@ import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dt
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
@@ -37,6 +38,7 @@ export class WorkspaceMemberHttpService {
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
+        private readonly workspaceInviteDomain: WorkspaceInviteDomain,
         private readonly userDomain: UserDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
@@ -93,11 +95,7 @@ export class WorkspaceMemberHttpService {
 
         try {
             await this.databaseService.withTransaction(async tx => {
-                await this.workspaceMemberDomain.leaveWorkspaceInTx(
-                    tx,
-                    workspaceId,
-                    member
-                );
+                await this.workspaceMemberDomain.leaveWorkspaceInTx(tx, member);
                 await this.projectMemberDomain.removeByWorkspaceAndUserInTx(
                     tx,
                     workspaceId,
@@ -225,6 +223,17 @@ export class WorkspaceMemberHttpService {
                         workspaceId,
                         removed.userId
                     );
+                    const email = await this.userDomain.getEmailByIdInTx(
+                        tx,
+                        removed.userId
+                    );
+                    if (email !== null) {
+                        await this.workspaceInviteDomain.revokePendingByEmailInTx(
+                            tx,
+                            workspaceId,
+                            email
+                        );
+                    }
                     await this.workspaceJoinRequestDomain.cancelPendingByUserInTx(
                         tx,
                         workspaceId,

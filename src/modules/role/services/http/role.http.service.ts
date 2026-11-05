@@ -148,6 +148,7 @@ export class RoleHttpService {
                 id: roleId,
                 name: body.name,
                 type: body.type,
+                isImmutable: false,
             }),
         ];
 

@@ -35,13 +35,11 @@ export interface IWorkspaceJoinRequestRepository {
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceJoinRequestId: string,
-        nonce: string,
         reviewerId: string,
         reviewedAt: Date
     ): Promise<boolean>;
     reject(
         workspaceJoinRequestId: string,
-        nonce: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
@@ -49,6 +47,10 @@ export interface IWorkspaceJoinRequestRepository {
     cancelPendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string
+    ): Promise<void>;
+    cancelPendingByRequesterInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
     ): Promise<void>;
     cancelPendingByUserInTx(
         tx: IDatabaseTransactionClient,

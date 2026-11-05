@@ -5,10 +5,7 @@ import type {
     IAnalyticCountBucket,
     IAnalyticMetricRate,
 } from '@modules/analytic/interfaces/analytic.interface';
-import type {
-    IDeviceOwnershipAnalyticCreated,
-    IDeviceOwnershipAnalyticUserCount,
-} from '@modules/device/interfaces/device.interface';
+import type { IDeviceOwnershipAnalyticUserCount } from '@modules/device/interfaces/device.interface';
 import { DeviceAnalyticRepository } from '@modules/device/repositories/device.analytic.repository';
 import { DeviceOwnershipAnalyticRepository } from '@modules/device/repositories/device.ownership.analytic.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
@@ -59,12 +56,12 @@ export class DeviceAnalyticDomain {
         return this.deviceOwnershipAnalyticRepository.countInactive(before);
     }
 
-    getCreatedInRangeByUser(
+    existsCreatedInRangeByUser(
         userId: string,
         startDate: Date,
         endDate: Date
-    ): Promise<IDeviceOwnershipAnalyticCreated[]> {
-        return this.deviceOwnershipAnalyticRepository.findCreatedInRangeByUser(
+    ): Promise<boolean> {
+        return this.deviceOwnershipAnalyticRepository.existsCreatedInRangeByUser(
             userId,
             startDate,
             endDate

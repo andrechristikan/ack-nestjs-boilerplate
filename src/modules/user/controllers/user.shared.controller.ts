@@ -416,7 +416,6 @@ export class UserSharedController {
             'logout from current session, invalidating the access token and deleting the session.',
     })
     @Response('user.logout')
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()

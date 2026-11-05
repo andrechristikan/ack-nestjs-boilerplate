@@ -65,7 +65,7 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
 
         return this.authDomain.validateJwtAccessSession(
             payload,
-            login?.jti ?? null
+            login?.jtiDigest ?? null
         );
     }
 }

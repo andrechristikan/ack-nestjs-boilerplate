@@ -11,6 +11,7 @@ import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number
 import { UserMobileNumberHttpService } from '@modules/user/services/http/user.mobile-number.http.service';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('UserMobileNumberHttpService', () => {
     const userMobileNumberDomain: MockProxy<UserMobileNumberDomain> =
@@ -124,7 +125,7 @@ describe('UserMobileNumberHttpService', () => {
 
         it('reads the country and the duplicate number together', async () => {
             const deferredCountry =
-                Promise.withResolvers<IUserMobileNumber['country']>();
+                buildDeferred<IUserMobileNumber['country']>();
             countryDomain.getOne.mockReturnValue(deferredCountry.promise);
             userMobileNumberDomain.existsMobileNumber.mockImplementation(
                 async () => {
@@ -237,7 +238,7 @@ describe('UserMobileNumberHttpService', () => {
 
         it('reads the country and the duplicate number together after the number is found', async () => {
             const deferredCountry =
-                Promise.withResolvers<IUserMobileNumber['country']>();
+                buildDeferred<IUserMobileNumber['country']>();
             countryDomain.getOne.mockReturnValue(deferredCountry.promise);
             userMobileNumberDomain.existsMobileNumber.mockImplementation(
                 async () => {

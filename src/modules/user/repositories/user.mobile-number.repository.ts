@@ -6,7 +6,10 @@ import type {
 } from '@generated/prisma-client/client';
 import { UserMobileNumberSummarySelect } from '@modules/user/constants/user.constant';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
-import type { IUserMobileNumberSummary } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserMobileNumber,
+    IUserMobileNumberSummary,
+} from '@modules/user/interfaces/user.interface';
 import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -86,18 +89,22 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
     async deleteInTx(
         tx: IDatabaseTransactionClient,
         mobileNumberId: string
-    ): Promise<UserMobileNumber & { country: Country }> {
-        const row = await tx.userMobileNumber.findUniqueOrThrow({
+    ): Promise<IUserMobileNumber | null> {
+        const row = await tx.userMobileNumber.findFirst({
             where: { id: mobileNumberId },
             include: {
                 country: true,
             },
         });
-        await tx.userMobileNumber.delete({
+        if (!row) {
+            return null;
+        }
+
+        const { count } = await tx.userMobileNumber.deleteMany({
             where: { id: mobileNumberId },
         });
 
-        return row;
+        return count > 0 ? row : null;
     }
 
     async deleteByUserInTx(

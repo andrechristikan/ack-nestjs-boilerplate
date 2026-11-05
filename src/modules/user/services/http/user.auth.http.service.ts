@@ -34,6 +34,7 @@ import { ProjectMemberDomain } from '@modules/project/domains/project.member.dom
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
@@ -56,12 +57,13 @@ import type {
     IUserLoginOutcome,
     IUserLoginSocial,
     IUserRecipient,
-    IUserSignUpWorkspaceContext,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -83,6 +85,7 @@ export class UserAuthHttpService {
         private readonly termPolicyAcceptanceDomain: TermPolicyAcceptanceDomain,
         private readonly workspaceDomain: WorkspaceDomain,
         private readonly workspaceInviteDomain: WorkspaceInviteDomain,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly roleDomain: RoleDomain,
         private readonly countryDomain: CountryDomain,
@@ -93,6 +96,7 @@ export class UserAuthHttpService {
         private readonly authTwoFactorDomain: AuthTwoFactorDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
+        private readonly userQueue: UserQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
@@ -132,31 +136,6 @@ export class UserAuthHttpService {
         return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
-    private async resolveWorkspaceContext(
-        inviteToken: string | null,
-        email: string,
-        username: string
-    ): Promise<IUserSignUpWorkspaceContext> {
-        if (!inviteToken) {
-            const personalContexts =
-                this.userCreateUtil.buildPersonalWorkspaceContexts([username]);
-
-            return personalContexts[0]!;
-        }
-
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'invitationAllowed'
-        );
-        const invite = await this.workspaceInviteDomain.validateInviteForEmail(
-            inviteToken,
-            email
-        );
-
-        return this.userCreateUtil.buildInviteWorkspaceContext(invite);
-    }
-
     /** Creates the user a social sign-in introduces, with its workspace and invite join on one transaction, retrying the personal-workspace slug candidates in turn; null when the user already exists or sign-up is closed. */
     private async signUpWithSocial(
         email: string,
@@ -178,11 +157,15 @@ export class UserAuthHttpService {
         }
 
         // Sequential by design: gate before the work it guards
-        const workspaceContext = await this.resolveWorkspaceContext(
+        const invite = await this.workspaceInviteDomain.getSignUpInvite(
             loginSocial.inviteToken,
-            normalizedEmail,
-            loginSocial.username
+            normalizedEmail
         );
+        const workspaceContext =
+            this.userCreateUtil.buildSignUpWorkspaceContext(
+                invite,
+                loginSocial.username
+            );
         const [role, , usernameCheck] = await Promise.all([
             this.roleDomain.getByName(this.userRoleName),
             this.countryDomain.getOne(loginSocial.countryId),
@@ -404,7 +387,7 @@ export class UserAuthHttpService {
         try {
             await this.sessionDomain.setLogin(userId, sessionId, jti);
         } catch (error: unknown) {
-            const revoked = await this.sessionDomain.revokeOnReuse(
+            const revoked = await this.sessionDomain.revokeIfActive(
                 userId,
                 sessionId
             );
@@ -415,53 +398,6 @@ export class UserAuthHttpService {
             }
 
             throw new AppUnknownException(error);
-        }
-    }
-
-    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction; answers the revoked sessions, or null when the account was already deactivated or the write conflicted. */
-    private async reachMaxAttempt(
-        userId: string
-    ): Promise<ISessionRef[] | null> {
-        const now = this.helperDateService.create();
-
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const isDeactivated =
-                    await this.userDomain.deactivateForMaxAttemptInTx(
-                        tx,
-                        userId
-                    );
-                if (!isDeactivated) {
-                    return null;
-                }
-
-                const sessions =
-                    await this.sessionDomain.revokeActiveByUserInTx(
-                        tx,
-                        userId,
-                        userId,
-                        now
-                    );
-                await this.deviceDomain.revokeAllByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-
-                return sessions;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                return null;
-            }
-
-            throw new AppUnknownException(err);
         }
     }
 
@@ -482,12 +418,9 @@ export class UserAuthHttpService {
                     createdBy: user.id,
                 }),
             ];
-            const revoked = await this.reachMaxAttempt(user.id);
-            if (revoked !== null) {
-                await this.sessionQueue.purgeLogins(user.id, revoked);
+            await this.userQueue.lockout(user.id);
 
-                this.activityLogDomain.stagePrepared(lockoutLogs);
-            }
+            this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
         this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
@@ -501,7 +434,13 @@ export class UserAuthHttpService {
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IUserLoginOutcome> {
-        const { lastWorkspaceId, lastWorkspaceChangedAt } = user;
+        const { lastWorkspaceChangedAt } = user;
+        // Sequential by design: write must not run if an earlier step throws
+        const lastWorkspaceId =
+            await this.workspaceMemberDomain.resolveLastWorkspaceId(
+                user.id,
+                user.lastWorkspaceId
+            );
         const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
         if (!isTwoFactorEnabled) {
             const tokens = await this.createTokenAndSession(
@@ -610,7 +549,7 @@ export class UserAuthHttpService {
         return outcome;
     }
 
-    /** Rotates the session by compare-and-set on the presented jti; a replayed token revokes the session and answers no tokens with the ref to purge. */
+    /** Rotates the session by compare-and-set on the presented jti; a replayed token revokes the session and answers no tokens with the ref to purge, and a write conflict answers no tokens and revokes nothing. */
     private async rotateSession(
         user: IUser,
         refreshToken: string
@@ -626,9 +565,10 @@ export class UserAuthHttpService {
             user,
             refreshToken
         );
-        // Sequential by design: write must not run if an earlier step throws
-        const isRotated = await this.databaseService.withTransaction(
-            async tx => {
+        let isRotated: boolean;
+        try {
+            // Sequential by design: write must not run if an earlier step throws
+            isRotated = await this.databaseService.withTransaction(async tx => {
                 const isJtiUpdated = await this.sessionDomain.updateJtiInTx(
                     tx,
                     sessionId,
@@ -650,10 +590,22 @@ export class UserAuthHttpService {
                 );
 
                 return true;
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
             }
-        );
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                return { tokens: null, revoked: [] };
+            }
+
+            throw new AppUnknownException(err);
+        }
+
         if (!isRotated) {
-            const revoked = await this.sessionDomain.revokeOnReuse(
+            const revoked = await this.sessionDomain.revokeIfActive(
                 userId,
                 sessionId
             );
@@ -668,7 +620,7 @@ export class UserAuthHttpService {
             newJti
         );
         if (cacheUpdate === EnumSessionCacheUpdate.mismatch) {
-            const revoked = await this.sessionDomain.revokeOnReuse(
+            const revoked = await this.sessionDomain.revokeIfActive(
                 userId,
                 sessionId
             );
@@ -784,12 +736,9 @@ export class UserAuthHttpService {
                     createdBy: userId,
                 }),
             ];
-            const revoked = await this.reachMaxAttempt(userId);
-            if (revoked !== null) {
-                await this.sessionQueue.purgeLogins(userId, revoked);
+            await this.userQueue.lockout(userId);
 
-                this.activityLogDomain.stagePrepared(lockoutLogs);
-            }
+            this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
         this.userPasswordDomain.assertAttemptCounted(attempt.isAttemptCounted);
@@ -939,7 +888,9 @@ export class UserAuthHttpService {
         if (tokens === null) {
             await this.sessionQueue.purgeLogins(user.id, revoked);
 
-            this.activityLogDomain.stagePrepared(reuseLogs);
+            if (revoked.length > 0) {
+                this.activityLogDomain.stagePrepared(reuseLogs);
+            }
         }
 
         const refreshed = this.sessionDomain.getRefreshedTokens(tokens);
@@ -960,22 +911,35 @@ export class UserAuthHttpService {
             }),
         ];
         const now = this.helperDateService.create();
-        await this.databaseService.withTransaction(async tx => {
-            await this.sessionDomain.revokeInTx(
-                tx,
-                userId,
-                sessionId,
-                userId,
-                now
-            );
-            await this.deviceDomain.clearNotificationInTx(
-                tx,
-                userId,
-                deviceOwnershipId,
-                userId,
-                now
-            );
-        });
+        try {
+            await this.databaseService.withTransaction(async tx => {
+                await this.sessionDomain.revokeInTx(
+                    tx,
+                    userId,
+                    sessionId,
+                    userId,
+                    now
+                );
+                await this.deviceDomain.clearNotificationInTx(
+                    tx,
+                    userId,
+                    deviceOwnershipId,
+                    userId,
+                    now
+                );
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new SessionNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         await this.sessionQueue.purgeLogins(userId, [{ id: sessionId }]);
 

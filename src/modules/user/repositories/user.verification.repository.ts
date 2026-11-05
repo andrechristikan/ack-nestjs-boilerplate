@@ -64,7 +64,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         verifiedAt: Date
     ): Promise<boolean> {
         const { count } = await tx.verification.updateMany({
-            where: { id, isUsed: false },
+            where: { id, isUsed: false, expiredAt: { gt: verifiedAt } },
             data: {
                 isUsed: true,
                 verifiedAt,

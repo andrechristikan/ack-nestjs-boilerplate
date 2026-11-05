@@ -65,6 +65,11 @@ describe('TermPolicyContentDomain', () => {
         updatedBy: null,
     };
 
+    const editedDraftTermPolicy: TermPolicy = {
+        ...draftTermPolicy,
+        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    };
+
     const publishedTermPolicy: TermPolicy = {
         ...draftTermPolicy,
         status: EnumTermPolicyStatus.published,
@@ -413,12 +418,35 @@ describe('TermPolicyContentDomain', () => {
             expect(termPolicyRepository.updateContent).toHaveBeenCalledWith(
                 'term-policy-1',
                 [existingContent],
-                { language: EnumMessageLanguage.en, ...mapped }
+                { language: EnumMessageLanguage.en, ...mapped },
+                draftTermPolicy.updatedAt
             );
             expect(result).toBe(draftTermPolicy);
         });
 
-        it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
+        it('passes the updatedAt of the draft it read to the guarded write', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(
+                editedDraftTermPolicy
+            );
+            const mapped: IAwsS3 = { ...existingContent };
+            awsS3Service.mapPresign.mockReturnValue(mapped);
+            termPolicyRepository.updateContent.mockResolvedValue(true);
+
+            await domain.updateContentByAdmin('term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 2048,
+                key: 'term-policies/privacy/v1/en-2.hbs',
+            });
+
+            expect(termPolicyRepository.updateContent).toHaveBeenCalledWith(
+                'term-policy-1',
+                [existingContent],
+                { language: EnumMessageLanguage.en, ...mapped },
+                editedDraftTermPolicy.updatedAt
+            );
+        });
+
+        it('throws TermPolicyStatusInvalidException when the guarded write misses', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
             termPolicyRepository.updateContent.mockResolvedValue(false);
@@ -796,12 +824,35 @@ describe('TermPolicyContentDomain', () => {
             expect(termPolicyRepository.removeContent).toHaveBeenCalledWith(
                 'term-policy-1',
                 [existingContent],
-                { language: EnumMessageLanguage.en }
+                { language: EnumMessageLanguage.en },
+                draftTermPolicy.updatedAt
             );
             expect(result).toBe(draftTermPolicy);
         });
 
-        it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
+        it('passes the updatedAt of the draft it read to the guarded write', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(
+                editedDraftTermPolicy
+            );
+            termPolicyUtil.getContentByLanguage.mockReturnValue(
+                existingContent
+            );
+            termPolicyRepository.removeContent.mockResolvedValue(true);
+
+            await domain.removeContentByAdmin(
+                'term-policy-1',
+                EnumMessageLanguage.en
+            );
+
+            expect(termPolicyRepository.removeContent).toHaveBeenCalledWith(
+                'term-policy-1',
+                [existingContent],
+                { language: EnumMessageLanguage.en },
+                editedDraftTermPolicy.updatedAt
+            );
+        });
+
+        it('throws TermPolicyStatusInvalidException when the guarded write misses', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentByLanguage.mockReturnValue(
                 existingContent

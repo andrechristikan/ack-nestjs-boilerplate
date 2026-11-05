@@ -79,6 +79,7 @@ describe('UserProfileHttpService', () => {
             name: 'user',
             description: null,
             type: EnumRoleType.user,
+            isImmutable: false,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -225,7 +226,6 @@ describe('UserProfileHttpService', () => {
         it('delegates the update to the domain', async () => {
             const dto: UserUpdateProfilePhotoRequestDto = {
                 key: 'photo-profile/user-sable/random.png',
-                size: 2048,
             };
 
             await service.updatePhotoProfile('user-sable', dto);
@@ -250,7 +250,6 @@ describe('UserProfileHttpService', () => {
             await expect(
                 service.updatePhotoProfile('user-sable', {
                     key: 'photo-profile/user-sable/random.png',
-                    size: 2048,
                 })
             ).rejects.toThrow('boom');
 

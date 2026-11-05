@@ -45,6 +45,7 @@ describe('RoleDomain', () => {
         name: 'manager',
         description: null,
         type: EnumRoleType.admin,
+        isImmutable: false,
         createdAt: now,
         createdBy: 'user-1',
         updatedAt: now,
@@ -56,6 +57,7 @@ describe('RoleDomain', () => {
         name: roleWithPolicies.name,
         description: roleWithPolicies.description,
         type: roleWithPolicies.type,
+        isImmutable: roleWithPolicies.isImmutable,
         createdAt: roleWithPolicies.createdAt,
         createdBy: roleWithPolicies.createdBy,
         updatedAt: roleWithPolicies.updatedAt,
@@ -76,6 +78,7 @@ describe('RoleDomain', () => {
         name: 'superadmin',
         type: EnumRoleType.superAdmin,
     };
+    const immutableRole: Role = { ...role, isImmutable: true };
 
     let domain: RoleDomain;
 
@@ -506,6 +509,74 @@ describe('RoleDomain', () => {
             expect(roleRepository.update).not.toHaveBeenCalled();
         });
 
+        it('throws RoleImmutableException when the type of an immutable role changes', async () => {
+            roleRepository.findOneById.mockResolvedValue(immutableRole);
+            roleUtil.changesImmutableType.mockReturnValue(true);
+
+            await expect(
+                domain.updateByAdmin(immutableRole.id, update, superAdminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.immutable,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.immutable],
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'role.error.immutable',
+            });
+            expect(roleUtil.changesImmutableType).toHaveBeenCalledWith(
+                immutableRole,
+                update.type
+            );
+            expect(roleRepository.update).not.toHaveBeenCalled();
+        });
+
+        it('writes the description of an immutable role when the type stays', async () => {
+            const sameType: IRoleUpdate = {
+                description: 'Team lead role',
+                type: immutableRole.type,
+            };
+            roleRepository.findOneById.mockResolvedValue(immutableRole);
+            roleRepository.update.mockResolvedValue(roleWithPolicies);
+            roleUtil.changesImmutableType.mockReturnValue(false);
+
+            const result = await domain.updateByAdmin(
+                immutableRole.id,
+                sameType,
+                superAdminActor
+            );
+
+            expect(result).toBe(roleWithPolicies);
+            expect(roleUtil.changesImmutableType).toHaveBeenCalledWith(
+                immutableRole,
+                sameType.type
+            );
+            expect(roleRepository.update).toHaveBeenCalledWith(
+                immutableRole.id,
+                immutableRole.type,
+                sameType
+            );
+        });
+
+        it('answers the rank exception ahead of the immutable refusal', async () => {
+            roleRepository.findOneById.mockResolvedValue(immutableRole);
+            roleUtil.outranks.mockReturnValue(false);
+            roleUtil.changesImmutableType.mockReturnValue(true);
+
+            await expect(
+                domain.updateByAdmin(immutableRole.id, update, adminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.rankForbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleRepository.update).not.toHaveBeenCalled();
+        });
+
         it('updates a user role for an admin actor', async () => {
             roleRepository.findOneById.mockResolvedValue({
                 ...role,
@@ -520,7 +591,11 @@ describe('RoleDomain', () => {
             );
 
             expect(result).toBe(roleWithPolicies);
-            expect(roleRepository.update).toHaveBeenCalledWith(role.id, update);
+            expect(roleRepository.update).toHaveBeenCalledWith(
+                role.id,
+                EnumRoleType.user,
+                update
+            );
         });
 
         it('updates the role and returns it', async () => {
@@ -534,7 +609,47 @@ describe('RoleDomain', () => {
             );
 
             expect(result).toBe(roleWithPolicies);
-            expect(roleRepository.update).toHaveBeenCalledWith(role.id, update);
+            expect(roleRepository.update).toHaveBeenCalledWith(
+                role.id,
+                role.type,
+                update
+            );
+        });
+
+        it("passes the read's type to the guarded write", async () => {
+            roleRepository.findOneById.mockResolvedValue({
+                ...role,
+                type: EnumRoleType.user,
+            });
+            roleRepository.update.mockResolvedValue(roleWithPolicies);
+
+            await domain.updateByAdmin(
+                role.id,
+                { description: null, type: EnumRoleType.admin },
+                superAdminActor
+            );
+
+            expect(roleRepository.update).toHaveBeenCalledWith(
+                role.id,
+                EnumRoleType.user,
+                { description: null, type: EnumRoleType.admin }
+            );
+        });
+
+        it('throws RoleNotFoundException when the guarded write misses', async () => {
+            roleRepository.findOneById.mockResolvedValue(role);
+            roleRepository.update.mockResolvedValue(null);
+
+            await expect(
+                domain.updateByAdmin(role.id, update, superAdminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'role.error.notFound',
+            });
         });
     });
 
@@ -608,6 +723,22 @@ describe('RoleDomain', () => {
                     ],
                 httpStatus: HttpStatus.FORBIDDEN,
                 messagePath: 'role.error.rankForbidden',
+            });
+            expect(roleRepository.deleteUnused).not.toHaveBeenCalled();
+        });
+
+        it('throws RoleImmutableException for an immutable role', async () => {
+            roleRepository.findOneById.mockResolvedValue(immutableRole);
+
+            await expect(
+                domain.deleteByAdmin(immutableRole.id, superAdminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.immutable,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.immutable],
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'role.error.immutable',
             });
             expect(roleRepository.deleteUnused).not.toHaveBeenCalled();
         });

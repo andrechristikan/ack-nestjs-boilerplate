@@ -26,6 +26,7 @@ import { UserCreateContract } from '@modules/user/contracts/user.create.contract
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
+import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.delete-self-forbidden.exception';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
@@ -187,6 +188,13 @@ export class UserDomain {
         );
     }
 
+    async getEmailByIdInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<string | null> {
+        return this.userRepository.findEmailByIdInTx(tx, userId);
+    }
+
     async resetPasswordAttempt(userId: string): Promise<User> {
         return this.userRepository.resetPasswordAttempt(userId);
     }
@@ -342,6 +350,13 @@ export class UserDomain {
     assertNotSelf(userId: string, actorId: string): void {
         if (userId === actorId) {
             throw new UserNotSelfException();
+        }
+    }
+
+    assertSelfDeletable(user: IUser): void {
+        const isRefused = this.userUtil.isDeleteSelfRefused(user);
+        if (isRefused) {
+            throw new UserDeleteSelfForbiddenException();
         }
     }
 

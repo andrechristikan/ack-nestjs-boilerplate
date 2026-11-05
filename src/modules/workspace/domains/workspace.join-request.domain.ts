@@ -160,7 +160,6 @@ export class WorkspaceJoinRequestDomain {
         reviewerId: string
     ): Promise<void> {
         const reviewedAt = this.helperDateService.create();
-        const nonce = this.helperHashService.sha256Hash(joinRequest.id);
 
         try {
             await this.databaseService.withTransaction(async tx => {
@@ -168,7 +167,6 @@ export class WorkspaceJoinRequestDomain {
                     await this.workspaceJoinRequestRepository.acceptInTx(
                         tx,
                         joinRequest.id,
-                        nonce,
                         reviewerId,
                         reviewedAt
                     );
@@ -212,11 +210,9 @@ export class WorkspaceJoinRequestDomain {
         rejectReasonCode: EnumWorkspaceJoinRejectReason
     ): Promise<void> {
         const reviewedAt = this.helperDateService.create();
-        const nonce = this.helperHashService.sha256Hash(workspaceJoinRequestId);
 
         const rejected = await this.workspaceJoinRequestRepository.reject(
             workspaceJoinRequestId,
-            nonce,
             reviewerId,
             rejectReasonCode,
             reviewedAt
@@ -237,6 +233,16 @@ export class WorkspaceJoinRequestDomain {
         await this.workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx(
             tx,
             workspaceId
+        );
+    }
+
+    async cancelPendingByRequesterInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.workspaceJoinRequestRepository.cancelPendingByRequesterInTx(
+            tx,
+            userId
         );
     }
 

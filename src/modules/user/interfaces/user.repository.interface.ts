@@ -51,6 +51,10 @@ export interface IUserRepository {
     findManyActiveByIds(ids: string[]): Promise<IUserRecipient[]>;
     findOneActiveByEmail(email: string): Promise<User | null>;
     findNameById(userId: string): Promise<IWorkspaceInviteInviter | null>;
+    findEmailByIdInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<string | null>;
     findOneWithRoleByEmail(email: string): Promise<IUser | null>;
     findOneProfileById(id: string): Promise<IUserProfile | null>;
     findOneActiveProfileById(id: string): Promise<IUserProfile | null>;

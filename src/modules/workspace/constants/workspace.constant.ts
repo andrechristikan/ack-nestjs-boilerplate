@@ -23,7 +23,7 @@ export const WorkspaceMemberStoreKey = 'WorkspaceMemberStoreKey';
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
 /**
- * Workspace guard error kit for `@WorkspaceProtected`; `guardMissing` and `memberGuardMissing` document a guard or param decorator that reads the workspace or workspace member store.
+ * Workspace guard error kit for `@WorkspaceProtected`; `guardMissing` and `memberGuardMissing` document a guard or param decorator that reads the workspace or workspace member store, and `ownerTransferRequired` documents the account self-delete refusal.
  * @public
  */
 export const DocWorkspaceErrorResponses = {
@@ -46,6 +46,10 @@ export const DocWorkspaceErrorResponses = {
     memberGuardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
         statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
         messagePath: 'workspace.error.memberGuardMissing',
+    }),
+    ownerTransferRequired: DocResponseError(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumWorkspaceStatusCodeError.ownerTransferRequired,
+        messagePath: 'workspace.error.ownerTransferRequired',
     }),
 } as const;
 

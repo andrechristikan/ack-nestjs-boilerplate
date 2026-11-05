@@ -151,7 +151,7 @@ export class PaginationFilterUtil {
     equalString<TField extends string>(
         field: TField,
         value: unknown,
-        options?: IPaginationQueryFilterEqualOptions
+        options?: IPaginationQueryFilterOptions
     ): IPaginationQueryFilterResult<Record<string, IPaginationEqual>> | null {
         return this.equal(
             field,

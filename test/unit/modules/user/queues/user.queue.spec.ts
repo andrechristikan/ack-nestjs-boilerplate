@@ -105,4 +105,31 @@ describe('UserQueue', () => {
             );
         });
     });
+
+    describe('lockout', () => {
+        it('adds a lockout job with the user id and no job id', async () => {
+            await queue.lockout('user-1');
+
+            expect(helperStringService.fillPattern).not.toHaveBeenCalled();
+            expect(userQueue.add).toHaveBeenCalledWith(
+                EnumUserProcess.lockout,
+                { userId: 'user-1' },
+                { priority: EnumQueuePriority.high }
+            );
+        });
+
+        it('resolves and reports the failure when the add rejects', async () => {
+            const error = new Error('redis down');
+            userQueue.add.mockRejectedValue(error);
+
+            await expect(queue.lockout('user-1')).resolves.toBeUndefined();
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    rawError: error,
+                    message: 'user.queue.error.enqueueLockout',
+                })
+            );
+        });
+    });
 });

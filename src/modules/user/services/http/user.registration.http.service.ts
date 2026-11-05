@@ -10,7 +10,6 @@ import type { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryDomain } from '@modules/country/domains/country.domain';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -32,7 +31,6 @@ import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserSignUp,
-    IUserSignUpWorkspaceContext,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
@@ -61,7 +59,6 @@ export class UserRegistrationHttpService {
         private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly roleDomain: RoleDomain,
         private readonly countryDomain: CountryDomain,
-        private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
@@ -93,31 +90,6 @@ export class UserRegistrationHttpService {
         );
 
         this.activityLogDomain.stagePrepared(activityLogs);
-    }
-
-    private async resolveWorkspaceContext(
-        inviteToken: string | null,
-        email: string,
-        username: string
-    ): Promise<IUserSignUpWorkspaceContext> {
-        if (!inviteToken) {
-            const personalContexts =
-                this.userCreateUtil.buildPersonalWorkspaceContexts([username]);
-
-            return personalContexts[0]!;
-        }
-
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'invitationAllowed'
-        );
-        const invite = await this.workspaceInviteDomain.validateInviteForEmail(
-            inviteToken,
-            email
-        );
-
-        return this.userCreateUtil.buildInviteWorkspaceContext(invite);
     }
 
     /** Writes the sign-up account, its personal or invited workspace, and its term-policy acceptance on one transaction, retrying the personal-workspace slug candidates in turn. */
@@ -310,11 +282,15 @@ export class UserRegistrationHttpService {
             marketing,
         };
         // Sequential by design: gate before the work it guards
-        const workspaceContext = await this.resolveWorkspaceContext(
+        const invite = await this.workspaceInviteDomain.getSignUpInvite(
             signUp.inviteToken,
-            signUp.email,
-            signUp.username
+            signUp.email
         );
+        const workspaceContext =
+            this.userCreateUtil.buildSignUpWorkspaceContext(
+                invite,
+                signUp.username
+            );
         const [role, , emailExist, usernameCheck] = await Promise.all([
             this.roleDomain.getByName(this.userRoleName),
             this.countryDomain.getOne(signUp.countryId),
@@ -383,6 +359,7 @@ export class UserRegistrationHttpService {
             this.createTimeoutInMs
         );
         const created = users[0]!;
+
         const stages = this.userCreateUtil.buildCreateByAdminStages(
             input,
             created

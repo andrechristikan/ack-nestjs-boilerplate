@@ -79,6 +79,7 @@ describe('PolicyDomain', () => {
             name: 'Admin',
             description: null,
             type: EnumRoleType.admin,
+            isImmutable: false,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -246,8 +247,8 @@ describe('PolicyDomain', () => {
             action: [EnumPolicyAction.read],
         };
 
-        it('throws PolicyNotFoundException when the policy does not exist under the role', async () => {
-            policyRepository.existsByRoleIdAndId.mockResolvedValue(false);
+        it('throws PolicyNotFoundException when the statement misses', async () => {
+            policyRepository.update.mockResolvedValue(null);
 
             const promise = domain.updateByAdmin('role-1', 'policy-1', body);
 
@@ -261,15 +262,14 @@ describe('PolicyDomain', () => {
                 httpStatus: HttpStatus.NOT_FOUND,
                 messagePath: 'policy.error.notFound',
             });
-            expect(policyRepository.existsByRoleIdAndId).toHaveBeenCalledWith(
+            expect(policyRepository.update).toHaveBeenCalledWith(
                 'role-1',
-                'policy-1'
+                'policy-1',
+                body
             );
-            expect(policyRepository.update).not.toHaveBeenCalled();
         });
 
-        it('updates the policy', async () => {
-            policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
+        it('updates the policy with no gate read', async () => {
             policyRepository.update.mockResolvedValue(policy);
 
             const result = await domain.updateByAdmin(
@@ -280,15 +280,19 @@ describe('PolicyDomain', () => {
 
             expect(result).toBe(policy);
             expect(policyRepository.update).toHaveBeenCalledWith(
+                'role-1',
                 'policy-1',
                 body
             );
+            expect(
+                policyRepository.findOneByRoleIdAndId
+            ).not.toHaveBeenCalled();
         });
     });
 
     describe('deleteByAdmin', () => {
-        it('throws PolicyNotFoundException when the policy does not exist under the role', async () => {
-            policyRepository.existsByRoleIdAndId.mockResolvedValue(false);
+        it('throws PolicyNotFoundException when the row is absent', async () => {
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(null);
 
             const promise = domain.deleteByAdmin('role-1', 'policy-1');
 
@@ -302,17 +306,46 @@ describe('PolicyDomain', () => {
                 httpStatus: HttpStatus.NOT_FOUND,
                 messagePath: 'policy.error.notFound',
             });
+            expect(policyRepository.findOneByRoleIdAndId).toHaveBeenCalledWith(
+                'role-1',
+                'policy-1'
+            );
             expect(policyRepository.delete).not.toHaveBeenCalled();
         });
 
-        it('deletes the policy', async () => {
-            policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
-            policyRepository.delete.mockResolvedValue(policy);
+        it('throws PolicyNotFoundException when the statement misses', async () => {
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
+            policyRepository.delete.mockResolvedValue(false);
+
+            const promise = domain.deleteByAdmin('role-1', 'policy-1');
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'policy',
+                statusCode: EnumPolicyStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumPolicyStatusCodeError[
+                        EnumPolicyStatusCodeError.notFound
+                    ],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'policy.error.notFound',
+            });
+            expect(policyRepository.delete).toHaveBeenCalledWith(
+                'role-1',
+                'policy-1'
+            );
+        });
+
+        it('deletes the policy and returns the row it read', async () => {
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
+            policyRepository.delete.mockResolvedValue(true);
 
             const result = await domain.deleteByAdmin('role-1', 'policy-1');
 
             expect(result).toBe(policy);
-            expect(policyRepository.delete).toHaveBeenCalledWith('policy-1');
+            expect(policyRepository.delete).toHaveBeenCalledWith(
+                'role-1',
+                'policy-1'
+            );
         });
     });
 });

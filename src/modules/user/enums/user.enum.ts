@@ -13,4 +13,5 @@ export enum EnumUserSignUpWorkspaceContextType {
  */
 export enum EnumUserProcess {
     deletePhoto = 'deletePhoto',
+    lockout = 'lockout',
 }

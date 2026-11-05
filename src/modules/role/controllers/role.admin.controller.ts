@@ -42,6 +42,7 @@ import {
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
 import type { IUser } from '@modules/user/interfaces/user.interface';
+import { DocRoleErrorResponses } from '@modules/role/constants/role.constant';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
@@ -123,6 +124,7 @@ export class RoleAdminController {
     }
 
     @Doc({ summary: 'update data a role' })
+    @DocRoleErrorResponses.immutable
     @Response('role.update', { schema: RoleSchema })
     @DocErrors(HttpStatus.FORBIDDEN, {
         statusCode: EnumRoleStatusCodeError.rankForbidden,
@@ -154,6 +156,7 @@ export class RoleAdminController {
     }
 
     @Doc({ summary: 'delete data a role' })
+    @DocRoleErrorResponses.immutable
     @Response('role.delete')
     @DocErrors(HttpStatus.FORBIDDEN, {
         statusCode: EnumRoleStatusCodeError.rankForbidden,

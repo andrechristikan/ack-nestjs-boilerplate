@@ -68,6 +68,7 @@
         "headerMissing": "The x-workspace-id header is required.",
         "guardMissing": "The workspace could not be verified for this request.",
         "memberGuardMissing": "Your workspace membership could not be verified for this request.",
-        "memberAlreadyExists": "This user is already a member of this workspace."
+        "memberAlreadyExists": "This user is already a member of this workspace.",
+        "ownerTransferRequired": "You own a workspace with other members; transfer ownership before deleting your account."
     }
 }

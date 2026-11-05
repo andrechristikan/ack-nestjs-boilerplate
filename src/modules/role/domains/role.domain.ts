@@ -10,6 +10,7 @@ import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
+import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
@@ -157,10 +158,29 @@ export class RoleDomain {
         actor: IRoleActor
     ): Promise<IRoleWithPolicies> {
         // Sequential by design: gate before the work it guards
-        await this.assertWritableByActor(id, actor);
+        const role = await this.roleRepository.findOneById(id);
+        if (!role) {
+            throw new RoleNotFoundException();
+        }
+
+        this.assertNotSelf(actor.roleId, role.id);
+        this.assertActorOutranks(actor.roleType, role.type);
         this.assertActorOutranks(actor.roleType, data.type);
 
-        return this.roleRepository.update(id, data);
+        const changesImmutableType = this.roleUtil.changesImmutableType(
+            role,
+            data.type
+        );
+        if (changesImmutableType) {
+            throw new RoleImmutableException();
+        }
+
+        const updated = await this.roleRepository.update(id, role.type, data);
+        if (!updated) {
+            throw new RoleNotFoundException();
+        }
+
+        return updated;
     }
 
     async deleteByAdmin(id: string, actor: IRoleActor): Promise<IRole> {
@@ -172,6 +192,10 @@ export class RoleDomain {
 
         this.assertNotSelf(actor.roleId, role.id);
         this.assertActorOutranks(actor.roleType, role.type);
+
+        if (role.isImmutable) {
+            throw new RoleImmutableException();
+        }
 
         const deleted = await this.roleRepository.deleteUnused(id);
         if (!deleted) {

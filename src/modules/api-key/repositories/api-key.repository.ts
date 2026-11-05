@@ -79,17 +79,23 @@ export class ApiKeyRepository implements IApiKeyRepository {
 
     async updateStatus(
         id: string,
+        expectedIsActive: boolean,
         { isActive }: ApiKeyUpdateStatusRequestDto
-    ): Promise<IApiKey> {
-        return this.databaseService.client.apiKey.update({
+    ): Promise<IApiKey | null> {
+        const { count } = await this.databaseService.client.apiKey.updateMany({
             where: {
                 id,
+                isActive: expectedIsActive,
             },
             data: {
                 isActive,
             },
-            select: ApiKeySelect,
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.findOneById(id);
     }
 
     async updateName(id: string, name: string): Promise<IApiKey> {
@@ -107,38 +113,49 @@ export class ApiKeyRepository implements IApiKeyRepository {
     async updateDates(
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
-    ): Promise<IApiKey> {
-        return this.databaseService.client.apiKey.update({
+    ): Promise<IApiKey | null> {
+        const { count } = await this.databaseService.client.apiKey.updateMany({
             where: {
                 id,
+                isActive: true,
             },
             data: {
                 startAt,
                 endAt,
             },
-            select: ApiKeySelect,
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.findOneById(id);
     }
 
-    async updateHash(id: string, hash: string): Promise<IApiKey> {
-        return this.databaseService.client.apiKey.update({
+    async updateHash(id: string, hash: string): Promise<IApiKey | null> {
+        const { count } = await this.databaseService.client.apiKey.updateMany({
             where: {
                 id,
+                isActive: true,
             },
             data: {
                 hash,
             },
-            select: ApiKeySelect,
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.findOneById(id);
     }
 
-    async delete(id: string): Promise<IApiKey> {
-        return this.databaseService.client.apiKey.delete({
+    async delete(id: string): Promise<boolean> {
+        const { count } = await this.databaseService.client.apiKey.deleteMany({
             where: {
                 id,
             },
-            select: ApiKeySelect,
         });
+
+        return count > 0;
     }
 
     async findOneByKey(key: string): Promise<ApiKey | null> {

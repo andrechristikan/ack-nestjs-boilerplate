@@ -50,7 +50,7 @@ export class NotificationUtil {
         const rawError =
             reason instanceof Error ? reason : new Error(String(reason));
 
-        return { step, message: rawError.message, rawError };
+        return { step, rawError };
     }
 
     toStepSummary(failedSteps: INotificationStepFailure[]): string {

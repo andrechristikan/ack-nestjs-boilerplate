@@ -4,8 +4,10 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -38,6 +40,7 @@ describe('DeviceDomain', () => {
         mock<DeviceRepository>();
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -107,6 +110,7 @@ describe('DeviceDomain', () => {
                 { provide: DeviceRepository, useValue: deviceRepository },
                 { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -637,11 +641,36 @@ describe('DeviceDomain', () => {
             ).rejects.toBe(notFound);
         });
 
+        it('answers DeviceNotFoundException on a write conflict', async () => {
+            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
+            helperDateService.create.mockReturnValue(now);
+            const conflict = new Error('conflict');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                domain.refresh('user-1', 'device-ownership-1', data)
+            ).rejects.toMatchObject({
+                constructor: DeviceNotFoundException,
+                module: 'device',
+                statusCode: EnumDeviceStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumDeviceStatusCodeError[
+                        EnumDeviceStatusCodeError.notFound
+                    ],
+                messagePath: 'device.error.notFound',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
         it('wraps a non-application error raised inside the transaction', async () => {
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             const cause = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 domain.refresh('user-1', 'device-ownership-1', data)

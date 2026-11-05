@@ -169,17 +169,49 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        deletedAt: Date
-    ): Promise<void> {
-        await tx.workspace.softDelete({
-            where: { id: workspaceId },
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<boolean> {
+        const { count } = await tx.workspace.updateMany({
+            where: {
+                id: workspaceId,
+                OR: WorkspaceActiveFilter,
+            },
             data: {
                 deletedAt,
+                deletedBy,
             },
         });
+
+        return count > 0;
     }
 
-    async softDeleteSolelyOwnedByUserInTx(
+    async existsOwnedWithOtherMembersInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<boolean> {
+        const workspace = await tx.workspace.findFirst({
+            where: {
+                OR: WorkspaceActiveFilter,
+                AND: [
+                    {
+                        members: {
+                            some: {
+                                userId,
+                                role: EnumWorkspaceMemberRole.owner,
+                            },
+                        },
+                    },
+                    { members: { some: { userId: { not: userId } } } },
+                ],
+            },
+            select: { id: true },
+        });
+
+        return workspace !== null;
+    }
+
+    async softDeleteOwnedByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         deletedAt: Date
@@ -188,10 +220,6 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             OR: WorkspaceActiveFilter,
             members: {
                 some: { userId, role: EnumWorkspaceMemberRole.owner },
-                none: {
-                    userId: { not: userId },
-                    role: EnumWorkspaceMemberRole.owner,
-                },
             },
         };
         const workspaces = await tx.workspace.findMany({

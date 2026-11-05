@@ -109,7 +109,8 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         userId: string,
         actions: EnumActivityLogAction[],
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        limit: number
     ): Promise<Date[]> {
         const rows = await this.databaseService.client.activityLog.findMany({
             where: {
@@ -118,7 +119,8 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
                 createdAt: { gte: startDate, lt: endDate },
             },
             select: { createdAt: true },
-            orderBy: { createdAt: EnumPaginationOrderDirectionType.asc },
+            orderBy: { createdAt: EnumPaginationOrderDirectionType.desc },
+            take: limit,
         });
         return rows.map(row => row.createdAt);
     }
@@ -259,12 +261,10 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
             }),
         ]);
 
-        const data = rows
-            .filter(row => row.workspaceId)
-            .map(row => ({
-                workspaceId: row.workspaceId as string,
-                count: row._count._all,
-            }));
+        const data = rows.map(row => ({
+            workspaceId: row.workspaceId!,
+            count: row._count._all,
+        }));
 
         return this.paginationOffsetUtil.page(data, groups.length, {
             skip,

@@ -3,16 +3,16 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 /**
- * Raised when a password login targets an account without a password.
+ * Raised when an admin or superAdmin account tries to delete itself.
  * @public
  */
-export class UserPasswordNotSetException extends AppBaseException {
+export class UserDeleteSelfForbiddenException extends AppBaseException {
     readonly module = 'user';
-    readonly statusCode = EnumUserStatusCodeError.passwordNotSet;
+    readonly statusCode = EnumUserStatusCodeError.deleteSelfForbidden;
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.BAD_REQUEST;
+    readonly httpStatus = HttpStatus.FORBIDDEN;
 
     constructor() {
-        super('user.error.passwordNotSet');
+        super('user.error.deleteSelfForbidden');
     }
 }

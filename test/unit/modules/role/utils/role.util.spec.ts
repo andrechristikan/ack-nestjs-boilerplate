@@ -23,6 +23,7 @@ describe('RoleUtil', () => {
                 id: 'role-1',
                 type: EnumRoleType.admin,
                 name: 'manager',
+                isImmutable: false,
             };
             const timestamp = new Date('2026-01-20T00:00:00.000Z');
 
@@ -61,5 +62,35 @@ describe('RoleUtil', () => {
                 expect(util.outranks(actorType, targetType)).toBe(false);
             }
         );
+    });
+
+    describe('changesImmutableType', () => {
+        const immutableRole: IRole = {
+            id: 'role-1',
+            type: EnumRoleType.admin,
+            name: 'admin',
+            isImmutable: true,
+        };
+
+        it('returns true for an immutable role and another type', () => {
+            expect(
+                util.changesImmutableType(immutableRole, EnumRoleType.user)
+            ).toBe(true);
+        });
+
+        it('returns false for an immutable role and the same type', () => {
+            expect(
+                util.changesImmutableType(immutableRole, EnumRoleType.admin)
+            ).toBe(false);
+        });
+
+        it('returns false for a mutable role and another type', () => {
+            expect(
+                util.changesImmutableType(
+                    { ...immutableRole, isImmutable: false },
+                    EnumRoleType.user
+                )
+            ).toBe(false);
+        });
     });
 });

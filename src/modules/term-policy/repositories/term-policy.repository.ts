@@ -270,7 +270,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async updateContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        content: ITermPolicyContent
+        content: ITermPolicyContent,
+        expectedUpdatedAt: Date
     ): Promise<boolean> {
         const contentIndex = contents.findIndex(
             c => c.language === content.language
@@ -287,6 +288,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 where: {
                     id: termPolicyId,
                     status: EnumTermPolicyStatus.draft,
+                    updatedAt: expectedUpdatedAt,
                 },
                 data: {
                     contents: plainContents,
@@ -324,7 +326,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async removeContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        { language }: TermPolicyRemoveContentRequestDto
+        { language }: TermPolicyRemoveContentRequestDto,
+        expectedUpdatedAt: Date
     ): Promise<boolean> {
         const contentIndex = contents.findIndex(c => c.language === language);
         if (contentIndex !== -1) {
@@ -339,6 +342,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 where: {
                     id: termPolicyId,
                     status: EnumTermPolicyStatus.draft,
+                    updatedAt: expectedUpdatedAt,
                 },
                 data: {
                     contents: plainContents,

@@ -183,21 +183,22 @@ export class TermPolicyHttpService {
         ];
         this.activityLogDomain.stagePrepared(activityLogs);
 
-        await this.termPolicyQueue.copyContent(copy);
-
         const recipientCutoffAt = this.helperDateService.formatToIso(
             published.publishedAt!
         );
-        await this.notificationQueue.sendPublishTermPolicy(
-            {
-                termPolicyId: published.id,
-                type: published.type,
-                version: published.version,
-                recipientCutoffAt,
-                resendNonce: null,
-            },
-            updatedBy
-        );
+        await Promise.all([
+            this.termPolicyQueue.copyContent(copy),
+            this.notificationQueue.sendPublishTermPolicy(
+                {
+                    termPolicyId: published.id,
+                    type: published.type,
+                    version: published.version,
+                    recipientCutoffAt,
+                    resendNonce: null,
+                },
+                updatedBy
+            ),
+        ]);
 
         return {};
     }

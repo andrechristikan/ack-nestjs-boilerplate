@@ -1,7 +1,10 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
-import type { IUserDeletePhotoPayload } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserDeletePhotoPayload,
+    IUserLockoutPayload,
+} from '@modules/user/interfaces/user.interface';
 import { UserProcessorService } from '@modules/user/services/processor/user.processor.service';
 import { Job, UnrecoverableError } from 'bullmq';
 import { QueueException } from '@queues/exceptions/queue.exception';
@@ -12,7 +15,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
- * Consumes the user queue; currently only the replaced profile photo delete.
+ * Consumes the user queue: the replaced profile photo delete and the lockout of a user that spent its attempt budget.
  */
 @QueueProcessor(EnumQueue.user)
 export class UserProcessor extends QueueProcessorBase {
@@ -25,13 +28,17 @@ export class UserProcessor extends QueueProcessorBase {
 
     /** Dispatches each job to its handler by job name. */
     protected async handle(
-        job: Job<IUserDeletePhotoPayload, IQueueResponse, EnumUserProcess>
+        job: Job<unknown, IQueueResponse, EnumUserProcess>
     ): Promise<IQueueResponse> {
         switch (job.name) {
             case EnumUserProcess.deletePhoto:
                 try {
                     return await this.userProcessorService.processDeletePhoto(
-                        job
+                        job as Job<
+                            IUserDeletePhotoPayload,
+                            IQueueResponse,
+                            EnumUserProcess
+                        >
                     );
                 } catch (error: unknown) {
                     if (error instanceof QueueException) {
@@ -53,6 +60,17 @@ export class UserProcessor extends QueueProcessorBase {
 
                     throw new AppUnknownException(error);
                 }
+            case EnumUserProcess.lockout: {
+                const { userId } = (
+                    job as Job<
+                        IUserLockoutPayload,
+                        IQueueResponse,
+                        EnumUserProcess
+                    >
+                ).data;
+
+                return await this.userProcessorService.lockout(userId);
+            }
             default:
                 this.userProcessorService.processUnknown(job.name);
         }

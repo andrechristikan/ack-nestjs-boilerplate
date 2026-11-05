@@ -358,14 +358,45 @@ describe('ProjectDomain', () => {
             const tx: MockProxy<IDatabaseTransactionClient> =
                 mock<IDatabaseTransactionClient>();
             const deletedAt = new Date('2026-02-01T00:00:00.000Z');
+            projectRepository.softDeleteInTx.mockResolvedValue(true);
 
-            await domain.softDeleteProjectInTx(tx, baseProject, deletedAt);
+            await domain.softDeleteProjectInTx(
+                tx,
+                baseProject,
+                deletedAt,
+                '507f1f77bcf86cd799439015'
+            );
 
             expect(projectRepository.softDeleteInTx).toHaveBeenCalledWith(
                 tx,
                 baseProject.id,
-                deletedAt
+                deletedAt,
+                '507f1f77bcf86cd799439015'
             );
+        });
+
+        it('throws ProjectNotFoundException when the guarded write misses', async () => {
+            const tx: MockProxy<IDatabaseTransactionClient> =
+                mock<IDatabaseTransactionClient>();
+            const deletedAt = new Date('2026-02-01T00:00:00.000Z');
+            projectRepository.softDeleteInTx.mockResolvedValue(false);
+
+            await expect(
+                domain.softDeleteProjectInTx(
+                    tx,
+                    baseProject,
+                    deletedAt,
+                    '507f1f77bcf86cd799439015'
+                )
+            ).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumProjectStatusCodeError[
+                        EnumProjectStatusCodeError.notFound
+                    ],
+                messagePath: 'project.error.notFound',
+            });
         });
     });
 

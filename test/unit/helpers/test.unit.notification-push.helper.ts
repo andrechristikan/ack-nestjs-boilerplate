@@ -145,7 +145,6 @@ export function expectPushSentAtFailure(
     expect(result.failedSteps).toEqual([
         {
             step: EnumNotificationStep.updateSentAt,
-            message: 'mongo',
             rawError: new Error('mongo'),
         },
     ]);
@@ -161,7 +160,6 @@ export function expectPushSendFailure(
     expect(result.failedSteps).toEqual([
         {
             step: EnumNotificationStep.sendMulticast,
-            message: 'fcm',
             rawError: new Error('fcm'),
         },
     ]);
@@ -181,7 +179,6 @@ export function expectPushOutagePending(
     expect(result.failedSteps).toEqual([
         {
             step: EnumNotificationStep.sendMulticast,
-            message: 'notification.queue.push.error.tokensPending',
             rawError: new Error('notification.queue.push.error.tokensPending'),
         },
     ]);

@@ -259,7 +259,6 @@ describe('NotificationWorkspaceDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -295,7 +294,6 @@ describe('NotificationWorkspaceDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],
@@ -557,7 +555,6 @@ describe('NotificationWorkspaceDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -593,7 +590,6 @@ describe('NotificationWorkspaceDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],
@@ -847,7 +843,6 @@ describe('NotificationWorkspaceDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -883,7 +878,6 @@ describe('NotificationWorkspaceDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],
@@ -1139,7 +1133,6 @@ describe('NotificationWorkspaceDomain', () => {
             expect(result.failedSteps).toEqual([
                 {
                     step: EnumNotificationStep.sendEmail,
-                    message: 'redis',
                     rawError: new Error('redis'),
                 },
             ]);
@@ -1175,7 +1168,6 @@ describe('NotificationWorkspaceDomain', () => {
                 failedSteps: [
                     {
                         step: EnumNotificationStep.createNotification,
-                        message: 'mongo',
                         rawError: new Error('mongo'),
                     },
                 ],

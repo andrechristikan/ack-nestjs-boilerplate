@@ -14,7 +14,6 @@ import { RedisClientCachedProvider } from '@common/redis/constants/redis.constan
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import type { ISessionCache } from '@modules/session/interfaces/session.interface';
-import { SessionCacheUpdateLoginScript } from '@modules/session/constants/session.constant';
 import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
 
 describe('SessionCache', () => {
@@ -79,7 +78,7 @@ describe('SessionCache', () => {
             const session: ISessionCache = {
                 userId: 'user-1',
                 sessionId: 'session-1',
-                jti: 'jti-value',
+                jtiDigest: 'jti-digest',
             };
             keyvGet.mockResolvedValue(session);
 
@@ -124,7 +123,7 @@ describe('SessionCache', () => {
                 {
                     userId: 'user-1',
                     sessionId: 'session-1',
-                    jti: 'hash(jti-value)',
+                    jtiDigest: 'hash(jti-value)',
                 },
                 900000
             );
@@ -161,18 +160,32 @@ describe('SessionCache', () => {
                 value: {
                     userId: 'user-1',
                     sessionId: 'session-1',
-                    jti: 'hash(new-jti)',
+                    jtiDigest: 'hash(new-jti)',
                 },
                 expires: now.getTime() + 900000,
             });
-            expect(client.eval).toHaveBeenCalledWith(
-                SessionCacheUpdateLoginScript,
-                {
-                    keys: ['prefixed-user-1:session-1'],
-                    arguments: ['hash(old-jti)', 'serialized-value', '900000'],
-                }
-            );
+            expect(client.eval).toHaveBeenCalledWith(expect.any(String), {
+                keys: ['prefixed-user-1:session-1'],
+                arguments: ['hash(old-jti)', 'serialized-value', '900000'],
+            });
             expect(keyvGet).not.toHaveBeenCalled();
+        });
+
+        it('compares the field the rotated entry writes inside the compare-and-set script', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.eval.mockResolvedValue(EnumSessionCacheUpdate.updated);
+
+            await cache.updateLogin(
+                'user-1',
+                'session-1',
+                'old-jti',
+                'new-jti'
+            );
+
+            expect(client.eval).toHaveBeenCalledWith(
+                expect.stringContaining('entry.value.jtiDigest'),
+                expect.anything()
+            );
         });
 
         it('answers mismatch when the script finds another jti digest', async () => {

@@ -54,13 +54,6 @@ export interface IDeviceOwnershipAnalyticUserCount {
     count: number;
 }
 
-export interface IDeviceOwnershipAnalyticCreated {
-    id: string;
-    userId: string;
-    deviceId: string;
-    createdAt: Date;
-}
-
 export interface IDeviceRemoveResult {
     deviceOwnership: IDeviceOwnership;
     revokedSessions: ISessionRef[];

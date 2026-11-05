@@ -19,9 +19,7 @@ import { Duration } from 'luxon';
 
 describe('UserUtil', () => {
     const configGet =
-        vi.fn<
-            (key: string) => RegExp | string[] | string | number | undefined
-        >();
+        vi.fn<(key: string) => string[] | string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
@@ -31,8 +29,7 @@ describe('UserUtil', () => {
 
     let util: UserUtil;
 
-    const configValues: Record<string, RegExp | string[] | string | number> = {
-        'user.usernameRegex': /^[a-zA-Z0-9-_]+$/,
+    const configValues: Record<string, string[] | string | number> = {
         'message.availableLanguage': ['en'],
         'user.uploadPhotoProfilePath': 'users/{userId}/profile',
         'user.photo.maxSizeInBytes': 2048,
@@ -96,6 +93,7 @@ describe('UserUtil', () => {
             name: 'user',
             description: null,
             type: EnumRoleType.user,
+            isImmutable: false,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -329,6 +327,27 @@ describe('UserUtil', () => {
                     'unknown' as EnumUserLoginWith
                 )
             ).toBe(EnumActivityLogAction.userLoginCredential);
+        });
+    });
+
+    describe('isDeleteSelfRefused', () => {
+        it('returns true for admin and superAdmin', () => {
+            expect(
+                util.isDeleteSelfRefused({
+                    ...iUser,
+                    role: { ...iUser.role, type: EnumRoleType.admin },
+                })
+            ).toBe(true);
+            expect(
+                util.isDeleteSelfRefused({
+                    ...iUser,
+                    role: { ...iUser.role, type: EnumRoleType.superAdmin },
+                })
+            ).toBe(true);
+        });
+
+        it('returns false for user', () => {
+            expect(util.isDeleteSelfRefused(iUser)).toBe(false);
         });
     });
 

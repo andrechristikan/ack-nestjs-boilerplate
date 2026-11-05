@@ -129,8 +129,8 @@ export interface IPaginationQueryFilterOptions {
 }
 
 export interface IPaginationQueryFilterEqualOptions extends IPaginationQueryFilterOptions {
-    isBoolean?: true;
-    isNumber?: true;
+    isBoolean?: boolean;
+    isNumber?: boolean;
 }
 
 export interface IPaginationQueryFilterDateOptions extends IPaginationQueryFilterOptions {

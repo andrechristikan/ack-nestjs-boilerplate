@@ -5,6 +5,7 @@ export interface IRole {
     id: string;
     type: EnumRoleType;
     name: string;
+    isImmutable: boolean;
 }
 
 export type IRoleWithPolicies = Role & {

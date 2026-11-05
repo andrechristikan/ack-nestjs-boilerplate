@@ -103,6 +103,7 @@ describe('TermPolicyAcceptanceHttpService', () => {
             name: 'User',
             description: null,
             type: EnumRoleType.user,
+            isImmutable: false,
             createdAt: timestamp,
             createdBy: null,
             updatedAt: timestamp,

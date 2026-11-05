@@ -1,18 +1,15 @@
 import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.fraud.interface';
-import type {
-    IDeviceOwnershipAnalyticCreated,
-    IDeviceOwnershipAnalyticUserCount,
-} from '@modules/device/interfaces/device.interface';
+import type { IDeviceOwnershipAnalyticUserCount } from '@modules/device/interfaces/device.interface';
 
 export interface IDeviceOwnershipAnalyticRepository {
     countOwnerships(): Promise<number>;
     countPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]>;
     countInactive(before: Date): Promise<number>;
-    findCreatedInRangeByUser(
+    existsCreatedInRangeByUser(
         userId: string,
         startDate: Date,
         endDate: Date
-    ): Promise<IDeviceOwnershipAnalyticCreated[]>;
+    ): Promise<boolean>;
     findSharedFingerprints(
         minUsers: number
     ): Promise<IAnalyticSharedFingerprint[]>;

@@ -110,20 +110,39 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
 
     async updateRole(
         targetMemberId: string,
+        expectedRole: EnumProjectMemberRole,
         newRole: EnumProjectMemberRole
-    ): Promise<void> {
-        await this.databaseService.client.projectMember.update({
-            where: { id: targetMemberId },
-            data: {
-                role: newRole,
-            },
-        });
+    ): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.projectMember.updateMany({
+                where: { id: targetMemberId, role: expectedRole },
+                data: {
+                    role: newRole,
+                },
+            });
+
+        return count > 0;
     }
 
-    async removeMember(targetMemberId: string): Promise<void> {
-        await this.databaseService.client.projectMember.delete({
-            where: { id: targetMemberId },
-        });
+    async removeMember(
+        targetMemberId: string,
+        expectedRole: EnumProjectMemberRole
+    ): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.projectMember.deleteMany({
+                where: { id: targetMemberId, role: expectedRole },
+            });
+
+        return count > 0;
+    }
+
+    async removeById(memberId: string): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.projectMember.deleteMany({
+                where: { id: memberId },
+            });
+
+        return count > 0;
     }
 
     async removeByWorkspaceAndUserInTx(

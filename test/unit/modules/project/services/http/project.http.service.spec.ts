@@ -2,8 +2,11 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
@@ -34,6 +37,7 @@ import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/pr
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectHttpService } from '@modules/project/services/http/project.http.service';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 
@@ -48,6 +52,7 @@ describe('ProjectHttpService', () => {
     const workspaceInviteDomain: MockProxy<WorkspaceInviteDomain> =
         mock<WorkspaceInviteDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -128,6 +133,7 @@ describe('ProjectHttpService', () => {
                     useValue: workspaceInviteDomain,
                 },
                 { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -406,7 +412,8 @@ describe('ProjectHttpService', () => {
             expect(projectDomain.softDeleteProjectInTx).toHaveBeenCalledWith(
                 tx,
                 project,
-                deletedAt
+                deletedAt,
+                '507f1f77bcf86cd799439015'
             );
             expect(workspaceInviteDomain.clearProjectInTx).toHaveBeenCalledWith(
                 tx,
@@ -437,16 +444,41 @@ describe('ProjectHttpService', () => {
         });
 
         it('clears no invite and stages nothing when the soft delete rejects', async () => {
-            projectDomain.softDeleteProjectInTx.mockRejectedValue(
-                new Error('boom')
+            const failure = new ProjectNotFoundException();
+            projectDomain.softDeleteProjectInTx.mockRejectedValue(failure);
+
+            await expect(
+                service.softDeleteProject(project, '507f1f77bcf86cd799439015')
+            ).rejects.toBe(failure);
+            expect(
+                workspaceInviteDomain.clearProjectInTx
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('answers ProjectNotFoundException on a write conflict', async () => {
+            const conflict = new Error('conflict');
+            projectDomain.softDeleteProjectInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
             );
 
             await expect(
                 service.softDeleteProject(project, '507f1f77bcf86cd799439015')
-            ).rejects.toThrow('boom');
-            expect(
-                workspaceInviteDomain.clearProjectInTx
-            ).not.toHaveBeenCalled();
+            ).rejects.toBeInstanceOf(ProjectNotFoundException);
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps an unknown error', async () => {
+            projectDomain.softDeleteProjectInTx.mockRejectedValue(
+                new Error('boom')
+            );
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.softDeleteProject(project, '507f1f77bcf86cd799439015')
+            ).rejects.toBeInstanceOf(AppUnknownException);
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
     });

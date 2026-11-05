@@ -158,6 +158,26 @@ describe('TermPolicyUtil', () => {
 
             expect(result).toBe(false);
         });
+
+        it("returns false for a key ending in the path's slash", () => {
+            const result = util.isContentKeyInPath(
+                EnumTermPolicyType.privacy,
+                1,
+                'term-policies/privacy/1/'
+            );
+
+            expect(result).toBe(false);
+        });
+
+        it('returns true for a filename under the path', () => {
+            const result = util.isContentKeyInPath(
+                EnumTermPolicyType.privacy,
+                1,
+                'term-policies/privacy/1/a'
+            );
+
+            expect(result).toBe(true);
+        });
     });
 
     describe('createRandomFilenameContentWithPath', () => {

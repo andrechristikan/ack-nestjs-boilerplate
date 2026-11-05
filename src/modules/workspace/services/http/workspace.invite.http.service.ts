@@ -1,5 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -20,7 +21,6 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -66,7 +66,6 @@ export class WorkspaceInviteHttpService {
         private readonly userDomain: UserDomain,
         private readonly deviceDomain: DeviceDomain,
         private readonly notificationDomain: NotificationDomain,
-        private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationEmailQueue: NotificationEmailQueue,
@@ -80,13 +79,6 @@ export class WorkspaceInviteHttpService {
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
-
-    private async assertInvitationAllowed(): Promise<void> {
-        await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'invitationAllowed'
-        );
-    }
 
     private async getInviterName(
         workspace: Workspace,
@@ -193,9 +185,6 @@ export class WorkspaceInviteHttpService {
         workspaceId: string,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
-        // Sequential by design: gate before the work it guards
-        await this.assertInvitationAllowed();
-
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceInviteWhereInput>(
                 query,
@@ -242,9 +231,6 @@ export class WorkspaceInviteHttpService {
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        // Sequential by design: gate before the work it guards
-        await this.assertInvitationAllowed();
-
         const create: IWorkspaceInviteCreate = {
             email,
             workspaceRole,
@@ -252,7 +238,8 @@ export class WorkspaceInviteHttpService {
             projectRole: projectRole ?? null,
             expiryDuration: expiryDuration ?? null,
         };
-        this.workspaceInviteDomain.assertProjectRolePaired(create);
+        // Sequential by design: gate before the work it guards
+        await this.workspaceInviteDomain.assertProjectRolePaired(create);
 
         if (create.projectRole !== null) {
             // Sequential by design: gate before the work it guards
@@ -288,11 +275,11 @@ export class WorkspaceInviteHttpService {
             );
         }
 
-        // Sequential by design: write must not run if an earlier step throws
         const [inviterName, recipient] = await Promise.all([
             this.getInviterName(workspace, actorId),
             this.getInviteeRecipient(existingUser),
         ]);
+        // Sequential by design: write must not run if an earlier step throws
         const { invite, tokenData } =
             await this.workspaceInviteDomain.createInvite(
                 workspace.id,
@@ -328,8 +315,6 @@ export class WorkspaceInviteHttpService {
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        // Sequential by design: gate before the work it guards
-        await this.assertInvitationAllowed();
         const existing = await this.workspaceInviteDomain.getResendableById(
             workspaceInviteId,
             workspace.id
@@ -375,8 +360,6 @@ export class WorkspaceInviteHttpService {
         actorId: string,
         workspaceInviteId: string
     ): Promise<IResponseReturn<void>> {
-        // Sequential by design: gate before the work it guards
-        await this.assertInvitationAllowed();
         const existing = await this.workspaceInviteDomain.getPendingById(
             workspaceInviteId,
             workspaceId
@@ -407,9 +390,6 @@ export class WorkspaceInviteHttpService {
         userEmail: string,
         { inviteToken }: WorkspaceInviteClaimRequestDto
     ): Promise<IResponseReturn<void>> {
-        // Sequential by design: gate before the work it guards
-        await this.assertInvitationAllowed();
-
         const invite = await this.workspaceInviteDomain.validateInviteForEmail(
             inviteToken,
             userEmail
@@ -481,6 +461,11 @@ export class WorkspaceInviteHttpService {
                 throw new WorkspaceInviteAlreadyProcessedException();
             }
 
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceInviteAlreadyProcessedException();
+            }
+
             throw new AppUnknownException(err);
         }
 
@@ -494,9 +479,6 @@ export class WorkspaceInviteHttpService {
     }: WorkspaceInvitePreviewRequestDto): Promise<
         IResponseReturn<WorkspaceInvitePreviewResponseDto>
     > {
-        // Sequential by design: gate before the work it guards
-        await this.assertInvitationAllowed();
-
         const invite =
             await this.workspaceInviteDomain.validateInviteToken(inviteToken);
         const [workspace, inviter] = await Promise.all([

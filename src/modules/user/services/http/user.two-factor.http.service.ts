@@ -8,6 +8,7 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -33,6 +34,7 @@ import type {
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
@@ -48,6 +50,7 @@ export class UserTwoFactorHttpService {
         private readonly notificationDomain: NotificationDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
+        private readonly userQueue: UserQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userUtil: UserUtil,
@@ -68,53 +71,6 @@ export class UserTwoFactorHttpService {
         return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
-    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction; answers the revoked sessions, or null when the account was already deactivated or the write conflicted. */
-    private async reachMaxAttempt(
-        userId: string
-    ): Promise<ISessionRef[] | null> {
-        const now = this.helperDateService.create();
-
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const isDeactivated =
-                    await this.userDomain.deactivateForMaxAttemptInTx(
-                        tx,
-                        userId
-                    );
-                if (!isDeactivated) {
-                    return null;
-                }
-
-                const sessions =
-                    await this.sessionDomain.revokeActiveByUserInTx(
-                        tx,
-                        userId,
-                        userId,
-                        now
-                    );
-                await this.deviceDomain.revokeAllByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-
-                return sessions;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                return null;
-            }
-
-            throw new AppUnknownException(err);
-        }
-    }
-
     /** Counts one two-factor attempt, locks the account out when the budget is spent, and answers the attempt limit. */
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
         const isAttemptCounted =
@@ -132,12 +88,9 @@ export class UserTwoFactorHttpService {
                     createdBy: user.id,
                 }),
             ];
-            const revoked = await this.reachMaxAttempt(user.id);
-            if (revoked !== null) {
-                await this.sessionQueue.purgeLogins(user.id, revoked);
+            await this.userQueue.lockout(user.id);
 
-                this.activityLogDomain.stagePrepared(lockoutLogs);
-            }
+            this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
         this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
@@ -168,12 +121,9 @@ export class UserTwoFactorHttpService {
                     createdBy: user.id,
                 }),
             ];
-            const revoked = await this.reachMaxAttempt(user.id);
-            if (revoked !== null) {
-                await this.sessionQueue.purgeLogins(user.id, revoked);
+            await this.userQueue.lockout(user.id);
 
-                this.activityLogDomain.stagePrepared(lockoutLogs);
-            }
+            this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
         this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);
@@ -288,17 +238,31 @@ export class UserTwoFactorHttpService {
             }),
         ];
         const now = this.helperDateService.create();
-        // Sequential by design: write must not run if an earlier step throws
-        const revoked = await this.databaseService.withTransaction(async tx => {
-            await this.userTwoFactorDomain.disableInTx(tx, user.id);
+        let revoked: ISessionRef[];
+        try {
+            // Sequential by design: write must not run if an earlier step throws
+            revoked = await this.databaseService.withTransaction(async tx => {
+                await this.userTwoFactorDomain.disableInTx(tx, user.id);
 
-            return this.sessionDomain.revokeActiveByUserInTx(
-                tx,
-                user.id,
-                user.id,
-                now
-            );
-        });
+                return this.sessionDomain.revokeActiveByUserInTx(
+                    tx,
+                    user.id,
+                    user.id,
+                    now
+                );
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new AuthTwoFactorNotEnabledException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         await this.sessionQueue.purgeLogins(user.id, revoked);
 

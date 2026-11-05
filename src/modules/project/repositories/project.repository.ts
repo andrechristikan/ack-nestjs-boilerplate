@@ -148,14 +148,21 @@ export class ProjectRepository implements IProjectRepository {
     async softDeleteInTx(
         tx: IDatabaseTransactionClient,
         projectId: string,
-        deletedAt: Date
-    ): Promise<void> {
-        await tx.project.softDelete({
-            where: { id: projectId },
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<boolean> {
+        const { count } = await tx.project.updateMany({
+            where: {
+                id: projectId,
+                OR: ProjectActiveFilter,
+            },
             data: {
                 deletedAt,
+                deletedBy,
             },
         });
+
+        return count > 0;
     }
 
     async softDeleteByWorkspaceInTx(

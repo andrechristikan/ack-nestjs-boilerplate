@@ -27,6 +27,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -60,6 +61,8 @@ describe('WorkspaceMemberHttpService', () => {
         mock<ProjectMemberDomain>();
     const workspaceJoinRequestDomain: MockProxy<WorkspaceJoinRequestDomain> =
         mock<WorkspaceJoinRequestDomain>();
+    const workspaceInviteDomain: MockProxy<WorkspaceInviteDomain> =
+        mock<WorkspaceInviteDomain>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -130,6 +133,10 @@ describe('WorkspaceMemberHttpService', () => {
                 {
                     provide: WorkspaceJoinRequestDomain,
                     useValue: workspaceJoinRequestDomain,
+                },
+                {
+                    provide: WorkspaceInviteDomain,
+                    useValue: workspaceInviteDomain,
                 },
                 { provide: UserDomain, useValue: userDomain },
                 { provide: DatabaseService, useValue: databaseService },
@@ -250,7 +257,7 @@ describe('WorkspaceMemberHttpService', () => {
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 workspaceMemberDomain.leaveWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', member);
+            ).toHaveBeenCalledWith(tx, member);
             expect(
                 projectMemberDomain.removeByWorkspaceAndUserInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
@@ -468,6 +475,16 @@ describe('WorkspaceMemberHttpService', () => {
                     return 1;
                 }
             );
+            userDomain.getEmailByIdInTx.mockImplementation(async () => {
+                callOrder.push('email');
+
+                return 'user-2@example.com';
+            });
+            workspaceInviteDomain.revokePendingByEmailInTx.mockImplementation(
+                async () => {
+                    callOrder.push('invite');
+                }
+            );
             workspaceJoinRequestDomain.cancelPendingByUserInTx.mockImplementation(
                 async () => {
                     callOrder.push('joinRequests');
@@ -507,6 +524,8 @@ describe('WorkspaceMemberHttpService', () => {
             expect(callOrder).toEqual([
                 'remove',
                 'projectMembers',
+                'email',
+                'invite',
                 'joinRequests',
                 'lastWorkspace',
             ]);
@@ -530,6 +549,41 @@ describe('WorkspaceMemberHttpService', () => {
             ]);
         });
 
+        it("revokes the pending invite to the removed member's email on the same tx", async () => {
+            workspaceMemberDomain.removeMemberInTx.mockResolvedValue(target);
+            userDomain.getEmailByIdInTx.mockResolvedValue('user-2@example.com');
+
+            await service.removeMember('workspace-1', member, 'member-2');
+
+            expect(userDomain.getEmailByIdInTx).toHaveBeenCalledWith(
+                tx,
+                'user-2'
+            );
+            expect(
+                workspaceInviteDomain.revokePendingByEmailInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2@example.com');
+        });
+
+        it('skips the revoke when the user has no row', async () => {
+            workspaceMemberDomain.removeMemberInTx.mockResolvedValue(target);
+            userDomain.getEmailByIdInTx.mockResolvedValue(null);
+
+            const result = await service.removeMember(
+                'workspace-1',
+                member,
+                'member-2'
+            );
+
+            expect(result).toEqual({});
+            expect(userDomain.getEmailByIdInTx).toHaveBeenCalledWith(
+                tx,
+                'user-2'
+            );
+            expect(
+                workspaceInviteDomain.revokePendingByEmailInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('runs no cascade and stages nothing when the removal rejects', async () => {
             workspaceMemberDomain.removeMemberInTx.mockRejectedValue(
                 new WorkspaceMemberNotFoundException()
@@ -540,6 +594,10 @@ describe('WorkspaceMemberHttpService', () => {
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
             expect(
                 projectMemberDomain.removeByWorkspaceAndUserInTx
+            ).not.toHaveBeenCalled();
+            expect(userDomain.getEmailByIdInTx).not.toHaveBeenCalled();
+            expect(
+                workspaceInviteDomain.revokePendingByEmailInTx
             ).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestDomain.cancelPendingByUserInTx

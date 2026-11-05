@@ -7,16 +7,19 @@ const RoleData: IMigrationRoleData[] = [
         name: 'superadmin',
         description: 'Super Admin Role',
         type: EnumRoleType.superAdmin,
+        isImmutable: true,
     },
     {
         name: 'admin',
         description: 'Admin Role',
         type: EnumRoleType.admin,
+        isImmutable: true,
     },
     {
         name: 'user',
         description: 'User Role',
         type: EnumRoleType.user,
+        isImmutable: true,
     },
 ];
 

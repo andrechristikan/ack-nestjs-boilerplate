@@ -4,7 +4,6 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import type KeyvRedis from '@keyv/redis';
-import { SessionCacheUpdateLoginScript } from '@modules/session/constants/session.constant';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import type {
     ISessionCache,
@@ -71,7 +70,7 @@ export class SessionCache {
             {
                 userId,
                 sessionId,
-                jti: jtiDigest,
+                jtiDigest,
             },
             this.loginTtlInMs
         );
@@ -92,15 +91,33 @@ export class SessionCache {
         const newJtiDigest = this.helperHashService.sha256Hash(newJti);
         const [value, client] = await Promise.all([
             this.keyv.serializeData<ISessionCache>({
-                value: { userId, sessionId, jti: newJtiDigest },
+                value: { userId, sessionId, jtiDigest: newJtiDigest },
                 expires: now.getTime() + this.loginTtlInMs,
             }),
             store.getClient(),
         ]);
-        const reply = await client.eval(SessionCacheUpdateLoginScript, {
-            keys: [key],
-            arguments: [oldJtiDigest, value as string, `${this.loginTtlInMs}`],
-        });
+        const reply = await client.eval(
+            `
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+    return 'absent'
+end
+local entry = cjson.decode(raw)
+if entry.value.jtiDigest ~= ARGV[1] then
+    return 'mismatch'
+end
+redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
+return 'updated'
+`,
+            {
+                keys: [key],
+                arguments: [
+                    oldJtiDigest,
+                    value as string,
+                    `${this.loginTtlInMs}`,
+                ],
+            }
+        );
 
         if (reply === EnumSessionCacheUpdate.updated) {
             return EnumSessionCacheUpdate.updated;

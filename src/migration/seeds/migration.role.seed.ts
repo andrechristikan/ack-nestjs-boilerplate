@@ -58,6 +58,7 @@ export class MigrationRoleSeed
                                 name: role.name.toLowerCase(),
                                 description: role.description,
                                 type: role.type,
+                                isImmutable: role.isImmutable,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },

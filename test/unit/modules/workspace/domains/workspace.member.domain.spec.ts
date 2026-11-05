@@ -1,9 +1,11 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -20,6 +22,7 @@ import type {
 } from '@generated/prisma-client/client';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -31,6 +34,7 @@ import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.i
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('WorkspaceMemberDomain', () => {
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
@@ -39,6 +43,7 @@ describe('WorkspaceMemberDomain', () => {
         mock<WorkspaceRepository>();
     const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     let domain: WorkspaceMemberDomain;
 
     const baseMember: WorkspaceMember = {
@@ -52,12 +57,26 @@ describe('WorkspaceMemberDomain', () => {
         role: EnumWorkspaceMemberRole.member,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
+    const workspace: Workspace = {
+        id: 'workspace-1',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+        name: 'Acme',
+        slug: 'acme-team',
+        description: null,
+        isPublic: false,
+    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
         workspaceMemberRepository.updateRole.mockResolvedValue(true);
         workspaceMemberRepository.removeMemberInTx.mockResolvedValue(true);
-        workspaceMemberRepository.transferOwnership.mockResolvedValue(true);
+        workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(true);
+        workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(true);
         workspaceUtil.isPeerActionAllowed.mockReturnValue(true);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -70,6 +89,13 @@ describe('WorkspaceMemberDomain', () => {
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: DatabaseService, useValue: databaseService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        'workspace.maxWorkspacesPerUser': 5,
+                    }),
+                },
             ],
         }).compile();
 
@@ -175,6 +201,66 @@ describe('WorkspaceMemberDomain', () => {
         });
     });
 
+    describe('resolveLastWorkspaceId', () => {
+        it('answers null with no read for a null input', async () => {
+            const result = await domain.resolveLastWorkspaceId('user-1', null);
+
+            expect(result).toBeNull();
+            expect(workspaceRepository.findActiveById).not.toHaveBeenCalled();
+            expect(
+                workspaceMemberRepository.findOneByWorkspaceAndUser
+            ).not.toHaveBeenCalled();
+        });
+
+        it('answers null for an inactive workspace', async () => {
+            workspaceRepository.findActiveById.mockResolvedValue(null);
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                baseMember
+            );
+
+            const result = await domain.resolveLastWorkspaceId(
+                'user-1',
+                'workspace-1'
+            );
+
+            expect(result).toBeNull();
+            expect(workspaceRepository.findActiveById).toHaveBeenCalledWith(
+                'workspace-1'
+            );
+        });
+
+        it('answers null when the user is no longer a member', async () => {
+            workspaceRepository.findActiveById.mockResolvedValue(workspace);
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                null
+            );
+
+            const result = await domain.resolveLastWorkspaceId(
+                'user-1',
+                'workspace-1'
+            );
+
+            expect(result).toBeNull();
+            expect(
+                workspaceMemberRepository.findOneByWorkspaceAndUser
+            ).toHaveBeenCalledWith('workspace-1', 'user-1');
+        });
+
+        it('answers the id otherwise', async () => {
+            workspaceRepository.findActiveById.mockResolvedValue(workspace);
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                baseMember
+            );
+
+            const result = await domain.resolveLastWorkspaceId(
+                'user-1',
+                'workspace-1'
+            );
+
+            expect(result).toBe('workspace-1');
+        });
+    });
+
     describe('createInTx', () => {
         it('delegates to the repository', async () => {
             const tx = {} as IDatabaseTransactionClient;
@@ -215,6 +301,7 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('transferOwnership', () => {
+        const tx = {} as IDatabaseTransactionClient;
         const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
         const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
 
@@ -246,31 +333,77 @@ describe('WorkspaceMemberDomain', () => {
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
                 messagePath: 'workspace.error.memberNotFound',
             });
-            expect(
-                workspaceMemberRepository.transferOwnership
-            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('swaps the ownership between the two member rows', async () => {
+        it('throws WorkspaceCapReachedException for a target at the cap', async () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(5);
 
-            await domain.transferOwnership('workspace-1', actor, 'user-2');
+            await expect(
+                domain.transferOwnership('workspace-1', actor, 'user-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceCapReachedException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.capReached,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.capReached
+                    ],
+                messagePath: 'workspace.error.capReached',
+            });
+            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
+                tx,
+                'user-2'
+            );
+            expect(
+                workspaceMemberRepository.promoteToOwnerInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('transfers when both statements hit', async () => {
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(4);
+
+            await expect(
+                domain.transferOwnership('workspace-1', actor, 'user-2')
+            ).resolves.toBeUndefined();
 
             expect(
                 workspaceMemberRepository.findOneByWorkspaceAndUser
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
+                tx,
+                'user-2'
+            );
             expect(
-                workspaceMemberRepository.transferOwnership
-            ).toHaveBeenCalledWith('workspace-1', 'member-1', 'member-2');
+                workspaceMemberRepository.promoteToOwnerInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1', 'member-2');
+            expect(
+                workspaceMemberRepository.demoteOwnerInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1');
+            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledBefore(
+                workspaceMemberRepository.promoteToOwnerInTx
+            );
+            expect(
+                workspaceMemberRepository.promoteToOwnerInTx
+            ).toHaveBeenCalledBefore(workspaceMemberRepository.demoteOwnerInTx);
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when a guarded row no longer matches', async () => {
+        it('throws WorkspaceMemberPeerForbiddenException when the promote misses', async () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
-            workspaceMemberRepository.transferOwnership.mockResolvedValue(
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
+            workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
                 false
             );
 
@@ -286,6 +419,26 @@ describe('WorkspaceMemberDomain', () => {
                     ],
                 messagePath: 'workspace.error.memberPeerForbidden',
             });
+            expect(
+                workspaceMemberRepository.demoteOwnerInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException when the demote misses', async () => {
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
+            workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(false);
+
+            await expect(
+                domain.transferOwnership('workspace-1', actor, 'user-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+            });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).not.toHaveResolved();
         });
 
         it('maps a write conflict in the ownership swap to WorkspaceMemberPeerForbiddenException', async () => {
@@ -293,9 +446,7 @@ describe('WorkspaceMemberDomain', () => {
                 target
             );
             const conflict = new Error('write-conflict');
-            workspaceMemberRepository.transferOwnership.mockRejectedValue(
-                conflict
-            );
+            databaseService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
@@ -312,7 +463,7 @@ describe('WorkspaceMemberDomain', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
-            workspaceMemberRepository.transferOwnership.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 new Error('boom')
             );
             databaseUtil.toException.mockReturnValue(null);
@@ -341,15 +492,14 @@ describe('WorkspaceMemberDomain', () => {
     describe('leaveWorkspaceInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
 
-        it('throws WorkspaceLastOwnerException when the owner is the only one left', async () => {
+        it('throws WorkspaceLastOwnerException for an owner', async () => {
             const owner = {
                 ...baseMember,
                 role: EnumWorkspaceMemberRole.owner,
             };
-            workspaceMemberRepository.countOwnersInTx.mockResolvedValue(1);
 
             await expect(
-                domain.leaveWorkspaceInTx(tx, 'workspace-1', owner)
+                domain.leaveWorkspaceInTx(tx, owner)
             ).rejects.toMatchObject({
                 constructor: WorkspaceLastOwnerException,
                 module: 'workspace',
@@ -365,33 +515,9 @@ describe('WorkspaceMemberDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('lets an owner leave when another owner remains, counting and deleting on tx', async () => {
-            const owner = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.owner,
-            };
-            workspaceMemberRepository.countOwnersInTx.mockResolvedValue(2);
+        it('removes a non-owner on the given transaction', async () => {
+            await domain.leaveWorkspaceInTx(tx, baseMember);
 
-            await domain.leaveWorkspaceInTx(tx, 'workspace-1', owner);
-
-            expect(
-                workspaceMemberRepository.countOwnersInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1');
-            expect(
-                workspaceMemberRepository.removeMemberInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'member-1',
-                EnumWorkspaceMemberRole.owner
-            );
-        });
-
-        it('lets a non-owner leave without checking the owner count', async () => {
-            await domain.leaveWorkspaceInTx(tx, 'workspace-1', baseMember);
-
-            expect(
-                workspaceMemberRepository.countOwnersInTx
-            ).not.toHaveBeenCalled();
             expect(
                 workspaceMemberRepository.removeMemberInTx
             ).toHaveBeenCalledWith(
@@ -401,11 +527,11 @@ describe('WorkspaceMemberDomain', () => {
             );
         });
 
-        it('throws WorkspaceMemberNotFoundException when the guarded delete matches no row', async () => {
+        it('throws WorkspaceMemberNotFoundException when the guarded removal misses', async () => {
             workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             await expect(
-                domain.leaveWorkspaceInTx(tx, 'workspace-1', baseMember)
+                domain.leaveWorkspaceInTx(tx, baseMember)
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
@@ -704,19 +830,6 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('getMembersListByAdmin', () => {
-        const workspace: Workspace = {
-            id: 'workspace-1',
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            deletedAt: null,
-            deletedBy: null,
-            name: 'Acme',
-            slug: 'acme-team',
-            description: null,
-            isPublic: false,
-        };
         const pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput> =
             { limit: 20, skip: 0, orderBy: [] };
 

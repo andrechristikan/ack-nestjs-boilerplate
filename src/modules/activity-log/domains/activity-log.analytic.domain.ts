@@ -85,18 +85,22 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    getCreatedAtByUserActionsInRange(
+    async getCreatedAtByUserActionsInRange(
         userId: string,
         actions: EnumActivityLogAction[],
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        limit: number
     ): Promise<Date[]> {
-        return this.activityLogAnalyticRepository.findCreatedAtByUserActionsInRange(
-            userId,
-            actions,
-            startDate,
-            endDate
-        );
+        const rows =
+            await this.activityLogAnalyticRepository.findCreatedAtByUserActionsInRange(
+                userId,
+                actions,
+                startDate,
+                endDate,
+                limit
+            );
+        return rows.toReversed();
     }
 
     getGroupUserByActions(

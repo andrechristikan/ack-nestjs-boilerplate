@@ -1,5 +1,6 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { UserUsernameRegex } from '@modules/user/constants/user.constant';
 import type {
     IUser,
     IUserPasswordSet,
@@ -10,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
+    EnumRoleType,
     EnumUserLoginWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
@@ -20,8 +22,6 @@ import { Duration } from 'luxon';
 /** Username checks, profile photo path, resend window, two-factor mapping, and activity-log mapping. */
 @Injectable()
 export class UserUtil {
-    private readonly usernameRegex: RegExp;
-
     private readonly profanity: Profanity;
 
     private readonly uploadPhotoProfilePath: string;
@@ -31,9 +31,6 @@ export class UserUtil {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.usernameRegex =
-            this.configService.get<RegExp>('user.usernameRegex')!;
-
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguage'
         )!;
@@ -53,7 +50,7 @@ export class UserUtil {
 
     /** True when the username does NOT match the allowed pattern (i.e. should be rejected). */
     checkUsernamePattern(username: string): boolean {
-        return !!username.search(this.usernameRegex);
+        return !!username.search(UserUsernameRegex);
     }
 
     buildPhotoProfilePath(userId: string): string {
@@ -115,6 +112,14 @@ export class UserUtil {
     /** True when the enabled two-factor row still needs a fresh authenticator setup. */
     requiresTwoFactorSetup(user: IUserTwoFactorEnabled): boolean {
         return user.twoFactor.requiredSetup;
+    }
+
+    /** True when the account's role refuses deleting itself: admin and superAdmin. */
+    isDeleteSelfRefused({ role }: IUser): boolean {
+        return (
+            role.type === EnumRoleType.admin ||
+            role.type === EnumRoleType.superAdmin
+        );
     }
 
     /** True when moving to the status ends the open sessions; only active keeps them. */

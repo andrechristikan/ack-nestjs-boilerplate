@@ -133,6 +133,7 @@ describe('AnalyticAnomalyDomain', () => {
                 'analytic.anomaly.loginSpikeIp.minUniqueAccounts': 2,
                 'analytic.anomaly.loginSpikeIp.windowInMs': 3600000,
                 'analytic.anomaly.loginTimeAnomaly.historicalFrequencyPercent': 20,
+                'analytic.anomaly.loginTimeAnomaly.historyLimit': 1000,
                 'analytic.anomaly.minSample': 5,
                 'analytic.anomaly.lookbackInMs': 2592000000,
                 'analytic.anomaly.concurrency': 10,
@@ -806,7 +807,8 @@ describe('AnalyticAnomalyDomain', () => {
                 'user-2',
                 UserLoginAnalyticActions,
                 startDate,
-                endDate
+                endDate,
+                1000
             );
             expect(
                 analyticAnomalyUtil.findLoginTimeAnomaly
@@ -814,6 +816,28 @@ describe('AnalyticAnomalyDomain', () => {
             expect(
                 analyticAnomalyUtil.findLoginTimeAnomaly
             ).toHaveBeenNthCalledWith(2, 'user-2', secondHistory, 20);
+        });
+
+        it('passes analytic.anomaly.loginTimeAnomaly.historyLimit to the history read', async () => {
+            activityLogAnalyticDomain.getGroupUserByActions.mockResolvedValue([
+                { userId: 'user-1', count: 6 },
+            ]);
+            activityLogAnalyticDomain.getCreatedAtByUserActionsInRange.mockResolvedValue(
+                [startDate]
+            );
+            analyticAnomalyUtil.findLoginTimeAnomaly.mockReturnValue(null);
+
+            await domain['computeLoginTimeAnomalies'](startDate, endDate);
+
+            expect(
+                activityLogAnalyticDomain.getCreatedAtByUserActionsInRange
+            ).toHaveBeenCalledWith(
+                'user-1',
+                UserLoginAnalyticActions,
+                startDate,
+                endDate,
+                1000
+            );
         });
     });
 });

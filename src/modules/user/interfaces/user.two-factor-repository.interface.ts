@@ -37,15 +37,15 @@ export interface IUserTwoFactorRepository {
         userId: string,
         secretEncrypted: string,
         backupCodesHashed: string[]
-    ): Promise<TwoFactor>;
+    ): Promise<boolean>;
     disableTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<TwoFactor>;
+    ): Promise<boolean>;
     regenerateTwoFactorBackupCodes(
         userId: string,
         backupCodesHashed: string[]
-    ): Promise<TwoFactor>;
+    ): Promise<boolean>;
     resetTwoFactorByAdminInTx(
         tx: IDatabaseTransactionClient,
         userId: string

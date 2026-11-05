@@ -63,7 +63,6 @@ describe('WorkspaceJoinRequestDomain', () => {
         get: configGet as ConfigService['get'],
     });
     const pendingNonce = 'a'.repeat(64);
-    const joinRequestNonce = 'b'.repeat(64);
     const expiredAt = new Date('2026-01-09T00:00:00.000Z');
 
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -118,9 +117,7 @@ describe('WorkspaceJoinRequestDomain', () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(reviewedAt);
         helperStringService.fillPattern.mockReturnValue('workspace-1:user-2');
-        helperHashService.sha256Hash.mockImplementation(value =>
-            value === 'workspace-1:user-2' ? pendingNonce : joinRequestNonce
-        );
+        helperHashService.sha256Hash.mockReturnValue(pendingNonce);
         configGet.mockImplementation((key: string) =>
             key === 'workspace.joinRequest.expiresInMs' ? 604800000 : null
         );
@@ -482,7 +479,6 @@ describe('WorkspaceJoinRequestDomain', () => {
             ).toHaveBeenCalledWith(
                 tx,
                 'join-request-1',
-                joinRequestNonce,
                 'reviewer-1',
                 reviewedAt
             );
@@ -492,6 +488,9 @@ describe('WorkspaceJoinRequestDomain', () => {
                 'user-2',
                 EnumWorkspaceMemberRole.member,
                 'reviewer-1'
+            );
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
+                'join-request-1'
             );
         });
 
@@ -574,10 +573,12 @@ describe('WorkspaceJoinRequestDomain', () => {
 
             expect(workspaceJoinRequestRepository.reject).toHaveBeenCalledWith(
                 'join-request-1',
-                joinRequestNonce,
                 'reviewer-1',
                 EnumWorkspaceJoinRejectReason.wrongWorkspace,
                 reviewedAt
+            );
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
+                'join-request-1'
             );
         });
 
@@ -641,6 +642,16 @@ describe('WorkspaceJoinRequestDomain', () => {
             expect(
                 workspaceJoinRequestRepository.cancelPendingByUserInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+        });
+    });
+
+    describe('cancelPendingByRequesterInTx', () => {
+        it('cancels every pending request of the requester on the given transaction', async () => {
+            await domain.cancelPendingByRequesterInTx(tx, 'user-1');
+
+            expect(
+                workspaceJoinRequestRepository.cancelPendingByRequesterInTx
+            ).toHaveBeenCalledWith(tx, 'user-1');
         });
     });
 });

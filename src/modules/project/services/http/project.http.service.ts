@@ -1,4 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -22,6 +26,7 @@ import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -34,6 +39,7 @@ export class ProjectHttpService {
         private readonly requestStoreService: RequestStoreService,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -153,14 +159,31 @@ export class ProjectHttpService {
         ];
 
         const deletedAt = this.helperDateService.create();
-        await this.databaseService.withTransaction(async tx => {
-            await this.projectDomain.softDeleteProjectInTx(
-                tx,
-                project,
-                deletedAt
-            );
-            await this.workspaceInviteDomain.clearProjectInTx(tx, project.id);
-        });
+        try {
+            await this.databaseService.withTransaction(async tx => {
+                await this.projectDomain.softDeleteProjectInTx(
+                    tx,
+                    project,
+                    deletedAt,
+                    actorId
+                );
+                await this.workspaceInviteDomain.clearProjectInTx(
+                    tx,
+                    project.id
+                );
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new ProjectNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         this.activityLogDomain.stagePrepared(activityLogs);
 

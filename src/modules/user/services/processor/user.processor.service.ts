@@ -1,4 +1,10 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
+import { SessionDomain } from '@modules/session/domains/session.domain';
+import { SessionQueue } from '@modules/session/queues/session.queue';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type { IUserDeletePhotoPayload } from '@modules/user/interfaces/user.interface';
@@ -12,6 +18,12 @@ import { MessageService } from '@common/message/services/message.service';
 export class UserProcessorService {
     constructor(
         private readonly userProfileDomain: UserProfileDomain,
+        private readonly userDomain: UserDomain,
+        private readonly sessionDomain: SessionDomain,
+        private readonly deviceDomain: DeviceDomain,
+        private readonly sessionQueue: SessionQueue,
+        private readonly databaseService: DatabaseService,
+        private readonly helperDateService: HelperDateService,
         private readonly messageService: MessageService
     ) {}
 
@@ -43,6 +55,42 @@ export class UserProcessorService {
             key,
         };
     }
+
+    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction, then purges the revoked sessions; an already inactive user revokes nothing. */
+    async lockout(userId: string): Promise<IQueueResponse> {
+        const now = this.helperDateService.create();
+        const revoked = await this.databaseService.withTransaction(async tx => {
+            const isDeactivated =
+                await this.userDomain.deactivateForMaxAttemptInTx(tx, userId);
+            if (!isDeactivated) {
+                return [];
+            }
+
+            const sessions = await this.sessionDomain.revokeActiveByUserInTx(
+                tx,
+                userId,
+                userId,
+                now
+            );
+            await this.deviceDomain.revokeAllByUserInTx(
+                tx,
+                userId,
+                userId,
+                now
+            );
+
+            return sessions;
+        });
+        await this.sessionQueue.purgeLogins(userId, revoked);
+
+        const message = this.messageService.setMessage('user.queue.lockout');
+
+        return {
+            message,
+            countSessions: revoked.length,
+        };
+    }
+
     processUnknown(process: string): never {
         const message = this.messageService.setMessage(
             'user.queue.error.unknownProcess',

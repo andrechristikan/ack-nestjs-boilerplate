@@ -28,7 +28,7 @@ export class CountryDomain {
 
     async getOne(countryId: string): Promise<Country> {
         const country = await this.countryRepository.findOneById(countryId);
-        if (!country) {
+        if (country === null) {
             throw new CountryNotFoundException();
         }
 

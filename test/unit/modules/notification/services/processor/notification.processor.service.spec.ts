@@ -37,6 +37,7 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationProcessorService } from '@modules/notification/services/processor/notification.processor.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { MessageService } from '@common/message/services/message.service';
@@ -71,7 +72,6 @@ describe('NotificationProcessorService', () => {
         failedSteps: [
             {
                 step: EnumNotificationStep.sendEmail,
-                message: 'redis',
                 rawError: failedRawError,
             },
         ],
@@ -1094,7 +1094,7 @@ describe('NotificationProcessorService', () => {
             );
             const page = buildTermPolicyPage([u1, u2], [u2], ['B1', 'B2']);
             notificationTermPolicyDomain.getPage.mockResolvedValue(page);
-            const deferredPending = Promise.withResolvers<{
+            const deferredPending = buildDeferred<{
                 sendableMarkers: [];
                 offPageUserIds: [];
             }>();

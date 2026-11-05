@@ -87,7 +87,8 @@ export interface ITermPolicyRepository {
     updateContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        content: ITermPolicyContent
+        content: ITermPolicyContent,
+        expectedUpdatedAt: Date
     ): Promise<boolean>;
     addContent(
         termPolicyId: string,
@@ -96,7 +97,8 @@ export interface ITermPolicyRepository {
     removeContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        { language }: TermPolicyRemoveContentRequestDto
+        { language }: TermPolicyRemoveContentRequestDto,
+        expectedUpdatedAt: Date
     ): Promise<boolean>;
     publishInTx(
         tx: IDatabaseTransactionClient,

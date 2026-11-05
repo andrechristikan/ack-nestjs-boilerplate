@@ -36,6 +36,7 @@ import type {
     IUserTwoFactorVerifyInput,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
@@ -54,6 +55,7 @@ export class UserPasswordHttpService {
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
+        private readonly userQueue: UserQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userUtil: UserUtil,
@@ -99,64 +101,14 @@ export class UserPasswordHttpService {
                     createdBy: user.id,
                 }),
             ];
-            const revoked = await this.reachMaxAttempt(user.id);
-            if (revoked !== null) {
-                await this.sessionQueue.purgeLogins(user.id, revoked);
+            await this.userQueue.lockout(user.id);
 
-                this.activityLogDomain.stagePrepared(lockoutLogs);
-            }
+            this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
         this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
 
         return this.userTwoFactorDomain.verify(user, input);
-    }
-
-    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction; answers the revoked sessions, or null when the account was already deactivated or the write conflicted. */
-    private async reachMaxAttempt(
-        userId: string
-    ): Promise<ISessionRef[] | null> {
-        const now = this.helperDateService.create();
-
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const isDeactivated =
-                    await this.userDomain.deactivateForMaxAttemptInTx(
-                        tx,
-                        userId
-                    );
-                if (!isDeactivated) {
-                    return null;
-                }
-
-                const sessions =
-                    await this.sessionDomain.revokeActiveByUserInTx(
-                        tx,
-                        userId,
-                        userId,
-                        now
-                    );
-                await this.deviceDomain.revokeAllByUserInTx(
-                    tx,
-                    userId,
-                    userId,
-                    now
-                );
-
-                return sessions;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                return null;
-            }
-
-            throw new AppUnknownException(err);
-        }
     }
 
     async updatePasswordByAdmin(
@@ -282,12 +234,9 @@ export class UserPasswordHttpService {
                         createdBy: user.id,
                     }),
                 ];
-                const revoked = await this.reachMaxAttempt(user.id);
-                if (revoked !== null) {
-                    await this.sessionQueue.purgeLogins(user.id, revoked);
+                await this.userQueue.lockout(user.id);
 
-                    this.activityLogDomain.stagePrepared(lockoutLogs);
-                }
+                this.activityLogDomain.stagePrepared(lockoutLogs);
             }
 
             this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);

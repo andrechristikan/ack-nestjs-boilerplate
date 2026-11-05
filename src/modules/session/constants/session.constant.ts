@@ -40,20 +40,3 @@ export const SessionListSelect = {
         select: UserRefSelect,
     },
 } satisfies Prisma.SessionSelect;
-
-/**
- * Lua compare-and-set of the login entry: KEYS[1] the entry key, ARGV[1] the expected jti digest, ARGV[2] the serialized rotated entry, ARGV[3] its TTL in ms; answers `updated`, `mismatch`, or `absent`.
- * @public
- */
-export const SessionCacheUpdateLoginScript = `
-local raw = redis.call('GET', KEYS[1])
-if not raw then
-    return 'absent'
-end
-local entry = cjson.decode(raw)
-if entry.value.jti ~= ARGV[1] then
-    return 'mismatch'
-end
-redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
-return 'updated'
-`;

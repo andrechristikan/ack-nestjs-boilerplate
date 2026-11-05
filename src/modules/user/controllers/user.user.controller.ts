@@ -6,6 +6,7 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
+import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
 import {
     UserCurrent,
     UserProtected,
@@ -14,6 +15,7 @@ import { UserDeleteSelfRequestSchema } from '@modules/user/dtos/request/user.del
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserHttpService } from '@modules/user/services/http/user.http.service';
+import { DocWorkspaceErrorResponses } from '@modules/workspace/constants/workspace.constant';
 import { Body, Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client/client';
@@ -28,6 +30,9 @@ export class UserUserController {
     constructor(private readonly userHttpService: UserHttpService) {}
 
     @Doc({ summary: 'user delete their account' })
+    @DocUserErrorResponses.notFound
+    @DocUserErrorResponses.deleteSelfForbidden
+    @DocWorkspaceErrorResponses.ownerTransferRequired
     @Response('user.deleteSelf')
     @TermPolicyAcceptanceProtected()
     @RoleProtected(EnumRoleType.user)

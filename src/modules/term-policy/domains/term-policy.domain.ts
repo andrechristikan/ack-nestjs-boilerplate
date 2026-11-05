@@ -138,6 +138,14 @@ export class TermPolicyDomain {
                 throw err;
             }
 
+            const isVersionCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'version'
+            );
+            if (isVersionCollision) {
+                throw new TermPolicyExistException();
+            }
+
             throw new AppUnknownException(err);
         }
     }
