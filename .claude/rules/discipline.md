@@ -19,6 +19,8 @@ The minimum code that meets the requirement, nothing speculative.
 - No abstraction for single-use code; duplication beats the wrong abstraction (`code-style.md`).
 - No error handling for a case the types and guards already exclude; the failures `null-safety.md` and `exceptions.md` name are not such a case.
 - A change that could be a quarter of its size is rewritten before review. The test: would a senior engineer call it overcomplicated?
+- Judge a scenario by what a person normally does. No code, branch, spec, review finding, or sweep row exists for a case only deliberate hacking with tools reaches (scripted brute force), or a case normal human use almost never reaches (two requests landing in one millisecond window).
+- Existing guards, authentication, password handling, validation, and rate limits stay: the bullet above binds new work and removes none of them.
 
 ## 3. Surgical changes
 
@@ -40,6 +42,6 @@ Define the check first, then loop until it passes.
 ## Enforcement
 
 - `bash .claude/hooks/rules.sh` prints this rule for every path, so a dispatch template's `Rules to read:`, pasted from that output, carries it.
-- `reviewer` reports a breach as a finding at `task`, `rules and boot`, and `end to end`: a line that traces to nothing, a speculative abstraction or option, error handling for an excluded case, a check not run.
+- `reviewer` reports a breach as a finding at `task`, `rules and boot`, and `end to end`: a line that traces to nothing, a speculative abstraction or option, error handling for an excluded case, code or a spec for a case normal use does not reach, a check not run.
 - The `Stop` hook runs `pnpm typecheck` and the unit suite after any `src/` or `test/` change.
 - The rule is working when diffs carry fewer unrequested lines, fewer rewrites follow review, and questions come before implementation.

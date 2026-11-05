@@ -130,9 +130,7 @@
             "Agent(caveman:docs:AGENTS)",
             "Agent(caveman:docs:CLAUDE)",
             "Monitor",
-            "Workflow",
-            "ScheduleWakeup",
-            "CronCreate"
+            "Workflow"
         ],
         "additionalDirectories": ["/tmp", "/private/tmp"]
     },

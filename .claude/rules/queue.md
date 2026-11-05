@@ -21,7 +21,7 @@ BullMQ uses two connections; never open another Redis client. The producer conne
 
 A named queue-class method takes domain values, builds the typed payload, and owns the job name, priority, and options. A `jobId` is the `<namespace>.jobId.<name>Pattern` config key (`config.md`), read into a constructor field, filled through `HelperStringService.fillPattern`; a `*JobIdPattern` constant is forbidden. The queue class encrypts a sensitive field (password, link, recipient email, device tokens) with `HelperEncryptionService` (`security.md`, Cryptography), its context the id it belongs to: the recipient's user id, or the invite reference for an invitee with no account. Name it `encrypted<Field>`: job data is readable in BullBoard.
 
-BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until retention ages it out.
+BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until retention ages it out. A job carries a `jobId` only when a duplicate the normal flow produces collapses into one job; a `jobId` never guards a race (`discipline.md`, Simplicity first). A job that may legitimately run again for the same subject carries none, or a fresh nonce in it as an operator re-run does.
 
 - No producer calls `getJob`, `getState`, `retry`, or `remove`; no caller branches on an `add` result.
 - An operator-triggered re-run puts a fresh `DatabaseUtil.createId()` nonce in every job id it adds (`NotificationQueue.sendResendPublishTermPolicy`, `notification.jobId.termPolicyResendPattern`); the `TermPolicyRecipient` claim (`claimedAt`, `claimNonce`) keeps delivery at most once per recipient.

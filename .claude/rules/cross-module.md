@@ -4,7 +4,7 @@
 
 | From another module | From a feature domain | From an HTTP service, processor service, or aggregation domain |
 | --- | --- | --- |
-| its exported domain | no | from an HTTP or processor service, through `<Module>DomainModule`; from the aggregation domain its analytic domain only |
+| its exported domain | no, except `FeatureFlagDomain` to assert a flag or sub-key the module owns (`layering.md`, Roles) | from an HTTP or processor service, through `<Module>DomainModule`; from the aggregation domain its analytic domain only |
 | its exported queue class | no | from an HTTP or processor service, through `<Module>DomainModule` |
 | its exported util | yes, through `<Module>DomainModule` | yes, through `<Module>DomainModule` |
 | the aggregation domain | no | from `analytic`'s own HTTP service only |

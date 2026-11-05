@@ -109,7 +109,7 @@ After a route that changed files, follow `references/followup.md`; `writer` and 
 ## Boundaries
 
 - The session writes code only on `edit`, after the gate; elsewhere `coder` writes, `reviewer` judges, and `writer` (`docs/`) and `harness` (`.claude/**`) write after the owner's yes.
-- The session also writes the `edit`, `fix`, and `change` plan file, the `.superpowers/specs/` design, and the `.superpowers/sdd/` ledger and briefs. No DB or seed command; git read-only; commits go through `ask`.
+- The session also writes the `edit`, `fix`, and `change` plan file, the `.superpowers/specs/` design, and the `.superpowers/sdd/` ledger and briefs. No DB or seed command (`AGENTS.md`); git read-only.
 
 ## Hand back
 

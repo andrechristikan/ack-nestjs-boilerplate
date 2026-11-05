@@ -28,7 +28,8 @@ An HTTP service and a processor service sequence domain calls for one entry poin
 
 - One cross-module transaction per flow, opened in the method serving that flow or in a private helper of the same service; each feature domain joins as `*InTx(tx, ...)` (`database.md`, Transactions).
 - A private helper may open that transaction for several flows of its own service when it takes no mode or caller-kind parameter: `UserAuthHttpService` `createTokenAndSession` serves `loginCredential`, `loginWithSocial`, and `loginVerifyTwoFactor`; `UserRegistrationHttpService` `createByAdmin` and `importByAdmin` share one.
-- No helper is shared across services: an HTTP service injects no other HTTP service. An identical pure piece goes to a util or the owning domain.
+- Logic copied across services is forbidden. A helper whose statements belong to one module lives once, in that module's domain, and every service calls it, holding only the sequencing. An identical pure piece goes to a util or the owning domain.
+- No service calls a private helper of another service: an HTTP service injects no other HTTP service.
 
 ## Branches
 

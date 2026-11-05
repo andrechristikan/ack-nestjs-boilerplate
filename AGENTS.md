@@ -42,7 +42,7 @@ generated/              swagger, vault init, agent reports under docs/, gitignor
 
 ## Layering
 
-Every feature module carries one shape: `Controller → HTTP Service → Domain → Repository`, with `Processor → Processor Service` joining at the domain (`.claude/rules/layering.md`). A domain injects its own module, any module's util, and the kit; HTTP and processor services compose modules and alone own cross-module transactions; `src/modules/analytic/` aggregates analytic reads. Only a repository queries `databaseService.client`, health indicators excepted (`.claude/rules/database.md`). Seeds bypass it: `src/migration/` writes through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers the `APP_FILTER` providers general → http → validation → validation-import; NestJS evaluates them in reverse, so the most specific runs first.
+Every feature module carries one shape: `Controller → HTTP Service → Domain → Repository`, with `Processor → Processor Service` joining at the domain (`.claude/rules/layering.md`). A domain injects its own module, any module's util, `FeatureFlagDomain` for its own flags, and the kit; HTTP and processor services compose modules and alone own cross-module transactions; `src/modules/analytic/` aggregates analytic reads. Only a repository queries `databaseService.client`, health indicators excepted (`.claude/rules/database.md`). Seeds bypass it: `src/migration/` writes through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers the `APP_FILTER` providers general → http → validation → validation-import; NestJS evaluates them in reverse, so the most specific runs first.
 
 ## Discipline
 
@@ -58,7 +58,7 @@ Every change follows `.claude/rules/discipline.md`: ask before guessing, minimum
 
 ## Prisma schema
 
-`prisma/schema.prisma` is editable. Applying it is the owner's: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`, `pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`, `prisma migrate *`, `prisma studio` in any launcher, `mongosh`, `redis-cli`. Edit the schema, then hand back the commands the owner runs.
+`prisma/schema.prisma` is editable. The owner applies it: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`, `pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`, `prisma migrate *`, `prisma studio` in any launcher, `mongosh`, `redis-cli`. Edit it; hand back the owner's commands.
 
 ## Commit gates
 
