@@ -1,7 +1,6 @@
 {
     "model": "jev-1.14.0",
     "timeout_seconds": 1,
-    "min_request_chars": 15,
     "thresholds": {
         "noul_yes": 0.7,
         "noul_no": 0.3,
@@ -11,14 +10,6 @@
     },
     "repository": "A NestJS API boilerplate. src/ holds the application in feature modules (auth, user, workspace, project, notification, and more). test/unit/ holds unit specs. docs/ holds documentation. .claude/ holds the Claude Code agents, skills, rules, hooks, and settings.",
     "route_questions": {
-        "is_repo_task": {
-            "type": "noul",
-            "instructions": "Does `request` ask for work on this code repository?",
-            "criteria": {
-                "true": "It asks to find, explain, change, test, review, or document something in the repository",
-                "false": "A greeting, a thank-you, a one-word follow-up such as 'continue', or a topic unrelated to the repository"
-            }
-        },
         "kind": {
             "type": "choice",
             "instructions": "What is `request` asking for?",
@@ -37,10 +28,6 @@
             "type": "noul",
             "instructions": "Does `request` name the file, function, or line that causes the problem?"
         },
-        "spans_modules": {
-            "type": "noul",
-            "instructions": "Does `request` involve more than one feature area of the application, such as authentication and workspaces together?"
-        },
         "effort": {
             "type": "score",
             "instructions": "How much work does `request` need?",
@@ -49,6 +36,21 @@
                 "A change inside one feature module, with its tests",
                 "A design across several modules, or concurrency, security, or data-model work"
             ]
+        }
+    },
+    "level_questions": {
+        "effort": {
+            "type": "score",
+            "instructions": "How much work does `request` need, given the files and modules in `location`?",
+            "criteria": [
+                "A lookup, a rename, or a one-line edit",
+                "A change inside one feature module, with its tests",
+                "A design across several modules, or concurrency, security, or data-model work"
+            ]
+        },
+        "spans_modules": {
+            "type": "noul",
+            "instructions": "Do `request` and the files in `location` involve more than one feature area of the application, such as authentication and workspaces together?"
         }
     },
     "followup": {

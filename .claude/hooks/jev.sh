@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Jev, TypeSafe's decision model, for ack-work. Calls Jev only when TYPESAFE_API_KEY is set and JEV_ROUTER_DISABLED is
-# not 1; otherwise ack-work decides on its own.
-#   route     UserPromptSubmit hook on every prompt, reading the payload's prompt field. A prompt starting with / or
-#             shorter than min_request_chars prints nothing. Otherwise it shows the owner one "Jev:" line (the route,
-#             off, unavailable, or no clear route) and, for a settled route, injects a <jev_route> reminder that starts
-#             the ack-work skill on the route with each agent's model and effort.
-#   followup  run by ack-work after a route that changed files, JSON on stdin {"request","change","files"}: prints a
+# Jev, TypeSafe's decision model, for ack-work. Run by the session from ack-work's steps, never as a hook. Calls Jev only
+# when TYPESAFE_API_KEY is set and JEV_ROUTER_DISABLED is not 1; otherwise each mode prints an off block and ack-work
+# decides on its own. Every mode prints one block on stdout.
+#   route     ack-work step 1, the request as raw text on stdin: prints a <jev_route> block with the route, the agents
+#             dispatched before the location is known, and the next call. An empty request prints "no request"; a path
+#             under .superpowers/ prints "resume <path>" and calls nothing.
+#   level     ack-work step 1, after the location is known, JSON on stdin {"request","route","location"} with route fix,
+#             debug, or new_behaviour: prints a <jev_level> block with the level, the route, and each agent's model and
+#             effort.
+#   followup  ack-work step 8, after a route that changed files, JSON on stdin {"request","change","files"}: prints a
 #             <jev_followup> block naming the docs pages writer updates and whether the harness needs a change.
 # Questions and thresholds live in jev.json; each agent's floor is the model: and effort: of its .claude/agents/<name>.md
 # frontmatter; the truth tables live here.
@@ -28,12 +31,12 @@ import glob, json, os, sys, urllib.error, urllib.request
 cfg = json.load(open(os.environ["JEV_CONFIG"]))
 t = cfg["thresholds"]
 mode = os.environ["JEV_MODE"]
-payload = json.loads(os.environ.get("JEV_PAYLOAD") or "{}")
+raw = os.environ.get("JEV_PAYLOAD") or ""
 debug = os.environ.get("JEV_ROUTER_DEBUG") == "1"
 
 
 def ask(state, questions):
-    """One Jev request; returns the answers, or the failure as a string."""
+    """One Jev request; returns the answers, or the failure reason as a string."""
     body = {"model": cfg["model"], "state": state, "questions": questions}
     endpoint = os.environ.get("TYPESAFE_ENDPOINT", "https://api.typesafe.ai").rstrip("/") + "/v1/systemone"
     req = urllib.request.Request(endpoint, data=json.dumps(body).encode(), headers={
@@ -47,9 +50,9 @@ def ask(state, questions):
         with urllib.request.urlopen(req, timeout=cfg["timeout_seconds"]) as res:
             answers = json.load(res)["answers"]
     except urllib.error.HTTPError as e:
-        return f"Jev unavailable (HTTP {e.code}). Decide directly."
+        return f"HTTP {e.code}"
     except Exception as e:
-        return f"Jev unavailable ({type(e).__name__}). Decide directly."
+        return type(e).__name__
     if debug:
         print(json.dumps(answers, indent=2), file=sys.stderr)
     return answers
@@ -57,6 +60,7 @@ def ask(state, questions):
 
 MODELS = ["haiku", "sonnet", "opus"]
 EFFORTS = ["low", "medium", "high"]
+LEVELS = list(zip(MODELS, EFFORTS))
 
 
 def floor(agent):
@@ -78,94 +82,124 @@ def floor(agent):
     return found
 
 
-def route():
-    request = (payload.get("prompt") or "").strip()
-    if request.startswith("/") or len(request) < cfg["min_request_chars"]:
-        return
+def at(agent, level=0, model="haiku", at_least="low"):
+    """The agent at the level, never below its floor on either axis, nor below model and at_least."""
+    base = floor(agent)
+    m = max(LEVELS[level][0], base["model"], model, key=MODELS.index)
+    e = max(LEVELS[level][1], base["effort"], at_least, key=EFFORTS.index)
+    return f"{agent} ({m}, {e})"
 
-    def emit(shown, text=None):
-        # systemMessage is the owner's "Jev:" line; additionalContext is the reminder the session reads
-        out = {"systemMessage": f"Jev: {shown}"}
-        if text:
-            out["hookSpecificOutput"] = {
-                "hookEventName": "UserPromptSubmit",
-                "additionalContext": f"<jev_route>\n{text}\n</jev_route>",
-            }
-        print(json.dumps(out))
 
+def level_of(effort):
+    return 0 if effort < t["effort_sonnet"] else 1 if effort < t["effort_opus"] else 2
+
+
+def block(tag, *lines):
+    print(f"<{tag}>\n" + "\n".join(lines) + f"\n</{tag}>")
+
+
+def gate(tag, fallback):
+    """The off block when Jev is not to be called; True when it printed one."""
     state = os.environ["JEV_STATE"]
     if state == "no-key":
-        return emit("off (TYPESAFE_API_KEY not set); ack-work routes on its own")
-    if state == "disabled":
-        return emit("off (JEV_ROUTER_DISABLED=1); ack-work routes on its own")
+        block(tag, f"off (TYPESAFE_API_KEY not set); {fallback}")
+    elif state == "disabled":
+        block(tag, f"off (JEV_ROUTER_DISABLED=1); {fallback}")
+    return state != "on"
+
+
+OWNER_SKILLS = {"unit_tests": "/ack-spec", "documentation": "/ack-doc", "pull_request": "/ack-pr",
+                "ai_configuration": "/ack-harness"}
+
+
+def route_line(kind, cause, level):
+    """The Route: line for a kind; the kind-to-route mapping lives here alone."""
+    if kind in OWNER_SKILLS:
+        return f"Route: owner skill {OWNER_SKILLS[kind]}. Name it to the owner and stop."
+    # explore and review run at the provisional level; the other routes wait for the level call once the location is
+    # known, and an agent dispatched before it runs at its floor.
+    if kind == "code_question":
+        return f"Route: explore. Agents: {at('explorer', level)}."
+    if kind == "review":
+        return f"Route: review. Agents: {at('reviewer', level)}."
+    if kind == "bug_report" and cause >= t["noul_yes"]:
+        return "Route: fix. Next: the pin is the location; run jev.sh level with route fix."
+    if kind == "bug_report":
+        return f"Route: debug. Agents: {at('debugger')}. Next: its pin is the location; run jev.sh level with route debug."
+    return f"Route: pending (new_behaviour). Agents: {at('explorer')} locate. Next: run jev.sh level with route new_behaviour."
+
+
+def route():
+    request = raw.strip()
+    fallback = "ack-work routes on its own"
+    if not request:
+        return block("jev_route", f"no request; {fallback}")
+    # A working artifact is a resume: ack-work enters at the step the artifact proves, and Jev is not called.
+    if not any(c.isspace() for c in request) and (request.startswith(".superpowers/") or "/.superpowers/" in request):
+        return block("jev_route", f"Route: resume {request}.")
+    if gate("jev_route", fallback):
+        return
 
     a = ask({"repository": cfg["repository"], "request": request}, cfg["route_questions"])
     if isinstance(a, str):
-        return emit(a.replace("Jev unavailable", "unavailable").replace(". Decide directly.", "; ack-work routes on its own"), a)
+        return block("jev_route", f"unavailable ({a}); {fallback}")
 
-    yes = lambda name: a[name]["noul"] >= t["noul_yes"]
-    no = lambda name: a[name]["noul"] <= t["noul_no"]
-    unsettled = "no clear route; ack-work routes on its own"
-    if not yes("is_repo_task"):
-        return emit(unsettled)
+    probabilities = a["kind"]["probabilities"]
     kind = a["kind"]["choice"]
-    p_kind = a["kind"]["probabilities"][kind]
-    if p_kind < t["kind_min_probability"]:
-        return emit(unsettled)
-
-    signals = (
-        f"Signals: kind={kind} ({p_kind:.2f}), effort={a['effort']['score']:.1f}, "
-        f"cause_named={a['cause_named']['noul']:.2f}, spans_modules={a['spans_modules']['noul']:.2f}."
-    )
-    owner_skills = {"unit_tests": "/ack-spec", "documentation": "/ack-doc", "pull_request": "/ack-pr",
-                    "ai_configuration": "/ack-harness"}
-    if kind in owner_skills:
-        return emit(f"owner skill {owner_skills[kind]}",
-                    f"Route: owner skill {owner_skills[kind]}. Name it to the owner and stop.\n{signals}")
-
-    # The effort Score picks a level; each level is a model and an effort. An agent never runs below its floor.
-    # The session raises reviewer to opus, high at end to end; the depth is set after routing (ack-work SKILL.md).
-    levels = list(zip(MODELS, EFFORTS))
+    p_kind = probabilities[kind]
+    cause = a["cause_named"]["noul"]
     effort = a["effort"]["score"]
-    level = 0 if effort < t["effort_sonnet"] else 1 if effort < t["effort_opus"] else 2
+    signals = f"Signals: kind={kind} ({p_kind:.2f}), cause_named={cause:.2f}, effort={effort:.1f}."
 
-    def at(agent, model=None, effort_level=None, at_least="low"):
-        base = floor(agent)
-        m = max(model or levels[level][0], base["model"], key=MODELS.index)
-        e = max(effort_level or levels[level][1], base["effort"], at_least, key=EFFORTS.index)
-        return f"{agent} ({m}, {e})"
+    level = level_of(effort)
+    if p_kind < t["kind_min_probability"]:
+        (k1, p1), (k2, p2) = sorted(probabilities.items(), key=lambda kv: -kv[1])[:2]
+        return block("jev_route", f"Route: unclear kind. Ask the owner: {k1} ({p1:.2f}) or {k2} ({p2:.2f}).",
+                     f"On {k1}: {route_line(k1, cause, level)}", f"On {k2}: {route_line(k2, cause, level)}", signals)
+    block("jev_route", route_line(kind, cause, level), signals)
 
-    if kind == "bug_report" and yes("cause_named"):
+def level():
+    fallback = "ack-work decides on its own"
+    try:
+        payload = json.loads(raw)
+        request, route_name, location = payload["request"], payload["route"], payload["location"]
+        if route_name not in ("fix", "debug", "new_behaviour"):
+            raise ValueError(f"route {route_name}")
+        if not str(request).strip() or not str(location).strip():
+            raise ValueError("empty request or location")
+    except (ValueError, KeyError, TypeError) as e:
+        return block("jev_level", f"malformed input ({type(e).__name__}: {e}); {fallback}")
+    if gate("jev_level", fallback):
+        return
+
+    a = ask({"repository": cfg["repository"], "request": request, "location": location}, cfg["level_questions"])
+    if isinstance(a, str):
+        return block("jev_level", f"unavailable ({a}); {fallback}")
+
+    effort = a["effort"]["score"]
+    spans = a["spans_modules"]["noul"]
+    n = level_of(effort)
+    one_module = spans <= t["noul_no"]
+
+    if route_name in ("fix", "debug"):
         # fixing a bug in existing code is high-effort work for the writer
-        route_name, chain = "fix", [at("coder", at_least="high"), at("reviewer")]
-    elif kind == "bug_report":
-        route_name, chain = "debug", [at("debugger"), at("coder", at_least="high"), at("reviewer")]
-    elif kind == "new_behaviour" and level == 0 and no("spans_modules"):
+        chain = [at("coder", n, at_least="high"), at("reviewer", n)]
+    elif n == 0 and one_module:
         route_name, chain = "edit", []
-    elif kind == "new_behaviour" and level < 2 and no("spans_modules"):
-        # locate is a text search: explorer stays on haiku at low effort
-        route_name, chain = "change", [at("explorer", model="haiku", effort_level="low"), at("coder"), at("reviewer")]
-    elif kind == "new_behaviour":
-        route_name, chain = "feature", [at("explorer", model=max(levels[level][0], "sonnet", key=MODELS.index), at_least="medium"), at("planner"), at("coder"), at("reviewer")]
-    elif kind == "review":
-        route_name, chain = "review", [at("reviewer")]
-    elif kind == "code_question" and level == 0:
-        route_name, chain = "answer", []
+    elif n == 1 and one_module:
+        route_name, chain = "change", [at("coder", n), at("reviewer", n)]
     else:
-        # a code question: a text search runs on haiku, a contract or an assessment climbs with effort
-        route_name, chain = "explore", [at("explorer")]
+        # an assessment of an open shape needs at least sonnet, medium
+        route_name, chain = "feature", [at("explorer", n, model="sonnet", at_least="medium") + " assess",
+                                        at("planner", n), at("coder", n), at("reviewer", n)]
 
-    alone = "none, the session answers" if route_name == "answer" else "none, the session works alone"
-    agents = ", ".join(chain) or alone
-    emit(
-        f"{route_name}, {agents}",
-        f"Invoke the ack-work skill and follow route {route_name}. Agents: {agents}.\n{signals}\n"
-        "Pass each agent's model and effort as its Agent model and effort. "
-        "Ignore this reminder when it does not fit the request."
-    )
+    agents = ", ".join(chain) or "none, the session edits"
+    block("jev_level", f"Level: {n} ({LEVELS[n][0]}, {LEVELS[n][1]}). Route: {route_name}. Agents: {agents}.",
+          f"Signals: effort={effort:.1f}, spans_modules={spans:.2f}.")
 
 
 def followup():
+    payload = json.loads(raw or "{}")
     root = os.environ["JEV_ROOT"]
     skip = set(cfg["followup"]["generic_headings"])
     pages = {}
@@ -188,7 +222,7 @@ def followup():
     }
     a = ask(state, questions)
     if isinstance(a, str):
-        print(f"<jev_followup>\n{a}\n</jev_followup>")
+        print(f"<jev_followup>\nJev unavailable ({a}). Decide directly.\n</jev_followup>")
         return
 
     def bucket(lo, hi):
@@ -206,5 +240,5 @@ def followup():
     )
 
 
-{"route": route, "followup": followup}.get(mode, lambda: None)()
+{"route": route, "level": level, "followup": followup}.get(mode, lambda: None)()
 PY

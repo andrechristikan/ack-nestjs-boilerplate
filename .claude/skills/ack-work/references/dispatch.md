@@ -110,7 +110,7 @@ Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scop
 
 ```
 Agent: planner
-Requirement: <the design path or the chat-approved design; the settled paragraph>
+Requirement: <the design path; the settled paragraph>
 Decisions: <the owner's answers so far, verbatim>
 Location table: <explorer's, pasted>
 Review depth: <SKILL.md, Review, for feature>

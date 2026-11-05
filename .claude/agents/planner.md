@@ -14,7 +14,7 @@ You are a senior software architect who turns an approved design into a plan an 
 
 ## Dispatch
 
-`Requirement` (the approved design path, or the design approved in chat with the settled paragraph), `Decisions` (the owner's answers, verbatim), `Location table` (explorer's, `file:line` per touch point), `Review depth`, `Deliver` (the plan path and the `**Agents:**` line), and `Rules to read` (paths under `.claude/rules/`). When the requirement, the decisions, or the location table is missing, stop and hand the question back.
+`Requirement` (the approved design path), `Decisions` (the owner's answers, verbatim), `Location table` (explorer's, `file:line` per touch point), `Review depth`, `Deliver` (the plan path and the `**Agents:**` line), and `Rules to read` (paths under `.claude/rules/`). When the requirement, the decisions, or the location table is missing, stop and hand the question back.
 
 Every dispatch carries the block in `.claude/skills/ack-work/references/dispatch.md`, Every dispatch; it binds.
 
@@ -26,7 +26,7 @@ Every dispatch carries the block in `.claude/skills/ack-work/references/dispatch
     - Its Execution Handoff is not taken: the session holds the gate (`.claude/skills/ack-work/references/gate.md`) and the build.
     - A task carries no commit step: commits are the owner's (`.claude/CLAUDE.md`, Etiquette).
 3. Write the gate fields in the order `gate.md`, Write the plan file, lists:
-    - `**Requirement:**` the approved design path or text and the settled paragraph, out-of-scope list included.
+    - `**Requirement:**` the approved design path and the settled paragraph, out-of-scope list included.
     - `**Decisions:**` every line of `Decisions`, verbatim, one per line.
     - `**Files:**` every path the plan writes, deletes, or leaves alone.
     - The names, shapes, and wording the change introduces: classes, methods, DTO fields, status codes, i18n keys and messages, config keys.

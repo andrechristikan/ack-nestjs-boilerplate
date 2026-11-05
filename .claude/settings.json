@@ -207,17 +207,6 @@
                 ]
             }
         ],
-        "UserPromptSubmit": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/jev.sh route",
-                        "timeout": 8
-                    }
-                ]
-            }
-        ],
         "SessionStart": [
             {
                 "matcher": "startup|clear",

@@ -10,7 +10,7 @@ A symptom without a cause runs here, in the session, because a decision goes bac
 
 ## 2. Find the cause, through `debugger`
 
-Dispatch `debugger` with the template at `dispatch.md`, Debugger. Its `Rules to read:` is the output of `bash .claude/hooks/rules.sh` over the paths in `Scope`, pasted. A `<jev_route>` model and effort for `debugger` are the Agent `model` and `effort`.
+Dispatch `debugger` with the template at `dispatch.md`, Debugger. Its `Rules to read:` is the output of `bash .claude/hooks/rules.sh` over the paths in `Scope`, pasted. `debugger` runs on its frontmatter model and effort: it is dispatched before the `jev.sh level` call.
 
 ## 3. Read the hand-back
 
@@ -27,7 +27,7 @@ Take the first branch that matches:
 2. The change alters a flow or needs a decision: the route is `change` (one module) or `feature` (otherwise), with the pin and the symptom as the request.
 3. Otherwise the change alters no flow (the contract, the guard stack, the status code, and the call order stay): the route is `fix`.
 
-Enter the gate (`gate.md`): its `**Requirement:**` holds the pin as the change and the symptom; on `feature`, `SKILL.md` step 6 runs first. Build only on the owner's yes.
+Run `jev.sh level` with the pin as the location (`SKILL.md`, step 1), then enter the gate (`gate.md`): its `**Requirement:**` holds the pin as the change and the symptom; on `feature`, `SKILL.md` step 6 runs first. Build only on the owner's yes.
 
 Invoke `superpowers:verification-before-completion` before stating the classification: the cause rests on the quoted reproduction and the quoted evidence, not on a claim.
 

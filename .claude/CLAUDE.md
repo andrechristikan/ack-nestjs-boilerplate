@@ -8,7 +8,7 @@ Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.
 
 ### Skills
 
-`ack-work` is the one skill the session may invoke, from a `<jev_route>` reminder or on its own judgment when the request is code work. The owner types the other four: each carries `disable-model-invocation: true`, so its description stays out of the model's context. No agent preloads or invokes an `/ack-*` skill, and no skill starts another: each ends with a Next line naming the command the owner types. A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it with the answer in the argument.
+`ack-work` is the one skill the session may invoke, on its own judgment when the request is code work beyond a question it can answer from what it has read; the owner's request goes in verbatim as the argument. The owner types the other four: each carries `disable-model-invocation: true`, so its description stays out of the model's context. No agent preloads or invokes an `/ack-*` skill, and no skill starts another: each ends with a Next line naming the command the owner types. A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it with the answer in the argument.
 
 | Skill | Mode | Reason |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.
 | `/ack-pr` | session | `git push` and `gh pr` writes run on the owner's go-ahead |
 | `/ack-harness` | session | settling the requirement and `diagnose` need the owner's conversation |
 
-- `/ack-work`: routed code work through explorer, debugger, planner, coder, and reviewer, then writer and harness when the change needs them.
+- `/ack-work`: routed code work through explorer, debugger, planner, coder, and reviewer, then writer and harness, each after the owner's yes.
 - `/ack-spec`: creates or repairs unit tests for code that exists; test and coverage prove it.
 - `/ack-doc`: `docs/*.md`, root people files, `.github/**` but `copilot-instructions.md`; writer, then a reader test.
 - `/ack-pr`: pull requests end to end: description, create, comment, review replies, version notes; merge is an ask.
@@ -28,9 +28,9 @@ Every `ack-work` route that writes stops at the plan-file gate for the owner's y
 
 ### Routing
 
-- `.claude/hooks/jev.sh route` is the `UserPromptSubmit` hook on every prompt; it calls TypeSafe's Jev only when `TYPESAFE_API_KEY` is set, and a settled route adds a `<jev_route>` reminder that starts `ack-work` with the route and each agent's model and effort. `jev.sh followup` names the docs pages and the harness change the work needs.
-- A slash command or a prompt shorter than `min_request_chars` gets no `Jev:` line; any other prompt shows one (route, `off`, `unavailable`, or `no clear route`). Without Jev, `ack-work` decides both from its own tables. Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override the per-call `effort` and `model`.
-- `JEV_ROUTER_DISABLED=1` turns Jev off. Questions and thresholds live in `.claude/hooks/jev.json`; tune them with `/typesafe:typesafe-ai`. An agent's floor is its frontmatter `model` and `effort`.
+- TypeSafe's Jev runs only inside `ack-work`, through `.claude/hooks/jev.sh`, never as a hook: `route` on the request as the first action of step 1, `level` once the location is known, `followup` after files changed. Each prints one block the session reads.
+- Without `TYPESAFE_API_KEY`, or with `JEV_ROUTER_DISABLED=1`, `route` and `level` print `off` and `followup` prints nothing; a failed call prints `unavailable`; `ack-work` then decides from its own tables. Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override the per-call `effort` and `model`.
+- Questions and thresholds live in `.claude/hooks/jev.json`; tune them with `/typesafe:typesafe-ai`. An agent's floor is its frontmatter `model` and `effort`, both.
 
 ### Agents
 

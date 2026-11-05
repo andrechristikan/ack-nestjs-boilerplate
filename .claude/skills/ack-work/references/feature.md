@@ -20,15 +20,14 @@ Invoke `superpowers:brainstorming` with the settled paragraph and the location t
 
 - The design document saves to `.superpowers/specs/YYYY-MM-DD-<topic>-design.md` in place of `docs/superpowers/specs/`.
 - Its commit step is not taken: the design is a gitignored working artifact.
-- A bounded change stops at a design the owner approves in chat; no design file is written.
 - Its visual companion is not used: its server is never started (`.claude/CLAUDE.md`, Etiquette, no process left behind).
 - Its hand-off to `superpowers:writing-plans` is not taken in the session: `planner` runs it in 6.4.
 
-The step ends at the owner's approval of the design, in the document or in chat.
+Every `feature` writes its design file. The step ends at the owner's approval of the document.
 
 ## 6.4 Plan, through `planner`
 
-- Dispatch `planner` (template `references/dispatch.md`, Planner) with the design path, or the design approved in chat, the decisions, the location table, the review depth `SKILL.md`, Review, gives `feature`, and the `**Agents:**` line for the route (`SKILL.md`, Route).
+- Dispatch `planner` (template `references/dispatch.md`, Planner) with the design path, the decisions, the location table, the review depth `SKILL.md`, Review, gives `feature`, and the `**Agents:**` line for the route (`SKILL.md`, Route).
 - Its open questions go to the owner with `AskUserQuestion`; dispatch `planner` again with the answers in `Decisions:`.
 - Its hand-back names the plan path and the task list.
 

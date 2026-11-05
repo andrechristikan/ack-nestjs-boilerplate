@@ -1,6 +1,6 @@
 # ack-work gate: the plan file
 
-Every route that writes stops here before its first edit or `coder` dispatch: `edit`, `fix`, `change`, `feature`, and the fixes after a `review`. `answer` and `explore` have no gate.
+Every route that writes stops here before its first edit or `coder` dispatch: `edit`, `fix`, `change`, `feature`, and the fixes after a `review`. `explore` has no gate.
 
 ## 1. Write the plan file
 
@@ -28,4 +28,4 @@ On `feature`, the plan tasks follow the gate fields in the same file:
 
 - Every dispatch carries `Decisions:` pasted from the file (`dispatch.md`, Every dispatch).
 - A `coder` dispatch takes `Task:` from the task's brief on `feature` (`feature.md`, Build); on the other routes its `Pin:` takes the files from `**Files:**` and the change from `**Requirement:**`.
-- A plan with `- [x]` tasks resumes at its first `- [ ]` task.
+- A plan with `- [x]` tasks resumes at its first `- [ ]` task; a resumed plan with no `- [x]` task re-enters Ask (`resume.md`).
