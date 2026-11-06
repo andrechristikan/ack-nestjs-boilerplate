@@ -8,6 +8,7 @@ generator client {
   output              = "../src/generated/prisma-client"
   moduleFormat        = "esm"
   importFileExtension = "js"
+  binaryTargets       = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 model ApiKey {

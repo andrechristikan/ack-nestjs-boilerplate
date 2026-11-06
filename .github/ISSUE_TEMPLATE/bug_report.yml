@@ -82,10 +82,10 @@ body:
       id: environment
       attributes:
           label: Environment
-          description: Node, pnpm, Mongo setup, how you run the stack, and project version or commit. Engines are Node >= 24.15.0 and pnpm >= 10.25.0 (packageManager pin `pnpm@12.5.1`).
+          description: Node, pnpm, Mongo setup, how you run the stack, and project version or commit. Engines are Node >= 26.13.0 and pnpm >= 10.25.0 (packageManager pin `pnpm@12.5.1`).
           placeholder: |
               OS: macOS 14
-              Node: v24.15.0
+              Node: v26.13.0
               pnpm: 12.5.1
               Project: 9.1.0 / commit hash
               MongoDB: replica set (Compose) | standalone

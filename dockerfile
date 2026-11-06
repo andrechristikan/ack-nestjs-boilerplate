@@ -3,7 +3,7 @@ LABEL maintainer="andrechristikan@gmail.com"
 
 WORKDIR /app
 
-RUN corepack enable
+RUN npm install -g corepack && corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN set -x && pnpm install --frozen-lockfile
@@ -12,8 +12,6 @@ RUN touch .env
 
 COPY . .
 
-RUN pnpm generate
-
 EXPOSE 3000
 
-CMD [ "pnpm", "start:dev" ]
+CMD [ "sh", "-c", "pnpm start:dev" ]

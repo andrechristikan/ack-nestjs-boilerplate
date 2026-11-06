@@ -125,7 +125,7 @@ Versions this project expects:
 | Name           | Version                                     |
 | -------------- | ------------------------------------------- |
 | NestJs         | v12.x                                       |
-| NodeJs         | >= 24.15.0                                  |
+| NodeJs         | >= 26.13.0                                  |
 | PNPM           | >= 10.25.0 (pin `pnpm@12.5.1`)              |
 | TypeScript     | v6.0.x                                      |
 | Prisma         | v6.19.x                                     |

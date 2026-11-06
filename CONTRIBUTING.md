@@ -56,7 +56,7 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 
 | Tool | Version |
 | --- | --- |
-| Node.js | >= 24.15.0 |
+| Node.js | >= 26.13.0 |
 | pnpm | >= 10.25.0 (pin `pnpm@12.5.1`) |
 | Docker | v28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
 | Docker Compose | v2.40.x+ |

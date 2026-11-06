@@ -6,8 +6,10 @@ services:
             context: .
             dockerfile: dockerfile
         hostname: apis
+        environment:
+            NODE_OPTIONS: --max-old-space-size=2048
         ports:
-            - 3000:3000
+            - ${DOCKER_APIS_PORT:-3000}:3000
         volumes:
             - type: bind
               source: ./src
@@ -56,7 +58,7 @@ services:
             resources:
                 limits:
                     cpus: '1'
-                    memory: 2G
+                    memory: 4G
 
     jwks-server:
         image: nginx:alpine
