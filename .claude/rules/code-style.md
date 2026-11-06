@@ -45,7 +45,16 @@ A string with placeholders is a `{token}` pattern (`naming.md`): one token is `S
 
 Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) is not copy-paste logic, and logic stays single-source; duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`QueueBase.addSideEffect`). The one exception is `DatabaseService.withTransaction`, the kit adapter over Prisma's callback-taking `$transaction`. Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
 
-Default zero comments; the one marker is `// Sequential by design: <case>` (`concurrency.md`). A comment states what the symbol is or does, present tense, no history. JSDoc: optional one line on a class whose name does not say what it is; a `@Global()` module class carries the one line `Shared module: <what it exports, for whom>.` (`layering.md`, Tiers); method JSDoc is the exception; none on interfaces except the kit surface. `TODO` and `FIXME` are work markers. Re-test every comment a change touched. Kit surface carries `@public` (a knip directive): every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts` has a JSDoc whose first line states what it is, then `@public` (`@alias` for an intentional alias). No other export carries it.
+Default zero comments; the one marker is `// Sequential by design: <case>` (`concurrency.md`). A comment states what the symbol is or does, present tense, no history. `TODO` and `FIXME` are work markers. Re-test every comment a change touched.
+
+JSDoc lives in four places only; a name, a signature, and `docs/` explain everything else:
+
+1. A `@Global()` module class: the one line `Shared module: <what it exports, for whom>.` (`layering.md`, Tiers).
+2. Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts`: the bare `/** @public */` (a knip directive), `/** @alias */` on an intentional alias, no description line. No other export carries it.
+3. A public domain, util, cache, or queue method whose signature hides its contract: what `null` or `false` means, a side effect the name omits (a counter, an enqueue, a cache eviction), or a precondition the caller owns. One line, present tense.
+4. Nothing else: no class line, constant, field, property, enum member, interface field, constructor, private method, or controller, repository, guard, or service method; no `@param`, `@returns`, `@throws`, `@example`.
+
+A JSDoc states what the body on disk does now: no history, no "now" or "new", no plan reference. A body change re-tests its JSDoc; one that no longer matches is a defect. `reviewer` reports a JSDoc outside the four places or one that does not match its body.
 
 ## ESLint
 
