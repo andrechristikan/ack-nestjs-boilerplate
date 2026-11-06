@@ -15,7 +15,7 @@ One camelCase name in `src/modules/notification/enums/notification.enum.ts`: `En
 
 ## 3. Recipient snapshot
 
-1. `Promise.all` reads the user (`UserDomain.getOneActive`, `null` sends nothing, or one held as `IUserRecipient`, `UserRecipientSelect`, `src/modules/user/constants/user.constant.ts:99-103`), its tokens (`DeviceDomain.getNotificationTokens`), and its settings (`NotificationDomain.getListUserSetting`); `NotificationUtil.mapRecipient` (`src/modules/notification/utils/notification.util.ts:266-280`) returns `INotificationRecipient`.
+1. `Promise.all` reads the user (`UserDomain.getOneActive`, `null` sends nothing, or one held as `IUserRecipient`, `UserRecipientSelect`, `src/modules/user/constants/user.constant.ts:54-58`), its tokens (`DeviceDomain.getNotificationTokens`), and its settings (`NotificationDomain.getListUserSetting`); `NotificationUtil.mapRecipient` (`src/modules/notification/utils/notification.util.ts:266-280`) returns `INotificationRecipient`.
 2. `channels` is `NotificationUtil.resolveChannels` (`:79-110`): the contract channels minus those the user disabled for a toggleable, non-mandatory type; `[]` when only `silent` survives (no row, no send).
 3. Read before the transaction.
 4. No user: call the unregistered email variant (`NotificationEmailQueue.sendWorkspaceInviteUnregistered`).

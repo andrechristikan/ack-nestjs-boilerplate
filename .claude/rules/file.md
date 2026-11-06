@@ -10,7 +10,7 @@ paths:
 
 ## Upload validation is a pipe
 
-- An uploaded file is validated by pipes on `@UploadedFile(...)`, never by an `if` in a controller or service: `FileRequiredPipe()`, then `FileExtensionPipe([...])`, then for a CSV the import pair below (`src/modules/user/controllers/user.admin.controller.ts:257`). A controller does not read `file.buffer`. An upload route carries `@RequestTimeout('1m')` (placement: `guards.md`).
+- An uploaded file is validated by pipes on `@UploadedFile(...)`, never by an `if` in a controller or service: `FileRequiredPipe()`, then `FileExtensionPipe([...])`, then for a CSV the import pair below (`src/modules/user/controllers/user.admin.controller.ts:240`). A controller does not read `file.buffer`. An upload route carries `@RequestTimeout('1m')` (placement: `guards.md`).
 - The extension allow-list is `EnumFileExtension` (`src/common/file/enums/file.enum.ts`). `FileExtensionPipe` reads the extension from `originalname`, then sniffs the buffer through `FileService.sniffExtensionFromBuffer` (`src/common/file/services/file.service.ts:74`); a sniffed type passes only when it belongs to the declared extension's own signature list in `FileExtensionContract` (`src/common/file/contracts/file.extension.contract.ts`). `csv` is signature-less: an empty sniff passes for it only, and a declared `csv` with a sniffed binary signature is rejected. Adding an uploadable extension adds its row to that contract.
 - A multi-file upload is validated element by element; one rejected file rejects the request.
 - A failure throws the typed `file` exception (`FileRequiredException`, `FileExtensionInvalidException`, …), never a bare `BadRequestException`.

@@ -1,6 +1,6 @@
 # GitHub Copilot instructions
 
-`AGENTS.md` at the repository root is the shared digest; this file adds what an inline suggestion needs beyond it. When this file and a rule in `.claude/rules/` disagree, the rule wins.
+The root `AGENTS.md` is the shared digest; this file adds what an inline suggestion needs beyond it. When this file and a `.claude/rules/` rule disagree, the rule wins.
 
 ## Route decorator order
 
