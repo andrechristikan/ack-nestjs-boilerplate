@@ -4,10 +4,11 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import {
-    DocWorkspaceErrorResponses,
-    DocWorkspaceRoleErrorResponses,
+    WorkspaceMemberProtectedDocErrors,
     WorkspaceMemberStoreKey,
+    WorkspaceProtectedDocErrors,
     WorkspaceRoleMetaKey,
+    WorkspaceRoleProtectedDocErrors,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
@@ -23,7 +24,7 @@ import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/workspace.guard-missing.exception';
 import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
-import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import type {
     IWorkspaceField,
     IWorkspaceFieldValue,
@@ -38,9 +39,7 @@ import type {
 export function WorkspaceProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(WorkspaceGuard),
-        DocWorkspaceErrorResponses.badRequest,
-        DocWorkspaceErrorResponses.notFound,
-        DocWorkspaceErrorResponses.forbidden
+        DocErrors(...WorkspaceProtectedDocErrors)
     );
 }
 
@@ -87,18 +86,14 @@ export function WorkspaceMemberProtected(
     if (roles.length === 0) {
         return applyDecorators(
             UseGuards(WorkspaceMemberGuard),
-            DocUserErrorResponses.guardMissing,
-            DocWorkspaceErrorResponses.guardMissing
+            DocErrors(...WorkspaceMemberProtectedDocErrors)
         );
     }
 
     return applyDecorators(
         UseGuards(WorkspaceMemberGuard, WorkspaceRoleGuard),
         SetMetadata(WorkspaceRoleMetaKey, roles),
-        DocUserErrorResponses.guardMissing,
-        DocWorkspaceErrorResponses.guardMissing,
-        DocWorkspaceErrorResponses.memberGuardMissing,
-        DocWorkspaceRoleErrorResponses.forbidden
+        DocErrors(...WorkspaceRoleProtectedDocErrors)
     );
 }
 

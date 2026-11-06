@@ -8,6 +8,7 @@ import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import {
     FileMaxMultiple,
     FileSizeInBytes,
+    FileUploadDocErrors,
 } from '@common/file/constants/file.constant';
 import { FileUploadErrorInterceptor } from '@common/file/interceptors/file.upload-error.interceptor';
 import type {
@@ -16,7 +17,7 @@ import type {
     IFileUploadMultipleFieldOptions,
     IFileUploadSingle,
 } from '@common/file/interfaces/file.interface';
-import { DocFileErrorResponses } from '@common/doc/constants/doc.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 
 /**
  * Accepts one file under a single multipart field, with a size limit.
@@ -36,13 +37,7 @@ export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
                 },
             },
         }),
-        DocFileErrorResponses.extensionInvalid,
-        DocFileErrorResponses.required,
-        DocFileErrorResponses.requiredExtractFirst,
-        DocFileErrorResponses.exceedMaxSizeUpload,
-        DocFileErrorResponses.exceedMaxFiles,
-        DocFileErrorResponses.fieldUnexpected,
-        DocFileErrorResponses.multipartInvalid,
+        DocErrors(...FileUploadDocErrors),
         UseInterceptors(
             FileUploadErrorInterceptor,
             FileInterceptor(field, {
@@ -75,13 +70,7 @@ export function FileUploadMultiple(
                 },
             },
         }),
-        DocFileErrorResponses.extensionInvalid,
-        DocFileErrorResponses.required,
-        DocFileErrorResponses.requiredExtractFirst,
-        DocFileErrorResponses.exceedMaxSizeUpload,
-        DocFileErrorResponses.exceedMaxFiles,
-        DocFileErrorResponses.fieldUnexpected,
-        DocFileErrorResponses.multipartInvalid,
+        DocErrors(...FileUploadDocErrors),
         UseInterceptors(
             FileUploadErrorInterceptor,
             FilesInterceptor(field, options?.maxFiles ?? FileMaxMultiple, {
@@ -117,13 +106,7 @@ export function FileUploadMultipleFields(
                 properties,
             },
         }),
-        DocFileErrorResponses.extensionInvalid,
-        DocFileErrorResponses.required,
-        DocFileErrorResponses.requiredExtractFirst,
-        DocFileErrorResponses.exceedMaxSizeUpload,
-        DocFileErrorResponses.exceedMaxFiles,
-        DocFileErrorResponses.fieldUnexpected,
-        DocFileErrorResponses.multipartInvalid,
+        DocErrors(...FileUploadDocErrors),
         UseInterceptors(
             FileUploadErrorInterceptor,
             FileFieldsInterceptor(

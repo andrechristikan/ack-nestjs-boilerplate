@@ -169,7 +169,7 @@ export class UserRepository implements IUserRepository {
         userId: string
     ): Promise<IWorkspaceInviteInviter | null> {
         return this.databaseService.client.user.findUnique({
-            where: { id: userId },
+            where: { id: userId, deletedAt: null },
             select: { name: true, username: true },
         });
     }

@@ -27,7 +27,8 @@
         "list": "List of workspace join requests",
         "create": "Workspace join request sent successfully",
         "accept": "Workspace join request accepted successfully",
-        "reject": "Workspace join request rejected successfully"
+        "reject": "Workspace join request rejected successfully",
+        "requesterFallbackName": "A user"
     },
     "admin": {
         "list": "List of all workspaces",

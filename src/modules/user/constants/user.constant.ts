@@ -1,7 +1,8 @@
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
 /**
  * Route metadata key holding whether `@UserProtected` requires a verified user.
@@ -20,52 +21,6 @@ export const UserStoreKey = 'UserStoreKey';
  * @public
  */
 export const UserUsernameRegex = /^[a-zA-Z0-9-_]+$/;
-
-/**
- * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`); `guardMissing` documents a guard or param decorator that reads the user store; `notFound` documents the self-delete and workspace create routes; `photoSizeExceeded` documents the profile photo presign route; `deleteSelfForbidden` documents the self-delete route.
- * @public
- */
-export const DocUserErrorResponses = {
-    unauthorized: DocResponseError(HttpStatus.UNAUTHORIZED, {
-        statusCode: EnumUserStatusCodeError.accountNotFound,
-        messagePath: 'user.error.accountNotFound',
-    }),
-    forbidden: DocResponseError(
-        HttpStatus.FORBIDDEN,
-        {
-            statusCode: EnumUserStatusCodeError.blockedForbidden,
-            messagePath: 'user.error.blocked',
-        },
-        {
-            statusCode: EnumUserStatusCodeError.inactiveForbidden,
-            messagePath: 'user.error.inactive',
-        },
-        {
-            statusCode: EnumUserStatusCodeError.passwordExpired,
-            messagePath: 'user.error.passwordExpired',
-        },
-        {
-            statusCode: EnumUserStatusCodeError.emailNotVerified,
-            messagePath: 'user.error.emailNotVerified',
-        }
-    ),
-    guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
-        statusCode: EnumUserStatusCodeError.guardMissing,
-        messagePath: 'user.error.guardMissing',
-    }),
-    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
-        statusCode: EnumUserStatusCodeError.notFound,
-        messagePath: 'user.error.notFound',
-    }),
-    photoSizeExceeded: DocResponseError(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumUserStatusCodeError.photoSizeExceeded,
-        messagePath: 'user.error.photoSizeExceeded',
-    }),
-    deleteSelfForbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumUserStatusCodeError.deleteSelfForbidden,
-        messagePath: 'user.error.deleteSelfForbidden',
-    }),
-} as const;
 
 /**
  * Prisma select of the embedded user reference other records carry.
@@ -181,4 +136,41 @@ export const UserLoginAnalyticActions: EnumActivityLogAction[] = [
     EnumActivityLogAction.userLoginCredential,
     EnumActivityLogAction.userLoginGoogle,
     EnumActivityLogAction.userLoginApple,
+];
+
+/**
+ * Error entries `@UserProtected` documents: the missing account, the blocked, inactive, password-expired, and unverified user, and the missing JWT payload.
+ * @public
+ */
+export const UserProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.accountNotFound,
+        messagePath: 'user.error.accountNotFound',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumUserStatusCodeError.blockedForbidden,
+        messagePath: 'user.error.blocked',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumUserStatusCodeError.inactiveForbidden,
+        messagePath: 'user.error.inactive',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumUserStatusCodeError.passwordExpired,
+        messagePath: 'user.error.passwordExpired',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumUserStatusCodeError.emailNotVerified,
+        messagePath: 'user.error.emailNotVerified',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
+        messagePath: 'auth.error.jwtGuardMissing',
+    },
 ];

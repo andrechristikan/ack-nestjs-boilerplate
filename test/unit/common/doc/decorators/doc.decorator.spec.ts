@@ -3,11 +3,7 @@ import { z } from 'zod';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
-import {
-    Doc,
-    DocErrors,
-    DocResponseError,
-} from '@common/doc/decorators/doc.decorator';
+import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import {
@@ -34,15 +30,72 @@ interface IMethodDescriptor {
 }
 
 describe('doc.decorator', () => {
-    describe('DocResponseError', () => {
+    describe('DocErrors', () => {
+        it('records every entry under the entry metadata key in the given order', () => {
+            const descriptor: IMethodDescriptor = { value: vi.fn() };
+            const notFound: IDocResponseEntry = {
+                httpStatus: HttpStatus.NOT_FOUND,
+                statusCode: 11,
+                messagePath: 'user.error.notFound',
+            };
+            const forbidden: IDocResponseEntry = {
+                httpStatus: HttpStatus.FORBIDDEN,
+                statusCode: 12,
+                messagePath: 'user.error.forbidden',
+            };
+
+            DocErrors(notFound, forbidden)({}, 'exampleMethod', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual([notFound, forbidden]);
+
+            const responses = Reflect.getMetadata(
+                ApiResponseMetaKey,
+                descriptor.value
+            ) as Record<number, IApiResponseEntry>;
+            expect(responses[HttpStatus.NOT_FOUND]).toBeDefined();
+            expect(responses[HttpStatus.FORBIDDEN]).toBeDefined();
+        });
+
+        it('records two entries at one status in order and documents one example per messagePath', () => {
+            const descriptor: IMethodDescriptor = { value: vi.fn() };
+            const first: IDocResponseEntry = {
+                httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+                statusCode: 13,
+                messagePath: 'user.error.first',
+            };
+            const second: IDocResponseEntry = {
+                httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+                statusCode: 14,
+                messagePath: 'user.error.second',
+            };
+
+            DocErrors(first, second)({}, 'exampleMethod', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual([first, second]);
+
+            const responses = Reflect.getMetadata(
+                ApiResponseMetaKey,
+                descriptor.value
+            ) as Record<number, IApiResponseEntry>;
+            expect(
+                Object.keys(
+                    responses[HttpStatus.UNPROCESSABLE_ENTITY]!.examples ?? {}
+                )
+            ).toEqual(['user.error.first', 'user.error.second']);
+        });
+
         it('records no metadata and applies no response decorator', () => {
             const descriptor: IMethodDescriptor = { value: vi.fn() };
 
-            DocResponseError(HttpStatus.BAD_REQUEST)(
-                {},
-                'exampleMethod',
-                descriptor
-            );
+            DocErrors()({}, 'exampleMethod', descriptor);
 
             expect(
                 Reflect.getMetadata(DocResponseEntryMetaKey, descriptor.value)
@@ -55,7 +108,8 @@ describe('doc.decorator', () => {
         it('records the entry and documents a plain schema with a first-time description', () => {
             const descriptor: IMethodDescriptor = { value: vi.fn() };
 
-            DocResponseError(HttpStatus.NOT_FOUND, {
+            DocErrors({
+                httpStatus: HttpStatus.NOT_FOUND,
                 statusCode: 50401,
                 messagePath: 'user.error.notFound',
             })({}, 'exampleMethod', descriptor);
@@ -86,7 +140,8 @@ describe('doc.decorator', () => {
         it('extends the base schema with a data schema when entry.schema is given', () => {
             const descriptor: IMethodDescriptor = { value: vi.fn() };
 
-            DocResponseError(HttpStatus.OK, {
+            DocErrors({
+                httpStatus: HttpStatus.OK,
                 statusCode: 1,
                 messagePath: 'user.success.found',
                 schema: z.object({ count: z.number() }),
@@ -108,7 +163,8 @@ describe('doc.decorator', () => {
                 message: z.string(),
             });
 
-            DocResponseError(HttpStatus.BAD_REQUEST, {
+            DocErrors({
+                httpStatus: HttpStatus.BAD_REQUEST,
                 statusCode: 2,
                 messagePath: 'user.error.custom',
                 baseSchema,
@@ -137,7 +193,8 @@ describe('doc.decorator', () => {
                 descriptor.value
             );
 
-            DocResponseError(HttpStatus.BAD_REQUEST, {
+            DocErrors({
+                httpStatus: HttpStatus.BAD_REQUEST,
                 statusCode: 3,
                 messagePath: 'user.error.duplicate',
             })({}, 'exampleMethod', descriptor);
@@ -163,7 +220,8 @@ describe('doc.decorator', () => {
                 descriptor.value
             );
 
-            DocResponseError(HttpStatus.BAD_REQUEST, {
+            DocErrors({
+                httpStatus: HttpStatus.BAD_REQUEST,
                 statusCode: 5,
                 messagePath: 'user.error.second',
             })({}, 'exampleMethod', descriptor);
@@ -184,10 +242,17 @@ describe('doc.decorator', () => {
         it('documents a shared envelope schema with one named example per messagePath', () => {
             const descriptor: IMethodDescriptor = { value: vi.fn() };
 
-            DocResponseError(
-                HttpStatus.UNPROCESSABLE_ENTITY,
-                { statusCode: 6, messagePath: 'user.error.a' },
-                { statusCode: 7, messagePath: 'user.error.b' }
+            DocErrors(
+                {
+                    httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+                    statusCode: 6,
+                    messagePath: 'user.error.a',
+                },
+                {
+                    httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+                    statusCode: 7,
+                    messagePath: 'user.error.b',
+                }
             )({}, 'exampleMethod', descriptor);
 
             const responses = Reflect.getMetadata(
@@ -207,29 +272,6 @@ describe('doc.decorator', () => {
                     message: 'user.error.a',
                 },
             });
-        });
-    });
-
-    describe('DocErrors', () => {
-        it('documents an entry the same way DocResponseError does', () => {
-            const descriptor: IMethodDescriptor = { value: vi.fn() };
-
-            DocErrors(HttpStatus.CONFLICT, {
-                statusCode: 8,
-                messagePath: 'user.error.conflict',
-            })({}, 'exampleMethod', descriptor);
-
-            const stored = Reflect.getMetadata(
-                DocResponseEntryMetaKey,
-                descriptor.value
-            ) as IDocResponseEntry[];
-            expect(stored).toEqual([
-                {
-                    statusCode: 8,
-                    messagePath: 'user.error.conflict',
-                    httpStatus: HttpStatus.CONFLICT,
-                },
-            ]);
         });
     });
 
@@ -327,6 +369,63 @@ describe('doc.decorator', () => {
                     }),
                 ])
             );
+        });
+
+        it('documents every entry the errors option lists after the global kit', () => {
+            const descriptor: IMethodDescriptor = { value: vi.fn() };
+
+            Doc({
+                summary: 'test operation',
+                errors: [
+                    {
+                        httpStatus: HttpStatus.BAD_REQUEST,
+                        statusCode: 9,
+                        messagePath: 'user.error.invalid',
+                    },
+                    {
+                        httpStatus: HttpStatus.FORBIDDEN,
+                        statusCode: 10,
+                        messagePath: 'user.error.forbidden',
+                    },
+                ],
+            })({}, 'exampleMethod', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored.slice(-2)).toEqual([
+                {
+                    statusCode: 9,
+                    messagePath: 'user.error.invalid',
+                    httpStatus: HttpStatus.BAD_REQUEST,
+                },
+                {
+                    statusCode: 10,
+                    messagePath: 'user.error.forbidden',
+                    httpStatus: HttpStatus.FORBIDDEN,
+                },
+            ]);
+
+            const responses = Reflect.getMetadata(
+                ApiResponseMetaKey,
+                descriptor.value
+            ) as Record<number, IApiResponseEntry>;
+            expect(responses[HttpStatus.BAD_REQUEST]).toBeDefined();
+            expect(responses[HttpStatus.FORBIDDEN]).toBeDefined();
+        });
+
+        it('documents no endpoint error when the errors option is absent', () => {
+            const descriptor: IMethodDescriptor = { value: vi.fn() };
+
+            Doc({ summary: 'test operation' })({}, 'exampleMethod', descriptor);
+
+            const responses = Reflect.getMetadata(
+                ApiResponseMetaKey,
+                descriptor.value
+            ) as Record<number, IApiResponseEntry>;
+            expect(responses[HttpStatus.BAD_REQUEST]).toBeUndefined();
+            expect(responses[HttpStatus.FORBIDDEN]).toBeUndefined();
         });
 
         it('applies with no options given', () => {

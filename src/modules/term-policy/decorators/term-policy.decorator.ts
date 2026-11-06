@@ -1,11 +1,11 @@
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 import {
-    DocTermPolicyErrorResponses,
+    TermPolicyAcceptanceProtectedDocErrors,
     TermPolicyRequiredGuardMetaKey,
 } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
-import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 
 /**
  * Guards a route until the user has accepted the given term policy types.
@@ -18,7 +18,6 @@ export function TermPolicyAcceptanceProtected(
     return applyDecorators(
         UseGuards(TermPolicyGuard),
         SetMetadata(TermPolicyRequiredGuardMetaKey, requiredTermPolicies),
-        DocTermPolicyErrorResponses.forbidden,
-        DocUserErrorResponses.guardMissing
+        DocErrors(...TermPolicyAcceptanceProtectedDocErrors)
     );
 }

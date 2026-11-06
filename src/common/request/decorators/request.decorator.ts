@@ -9,6 +9,7 @@ import {
     RequestCustomTimeoutMetaKey,
     RequestCustomTimeoutValueMetaKey,
     RequestEnvMetaKey,
+    RequestEnvProtectedDocErrors,
     RequestLogStoreKey,
     RequestThrottleOptionsMetaKey,
 } from '@common/request/constants/request.constant';
@@ -23,6 +24,7 @@ import type {
 } from '@common/request/interfaces/request.interface';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 
 /**
  * Overrides the global request timeout for a route.
@@ -47,6 +49,7 @@ export function RequestEnvProtected(
     }
 
     return applyDecorators(
+        DocErrors(...RequestEnvProtectedDocErrors),
         UseGuards(RequestEnvGuard),
         SetMetadata(RequestEnvMetaKey, envs)
     );

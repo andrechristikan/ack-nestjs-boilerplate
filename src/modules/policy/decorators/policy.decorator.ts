@@ -6,20 +6,20 @@ import {
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import {
-    DocPolicyErrorResponses,
+    PolicyProtectedDocErrors,
     PolicyRequiredMetaKey,
     PolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { Policy } from '@generated/prisma-client/client';
-import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { PolicyGuardMissingException } from '@modules/policy/exceptions/policy.guard-missing.exception';
 import { PolicyProtectedActionEmptyException } from '@modules/policy/exceptions/policy.protected-action-empty.exception';
 import { PolicyProtectedEmptyException } from '@modules/policy/exceptions/policy.protected-empty.exception';
 
 /**
- * Protects a route, requiring the caller to hold the given policies, and documents policy kits and the missing user and policy stores.
+ * Protects a route, requiring the caller to hold the given policies, and documents the policy errors and the missing user and policy stores.
  * @public
  */
 export function PolicyProtected(
@@ -36,9 +36,7 @@ export function PolicyProtected(
     return applyDecorators(
         UseGuards(PolicyGuard),
         SetMetadata(PolicyRequiredMetaKey, requiredPolicies),
-        DocPolicyErrorResponses.forbidden,
-        DocUserErrorResponses.guardMissing,
-        DocPolicyErrorResponses.guardMissing
+        DocErrors(...PolicyProtectedDocErrors)
     );
 }
 

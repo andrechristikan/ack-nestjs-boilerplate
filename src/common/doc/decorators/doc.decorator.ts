@@ -11,7 +11,7 @@ import type {
 import { ResponseSchema } from '@common/response/dtos/response.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
-    DocGlobalErrorResponses,
+    DocGlobalErrors,
     DocResponseEntryMetaKey,
 } from '@common/doc/constants/doc.constant';
 import {
@@ -27,17 +27,12 @@ import { faker } from '@faker-js/faker';
  * `httpStatus:statusCode:messagePath`. One entry emits a plain schema with field examples;
  * two or more emit one shared envelope schema plus named OpenAPI `examples` keyed by
  * `messagePath`.
- * @public
  */
-export function DocResponseError(
+function DocResponseError(
     httpStatus: HttpStatus,
     ...entries: IDocResponseErrorOptions[]
 ): MethodDecorator {
     return (target, propertyKey, descriptor): void => {
-        if (entries.length === 0) {
-            return;
-        }
-
         const incoming: IDocResponseEntry[] = entries.map(entry => ({
             ...entry,
             httpStatus,
@@ -134,20 +129,20 @@ export function DocResponseError(
 }
 
 /**
- * Public escape hatch for endpoint-specific module-flow errors.
- * Controllers must not call `DocResponseError` directly — use this.
+ * Documents each error entry in order, each composed with every other entry at its status.
  * @public
  */
-export function DocErrors(
-    httpStatus: HttpStatus,
-    ...entries: IDocResponseErrorOptions[]
-): MethodDecorator {
-    return DocResponseError(httpStatus, ...entries);
+export function DocErrors(...entries: IDocResponseEntry[]): MethodDecorator {
+    return applyDecorators(
+        ...entries.map(({ httpStatus, ...entry }) =>
+            DocResponseError(httpStatus, entry)
+        )
+    );
 }
 
 /**
- * Base endpoint doc: operation metadata, language/correlation headers, and the global error
- * responses every endpoint can return.
+ * Base endpoint doc: operation metadata, language/correlation headers, the global error kit
+ * every endpoint can return, then each `errors` entry a flow adds.
  * @public
  */
 export function Doc(options?: IDocOptions): MethodDecorator {
@@ -155,6 +150,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
     const deprecated = options?.deprecated ?? null;
     const description = options?.description ?? null;
     const operationId = options?.operation ?? null;
+    const errors = options?.errors ?? [];
 
     return applyDecorators(
         ApiOperation({
@@ -195,19 +191,6 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 },
             },
         ]),
-        DocGlobalErrorResponses.internalServerError,
-        DocGlobalErrorResponses.requestTimeout,
-        DocGlobalErrorResponses.validationError,
-        DocGlobalErrorResponses.tooManyRequests,
-        DocGlobalErrorResponses.decryptFailed,
-        DocGlobalErrorResponses.encryptionSecretInvalid,
-        DocGlobalErrorResponses.patternTokenMissing,
-        DocGlobalErrorResponses.schemaMissing,
-        DocGlobalErrorResponses.contextMissing,
-        DocGlobalErrorResponses.uniqueValueGenerationFailed,
-        DocGlobalErrorResponses.databaseWriteConflict,
-        DocGlobalErrorResponses.databaseUnavailable,
-        DocGlobalErrorResponses.redisUnavailable,
-        DocGlobalErrorResponses.s3NotConfigured
+        DocErrors(...DocGlobalErrors, ...errors)
     );
 }

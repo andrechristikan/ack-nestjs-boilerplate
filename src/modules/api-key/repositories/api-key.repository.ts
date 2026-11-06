@@ -6,8 +6,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
-import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { ApiKeySelect } from '@modules/api-key/constants/api-key.constant';
 import type {
     IApiKey,
@@ -80,7 +78,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
     async updateStatus(
         id: string,
         expectedIsActive: boolean,
-        { isActive }: ApiKeyUpdateStatusRequestDto
+        isActive: boolean
     ): Promise<IApiKey | null> {
         const { count } = await this.databaseService.client.apiKey.updateMany({
             where: {
@@ -112,7 +110,8 @@ export class ApiKeyRepository implements IApiKeyRepository {
 
     async updateDates(
         id: string,
-        { startAt, endAt }: ApiKeyUpdateDateRequestDto
+        startAt: Date,
+        endAt: Date
     ): Promise<IApiKey | null> {
         const { count } = await this.databaseService.client.apiKey.updateMany({
             where: {

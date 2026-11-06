@@ -10,10 +10,12 @@ import { ApiKeyGuardMissingException } from '@modules/api-key/exceptions/api-key
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import {
     ApiKeyDocSecurityName,
+    ApiKeyProtectedDocErrors,
     ApiKeyStoreKey,
+    ApiKeySystemProtectedDocErrors,
     ApiKeyXTypeMetaKey,
-    DocApiKeyErrorResponses,
 } from '@modules/api-key/constants/api-key.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
@@ -60,10 +62,7 @@ export function ApiKeySystemProtected(): MethodDecorator {
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.system]),
         ApiSecurity(ApiKeyDocSecurityName),
-        DocApiKeyErrorResponses.unauthorized,
-        DocApiKeyErrorResponses.expired,
-        DocApiKeyErrorResponses.forbidden,
-        DocApiKeyErrorResponses.guardMissing
+        DocErrors(...ApiKeySystemProtectedDocErrors)
     );
 }
 
@@ -76,9 +75,6 @@ export function ApiKeyProtected(): MethodDecorator {
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.default]),
         ApiSecurity(ApiKeyDocSecurityName),
-        DocApiKeyErrorResponses.unauthorized,
-        DocApiKeyErrorResponses.expired,
-        DocApiKeyErrorResponses.forbidden,
-        DocApiKeyErrorResponses.guardMissing
+        DocErrors(...ApiKeyProtectedDocErrors)
     );
 }

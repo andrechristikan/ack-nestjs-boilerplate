@@ -1,7 +1,6 @@
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -33,7 +32,6 @@ import {
     Controller,
     Delete,
     Get,
-    HttpStatus,
     Param,
     Post,
     Put,
@@ -70,14 +68,6 @@ export class PolicyAdminController {
 
     @Doc({ summary: 'grant a policy to a role' })
     @Response('policy.create', { schema: PolicySchema })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.selfForbidden,
-        messagePath: 'role.error.selfForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,
@@ -101,14 +91,6 @@ export class PolicyAdminController {
 
     @Doc({ summary: 'update the action list of a role policy' })
     @Response('policy.update', { schema: PolicySchema })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.selfForbidden,
-        messagePath: 'role.error.selfForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,
@@ -139,14 +121,6 @@ export class PolicyAdminController {
 
     @Doc({ summary: 'revoke a policy from a role' })
     @Response('policy.delete')
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.selfForbidden,
-        messagePath: 'role.error.selfForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,

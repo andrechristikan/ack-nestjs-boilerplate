@@ -1,11 +1,11 @@
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
 import {
-    DocProjectErrorResponses,
-    DocProjectMemberErrorResponses,
-    DocProjectRoleErrorResponses,
+    ProjectMemberProtectedDocErrors,
     ProjectMemberStoreKey,
+    ProjectProtectedDocErrors,
     ProjectRoleMetaKey,
+    ProjectRoleProtectedDocErrors,
     ProjectStoreKey,
 } from '@modules/project/constants/project.constant';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
@@ -22,8 +22,7 @@ import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
 import { ProjectMemberGuardMissingException } from '@modules/project/exceptions/project.member-guard-missing.exception';
-import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
-import { DocWorkspaceErrorResponses } from '@modules/workspace/constants/workspace.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import type {
     IProjectField,
     IProjectFieldValue,
@@ -33,7 +32,7 @@ import type {
 
 /**
  * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace. A route without a `:projectId` path param answers `RequestContextMissingException`, because the route path is not readable at decoration time.
- * Documents `projectId` and project kits.
+ * Documents `projectId` and the project errors.
  * @public
  */
 export function ProjectProtected(): MethodDecorator {
@@ -45,8 +44,7 @@ export function ProjectProtected(): MethodDecorator {
             type: 'string',
             description: 'Project identifier',
         }),
-        DocProjectErrorResponses.notFound,
-        DocWorkspaceErrorResponses.guardMissing
+        DocErrors(...ProjectProtectedDocErrors)
     );
 }
 
@@ -93,20 +91,14 @@ export function ProjectMemberProtected(
     if (roles.length === 0) {
         return applyDecorators(
             UseGuards(ProjectMemberGuard),
-            DocProjectMemberErrorResponses.notFound,
-            DocProjectMemberErrorResponses.forbidden,
-            DocUserErrorResponses.guardMissing,
-            DocProjectErrorResponses.guardMissing
+            DocErrors(...ProjectMemberProtectedDocErrors)
         );
     }
 
     return applyDecorators(
         UseGuards(ProjectRoleGuard),
         SetMetadata(ProjectRoleMetaKey, roles),
-        DocProjectRoleErrorResponses.notFound,
-        DocProjectRoleErrorResponses.forbidden,
-        DocProjectErrorResponses.guardMissing,
-        DocWorkspaceErrorResponses.memberGuardMissing
+        DocErrors(...ProjectRoleProtectedDocErrors)
     );
 }
 

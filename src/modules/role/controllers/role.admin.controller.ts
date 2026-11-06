@@ -1,12 +1,11 @@
 import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import { RoleAdminListRequestSchema } from '@modules/role/dtos/request/role.admin-list.request.dto';
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     Body,
     Controller,
     Delete,
     Get,
-    HttpStatus,
     Param,
     Post,
     Put,
@@ -42,8 +41,6 @@ import {
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { DocRoleErrorResponses } from '@modules/role/constants/role.constant';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -100,10 +97,6 @@ export class RoleAdminController {
 
     @Doc({ summary: 'create a role' })
     @Response('role.create', { schema: RoleSchema })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,
@@ -124,16 +117,7 @@ export class RoleAdminController {
     }
 
     @Doc({ summary: 'update data a role' })
-    @DocRoleErrorResponses.immutable
     @Response('role.update', { schema: RoleSchema })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.selfForbidden,
-        messagePath: 'role.error.selfForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,
@@ -156,16 +140,7 @@ export class RoleAdminController {
     }
 
     @Doc({ summary: 'delete data a role' })
-    @DocRoleErrorResponses.immutable
     @Response('role.delete')
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.selfForbidden,
-        messagePath: 'role.error.selfForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.role,

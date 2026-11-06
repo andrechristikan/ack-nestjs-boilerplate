@@ -1,7 +1,8 @@
 import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IWorkspaceActiveFilter } from '@modules/workspace/interfaces/workspace.interface';
 
 /**
@@ -21,55 +22,6 @@ export const WorkspaceMemberStoreKey = 'WorkspaceMemberStoreKey';
  * @public
  */
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
-
-/**
- * Workspace guard error kit for `@WorkspaceProtected`; `guardMissing` and `memberGuardMissing` document a guard or param decorator that reads the workspace or workspace member store, and `ownerTransferRequired` documents the account self-delete refusal.
- * @public
- */
-export const DocWorkspaceErrorResponses = {
-    badRequest: DocResponseError(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumWorkspaceStatusCodeError.headerMissing,
-        messagePath: 'workspace.error.headerMissing',
-    }),
-    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
-        statusCode: EnumWorkspaceStatusCodeError.notFound,
-        messagePath: 'workspace.error.notFound',
-    }),
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-        messagePath: 'workspace.error.memberForbidden',
-    }),
-    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-        messagePath: 'workspace.error.guardMissing',
-    }),
-    memberGuardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-        messagePath: 'workspace.error.memberGuardMissing',
-    }),
-    ownerTransferRequired: DocResponseError(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumWorkspaceStatusCodeError.ownerTransferRequired,
-        messagePath: 'workspace.error.ownerTransferRequired',
-    }),
-} as const;
-
-/**
- * Workspace role guard error kit for role-gated `@WorkspaceMemberProtected`.
- * @public
- */
-export const DocWorkspaceRoleErrorResponses = {
-    forbidden: DocResponseError(
-        HttpStatus.FORBIDDEN,
-        {
-            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-            messagePath: 'workspace.error.memberForbidden',
-        },
-        {
-            statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-            messagePath: 'workspace.error.roleForbidden',
-        }
-    ),
-} as const;
 
 /**
  * Matches a `Workspace` that is not soft-deleted, including documents written before this field
@@ -118,3 +70,74 @@ export const WorkspaceInviteUserListSelect = {
     updatedAt: true,
     updatedBy: true,
 } satisfies Prisma.WorkspaceInviteSelect;
+
+/**
+ * Error entries `@WorkspaceProtected` documents: the missing `x-workspace-id` header and the missing workspace.
+ * @public
+ */
+export const WorkspaceProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumWorkspaceStatusCodeError.headerMissing,
+        messagePath: 'workspace.error.headerMissing',
+    },
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumWorkspaceStatusCodeError.notFound,
+        messagePath: 'workspace.error.notFound',
+    },
+];
+
+/**
+ * Error entries the role-less `@WorkspaceMemberProtected()` documents for `WorkspaceMemberGuard`: the missing user and workspace stores and the non-member caller.
+ * @public
+ */
+export const WorkspaceMemberProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+        messagePath: 'workspace.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+        messagePath: 'workspace.error.memberForbidden',
+    },
+];
+
+/**
+ * Error entries `@WorkspaceMemberProtected(...roles)` documents for `WorkspaceMemberGuard` and `WorkspaceRoleGuard`: the missing user, workspace, and member stores, the non-member caller, and the forbidden role.
+ * @public
+ */
+export const WorkspaceRoleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+        messagePath: 'workspace.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
+        messagePath: 'workspace.error.memberGuardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+        messagePath: 'workspace.error.memberForbidden',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
+        messagePath: 'workspace.error.roleForbidden',
+    },
+];

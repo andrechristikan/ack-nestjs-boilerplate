@@ -1,6 +1,6 @@
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 import { TermPolicyAdminListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -22,7 +22,6 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -33,7 +32,6 @@ import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/reque
 import { TermPolicyRemoveContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { DocTermPolicyErrorResponses } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyContentHttpService } from '@modules/term-policy/services/http/term-policy.content.http.service';
 import { TermPolicyHttpService } from '@modules/term-policy/services/http/term-policy.http.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -92,8 +90,6 @@ export class TermPolicyAdminController {
     }
 
     @Doc({ summary: 'create a new term or policy' })
-    @DocTermPolicyErrorResponses.contentKeyInvalid
-    @DocTermPolicyErrorResponses.contentSizeExceeded
     @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -136,7 +132,6 @@ export class TermPolicyAdminController {
     }
 
     @Doc({ summary: 'generate presign url for term or policy content upload' })
-    @DocTermPolicyErrorResponses.contentSizeExceeded
     @Response('termPolicy.generateContentPresign', {
         schema: AwsS3PresignResponseSchema,
     })
@@ -166,8 +161,6 @@ export class TermPolicyAdminController {
     }
 
     @Doc({ summary: 'update content of a term or policy by ID' })
-    @DocTermPolicyErrorResponses.contentKeyInvalid
-    @DocTermPolicyErrorResponses.contentSizeExceeded
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -193,8 +186,6 @@ export class TermPolicyAdminController {
     }
 
     @Doc({ summary: 'add content to a term or policy by ID' })
-    @DocTermPolicyErrorResponses.contentKeyInvalid
-    @DocTermPolicyErrorResponses.contentSizeExceeded
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -273,10 +264,6 @@ export class TermPolicyAdminController {
 
     @Doc({ summary: 'publish a term or policy by ID' })
     @Response('termPolicy.publish')
-    @DocErrors(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-        messagePath: 'termPolicy.error.statusInvalid',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
@@ -301,10 +288,6 @@ export class TermPolicyAdminController {
 
     @Doc({ summary: 'resend the publish email of a term or policy by ID' })
     @Response('termPolicy.resendEmail')
-    @DocErrors(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-        messagePath: 'termPolicy.error.statusInvalid',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,

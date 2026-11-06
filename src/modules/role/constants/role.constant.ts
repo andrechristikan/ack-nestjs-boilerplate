@@ -1,7 +1,8 @@
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumRoleType } from '@generated/prisma-client/client';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IRoleRank } from '@modules/role/interfaces/role.interface';
 
 /**
@@ -9,21 +10,6 @@ import type { IRoleRank } from '@modules/role/interfaces/role.interface';
  * @public
  */
 export const RoleRequiredMetaKey = 'RoleRequiredMetaKey';
-
-/**
- * Role error kit: `forbidden` for `@RoleProtected`, `immutable` for the update and delete routes.
- * @public
- */
-export const DocRoleErrorResponses = {
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.forbidden,
-        messagePath: 'role.error.forbidden',
-    }),
-    immutable: DocResponseError(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumRoleStatusCodeError.immutable,
-        messagePath: 'role.error.immutable',
-    }),
-} as const;
 
 /**
  * Rank of each role type; a higher number outranks a lower one.
@@ -34,3 +20,20 @@ export const RoleRank: IRoleRank = {
     [EnumRoleType.admin]: 2,
     [EnumRoleType.user]: 1,
 };
+
+/**
+ * Error entries `@RoleProtected` documents: the role forbidden error and the missing user store.
+ * @public
+ */
+export const RoleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumRoleStatusCodeError.forbidden,
+        messagePath: 'role.error.forbidden',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    },
+];

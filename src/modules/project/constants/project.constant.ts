@@ -1,7 +1,8 @@
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import type { IProjectActiveFilter } from '@modules/project/interfaces/project.interface';
 
@@ -24,69 +25,6 @@ export const ProjectMemberStoreKey = 'ProjectMemberStoreKey';
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /**
- * Project guard error kit for `@ProjectProtected`; `guardMissing` and `memberGuardMissing` document a guard or param decorator that reads the project or project member store.
- * @public
- */
-export const DocProjectErrorResponses = {
-    notFound: DocResponseError(
-        HttpStatus.NOT_FOUND,
-        {
-            statusCode: EnumWorkspaceStatusCodeError.notFound,
-            messagePath: 'workspace.error.notFound',
-        },
-        {
-            statusCode: EnumProjectStatusCodeError.notFound,
-            messagePath: 'project.error.notFound',
-        }
-    ),
-    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumProjectStatusCodeError.guardMissing,
-        messagePath: 'project.error.guardMissing',
-    }),
-    memberGuardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumProjectStatusCodeError.memberGuardMissing,
-        messagePath: 'project.error.memberGuardMissing',
-    }),
-} as const;
-
-/**
- * Project member guard error kit for role-less `@ProjectMemberProtected`.
- * @public
- */
-export const DocProjectMemberErrorResponses = {
-    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
-        statusCode: EnumProjectStatusCodeError.notFound,
-        messagePath: 'project.error.notFound',
-    }),
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumProjectStatusCodeError.memberForbidden,
-        messagePath: 'project.error.memberForbidden',
-    }),
-} as const;
-
-/**
- * Project role guard error kit for role-gated `@ProjectMemberProtected`.
- * @public
- */
-export const DocProjectRoleErrorResponses = {
-    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
-        statusCode: EnumProjectStatusCodeError.notFound,
-        messagePath: 'project.error.notFound',
-    }),
-    forbidden: DocResponseError(
-        HttpStatus.FORBIDDEN,
-        {
-            statusCode: EnumProjectStatusCodeError.memberForbidden,
-            messagePath: 'project.error.memberForbidden',
-        },
-        {
-            statusCode: EnumProjectStatusCodeError.roleForbidden,
-            messagePath: 'project.error.roleForbidden',
-        }
-    ),
-} as const;
-
-/**
  * Matches a `Project` that is not soft-deleted, including documents written before this field
  * was set explicitly at create time. Prisma's MongoDB connector compiles `{ deletedAt: null }`
  * alone into a query that also requires the field to be present (an `isSet` guard), so it silently
@@ -106,4 +44,70 @@ export const ProjectActiveFilter: IProjectActiveFilter = [
 export const ProjectBypassRoles: EnumWorkspaceMemberRole[] = [
     EnumWorkspaceMemberRole.owner,
     EnumWorkspaceMemberRole.admin,
+];
+
+/**
+ * Error entries `@ProjectProtected` documents: the missing project and the missing workspace store.
+ * @public
+ */
+export const ProjectProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumProjectStatusCodeError.notFound,
+        messagePath: 'project.error.notFound',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+        messagePath: 'workspace.error.guardMissing',
+    },
+];
+
+/**
+ * Error entries the role-less `@ProjectMemberProtected()` documents for `ProjectMemberGuard`: the non-member caller and the missing user and project stores.
+ * @public
+ */
+export const ProjectMemberProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumProjectStatusCodeError.memberForbidden,
+        messagePath: 'project.error.memberForbidden',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumProjectStatusCodeError.guardMissing,
+        messagePath: 'project.error.guardMissing',
+    },
+];
+
+/**
+ * Error entries `@ProjectMemberProtected(...roles)` documents for `ProjectRoleGuard`: the non-member caller, the forbidden role, and the missing project and workspace member stores.
+ * @public
+ */
+export const ProjectRoleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumProjectStatusCodeError.memberForbidden,
+        messagePath: 'project.error.memberForbidden',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumProjectStatusCodeError.roleForbidden,
+        messagePath: 'project.error.roleForbidden',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumProjectStatusCodeError.guardMissing,
+        messagePath: 'project.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
+        messagePath: 'workspace.error.memberGuardMissing',
+    },
 ];

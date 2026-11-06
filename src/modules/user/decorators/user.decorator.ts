@@ -1,6 +1,6 @@
 import {
-    DocUserErrorResponses,
     UserGuardIsVerifiedMetaKey,
+    UserProtectedDocErrors,
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
 import { UserGuard } from '@modules/user/guards/user.guard';
@@ -16,22 +16,20 @@ import {
     createParamDecorator,
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
-import { DocAuthJwtAccessErrorResponses } from '@modules/auth/constants/auth.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 
 /**
  * Applies the user guard; pass `false` to skip the email-verified requirement.
- * Documents user kits without `auth.error.accessTokenUnauthorized`, and the missing JWT payload.
+ * Documents the user status errors without `auth.error.accessTokenUnauthorized`, and the missing JWT payload.
  * @public
  */
 export function UserProtected(isVerified: boolean = true): MethodDecorator {
     return applyDecorators(
         UseGuards(UserGuard),
         SetMetadata(UserGuardIsVerifiedMetaKey, isVerified),
-        DocUserErrorResponses.unauthorized,
-        DocUserErrorResponses.forbidden,
-        DocAuthJwtAccessErrorResponses.guardMissing
+        DocErrors(...UserProtectedDocErrors)
     );
 }
 

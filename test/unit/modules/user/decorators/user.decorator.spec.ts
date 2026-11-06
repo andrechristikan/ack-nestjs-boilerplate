@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
@@ -61,7 +62,7 @@ describe('user.decorator', () => {
             ).toBe(false);
         });
 
-        it('documents the missing jwt payload at 401', () => {
+        it('documents the user status errors and the missing jwt payload, in order', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
 
@@ -71,14 +72,38 @@ describe('user.decorator', () => {
                 DocResponseEntryMetaKey,
                 descriptor.value
             ) as IDocResponseEntry[];
-            expect(stored).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.UNAUTHORIZED,
-                        messagePath: 'auth.error.jwtGuardMissing',
-                    }),
-                ])
-            );
+            expect(stored).toEqual([
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumUserStatusCodeError.accountNotFound,
+                    messagePath: 'user.error.accountNotFound',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumUserStatusCodeError.blockedForbidden,
+                    messagePath: 'user.error.blocked',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumUserStatusCodeError.inactiveForbidden,
+                    messagePath: 'user.error.inactive',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumUserStatusCodeError.passwordExpired,
+                    messagePath: 'user.error.passwordExpired',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumUserStatusCodeError.emailNotVerified,
+                    messagePath: 'user.error.emailNotVerified',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
+                    messagePath: 'auth.error.jwtGuardMissing',
+                },
+            ]);
         });
     });
 

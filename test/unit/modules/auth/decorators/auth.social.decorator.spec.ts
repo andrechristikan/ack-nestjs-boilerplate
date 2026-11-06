@@ -1,5 +1,9 @@
-import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { HttpStatus } from '@nestjs/common';
 import type { Type } from '@nestjs/common';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
@@ -22,6 +26,41 @@ describe('auth.social.decorator', () => {
                 Reflect.getMetadata('swagger/apiSecurity', descriptor.value)
             ).toEqual([{ google: [] }]);
         });
+
+        it('documents the Google error kit, in order', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            AuthSocialGoogleProtected()(target, 'method', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual([
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
+                    messagePath: 'auth.error.socialGoogleInvalid',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
+                    messagePath: 'auth.error.socialGoogleRequired',
+                },
+                {
+                    httpStatus: HttpStatus.NOT_FOUND,
+                    statusCode:
+                        EnumAuthStatusCodeError.socialGoogleNotConfigured,
+                    messagePath: 'auth.error.socialGoogleNotConfigured',
+                },
+                {
+                    httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                    statusCode: EnumAuthStatusCodeError.providerUnavailable,
+                    messagePath: 'auth.error.providerUnavailable',
+                },
+            ]);
+        });
     });
 
     describe('AuthSocialAppleProtected', () => {
@@ -37,6 +76,41 @@ describe('auth.social.decorator', () => {
             expect(
                 Reflect.getMetadata('swagger/apiSecurity', descriptor.value)
             ).toEqual([{ apple: [] }]);
+        });
+
+        it('documents the Apple error kit, in order', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            AuthSocialAppleProtected()(target, 'method', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual([
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
+                    messagePath: 'auth.error.socialAppleInvalid',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.socialAppleRequired,
+                    messagePath: 'auth.error.socialAppleRequired',
+                },
+                {
+                    httpStatus: HttpStatus.NOT_FOUND,
+                    statusCode:
+                        EnumAuthStatusCodeError.socialAppleNotConfigured,
+                    messagePath: 'auth.error.socialAppleNotConfigured',
+                },
+                {
+                    httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                    statusCode: EnumAuthStatusCodeError.providerUnavailable,
+                    messagePath: 'auth.error.providerUnavailable',
+                },
+            ]);
         });
     });
 });

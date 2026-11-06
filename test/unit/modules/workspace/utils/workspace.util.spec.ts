@@ -7,6 +7,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { MessageService } from '@common/message/services/message.service';
 import {
     EnumTermPolicyType,
     EnumUserSignUpFrom,
@@ -31,6 +32,7 @@ describe('WorkspaceUtil', () => {
         mock<HelperHashService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const configGet = vi.fn<(key: string) => unknown>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -151,6 +153,7 @@ describe('WorkspaceUtil', () => {
                 { provide: HelperStringService, useValue: helperStringService },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: MessageService, useValue: messageService },
             ],
         }).compile();
 
@@ -232,8 +235,13 @@ describe('WorkspaceUtil', () => {
             ).toBe('jane');
         });
 
-        it('falls back to a generic label when the requester is missing', () => {
-            expect(util.resolveRequesterName(null)).toBe('A user');
+        it('falls back to the translated generic label when the requester is missing', () => {
+            messageService.setMessage.mockReturnValue('Translated user');
+
+            expect(util.resolveRequesterName(null)).toBe('Translated user');
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'workspace.joinRequest.requesterFallbackName'
+            );
         });
     });
 

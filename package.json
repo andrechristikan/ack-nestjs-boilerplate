@@ -28,7 +28,7 @@
         "deadcode": "knip",
         "spell": "cspell lint --config cspell.json '{src,test}/**/*.ts' --color --gitignore --no-must-find-files --no-summary --no-progress || true",
         "typecheck": "tsc --noEmit",
-        "typecheck:watch": "tsc --noEmit --watch --preserveWatchOutput",
+        "typecheck:watch": "tsc --noEmit --watch --preserveWatchOutput -p tsconfig.build.json",
         "build": "nest build application --config nest-cli.json && pnpm typecheck",
         "start": "nest start application --config nest-cli.json --exec \"node --import ./dist/instrument.js\"",
         "start:dev": "concurrently -n \"Nest,TypeCheck\" -c \"green,yellow\" \"nest start application --watch --config nest-cli.json --exec 'node --import ./dist/instrument.js'\" \"pnpm typecheck:watch\"",

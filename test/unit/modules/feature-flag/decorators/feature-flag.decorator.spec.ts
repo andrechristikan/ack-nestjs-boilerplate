@@ -44,16 +44,16 @@ describe('feature-flag.decorator', () => {
             ) as IDocResponseEntry[];
 
             expect(entries).toEqual([
-                expect.objectContaining({
+                {
                     httpStatus: HttpStatus.NOT_FOUND,
                     statusCode: EnumFeatureFlagStatusCodeError.disabled,
                     messagePath: 'featureFlag.error.disabled',
-                }),
-                expect.objectContaining({
+                },
+                {
                     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
                     statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
                     messagePath: 'featureFlag.error.notConfigured',
-                }),
+                },
             ]);
         });
 

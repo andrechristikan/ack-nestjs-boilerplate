@@ -52,7 +52,7 @@ describe('project.decorator', () => {
             ]);
         });
 
-        it('documents the workspace and project not-found errors at 404', () => {
+        it('documents the project not-found and workspace guard-missing errors', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
@@ -64,25 +64,18 @@ describe('project.decorator', () => {
                 handler
             ) as IDocResponseEntry[];
 
-            expect(entries).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.NOT_FOUND,
-                        statusCode: EnumWorkspaceStatusCodeError.notFound,
-                        messagePath: 'workspace.error.notFound',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.NOT_FOUND,
-                        statusCode: EnumProjectStatusCodeError.notFound,
-                        messagePath: 'project.error.notFound',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.FORBIDDEN,
-                        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-                        messagePath: 'workspace.error.guardMissing',
-                    }),
-                ])
-            );
+            expect(entries).toEqual([
+                {
+                    httpStatus: HttpStatus.NOT_FOUND,
+                    statusCode: EnumProjectStatusCodeError.notFound,
+                    messagePath: 'project.error.notFound',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+                    messagePath: 'workspace.error.guardMissing',
+                },
+            ]);
         });
     });
 
@@ -192,7 +185,7 @@ describe('project.decorator', () => {
     });
 
     describe('ProjectMemberProtected', () => {
-        it('mounts ProjectMemberGuard with no roles and documents member not-found/forbidden', () => {
+        it('mounts ProjectMemberGuard with no roles and documents the member errors', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
@@ -211,41 +204,26 @@ describe('project.decorator', () => {
                 handler
             ) as IDocResponseEntry[];
 
-            expect(entries).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.NOT_FOUND,
-                        statusCode: EnumProjectStatusCodeError.notFound,
-                        messagePath: 'project.error.notFound',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.FORBIDDEN,
-                        statusCode: EnumProjectStatusCodeError.memberForbidden,
-                        messagePath: 'project.error.memberForbidden',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.UNAUTHORIZED,
-                        statusCode: EnumUserStatusCodeError.guardMissing,
-                        messagePath: 'user.error.guardMissing',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.FORBIDDEN,
-                        statusCode: EnumProjectStatusCodeError.guardMissing,
-                        messagePath: 'project.error.guardMissing',
-                    }),
-                ])
-            );
-            expect(entries).not.toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        statusCode:
-                            EnumProjectStatusCodeError.memberGuardMissing,
-                    }),
-                ])
-            );
+            expect(entries).toEqual([
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumProjectStatusCodeError.memberForbidden,
+                    messagePath: 'project.error.memberForbidden',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumUserStatusCodeError.guardMissing,
+                    messagePath: 'user.error.guardMissing',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumProjectStatusCodeError.guardMissing,
+                    messagePath: 'project.error.guardMissing',
+                },
+            ]);
         });
 
-        it('mounts ProjectRoleGuard with roles, stores the roles, and documents role not-found/forbidden', () => {
+        it('mounts ProjectRoleGuard with roles, stores the roles, and documents the role errors', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
@@ -268,44 +246,28 @@ describe('project.decorator', () => {
                 handler
             ) as IDocResponseEntry[];
 
-            expect(entries).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.NOT_FOUND,
-                        statusCode: EnumProjectStatusCodeError.notFound,
-                        messagePath: 'project.error.notFound',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.FORBIDDEN,
-                        statusCode: EnumProjectStatusCodeError.memberForbidden,
-                        messagePath: 'project.error.memberForbidden',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.FORBIDDEN,
-                        statusCode: EnumProjectStatusCodeError.roleForbidden,
-                        messagePath: 'project.error.roleForbidden',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.FORBIDDEN,
-                        statusCode: EnumProjectStatusCodeError.guardMissing,
-                        messagePath: 'project.error.guardMissing',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.FORBIDDEN,
-                        statusCode:
-                            EnumWorkspaceStatusCodeError.memberGuardMissing,
-                        messagePath: 'workspace.error.memberGuardMissing',
-                    }),
-                ])
-            );
-            expect(entries).not.toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        statusCode:
-                            EnumWorkspaceStatusCodeError.memberForbidden,
-                    }),
-                ])
-            );
+            expect(entries).toEqual([
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumProjectStatusCodeError.memberForbidden,
+                    messagePath: 'project.error.memberForbidden',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumProjectStatusCodeError.roleForbidden,
+                    messagePath: 'project.error.roleForbidden',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumProjectStatusCodeError.guardMissing,
+                    messagePath: 'project.error.guardMissing',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
+                    messagePath: 'workspace.error.memberGuardMissing',
+                },
+            ]);
         });
     });
 

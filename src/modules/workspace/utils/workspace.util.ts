@@ -1,6 +1,7 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { MessageService } from '@common/message/services/message.service';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type {
     Workspace,
@@ -39,6 +40,7 @@ export class WorkspaceUtil {
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly helperStringService: HelperStringService,
+        private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
@@ -98,7 +100,14 @@ export class WorkspaceUtil {
     }
 
     resolveRequesterName(requester: IWorkspaceInviteInviter | null): string {
-        return requester?.name ?? requester?.username ?? 'A user';
+        const name = requester?.name ?? requester?.username ?? null;
+        if (name !== null) {
+            return name;
+        }
+
+        return this.messageService.setMessage(
+            'workspace.joinRequest.requesterFallbackName'
+        );
     }
 
     createInviteTokenData(

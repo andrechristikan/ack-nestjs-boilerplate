@@ -127,7 +127,7 @@ export class ApiKeyDomain {
         const updated = await this.apiKeyRepository.updateStatus(
             id,
             apiKey.isActive,
-            { isActive }
+            isActive
         );
         if (!updated) {
             throw new ApiKeyNotFoundException();
@@ -167,10 +167,11 @@ export class ApiKeyDomain {
             dayOf: EnumHelperDateDayOf.end,
         });
 
-        const updated = await this.apiKeyRepository.updateDates(id, {
-            startAt: newStartAt,
-            endAt: newEndAt,
-        });
+        const updated = await this.apiKeyRepository.updateDates(
+            id,
+            newStartAt,
+            newEndAt
+        );
         if (!updated) {
             throw new ApiKeyInactiveException();
         }

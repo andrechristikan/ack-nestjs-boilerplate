@@ -1,3 +1,7 @@
+import { HttpStatus } from '@nestjs/common';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+
 /**
  * Accepted shape of an inbound `x-request-id` or `x-correlation-id`; anything else is replaced by a server UUID v7.
  * @public
@@ -29,6 +33,18 @@ export const RequestCustomTimeoutValueMetaKey =
  * @public
  */
 export const RequestEnvMetaKey = 'RequestEnvMetaKey';
+
+/**
+ * Error entries `@RequestEnvProtected` documents: the route answering as absent outside its allowed environments.
+ * @public
+ */
+export const RequestEnvProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumRequestStatusCodeError.envNotAllowed,
+        messagePath: 'http.clientError.notFound',
+    },
+];
 
 /**
  * Route metadata key holding a handler's `@RequestThrottle` options.

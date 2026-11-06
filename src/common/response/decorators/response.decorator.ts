@@ -10,18 +10,14 @@ import { ApiProduces, ApiResponse } from '@nestjs/swagger';
 import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { z } from 'zod';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
-import {
-    DocFileErrorResponses,
-    DocPaginationCursorErrorResponses,
-    DocPaginationErrorResponses,
-    DocPaginationOffsetErrorResponses,
-    DocSerializationErrorResponses,
-} from '@common/doc/constants/doc.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import {
+    ResponseDocErrors,
+    ResponseFileDocErrors,
     ResponseFileMediaTypes,
     ResponseMessagePathMetaKey,
+    ResponsePaginationDocErrors,
     ResponseSchemaMetaKey,
 } from '@common/response/constants/response.constant';
 import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
@@ -69,14 +65,17 @@ export function Response(
             UseInterceptors(ResponseInterceptor),
             SetMetadata(ResponseMessagePathMetaKey, messagePath),
             ApiProduces('application/json'),
-            DocResponseError(httpStatus, {
-                messagePath,
-                statusCode: httpStatus,
-                ...(options?.schema
-                    ? { schema: options.schema as z.ZodType }
-                    : {}),
-            }),
-            DocSerializationErrorResponses.serialization,
+            DocErrors(
+                {
+                    httpStatus,
+                    messagePath,
+                    statusCode: httpStatus,
+                    ...(options?.schema
+                        ? { schema: options.schema as z.ZodType }
+                        : {}),
+                },
+                ...ResponseDocErrors
+            ),
         ];
 
         if (options?.schema) {
@@ -121,30 +120,19 @@ export function ResponsePagination(
         SetMetadata(ResponseMessagePathMetaKey, messagePath),
         SetMetadata(ResponseSchemaMetaKey, options.schema),
         ApiProduces('application/json'),
-        DocResponseError(HttpStatus.OK, {
-            messagePath,
-            statusCode: HttpStatus.OK,
-            baseSchema: ResponsePaginationSchema,
-            schema: z.array(options.schema as z.ZodType).meta({
-                description: 'Page of result items',
-                example: [],
-            }),
-        }),
-        DocPaginationErrorResponses.filterInvalidValue,
-        DocPaginationErrorResponses.invalidPerPage,
-        DocPaginationErrorResponses.perPageExceedsMaximum,
-        DocPaginationErrorResponses.perPageCannotBeLessThanOne,
-        DocPaginationOffsetErrorResponses.invalidPage,
-        DocPaginationOffsetErrorResponses.pageExceedsMaximum,
-        DocPaginationOffsetErrorResponses.pageCannotBeLessThanOne,
-        DocPaginationCursorErrorResponses.invalidCursorPaginationParams,
-        DocPaginationCursorErrorResponses.cursorTooLong,
-        DocPaginationCursorErrorResponses.invalidCursorFormat,
-        DocPaginationCursorErrorResponses.invalidCursorData,
-        DocPaginationCursorErrorResponses.failedToDecodeCursor,
-        DocSerializationErrorResponses.serialization,
-        DocSerializationErrorResponses.paginationShapeInvalid,
-        DocSerializationErrorResponses.paginationTypeInvalid,
+        DocErrors(
+            {
+                httpStatus: HttpStatus.OK,
+                messagePath,
+                statusCode: HttpStatus.OK,
+                baseSchema: ResponsePaginationSchema,
+                schema: z.array(options.schema as z.ZodType).meta({
+                    description: 'Page of result items',
+                    example: [],
+                }),
+            },
+            ...ResponsePaginationDocErrors
+        ),
     ];
 
     if (options.cache) {
@@ -215,8 +203,7 @@ export function ResponseFile(
                     },
                 },
             }),
-            DocFileErrorResponses.exceedMaxDataExport,
-            DocFileErrorResponses.exceedMaxSizeExport
+            DocErrors(...ResponseFileDocErrors)
         )(target, propertyKey, descriptor);
     };
 }

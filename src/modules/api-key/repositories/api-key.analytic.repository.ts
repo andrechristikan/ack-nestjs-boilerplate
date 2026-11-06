@@ -7,12 +7,6 @@ import { Injectable } from '@nestjs/common';
 export class ApiKeyAnalyticRepository implements IApiKeyAnalyticRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
-    async countCreated(startDate: Date, endDate: Date): Promise<number> {
-        return this.databaseService.client.apiKey.count({
-            where: { createdAt: { gte: startDate, lt: endDate } },
-        });
-    }
-
     async countActive(now: Date): Promise<number> {
         return this.databaseService.client.apiKey.count({
             where: {

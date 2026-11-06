@@ -4,8 +4,6 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
-import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { Prisma } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import type {
@@ -32,12 +30,13 @@ export interface IApiKeyRepository {
     updateStatus(
         id: string,
         expectedIsActive: boolean,
-        { isActive }: ApiKeyUpdateStatusRequestDto
+        isActive: boolean
     ): Promise<IApiKey | null>;
     updateName(id: string, name: string): Promise<IApiKey>;
     updateDates(
         id: string,
-        { startAt, endAt }: ApiKeyUpdateDateRequestDto
+        startAt: Date,
+        endAt: Date
     ): Promise<IApiKey | null>;
     updateHash(id: string, hash: string): Promise<IApiKey | null>;
     delete(id: string): Promise<boolean>;

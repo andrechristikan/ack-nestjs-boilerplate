@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 /**
  * Route metadata key holding the policy abilities `@PolicyProtected` requires.
@@ -15,16 +16,23 @@ export const PolicyRequiredMetaKey = 'PolicyRequiredMetaKey';
 export const PolicyStoreKey = 'PolicyStoreKey';
 
 /**
- * Policy guard error kit for `@PolicyProtected`.
+ * Error entries `@PolicyProtected` documents: the policy forbidden error and the missing user and policy stores.
  * @public
  */
-export const DocPolicyErrorResponses = {
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
+export const PolicyProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumPolicyStatusCodeError.forbidden,
         messagePath: 'policy.error.forbidden',
-    }),
-    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumPolicyStatusCodeError.guardMissing,
         messagePath: 'policy.error.guardMissing',
-    }),
-} as const;
+    },
+];

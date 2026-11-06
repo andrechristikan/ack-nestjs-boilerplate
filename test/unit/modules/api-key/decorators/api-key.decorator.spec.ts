@@ -39,7 +39,7 @@ describe('api-key.decorator', () => {
             ).toEqual([EnumApiKeyType.system]);
         });
 
-        it('documents the missing api key store at 401', () => {
+        it('documents the api key error kit, in order', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
 
@@ -49,35 +49,33 @@ describe('api-key.decorator', () => {
                 DocResponseEntryMetaKey,
                 descriptor.value
             ) as IDocResponseEntry[];
-            expect(stored).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.UNAUTHORIZED,
-                        messagePath: 'apiKey.error.guardMissing',
-                    }),
-                ])
-            );
-        });
-
-        it('documents the expired api key at 400', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            ApiKeySystemProtected()(target, 'method', descriptor);
-
-            const stored = Reflect.getMetadata(
-                DocResponseEntryMetaKey,
-                descriptor.value
-            ) as IDocResponseEntry[];
-            expect(stored).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.BAD_REQUEST,
-                        statusCode: EnumApiKeyStatusCodeError.expired,
-                        messagePath: 'apiKey.error.expired',
-                    }),
-                ])
-            );
+            expect(stored).toEqual([
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+                    messagePath: 'apiKey.error.xApiKey.required',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+                    messagePath: 'apiKey.error.xApiKey.invalid',
+                },
+                {
+                    httpStatus: HttpStatus.BAD_REQUEST,
+                    statusCode: EnumApiKeyStatusCodeError.expired,
+                    messagePath: 'apiKey.error.expired',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
+                    messagePath: 'apiKey.error.xApiKey.forbidden',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumApiKeyStatusCodeError.guardMissing,
+                    messagePath: 'apiKey.error.guardMissing',
+                },
+            ]);
         });
     });
 
@@ -96,7 +94,7 @@ describe('api-key.decorator', () => {
             ).toEqual([EnumApiKeyType.default]);
         });
 
-        it('documents the missing api key store at 401', () => {
+        it('documents the api key error kit, in order', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
 
@@ -106,35 +104,33 @@ describe('api-key.decorator', () => {
                 DocResponseEntryMetaKey,
                 descriptor.value
             ) as IDocResponseEntry[];
-            expect(stored).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.UNAUTHORIZED,
-                        messagePath: 'apiKey.error.guardMissing',
-                    }),
-                ])
-            );
-        });
-
-        it('documents the expired api key at 400', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            ApiKeyProtected()(target, 'method', descriptor);
-
-            const stored = Reflect.getMetadata(
-                DocResponseEntryMetaKey,
-                descriptor.value
-            ) as IDocResponseEntry[];
-            expect(stored).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.BAD_REQUEST,
-                        statusCode: EnumApiKeyStatusCodeError.expired,
-                        messagePath: 'apiKey.error.expired',
-                    }),
-                ])
-            );
+            expect(stored).toEqual([
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+                    messagePath: 'apiKey.error.xApiKey.required',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+                    messagePath: 'apiKey.error.xApiKey.invalid',
+                },
+                {
+                    httpStatus: HttpStatus.BAD_REQUEST,
+                    statusCode: EnumApiKeyStatusCodeError.expired,
+                    messagePath: 'apiKey.error.expired',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
+                    messagePath: 'apiKey.error.xApiKey.forbidden',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumApiKeyStatusCodeError.guardMissing,
+                    messagePath: 'apiKey.error.guardMissing',
+                },
+            ]);
         });
     });
 

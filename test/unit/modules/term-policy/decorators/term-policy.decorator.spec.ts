@@ -7,6 +7,8 @@ import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
+import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 describe('term-policy.decorator', () => {
     describe('TermPolicyAcceptanceProtected', () => {
@@ -38,13 +40,16 @@ describe('term-policy.decorator', () => {
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
-                expect.objectContaining({
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
                     messagePath: 'termPolicy.error.requiredInvalid',
-                }),
-                expect.objectContaining({
+                },
+                {
                     httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumUserStatusCodeError.guardMissing,
                     messagePath: 'user.error.guardMissing',
-                }),
+                },
             ]);
         });
 

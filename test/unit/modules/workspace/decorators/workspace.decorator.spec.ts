@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
@@ -45,16 +46,16 @@ describe('workspace.decorator', () => {
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
-                expect.objectContaining({
-                    httpStatus: 400,
+                {
+                    httpStatus: HttpStatus.BAD_REQUEST,
+                    statusCode: EnumWorkspaceStatusCodeError.headerMissing,
                     messagePath: 'workspace.error.headerMissing',
-                }),
-                expect.objectContaining({
+                },
+                {
+                    httpStatus: HttpStatus.NOT_FOUND,
+                    statusCode: EnumWorkspaceStatusCodeError.notFound,
                     messagePath: 'workspace.error.notFound',
-                }),
-                expect.objectContaining({
-                    messagePath: 'workspace.error.memberForbidden',
-                }),
+                },
             ]);
         });
     });
@@ -77,14 +78,21 @@ describe('workspace.decorator', () => {
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
-                expect.objectContaining({
+                {
                     httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumUserStatusCodeError.guardMissing,
                     messagePath: 'user.error.guardMissing',
-                }),
-                expect.objectContaining({
+                },
+                {
                     httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
                     messagePath: 'workspace.error.guardMissing',
-                }),
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+                    messagePath: 'workspace.error.memberForbidden',
+                },
             ]);
         });
 
@@ -109,24 +117,31 @@ describe('workspace.decorator', () => {
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
-                expect.objectContaining({
+                {
                     httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumUserStatusCodeError.guardMissing,
                     messagePath: 'user.error.guardMissing',
-                }),
-                expect.objectContaining({
+                },
+                {
                     httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
                     messagePath: 'workspace.error.guardMissing',
-                }),
-                expect.objectContaining({
+                },
+                {
                     httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
                     messagePath: 'workspace.error.memberGuardMissing',
-                }),
-                expect.objectContaining({
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
                     messagePath: 'workspace.error.memberForbidden',
-                }),
-                expect.objectContaining({
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
                     messagePath: 'workspace.error.roleForbidden',
-                }),
+                },
             ]);
         });
     });

@@ -25,6 +25,10 @@ import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
 import { expectRequestContextMissing } from '@test/unit/helpers/test.unit.request.helper';
 import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
+import { HttpStatus } from '@nestjs/common';
+import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 describe('request.decorator', () => {
     describe('RequestTimeout', () => {
@@ -67,6 +71,29 @@ describe('request.decorator', () => {
             ).toEqual([
                 EnumAppEnvironment.local,
                 EnumAppEnvironment.development,
+            ]);
+        });
+
+        it('documents the RequestEnvGuard not-allowed error', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            RequestEnvProtected(EnumAppEnvironment.local)(
+                target,
+                'method',
+                descriptor
+            );
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual([
+                {
+                    httpStatus: HttpStatus.NOT_FOUND,
+                    statusCode: EnumRequestStatusCodeError.envNotAllowed,
+                    messagePath: 'http.clientError.notFound',
+                },
             ]);
         });
 

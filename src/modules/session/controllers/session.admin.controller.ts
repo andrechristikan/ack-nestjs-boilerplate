@@ -1,6 +1,6 @@
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
@@ -14,7 +14,6 @@ import type {
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
@@ -25,14 +24,7 @@ import {
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import {
-    Controller,
-    Delete,
-    Get,
-    HttpStatus,
-    Param,
-    Query,
-} from '@nestjs/common';
+import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
@@ -78,10 +70,6 @@ export class SessionAdminController {
 
     @Doc({ summary: 'admin revoke user Session' })
     @Response('session.revoke')
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
@@ -111,10 +99,6 @@ export class SessionAdminController {
 
     @Doc({ summary: 'admin revoke all user Sessions' })
     @Response('session.revokeAll')
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {

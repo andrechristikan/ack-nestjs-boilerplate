@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 
 /**
@@ -20,38 +20,6 @@ export const ApiKeyStoreKey = 'ApiKeyStoreKey';
  * @public
  */
 export const ApiKeyDocSecurityName = 'xApiKey';
-
-/**
- * X-API-Key guard error kit for `@ApiKeyProtected` / `@ApiKeySystemProtected`.
- * Same shape as `DocFileErrorResponses` / `DocPaginationErrorResponses` — each value is a
- * `DocResponseError` MethodDecorator, not an `applyDecorators` blob.
- * @public
- */
-export const DocApiKeyErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-            messagePath: 'apiKey.error.xApiKey.required',
-        },
-        {
-            statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-            messagePath: 'apiKey.error.xApiKey.invalid',
-        }
-    ),
-    expired: DocResponseError(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumApiKeyStatusCodeError.expired,
-        messagePath: 'apiKey.error.expired',
-    }),
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
-        messagePath: 'apiKey.error.xApiKey.forbidden',
-    }),
-    guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
-        statusCode: EnumApiKeyStatusCodeError.guardMissing,
-        messagePath: 'apiKey.error.guardMissing',
-    }),
-} as const;
 
 /**
  * Columns an api key read returns toward HTTP; the credential hash is never among them.
@@ -76,3 +44,67 @@ export const ApiKeySelect = {
  * @public
  */
 export const ApiKeyHeaderName = 'x-api-key';
+
+/**
+ * Error entries `@ApiKeySystemProtected` documents: the missing, invalid, expired, and forbidden key and the missing key store.
+ * @public
+ */
+export const ApiKeySystemProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+        messagePath: 'apiKey.error.xApiKey.required',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+        messagePath: 'apiKey.error.xApiKey.invalid',
+    },
+    {
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumApiKeyStatusCodeError.expired,
+        messagePath: 'apiKey.error.expired',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
+        messagePath: 'apiKey.error.xApiKey.forbidden',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.guardMissing,
+        messagePath: 'apiKey.error.guardMissing',
+    },
+];
+
+/**
+ * Error entries `@ApiKeyProtected` documents: the missing, invalid, expired, and forbidden key and the missing key store.
+ * @public
+ */
+export const ApiKeyProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+        messagePath: 'apiKey.error.xApiKey.required',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+        messagePath: 'apiKey.error.xApiKey.invalid',
+    },
+    {
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumApiKeyStatusCodeError.expired,
+        messagePath: 'apiKey.error.expired',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
+        messagePath: 'apiKey.error.xApiKey.forbidden',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.guardMissing,
+        messagePath: 'apiKey.error.guardMissing',
+    },
+];

@@ -1,9 +1,10 @@
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import type { Prisma } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 /**
  * Route metadata key holding the term-policy types `@TermPolicyAcceptanceProtected` requires.
@@ -52,24 +53,18 @@ export const TermPolicyAcceptanceInclude = {
 } satisfies Prisma.TermPolicyUserAcceptanceInclude;
 
 /**
- * Term-policy error kit: `forbidden` for `@TermPolicyAcceptanceProtected`, `contentSizeExceeded` for the create, content presign, update-content, and add-content routes, `contentKeyInvalid` for the create, update-content, and add-content routes, `requiredNotPublished` for the sign-up routes.
+ * Error entries `@TermPolicyAcceptanceProtected` documents: the missing acceptance and the missing user store.
  * @public
  */
-export const DocTermPolicyErrorResponses = {
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
+export const TermPolicyAcceptanceProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
         messagePath: 'termPolicy.error.requiredInvalid',
-    }),
-    contentSizeExceeded: DocResponseError(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
-        messagePath: 'termPolicy.error.contentSizeExceeded',
-    }),
-    contentKeyInvalid: DocResponseError(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
-        messagePath: 'termPolicy.error.contentKeyInvalid',
-    }),
-    requiredNotPublished: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
-        statusCode: EnumTermPolicyStatusCodeError.requiredNotPublished,
-        messagePath: 'termPolicy.error.requiredNotPublished',
-    }),
-} as const;
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    },
+];

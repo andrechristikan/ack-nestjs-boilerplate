@@ -15,6 +15,7 @@ swagger.json
 src/metadata.ts
 
 # Tests & coverage
+test/
 coverage/
 .nyc_output/
 .vitest/

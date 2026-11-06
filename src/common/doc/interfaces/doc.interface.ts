@@ -2,7 +2,8 @@ import { HttpStatus } from '@nestjs/common';
 import { z } from 'zod';
 
 /**
- * Options of `Doc`: the operation summary, id, description and deprecation flag.
+ * Options of `Doc`: the operation summary, id, description, deprecation flag, and the custom
+ * error entries a flow adds after the global error kit.
  * @public
  */
 export interface IDocOptions {
@@ -10,12 +11,13 @@ export interface IDocOptions {
     operation?: string;
     deprecated?: boolean;
     description?: string;
+    errors?: IDocResponseEntry[];
 }
 
 /**
- * One documented response variant for `DocResponseError` / `DocErrors`: status code, message
- * path, optional `data` schema, and optional base schema (defaults to `ResponseSchema`;
- * paginated success passes `ResponsePaginationSchema`).
+ * One documented response variant: status code, message path, optional `data` schema, and
+ * optional base schema (defaults to `ResponseSchema`; paginated success passes
+ * `ResponsePaginationSchema`).
  * @public
  */
 export interface IDocResponseErrorOptions<T = unknown> {

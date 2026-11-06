@@ -2,7 +2,7 @@ import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.re
 import { UserListRequestSchema } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import { UserExportRequestSchema } from '@modules/user/dtos/request/user.export.request.dto';
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     Body,
     Controller,
@@ -38,7 +38,6 @@ import {
     UserCurrent,
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
     IUser,
     IUserList,
@@ -132,10 +131,6 @@ export class UserAdminController {
 
     @Doc({ summary: 'create a user' })
     @Response('user.create', { schema: DatabaseIdResponseSchema })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -157,10 +152,6 @@ export class UserAdminController {
 
     @Doc({ summary: 'update status of user' })
     @Response('user.updateStatus')
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -184,10 +175,6 @@ export class UserAdminController {
 
     @Doc({ summary: 'update password of user' })
     @Response('user.updatePassword')
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -209,10 +196,6 @@ export class UserAdminController {
 
     @Doc({ summary: 'reset user' })
     @Response('user.twoFactor.resetByAdmin')
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,

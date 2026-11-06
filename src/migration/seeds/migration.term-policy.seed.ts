@@ -62,38 +62,27 @@ export class MigrationTermPolicySeed
     }
 
     private readTemplate(type: EnumTermPolicyType): Buffer {
+        const templateDir = join(
+            import.meta.dirname,
+            '../../modules/term-policy/templates'
+        );
+
         switch (type) {
             case EnumTermPolicyType.termsOfService:
                 return readFileSync(
-                    join(
-                        import.meta.dirname,
-                        '../../modules/term-policy/templates',
-                        'term-policy.term.en.hbs'
-                    )
+                    join(templateDir, 'term-policy.term.en.hbs')
                 );
             case EnumTermPolicyType.privacy:
                 return readFileSync(
-                    join(
-                        import.meta.dirname,
-                        '../../modules/term-policy/templates',
-                        'term-policy.privacy.en.hbs'
-                    )
+                    join(templateDir, 'term-policy.privacy.en.hbs')
                 );
             case EnumTermPolicyType.cookies:
                 return readFileSync(
-                    join(
-                        import.meta.dirname,
-                        '../../modules/term-policy/templates',
-                        'term-policy.cookies.en.hbs'
-                    )
+                    join(templateDir, 'term-policy.cookies.en.hbs')
                 );
             case EnumTermPolicyType.marketing:
                 return readFileSync(
-                    join(
-                        import.meta.dirname,
-                        '../../modules/term-policy/templates',
-                        'term-policy.marketing.en.hbs'
-                    )
+                    join(templateDir, 'term-policy.marketing.en.hbs')
                 );
         }
     }

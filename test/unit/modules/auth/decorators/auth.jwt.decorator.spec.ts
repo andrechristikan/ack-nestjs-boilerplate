@@ -1,5 +1,8 @@
 import { HttpStatus } from '@nestjs/common';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
+import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index';
@@ -37,6 +40,35 @@ describe('auth.jwt.decorator', () => {
                 Reflect.getMetadata('swagger/apiSecurity', descriptor.value)
             ).toEqual([{ accessToken: [] }]);
         });
+
+        it('documents the access token error kit, in order', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            AuthJwtAccessProtected()(target, 'method', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual([
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                    messagePath: 'auth.error.accessTokenUnauthorized',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumSessionStatusCodeError.revoked,
+                    messagePath: 'session.error.revoked',
+                },
+                {
+                    httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                    statusCode: EnumAuthStatusCodeError.providerUnavailable,
+                    messagePath: 'auth.error.providerUnavailable',
+                },
+            ]);
+        });
     });
 
     describe('AuthJwtRefreshProtected', () => {
@@ -52,6 +84,30 @@ describe('auth.jwt.decorator', () => {
             expect(
                 Reflect.getMetadata('swagger/apiSecurity', descriptor.value)
             ).toEqual([{ refreshToken: [] }]);
+        });
+
+        it('documents the refresh token error kit, in order', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            AuthJwtRefreshProtected()(target, 'method', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual([
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+                    messagePath: 'auth.error.refreshTokenUnauthorized',
+                },
+                {
+                    httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                    statusCode: EnumAuthStatusCodeError.providerUnavailable,
+                    messagePath: 'auth.error.providerUnavailable',
+                },
+            ]);
         });
     });
 

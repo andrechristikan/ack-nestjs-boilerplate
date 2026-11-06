@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
@@ -47,17 +48,21 @@ describe('policy.decorator', () => {
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
-                expect.objectContaining({
-                    messagePath: 'policy.error.forbidden',
-                }),
-                expect.objectContaining({
-                    httpStatus: HttpStatus.UNAUTHORIZED,
-                    messagePath: 'user.error.guardMissing',
-                }),
-                expect.objectContaining({
+                {
                     httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumPolicyStatusCodeError.forbidden,
+                    messagePath: 'policy.error.forbidden',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumUserStatusCodeError.guardMissing,
+                    messagePath: 'user.error.guardMissing',
+                },
+                {
+                    httpStatus: HttpStatus.FORBIDDEN,
+                    statusCode: EnumPolicyStatusCodeError.guardMissing,
                     messagePath: 'policy.error.guardMissing',
-                }),
+                },
             ]);
         });
 

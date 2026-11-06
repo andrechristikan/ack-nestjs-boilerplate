@@ -7,10 +7,11 @@ import { RequestContextMissingException } from '@common/request/exceptions/reque
 import { AuthJwtGuardMissingException } from '@modules/auth/exceptions/auth.jwt-guard-missing.exception';
 import {
     AuthJwtAccessDocSecurityName,
+    AuthJwtAccessProtectedDocErrors,
     AuthJwtRefreshDocSecurityName,
-    DocAuthJwtAccessErrorResponses,
-    DocAuthJwtRefreshErrorResponses,
+    AuthJwtRefreshProtectedDocErrors,
 } from '@modules/auth/constants/auth.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
 import type {
@@ -64,15 +65,14 @@ export const AuthJwtToken = createParamDecorator(
 );
 
 /**
- * Protects a route with JWT access token authentication and documents Bearer access + kits.
+ * Protects a route with JWT access token authentication and documents the Bearer access scheme and its guard errors.
  * @public
  */
 export function AuthJwtAccessProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtAccessGuard),
         ApiBearerAuth(AuthJwtAccessDocSecurityName),
-        DocAuthJwtAccessErrorResponses.unauthorized,
-        DocAuthJwtAccessErrorResponses.unavailable
+        DocErrors(...AuthJwtAccessProtectedDocErrors)
     );
 }
 
@@ -84,7 +84,6 @@ export function AuthJwtRefreshProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtRefreshGuard),
         ApiBearerAuth(AuthJwtRefreshDocSecurityName),
-        DocAuthJwtRefreshErrorResponses.unauthorized,
-        DocAuthJwtRefreshErrorResponses.unavailable
+        DocErrors(...AuthJwtRefreshProtectedDocErrors)
     );
 }

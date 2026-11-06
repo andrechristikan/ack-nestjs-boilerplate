@@ -1,6 +1,6 @@
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
@@ -22,7 +22,6 @@ import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/dev
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/http/device.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
@@ -30,14 +29,7 @@ import {
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import {
-    Controller,
-    Delete,
-    Get,
-    HttpStatus,
-    Param,
-    Query,
-} from '@nestjs/common';
+import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.admin.user.device')
@@ -80,10 +72,6 @@ export class DeviceAdminController {
 
     @Doc({ summary: 'admin remove user Device' })
     @Response('device.remove')
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.rankForbidden,
-        messagePath: 'role.error.rankForbidden',
-    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {

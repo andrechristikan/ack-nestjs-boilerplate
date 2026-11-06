@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 
@@ -52,106 +52,6 @@ export const AuthPayloadStoreKey = 'AuthPayloadStoreKey';
 export const AuthTwoFactorSecretEncryptionPurpose = 'auth.twoFactor.secret';
 
 /**
- * JWT access-token guard error kit for `@AuthJwtAccessProtected`; `guardMissing` documents a route that reads the JWT payload without the guard.
- * @public
- */
-export const DocAuthJwtAccessErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            messagePath: 'auth.error.accessTokenUnauthorized',
-            statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-        },
-        {
-            messagePath: 'session.error.revoked',
-            statusCode: EnumSessionStatusCodeError.revoked,
-        }
-    ),
-    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
-        messagePath: 'auth.error.providerUnavailable',
-        statusCode: EnumAuthStatusCodeError.providerUnavailable,
-    }),
-    guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
-        messagePath: 'auth.error.jwtGuardMissing',
-        statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
-    }),
-} as const;
-
-/**
- * JWT refresh-token guard error kit for `@AuthJwtRefreshProtected`.
- * @public
- */
-export const DocAuthJwtRefreshErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            messagePath: 'auth.error.refreshTokenUnauthorized',
-            statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-        },
-        {
-            messagePath: 'session.error.revoked',
-            statusCode: EnumSessionStatusCodeError.revoked,
-        }
-    ),
-    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
-        messagePath: 'auth.error.providerUnavailable',
-        statusCode: EnumAuthStatusCodeError.providerUnavailable,
-    }),
-} as const;
-
-/**
- * Google social auth guard error kit for `@AuthSocialGoogleProtected`.
- * @public
- */
-export const DocAuthSocialGoogleErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            messagePath: 'auth.error.socialGoogleInvalid',
-            statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-        },
-        {
-            messagePath: 'auth.error.socialGoogleRequired',
-            statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
-        }
-    ),
-    notConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
-        messagePath: 'auth.error.socialGoogleNotConfigured',
-        statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
-    }),
-    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
-        messagePath: 'auth.error.providerUnavailable',
-        statusCode: EnumAuthStatusCodeError.providerUnavailable,
-    }),
-} as const;
-
-/**
- * Apple social auth guard error kit for `@AuthSocialAppleProtected`.
- * @public
- */
-export const DocAuthSocialAppleErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            messagePath: 'auth.error.socialAppleInvalid',
-            statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
-        },
-        {
-            messagePath: 'auth.error.socialAppleRequired',
-            statusCode: EnumAuthStatusCodeError.socialAppleRequired,
-        }
-    ),
-    notConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
-        messagePath: 'auth.error.socialAppleNotConfigured',
-        statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
-    }),
-    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
-        messagePath: 'auth.error.providerUnavailable',
-        statusCode: EnumAuthStatusCodeError.providerUnavailable,
-    }),
-} as const;
-
-/**
  * Node network error codes that mark an unreachable key or identity provider endpoint.
  * @public
  */
@@ -189,3 +89,96 @@ export const AuthHeaderName = 'Authorization';
  * @public
  */
 export const AuthBearerScheme = 'Bearer';
+
+/**
+ * Error entries `@AuthJwtAccessProtected` documents: the invalid access token, the revoked session, and the unavailable key provider.
+ * @public
+ */
+export const AuthJwtAccessProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+        messagePath: 'auth.error.accessTokenUnauthorized',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumSessionStatusCodeError.revoked,
+        messagePath: 'session.error.revoked',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];
+
+/**
+ * Error entries `@AuthJwtRefreshProtected` documents: the invalid refresh token and the unavailable key provider.
+ * @public
+ */
+export const AuthJwtRefreshProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+        messagePath: 'auth.error.refreshTokenUnauthorized',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];
+
+/**
+ * Error entries `@AuthSocialGoogleProtected` documents: the invalid and missing Google token, the provider not configured, and the unavailable provider.
+ * @public
+ */
+export const AuthSocialGoogleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
+        messagePath: 'auth.error.socialGoogleInvalid',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
+        messagePath: 'auth.error.socialGoogleRequired',
+    },
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
+        messagePath: 'auth.error.socialGoogleNotConfigured',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];
+
+/**
+ * Error entries `@AuthSocialAppleProtected` documents: the invalid and missing Apple token, the provider not configured, and the unavailable provider.
+ * @public
+ */
+export const AuthSocialAppleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
+        messagePath: 'auth.error.socialAppleInvalid',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialAppleRequired,
+        messagePath: 'auth.error.socialAppleRequired',
+    },
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
+        messagePath: 'auth.error.socialAppleNotConfigured',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];

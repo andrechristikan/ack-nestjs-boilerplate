@@ -278,7 +278,7 @@ describe('ApiKeyDomain', () => {
             expect(apiKeyRepository.updateStatus).toHaveBeenCalledWith(
                 apiKey.id,
                 apiKey.isActive,
-                { isActive: false }
+                false
             );
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
         });
@@ -463,7 +463,8 @@ describe('ApiKeyDomain', () => {
             expect(result).toBe(updated);
             expect(apiKeyRepository.updateDates).toHaveBeenCalledWith(
                 apiKey.id,
-                { startAt: startAtDay, endAt: endAtDay }
+                startAtDay,
+                endAtDay
             );
             expect(apiKeyCache.deleteApiKey).toHaveBeenCalledWith(apiKey.key);
             expect(callOrder).toEqual(['updateDates', 'deleteApiKey']);

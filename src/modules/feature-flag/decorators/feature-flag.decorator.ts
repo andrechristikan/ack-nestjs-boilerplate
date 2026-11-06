@@ -1,9 +1,10 @@
 import {
-    DocFeatureFlagErrorResponses,
     FeatureFlagKeyPathMetaKey,
+    FeatureFlagProtectedDocErrors,
 } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guard';
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { FeatureFlagKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.key-empty.exception';
 import { FeatureFlagKeyNestedException } from '@modules/feature-flag/exceptions/feature-flag.key-nested.exception';
 import type { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
@@ -25,7 +26,6 @@ export function FeatureFlagProtected(
     return applyDecorators(
         UseGuards(FeatureFlagGuard),
         SetMetadata(FeatureFlagKeyPathMetaKey, keyPath),
-        DocFeatureFlagErrorResponses.disabled,
-        DocFeatureFlagErrorResponses.notConfigured
+        DocErrors(...FeatureFlagProtectedDocErrors)
     );
 }

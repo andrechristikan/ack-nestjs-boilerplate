@@ -1,5 +1,5 @@
 import {
-    DocRoleErrorResponses,
+    RoleProtectedDocErrors,
     RoleRequiredMetaKey,
 } from '@modules/role/constants/role.constant';
 import { RoleGuard } from '@modules/role/guards/role.guard';
@@ -11,10 +11,8 @@ import {
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { EnumRoleType } from '@generated/prisma-client/client';
-import {
-    DocUserErrorResponses,
-    UserStoreKey,
-} from '@modules/user/constants/user.constant';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -26,7 +24,7 @@ import type {
 import { RoleProtectedEmptyException } from '@modules/role/exceptions/role.protected-empty.exception';
 
 /**
- * Restricts a route to the given role types via RoleGuard and documents role kits and the missing user store.
+ * Restricts a route to the given role types via RoleGuard and documents the role error and the missing user store.
  * @public
  */
 export function RoleProtected(
@@ -39,8 +37,7 @@ export function RoleProtected(
     return applyDecorators(
         UseGuards(RoleGuard),
         SetMetadata(RoleRequiredMetaKey, requiredRoles),
-        DocRoleErrorResponses.forbidden,
-        DocUserErrorResponses.guardMissing
+        DocErrors(...RoleProtectedDocErrors)
     );
 }
 
