@@ -25,9 +25,9 @@ Every dispatch carries the block in `.claude/skills/ack-work/references/dispatch
 
 ## Checks
 
-At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of `pnpm lint`, `pnpm deadcode`, `pnpm spell`; `deadcode` and `spell` can exit 0 with findings, so read them. Without a boot, also `pnpm typecheck`; with one, its `pnpm build` (`nest build` then `pnpm typecheck`) is the type check: quote its exit code and first `error TS` line, none, or a `nest build` failure. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`. At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/concurrency.md`).
+At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of `pnpm lint`, `pnpm deadcode`, `pnpm spell`; `deadcode` and `spell` can exit 0 with findings, so read them. Also `pnpm typecheck`: quote its exit code and first `error TS` line, or none. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`. At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/concurrency.md`).
 
-Boot: containers up (`docker ps`), port 3000 free (`lsof -nP -iTCP:3000 -sTCP:LISTEN`), then `pnpm build`, on exit 0 `timeout 90 node --import ./dist/instrument.js dist/main.js > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log`; exit 124 is the expected end. A failing `pnpm build` is a failed boot; its output is the evidence. The proof is that `App Name:` block from `src/main.ts`. Infrastructure down or 3000 held: NOT RUN.
+Boot: the app runs in the Docker `apis` container through the steps in `.claude/rules/docker.md`, Boot; starting and leaving up those containers is the one side effect this agent makes. The proof is the `App Name:` block from `src/main.ts`; a failed image build or a missing block is a failed boot, its log lines the evidence. Docker daemon unreachable (`docker ps` fails): NOT RUN, its output quoted.
 
 ## Findings and hand back
 
@@ -35,4 +35,4 @@ Only what affects correctness, the requirement, or the user flow and the API con
 
 ## Not this agent
 
-No edit, no spec, no test run, no endpoint call unless the dispatch asks, no `docker-compose up`, no DB or seed command. Git stays read-only.
+No edit, no spec, no test run, no endpoint call unless the dispatch asks, no `docker-compose` command outside the boot steps, no DB or seed command. Git stays read-only.

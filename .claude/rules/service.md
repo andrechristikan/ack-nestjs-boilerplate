@@ -19,7 +19,7 @@ An HTTP service and a processor service sequence domain calls for one entry poin
     3. another module's queue class for a post-commit side effect, awaited (`QueueBase.addSideEffect`, `queue.md`).
 - Prepares and stages activity-log rows around the subject call (`security.md`, Activity log).
 - Injects no repository and holds no business rule.
-- Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `src/modules/user/services/http/user.registration.http.service.ts:203-220` shows the last two:
+- Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `src/modules/user/services/http/user.registration.http.service.ts:241-259` shows the last two:
     - a mapped write conflict: `DatabaseWriteConflictCode` through `DatabaseUtil.toException` to the guard's own exception (`database.md`, Transactions);
     - a mapped unique collision: a statement's `DatabaseUniqueConstraintCode` on a named column through `DatabaseUtil.isUniqueCollision`, inline or in the feature's util (`UserCreateUtil.mapCreateCollision`), to the feature's own exception;
     - the slug retry exhaustion `DatabaseUniqueValueGenerationFailedException` after the retry loop's last attempt (`database.md`, Generated unique values).

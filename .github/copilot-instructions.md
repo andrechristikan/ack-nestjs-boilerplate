@@ -47,7 +47,7 @@ A spec mirrors its subject's `src/` path under `test/unit/`; `pnpm test user` fi
 
 ## Errors
 
-A request failure extends `AppBaseException`, any other runtime failure `AppUnknownException`. No `throw new Error(...)`; rethrow only inside an `instanceof` guard of our own exception, else `throw new AppUnknownException(err)`. Rule: `.claude/rules/exceptions.md`.
+A request failure extends `AppBaseException`, a job failure `QueueException`, anything else `AppUnknownException`. Rethrow only inside an `instanceof` guard of our own exception, else wrap: `AppUnknownException`, in a processor `throwUnknownException`. Rule: `.claude/rules/exceptions.md`.
 
 ## Discipline
 

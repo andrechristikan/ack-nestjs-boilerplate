@@ -19,11 +19,11 @@ Add the model to `prisma/schema.prisma` and run `pnpm db:generate`. Applying it 
 | data shapes | `interfaces/<module>.interface.ts` | `src/modules/device/interfaces/device.interface.ts` |
 | list fields | `constants/<module>.list.constant.ts`, `Prisma.<Model>ScalarFieldEnum` members `as const satisfies ReadonlyArray<…>` | `src/modules/device/constants/device.list.constant.ts:7-18` |
 | domain | `domains/<module>.domain.ts`, its own module's collaborators plus another module's util | `src/modules/country/domains/country.domain.ts:10` |
-| util (optional) | `utils/<module>.util.ts` | `src/modules/device/utils/device.util.ts:14` |
+| util (optional) | `utils/<module>.util.ts` | `src/modules/device/utils/device.util.ts:16` |
 | exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `src/modules/device/exceptions/device.not-found.exception.ts:9-18` |
 | request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type; an update DTO requires every editable field (`.claude/rules/null-safety.md`, Update and create) | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |
 | response DTO | `dtos/response/<module>.response.dto.ts`: `DatabaseResponseSchema` extended, `.meta()` on every field | `src/modules/device/dtos/response/device.response.dto.ts:10-26` |
-| HTTP service | `services/http/<module>.http.service.ts` | `src/modules/device/services/http/device.http.service.ts:35` |
+| HTTP service | `services/http/<module>.http.service.ts` | `src/modules/device/services/http/device.http.service.ts:37` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:39-64` |
 
 A queue, a processor, and a processor service follow `.claude/skills/ack-work/references/add-queue.md`. A cache class goes in `caches/`, provided by the domain module. The domain injects its own module's classes, another module's util, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the HTTP or processor service around the domain call, and a write needing one transaction across modules goes in the HTTP or processor service, calling each feature domain's `*InTx` method (`.claude/rules/service.md`).
@@ -43,7 +43,7 @@ Copy the shape, not the names:
 
 - Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module (`src/router/http/router.http.shared.module.ts:24-47`). A missing import fails the boot.
 - Processor module: `src/router/processor/router.processor.module.ts:16-23`.
-- A `@Global()` domain module: `src/common/common.module.ts:64-72` `imports`. Read the `@Global()` decision from a sibling that needs to be reachable everywhere (`src/modules/notification/notification.domain.module.ts:30`); the default is not global.
+- A `@Global()` domain module: `src/common/common.module.ts:64-72` `imports`. Read the `@Global()` decision from a sibling that needs to be reachable everywhere (`src/modules/notification/notification.domain.module.ts:32`); the default is not global.
 
 ## 6. Messages
 
@@ -56,9 +56,8 @@ Reference rows an empty database needs: `.claude/skills/ack-work/references/add-
 ## 8. Verify
 
 ```bash
-pnpm build   # read its exit code; boot only on 0
-timeout 90 node --import ./dist/instrument.js dist/main.js > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log   # wiring defects surface only at boot
+pnpm typecheck
 pnpm test <module>
 ```
 
-The boot's `pnpm build` runs `pnpm typecheck`, so a red typecheck shows as a failed build. A failing build is a failed boot; its output is the evidence. Check in the boot log for the `App Name:` block and no `UnknownDependenciesException` line; exit 124 is the expected end of the boot. Specs: `test/unit/modules/<module>/…` mirrors `src/`; controllers, repositories, modules, and processors are excluded from coverage (`coverage.exclude` in `vitest.config.ts`).
+Boot in the Docker `apis` container (`.claude/rules/docker.md`, Boot): wiring defects surface only there. Check the boot log for the `App Name:` block and no `UnknownDependenciesException` line. Specs: `test/unit/modules/<module>/…` mirrors `src/`; controllers, repositories, modules, and processors are excluded from coverage (`coverage.exclude` in `vitest.config.ts`).

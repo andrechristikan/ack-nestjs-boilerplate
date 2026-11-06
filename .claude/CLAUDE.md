@@ -57,8 +57,8 @@ An agent missing something hands the question back; the session asks the owner a
 - `pnpm test` runs unit only, needs no Docker, and applies no threshold (`coverage.enabled` is `false`). Integration and e2e are held (`.claude/rules/testing.md`): no script, Vitest project, or folder exists, so `.github/workflows/test-integration.yml` and `test-e2e.yml` fail calling those scripts.
 - A Bash call's `timeout` is 10 minutes at most, and the default through `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`). Claude Code moves a call running at its timeout to the background and reports when it ends, so a test run is never wrapped in GNU `timeout`.
 - `npx <pkg>@<version>` runs the local binary when the package is installed.
-- Claude worktrees live under `.claude/worktrees/` (gitignored); exclude it from a recursive root grep.
-- The root `.env`, `keys/`, `generated/vault/`, and `.claude/settings.local.json` are unreadable, and a command that prints the environment is denied (`Read` deny, `guard-bash.sh`). Diagnose a boot auth failure from `docker-compose exec -T <service> printenv`, printing no secret, or a boot with the URL set in the environment, which `.env` never overrides; the owner fixes `.env`.
+- Claude worktrees live under `.claude/worktrees/` (gitignored). A recursive grep from the root is denied unless it excludes `.claude` (`guard-bash.sh`).
+- The root `.env`, `keys/`, `generated/vault/`, and `.claude/settings.local.json` are unreadable, and a command that prints the environment is denied (`Read` deny, `guard-bash.sh`). Diagnose a boot auth failure from `docker-compose exec -T <service> printenv`, printing no secret, and the `apis` log; the owner fixes `.env`.
 
 ### Etiquette
 
@@ -68,7 +68,7 @@ An agent missing something hands the question back; the session asks the owner a
 - Diff with no second ref: `git diff <base>` includes uncommitted and staged work; `<base>..HEAD` omits it. Reviews and diffs keep git read-only (no fetch, no pull); only `/ack-pr` fetches and moves refs.
 - Every commit in a series leaves `pre-commit` green (`AGENTS.md`, Commit gates). A commit touching neither `src/` nor `test/` passes `--no-verify`, which skips `commit-msg` (commitlint) too, so check the subject against `.commitlintrc` first. A commit touching either tree goes through the hooks, and a red gate is fixed, not skipped.
 - Working artifacts are gitignored. `.superpowers/` takes only `plans/` (`YYYY-MM-DD-<slug>.md`), `specs/` (designs), and `sdd/` (build ledgers and briefs). `generated/docs/` holds agent reports, the sweep log, and PR, comment, and version text, never a plan. What prose may not cite: `.claude/rules/authoring.md`, Documentation prose and Harness files.
-- Run every command in the foreground, bounded (`timeout 90` on a boot, which never ends on its own; `brew install coreutils` on stock macOS). Start no process the call leaves behind (`&`, `nohup`); a call Claude Code moves to the background at its timeout is the one exception and is waited for. Wait for each Agent hand-back, never poll.
+- Run every command in the foreground, bounded (`timeout 60` on the boot's log wait, which never ends on its own; `brew install coreutils` on stock macOS). Start no process the call leaves behind (`&`, `nohup`). Two exceptions: a call Claude Code moves to the background at its timeout, which is waited for, and the compose containers a boot starts (`.claude/rules/docker.md`, Boot), which stay up for the next boot. Wait for each Agent hand-back, never poll.
 - Reply in English by default; match the language of the owner's turn. Artifacts stay English.
 - When something is wrong, say so with a recommendation. State the assumption you act on; ask when two readings would produce different work.
 

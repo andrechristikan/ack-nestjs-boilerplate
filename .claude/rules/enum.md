@@ -6,7 +6,7 @@ paths:
 
 # Enums
 
-A string value equals its key; diverge only when the wire value genuinely differs from the code name. Three families take numeric values: status-code enums (5-digit, sequential from the module block, `exceptions.md`), ordered scales where the order is the meaning (`EnumQueuePriority.high = 1`), and quantities where the number is the value (`EnumWorkspaceInviteExpiry.sevenDays = 7`, `src/modules/workspace/enums/workspace.enum.ts:13`).
+A string value equals its key; diverge only when the wire value genuinely differs from the code name. Three families take numeric values: status-code enums (5-digit, sequential from the module block, `exceptions.md`), ordered scales where the order is the meaning (`EnumQueuePriority.high = 1`), and quantities where the number is the value (`EnumWorkspaceInviteExpiry.sevenDays = 7`, `src/modules/workspace/enums/workspace.enum.ts:16`).
 
 ## One file per module
 
@@ -16,10 +16,11 @@ Every enum a module owns sits in `<module>.enum.ts` in that module's `enums/` fo
 
 - A value the database stores (a status, a type, a role, a platform, a logged action) is declared in `prisma/schema.prisma` and imported from `@generated/prisma-client/client`. A module-local re-declaration is a second source of truth with a mapper between two identical enums. Adding or renaming a persisted member is a schema change (`database.md`).
 - A TypeScript enum in `src/` is for what the database never stores: status-code blocks, queue and job names, transport and tooling scales, an option a request carries without being persisted as it stands.
+- The exception to both bullets above: a seeded key the database stores and code names, which no API adds or renames (a feature-flag key, a metadata sub-key), is a TypeScript enum the seed data and every caller use: `EnumFeatureFlagKey` and `EnumFeatureFlagMetadataKey` (`feature-flag.md`, Keys).
 
 ## Reference by member
 
-`EnumUserStatusCodeError.notFound`, never `51000`; `EnumQueue.notificationEmail`, never `'notificationEmail'`; `EnumPaginationType.offset`, never `'offset'`. A literal compiles and silently survives a rename. A decorator factory uses the member too (`@QueueProcessor(EnumQueue.notificationEmail)`).
+`EnumUserStatusCodeError.notFound`, never `51000`; `EnumQueue.notificationEmail`, never `'notificationEmail'`; `EnumPaginationType.offset`, never `'offset'`. A literal compiles and silently survives a rename. A decorator factory uses the member too (`@QueueProcessor(EnumQueue.notificationEmail)`, `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)`).
 
 ## Literal unions
 

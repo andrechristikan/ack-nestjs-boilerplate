@@ -5,7 +5,7 @@ Ask only what the owner has not named and the code cannot answer. Each line name
 ## Surface
 
 - Route scope: `/public`, `/system`, `/admin`, `/user`, or `/shared` (`src/router/http/router.http.<scope>.module.ts`; `.claude/rules/http.md`, `.claude/rules/layering.md`).
-- Workspace scoping: does the route resolve its subject from the `x-workspace-id` header through `@WorkspaceProtected()` or `@WorkspaceMemberProtected(...roles)` and carry `@FeatureFlagProtected('workspace')` (`.claude/rules/cross-module.md`, `.claude/rules/feature-flag.md`, `.claude/rules/guards.md`).
+- Workspace scoping: does the route resolve its subject from the `x-workspace-id` header through `@WorkspaceProtected()` or `@WorkspaceMemberProtected(...roles)` and carry `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)` (`.claude/rules/cross-module.md`, `.claude/rules/feature-flag.md`, `.claude/rules/guards.md`).
 - Who may call it: role (`@RoleProtected`), CASL policy ability (`@PolicyProtected`), term-policy gating (`@TermPolicyAcceptanceProtected`), API key (`@ApiKeyProtected`, `@ApiKeySystemProtected`) (`.claude/rules/security.md`, `.claude/rules/guards.md`).
 
 ## Shape

@@ -21,10 +21,10 @@ Every dispatch carries the block in `.claude/skills/ack-work/references/dispatch
 ## Reproduce
 
 - A failing spec: `pnpm test <path filter>` under `test/unit/`. Integration and e2e are held (`.claude/rules/testing.md`): no suite exists to run.
-- A route: `pnpm build` as its own step, its exit code read; on exit 0, one bounded call that boots, waits for `App Name:`, curls, and returns. `set -m` gives the server its own process group; the `EXIT` trap kills that group when the call ends, at the `timeout` too, so nothing outlives the call: `timeout 90 bash -c 'rm -f /tmp/ack-boot.log; set -m; node --import ./dist/instrument.js dist/main.js > /tmp/ack-boot.log 2>&1 & trap "kill -- -$! 2>/dev/null" EXIT; until grep -q "App Name:" /tmp/ack-boot.log; do sleep 1; done; curl -s -i <method, headers, body from the symptom> http://localhost:3000/<route>'`
-- A log line: find the line the symptom names in the boot or request output.
+- A route: boot (below), then `curl -s -i <method, headers, body from the symptom> http://localhost:<port>/<route>`.
+- A log line: find the line the symptom names in `docker-compose logs --since <start> apis`.
 
-Quote the decisive line. Boot: containers up (`docker ps`), port 3000 free (`lsof -nP -iTCP:3000 -sTCP:LISTEN`). A boot-only proof is `pnpm build` as its own step, its exit code read, then on exit 0 `timeout 90 node --import ./dist/instrument.js dist/main.js > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log`; exit 124 is its expected end; on the route call, exit 124 means `App Name:` never appeared. A failing `pnpm build` is a failed boot on either path, and nothing boots; its output is the evidence. The proof is that `App Name:` block from `src/main.ts`. Infrastructure down or 3000 held: NOT RUN.
+Quote the decisive line. Boot: the app runs in the Docker `apis` container through the steps in `.claude/rules/docker.md`, Boot, which give `<port>` and `<start>`; starting and leaving up those containers is the one side effect this agent makes. The proof is the `App Name:` block from `src/main.ts`; a failed image build or a missing block is a failed boot, its log lines the evidence. Docker daemon unreachable (`docker ps` fails): NOT RUN, its output quoted.
 
 The local `.env` carries live third-party credentials: trigger no email, push, or S3 write. A symptom that does not reproduce is a hand-back listing every command tried.
 
@@ -48,4 +48,4 @@ The local `.env` carries live third-party credentials: trigger no email, push, o
 
 ## Not this agent
 
-No `Write`, no `Edit`, no fix however small, no spec, no DB or seed command outside the test suites, no `docker-compose up`. Git stays read-only.
+No `Write`, no `Edit`, no fix however small, no spec, no DB or seed command outside the test suites, no `docker-compose` command outside the boot steps. Git stays read-only.

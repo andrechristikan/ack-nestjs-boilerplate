@@ -15,6 +15,13 @@ const [user, setting] = await Promise.all([
 ]);
 ```
 
+A `Promise.all` destructure binds its read results first, in order; an unread result follows with no binding, never a hole.
+
+```ts
+const [role, email] = await Promise.all([readRole, readEmail, gateCountry]);
+// never: const [role, , email] = await Promise.all([readRole, gateCountry, readEmail]);
+```
+
 A sequential `await` whose dependency is visible in the code carries no comment: the call takes an earlier result, or it acts on the subject an earlier step changed (the same container, app, client, or loop iteration, as in a poll on its own probe; the same `tx`, whose MongoDB session runs one operation at a time). Sequential awaits on different subjects whose order matters occur only in these cases, each named at the site in a one-line `// Sequential by design: <case>` comment, in a loop too:
 
 - a write that must not happen if an earlier step throws;

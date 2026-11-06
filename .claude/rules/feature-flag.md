@@ -10,19 +10,20 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 
 ## Keys
 
-- A flag key is camelCase (`loginWithGoogle`). A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts:10`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
-- A gate reference is the bare key: `@FeatureFlagProtected('changePassword')`. `FeatureFlagProtected` checks the key when the route is decorated (`src/modules/feature-flag/decorators/feature-flag.decorator.ts:15-20`): an empty segment throws `FeatureFlagKeyEmptyException` and a dotted `key.metadataKey` `FeatureFlagKeyNestedException`, so the app does not boot (`guards.md`).
+- A flag key is an `EnumFeatureFlagKey` member and a metadata sub-key code reads is an `EnumFeatureFlagMetadataKey` member (`src/modules/feature-flag/enums/feature-flag.enum.ts`), named by the seed data and every caller, never a literal. A flag key is camelCase (`loginWithGoogle`). A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts:10`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
+- A gate reference is the member: `@FeatureFlagProtected(EnumFeatureFlagKey.changePassword)`. `FeatureFlagProtected` checks the key when the route is decorated (`src/modules/feature-flag/decorators/feature-flag.decorator.ts:15-23`): an empty segment throws `FeatureFlagKeyEmptyException` and a dotted `key.metadataKey` `FeatureFlagKeyNestedException`, so the app does not boot (`guards.md`).
 
 ## Metadata
 
 - Flat only. Values are `boolean | number | string` or a homogeneous `string[]` / `number[]`; a mixed or nested array, `boolean[]`, an empty array, and `''` fail. An array value cannot change element type on update.
 - Keys are frozen; the admin API updates values and never adds or removes a key.
-- A metadata sub-key used as a gate holds a boolean and is asserted in the domain, never in the decorator: `await this.featureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` (`src/modules/feature-flag/domains/feature-flag.domain.ts:109`) at the top of the domain method; it throws `FeatureFlagNotConfiguredException` for a key no row holds and `FeatureFlagDisabledException` for a disabled flag, a non-boolean, or `false`. Written into the decorator it would gate one route instead of every caller.
+- A metadata sub-key used as a gate holds a boolean and is asserted in the domain, never in the decorator: `await this.featureFlagDomain.validateFeatureFlagMetadata(EnumFeatureFlagKey.workspace, EnumFeatureFlagMetadataKey.invitationAllowed)` (`src/modules/feature-flag/domains/feature-flag.domain.ts:113`) at the top of the domain method; it throws `FeatureFlagNotConfiguredException` for a key no row holds and `FeatureFlagDisabledException` for a disabled flag, a non-boolean, or `false`. Written into the decorator it would gate one route instead of every caller.
+- `FeatureFlagDomain` is the one domain of another module a feature domain injects (`layering.md`, Roles), and only to assert a flag or metadata sub-key its own module owns: `WorkspaceInviteDomain` asserts `invitationAllowed` (`src/modules/workspace/domains/workspace.invite.domain.ts:75`).
 - Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
 
 ## Gating
 
-`@FeatureFlagProtected('<key>')` answers only "is this feature on". It is not authentication; the auth guards are separate. `isEnable: false` outranks targeting and rollout, which is what makes it a kill switch.
+`@FeatureFlagProtected(EnumFeatureFlagKey.<member>)` answers only "is this feature on". It is not authentication; the auth guards are separate. `isEnable: false` outranks targeting and rollout, which is what makes it a kill switch.
 
 ## Rollout and targeting
 
@@ -35,4 +36,4 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 
 - Flags are seeded (`src/migration/data/migration.feature-flag.data.ts`, `seeding.md`), not created or deleted through the admin API.
 - A cache read or read-through set failure falls through to the database; the post-commit delete throws (`cache.md`).
-- A gated key no row holds throws `FeatureFlagNotConfiguredException` (`notConfigured`, HTTP 500, `feature-flag.domain.ts:76`): a missing seed row is our bug, reported to Sentry. It is not an optional integration's not-configured 404 (`exceptions.md`). `FeatureFlagNotFoundException` (`notFound`, HTTP 404) answers only an admin route naming a flag id no row holds (`:144`). A disabled flag, a false sub-key, an anonymous caller with no id, and a lost bucket throw `FeatureFlagDisabledException` (`disabled`, HTTP 404), so a gated feature answers as absent. No fail-open either way.
+- A gated key no row holds throws `FeatureFlagNotConfiguredException` (`notConfigured`, HTTP 500, `feature-flag.domain.ts:80`): a missing seed row is our bug, reported to Sentry. It is not an optional integration's not-configured 404 (`exceptions.md`). `FeatureFlagNotFoundException` (`notFound`, HTTP 404) answers only an admin route naming a flag id no row holds (`:148`). A disabled flag, a false sub-key, an anonymous caller with no id, and a lost bucket throw `FeatureFlagDisabledException` (`disabled`, HTTP 404), so a gated feature answers as absent. No fail-open either way.

@@ -16,7 +16,7 @@ Dispatch `debugger` with the template at `dispatch.md`, Debugger. Its `Rules to 
 
 - `NEEDS_DECISION`: put the options to the owner with `AskUserQuestion`, then dispatch again with `Decision:` filled.
 - Does not reproduce: ask the owner for what the hand-back says is missing, then dispatch again.
-- `NOT RUN` (infrastructure down or port 3000 held): tell the owner what to start or free, then dispatch again.
+- `NOT RUN` (the Docker daemon unreachable): tell the owner to start Docker, then dispatch again.
 - A root cause with a pin: continue.
 
 ## 4. Classify the pin
