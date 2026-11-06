@@ -12,10 +12,12 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import type {
     IUser,
     IUserSignUpResolved,
@@ -129,43 +131,46 @@ describe('UserAuthDomain', () => {
         domain = module.get(UserAuthDomain);
     });
 
-    describe('incrementCredentialAttempt', () => {
-        it('returns the user with a counted attempt', async () => {
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(true);
-
-            await expect(
-                domain.incrementCredentialAttempt(baseUser.email)
-            ).resolves.toEqual({
+    describe('countCredentialAttempt', () => {
+        it('returns the counted attempt of the active user', async () => {
+            const counted = {
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: true,
-            });
-            expect(
-                userPasswordDomain.incrementPasswordAttempt
-            ).toHaveBeenCalledWith(baseUser.id);
-        });
-
-        it('returns the user with a spent attempt budget', async () => {
+            };
             userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
-                false
-            );
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(counted);
 
             await expect(
-                domain.incrementCredentialAttempt(baseUser.email)
-            ).resolves.toEqual({
+                domain.countCredentialAttempt(baseUser.email)
+            ).resolves.toEqual(counted);
+            expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
+                baseUser.email
+            );
+            expect(
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(baseUser);
+        });
+
+        it('returns the attempt with a spent budget', async () => {
+            const spent = {
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: false,
-            });
+            };
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(spent);
+
+            await expect(
+                domain.countCredentialAttempt(baseUser.email)
+            ).resolves.toEqual(spent);
         });
 
         it('throws UserCredentialInvalidException when the user does not exist', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
             await expect(
-                domain.incrementCredentialAttempt('missing@example.com')
+                domain.countCredentialAttempt('missing@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
@@ -176,7 +181,7 @@ describe('UserAuthDomain', () => {
                 messagePath: 'user.error.credentialInvalid',
             });
             expect(
-                userPasswordDomain.incrementPasswordAttempt
+                userPasswordDomain.countPasswordAttempt
             ).not.toHaveBeenCalled();
         });
 
@@ -187,33 +192,34 @@ describe('UserAuthDomain', () => {
             });
 
             await expect(
-                domain.incrementCredentialAttempt('halcyon@example.com')
+                domain.countCredentialAttempt('halcyon@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
                 messagePath: 'user.error.credentialInvalid',
             });
             expect(
-                userPasswordDomain.incrementPasswordAttempt
+                userPasswordDomain.countPasswordAttempt
             ).not.toHaveBeenCalled();
         });
 
         it('throws UserCredentialInvalidException when the user has no password', async () => {
-            userRepository.findOneWithRoleByEmail.mockResolvedValue({
-                ...baseUser,
-                password: null,
-            });
+            const passwordless = { ...baseUser, password: null };
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(
+                passwordless
+            );
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(null);
 
             await expect(
-                domain.incrementCredentialAttempt('halcyon@example.com')
+                domain.countCredentialAttempt('halcyon@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
                 messagePath: 'user.error.credentialInvalid',
             });
             expect(
-                userPasswordDomain.incrementPasswordAttempt
-            ).not.toHaveBeenCalled();
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(passwordless);
         });
     });
 
@@ -251,6 +257,16 @@ describe('UserAuthDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
+        it('returns false for a null password without comparing', async () => {
+            await expect(domain.verifyCredential(counted, null)).resolves.toBe(
+                false
+            );
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws UserPasswordExpiredException when the password has expired', async () => {
             authPasswordUtil.validatePassword.mockResolvedValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
@@ -264,6 +280,101 @@ describe('UserAuthDomain', () => {
                     EnumUserStatusCodeError[
                         EnumUserStatusCodeError.passwordExpired
                     ],
+                messagePath: 'user.error.passwordExpired',
+            });
+        });
+    });
+
+    describe('assertPasswordAttempt', () => {
+        const counted = {
+            user: baseUser,
+            hashedPassword: 'hashed-password',
+            isAttemptCounted: true,
+        };
+
+        it('resolves and resets the attempt counter when the password matches', async () => {
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+
+            await expect(
+                domain.assertPasswordAttempt(counted, 'plain-password')
+            ).resolves.toBeUndefined();
+            expect(
+                userPasswordDomain.assertAttemptCounted
+            ).toHaveBeenCalledWith(true);
+            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+                'plain-password',
+                'hashed-password'
+            );
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).toHaveBeenCalledWith(baseUser.id);
+        });
+
+        it('throws UserPasswordAttemptMaxException without comparing when the budget is spent', async () => {
+            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
+                throw new UserPasswordAttemptMaxException();
+            });
+
+            await expect(
+                domain.assertPasswordAttempt(
+                    { ...counted, isAttemptCounted: false },
+                    'plain-password'
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.passwordAttemptMax
+                    ],
+                messagePath: 'user.error.passwordAttemptMax',
+            });
+            expect(
+                userPasswordDomain.assertAttemptCounted
+            ).toHaveBeenCalledWith(false);
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPasswordNotMatchException on a wrong password', async () => {
+            authPasswordUtil.validatePassword.mockResolvedValue(false);
+
+            await expect(
+                domain.assertPasswordAttempt(counted, 'wrong-password')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.passwordNotMatch
+                    ],
+                messagePath: 'user.error.passwordNotMatch',
+            });
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPasswordNotMatchException for a null password without comparing', async () => {
+            await expect(
+                domain.assertPasswordAttempt(counted, null)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                messagePath: 'user.error.passwordNotMatch',
+            });
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPasswordExpiredException when the matched password has expired', async () => {
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
+
+            await expect(
+                domain.assertPasswordAttempt(counted, 'plain-password')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordExpired,
                 messagePath: 'user.error.passwordExpired',
             });
         });
@@ -383,16 +494,52 @@ describe('UserAuthDomain', () => {
     });
 
     describe('verifyEmailBySocial', () => {
-        it('marks the user verified and returns it verified', async () => {
-            const user = { ...baseUser, isVerified: false };
+        it('returns the user merged with the written row', async () => {
+            const user = { ...baseUser, isVerified: false, verifiedAt: null };
+            const writtenRow: User = {
+                id: 'user-halcyon',
+                name: 'Halcyon Vane',
+                username: 'halcyonVane',
+                isVerified: true,
+                verifiedAt: new Date('2026-03-01T00:00:00.000Z'),
+                email: 'halcyon@example.com',
+                roleId: 'role-halcyon',
+                password: null,
+                passwordExpired: null,
+                passwordCreated: null,
+                passwordAttempt: 0,
+                signUpAt: new Date('2026-01-01T00:00:00.000Z'),
+                signUpFrom: EnumUserSignUpFrom.website,
+                signUpWith: EnumUserSignUpWith.credential,
+                status: EnumUserStatus.active,
+                gender: null,
+                countryId: 'country-halcyon',
+                lastLoginAt: null,
+                lastIPAddress: null,
+                lastLoginFrom: EnumUserLoginFrom.website,
+                lastLoginWith: EnumUserLoginWith.credential,
+                lastWorkspaceId: null,
+                lastWorkspaceChangedAt: null,
+                photo: null,
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+                updatedBy: 'user-halcyon',
+                deletedAt: null,
+                deletedBy: null,
+            };
+            userVerificationDomain.markVerifiedBySocial.mockResolvedValue(
+                writtenRow
+            );
 
             await expect(domain.verifyEmailBySocial(user)).resolves.toEqual({
-                ...user,
-                isVerified: true,
+                ...writtenRow,
+                role: user.role,
+                twoFactor: user.twoFactor,
             });
-            expect(userVerificationDomain.markVerified).toHaveBeenCalledWith(
-                user.id
-            );
+            expect(
+                userVerificationDomain.markVerifiedBySocial
+            ).toHaveBeenCalledWith(user.id);
         });
     });
 
@@ -471,6 +618,7 @@ describe('UserAuthDomain', () => {
                 signUpFrom: EnumUserSignUpFrom.website,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
+                verifiedAt: null,
                 acceptedTermPolicyTypes,
                 createdBy: 'user-id-halcyon',
                 verification: {

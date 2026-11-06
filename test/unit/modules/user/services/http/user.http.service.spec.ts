@@ -28,7 +28,6 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -47,6 +46,9 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.delete-self-forbidden.exception';
+import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
+import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
+import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import { UserHttpService } from '@modules/user/services/http/user.http.service';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
@@ -80,7 +82,6 @@ describe('UserHttpService', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const userProfileDomain: MockProxy<UserProfileDomain> =
         mock<UserProfileDomain>();
@@ -185,7 +186,6 @@ describe('UserHttpService', () => {
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: UserQueue, useValue: userQueue },
                 { provide: SessionUtil, useValue: sessionUtil },
                 { provide: UserProfileDomain, useValue: userProfileDomain },
                 { provide: UserUtil, useValue: userUtil },
@@ -690,9 +690,7 @@ describe('UserHttpService', () => {
 
         beforeEach(() => {
             activityLogDomain.prepare.mockReturnValue(activityLog);
-            userUtil.hasPassword.mockReturnValue(true);
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            userAuthDomain.verifyCredential.mockResolvedValue(true);
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(counted);
             workspaceDomain.softDeleteOwnedByUserInTx.mockResolvedValue([]);
             userDomain.deleteSelfInTx.mockResolvedValue({
                 ...baseUser,
@@ -720,7 +718,7 @@ describe('UserHttpService', () => {
             );
             expect(activityLogDomain.prepare).not.toHaveBeenCalled();
             expect(
-                userPasswordDomain.incrementPasswordAttempt
+                userPasswordDomain.countPasswordAttempt
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
@@ -734,18 +732,18 @@ describe('UserHttpService', () => {
 
                 return value as never;
             });
-            userPasswordDomain.incrementPasswordAttempt.mockImplementation(
+            userPasswordDomain.countPasswordAttempt.mockImplementation(
                 async () => {
                     calls.push('countAttempt');
 
-                    return true;
+                    return counted;
                 }
             );
-            userAuthDomain.verifyCredential.mockImplementation(async () => {
-                calls.push('verifyPassword');
-
-                return true;
-            });
+            userAuthDomain.assertPasswordAttempt.mockImplementation(
+                async () => {
+                    calls.push('verifyPassword');
+                }
+            );
             workspaceDomain.assertOwnedHasNoOtherMembersInTx.mockImplementation(
                 async () => {
                     calls.push('assertNoOtherMembers');
@@ -776,6 +774,11 @@ describe('UserHttpService', () => {
             workspaceJoinRequestDomain.cancelPendingByRequesterInTx.mockImplementation(
                 async () => {
                     calls.push('cancelOwnJoinRequests');
+                }
+            );
+            workspaceInviteDomain.revokeAllPendingByEmailInTx.mockImplementation(
+                async () => {
+                    calls.push('revokeOwnInvites');
                 }
             );
             workspaceMemberDomain.removeByUserInTx.mockImplementation(
@@ -823,12 +826,9 @@ describe('UserHttpService', () => {
                 {}
             );
 
-            expect(userAuthDomain.verifyCredential).toHaveBeenCalledWith(
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
                 counted,
                 'plain-password'
-            );
-            expect(userAuthDomain.assertPasswordMatched).toHaveBeenCalledWith(
-                true
             );
             expect(
                 workspaceDomain.softDeleteOwnedByUserInTx
@@ -866,9 +866,12 @@ describe('UserHttpService', () => {
                 'user-cinder',
                 now
             );
+            expect(
+                workspaceInviteDomain.revokeAllPendingByEmailInTx
+            ).toHaveBeenCalledWith(tx, 'cinder@example.com');
             expect(userDomain.deleteSelfInTx).toHaveBeenCalledWith(
                 tx,
-                'user-cinder',
+                baseUser,
                 now
             );
             expect(calls).toEqual([
@@ -884,6 +887,7 @@ describe('UserHttpService', () => {
                 'invites:workspace-two',
                 'joinRequests:workspace-two',
                 'cancelOwnJoinRequests',
+                'revokeOwnInvites',
                 'removeMemberships',
                 'removeProjectMemberships',
                 'removeMobileNumbers',
@@ -966,6 +970,17 @@ describe('UserHttpService', () => {
             expect(
                 workspaceJoinRequestDomain.cancelPendingByRequesterInTx
             ).toHaveBeenCalledWith(tx, 'user-cinder');
+        });
+
+        it("revokes the pending invites to the user's email on the same tx before the soft delete", async () => {
+            await service.deleteSelf(baseUser, dto);
+
+            expect(
+                workspaceInviteDomain.revokeAllPendingByEmailInTx
+            ).toHaveBeenCalledWith(tx, 'cinder@example.com');
+            expect(
+                workspaceInviteDomain.revokeAllPendingByEmailInTx
+            ).toHaveBeenCalledBefore(userDomain.deleteSelfInTx);
         });
 
         it('opens the transaction with user.deleteSelf.timeoutInMs', async () => {
@@ -1063,53 +1078,106 @@ describe('UserHttpService', () => {
             ).toHaveBeenCalledTimes(1);
         });
 
-        it('checks no password for a user that has none', async () => {
-            userUtil.hasPassword.mockReturnValue(false);
+        it('skips the password check for a passwordless account', async () => {
+            const passwordless: IUser = { ...baseUser, password: null };
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(null);
 
-            await expect(
-                service.deleteSelf({ ...baseUser, password: null }, dto)
-            ).resolves.toEqual({});
+            await expect(service.deleteSelf(passwordless, {})).resolves.toEqual(
+                {}
+            );
 
             expect(
-                userPasswordDomain.incrementPasswordAttempt
-            ).not.toHaveBeenCalled();
-            expect(userAuthDomain.verifyCredential).not.toHaveBeenCalled();
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(passwordless);
+            expect(userAuthDomain.assertPasswordAttempt).not.toHaveBeenCalled();
             expect(userDomain.deleteSelfInTx).toHaveBeenCalledTimes(1);
         });
 
-        it('deletes nothing and stages nothing when the password does not match', async () => {
-            const failure = new Error('not match');
-            userAuthDomain.verifyCredential.mockResolvedValue(false);
-            userAuthDomain.assertPasswordMatched.mockImplementation(() => {
-                throw failure;
+        it('counts an attempt and throws UserPasswordNotMatchException when the password is absent', async () => {
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(
+                new UserPasswordNotMatchException()
+            );
+
+            await expect(
+                service.deleteSelf(baseUser, {})
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.passwordNotMatch
+                    ],
+                messagePath: 'user.error.passwordNotMatch',
             });
+
+            expect(
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(baseUser);
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                counted,
+                null
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('rejects an expired password after a match', async () => {
+            const failure = new UserPasswordExpiredException();
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(failure);
 
             await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(
                 failure
             );
 
-            expect(userAuthDomain.assertPasswordMatched).toHaveBeenCalledWith(
-                false
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(userDomain.deleteSelfInTx).not.toHaveBeenCalled();
+        });
+
+        it('deletes nothing and stages nothing when the password does not match', async () => {
+            const failure = new UserPasswordNotMatchException();
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(failure);
+
+            await expect(service.deleteSelf(baseUser, dto)).rejects.toBe(
+                failure
+            );
+
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                counted,
+                'plain-password'
             );
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout and stages both rows before the attempt limit is answered, deleting nothing', async () => {
+        it('stages both lockout rows after the spent attempt is counted and before the attempt limit is answered, deleting nothing', async () => {
             const calls: string[] = [];
-            const failure = new Error('attempt max');
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
-                false
-            );
-            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
-                calls.push('assert');
+            const failure = new UserPasswordAttemptMaxException();
+            userPasswordDomain.countPasswordAttempt.mockImplementation(
+                async () => {
+                    calls.push('countAttempt');
 
-                throw failure;
-            });
-            userQueue.lockout.mockImplementation(async () => {
-                calls.push('lockout');
-            });
+                    return { ...counted, isAttemptCounted: false };
+                }
+            );
+            userUtil.buildPasswordLockoutStages.mockReturnValue([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-cinder',
+                    createdBy: 'user-cinder',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: 'user-cinder',
+                    createdBy: 'user-cinder',
+                },
+            ]);
+            userAuthDomain.assertPasswordAttempt.mockImplementation(
+                async () => {
+                    calls.push('assert');
+
+                    throw failure;
+                }
+            );
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 calls.push('stage');
             });
@@ -1118,7 +1186,9 @@ describe('UserHttpService', () => {
                 failure
             );
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-cinder');
+            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
+                'user-cinder'
+            );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-cinder',
@@ -1130,10 +1200,13 @@ describe('UserHttpService', () => {
                 createdBy: 'user-cinder',
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
-            expect(calls).toEqual(['lockout', 'stage', 'assert']);
+            expect(calls).toEqual(['countAttempt', 'stage', 'assert']);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(userAuthDomain.verifyCredential).not.toHaveBeenCalled();
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                { ...counted, isAttemptCounted: false },
+                'plain-password'
+            );
             expect(userDomain.deleteSelfInTx).not.toHaveBeenCalled();
             expect(
                 workspaceDomain.softDeleteOwnedByUserInTx

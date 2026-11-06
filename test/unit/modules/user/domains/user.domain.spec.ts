@@ -30,6 +30,7 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserDeletedIdentity,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -165,7 +166,10 @@ describe('UserDomain', () => {
         it('throws RequestContextMissingException when the authenticated user carries no user id', async () => {
             let thrown: unknown;
             try {
-                await domain.validateUserGuard({ userId: '' }, false);
+                await domain.validateUserGuard(
+                    { userId: '', loginWith: EnumUserLoginWith.credential },
+                    false
+                );
             } catch (error) {
                 thrown = error;
             }
@@ -186,7 +190,10 @@ describe('UserDomain', () => {
             userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             const call = domain.validateUserGuard(
-                { userId: 'user-cobalt' },
+                {
+                    userId: 'user-cobalt',
+                    loginWith: EnumUserLoginWith.credential,
+                },
                 false
             );
 
@@ -209,7 +216,10 @@ describe('UserDomain', () => {
             });
 
             const call = domain.validateUserGuard(
-                { userId: 'user-cobalt' },
+                {
+                    userId: 'user-cobalt',
+                    loginWith: EnumUserLoginWith.credential,
+                },
                 false
             );
 
@@ -231,7 +241,10 @@ describe('UserDomain', () => {
             });
 
             const call = domain.validateUserGuard(
-                { userId: 'user-cobalt' },
+                {
+                    userId: 'user-cobalt',
+                    loginWith: EnumUserLoginWith.credential,
+                },
                 false
             );
 
@@ -246,12 +259,38 @@ describe('UserDomain', () => {
             });
         });
 
-        it('throws UserPasswordExpiredException when the password is expired', async () => {
+        it('skips the password expiry check for a social session', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            userUtil.gatesPasswordExpiryOn.mockReturnValue(false);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
+
+            await expect(
+                domain.validateUserGuard(
+                    {
+                        userId: 'user-cobalt',
+                        loginWith: EnumUserLoginWith.socialGoogle,
+                    },
+                    false
+                )
+            ).resolves.toBe(baseUser);
+            expect(userUtil.gatesPasswordExpiryOn).toHaveBeenCalledWith(
+                EnumUserLoginWith.socialGoogle
+            );
+            expect(
+                authPasswordUtil.checkPasswordExpired
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPasswordExpiredException for an expired credential session', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            userUtil.gatesPasswordExpiryOn.mockReturnValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
             const call = domain.validateUserGuard(
-                { userId: 'user-cobalt' },
+                {
+                    userId: 'user-cobalt',
+                    loginWith: EnumUserLoginWith.credential,
+                },
                 false
             );
 
@@ -271,10 +310,14 @@ describe('UserDomain', () => {
                 ...baseUser,
                 isVerified: false,
             });
+            userUtil.gatesPasswordExpiryOn.mockReturnValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
             const call = domain.validateUserGuard(
-                { userId: 'user-cobalt' },
+                {
+                    userId: 'user-cobalt',
+                    loginWith: EnumUserLoginWith.credential,
+                },
                 true
             );
 
@@ -292,10 +335,17 @@ describe('UserDomain', () => {
         it('returns the user when every check passes', async () => {
             const user = baseUser;
             userRepository.findOneWithRoleById.mockResolvedValue(user);
+            userUtil.gatesPasswordExpiryOn.mockReturnValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
             await expect(
-                domain.validateUserGuard({ userId: 'user-cobalt' }, true)
+                domain.validateUserGuard(
+                    {
+                        userId: 'user-cobalt',
+                        loginWith: EnumUserLoginWith.credential,
+                    },
+                    true
+                )
             ).resolves.toBe(user);
         });
     });
@@ -484,6 +534,7 @@ describe('UserDomain', () => {
             signUpFrom: EnumUserSignUpFrom.website,
             signUpWith: EnumUserSignUpWith.credential,
             isVerified: false,
+            verifiedAt: null,
             acceptedTermPolicyTypes: [],
             password: null,
             passwordHistoryType: null,
@@ -794,6 +845,15 @@ describe('UserDomain', () => {
             roleId: role1.id,
             username: 'cobaltReyes',
         };
+        const verified: IUserCreateVerification = {
+            reference: 'ref-cobalt',
+            token: 'hashed-token',
+            type: EnumVerificationType.email,
+            to: input.email,
+            expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+            verifiedAt: now,
+            isUsed: true,
+        };
 
         beforeEach(() => {
             databaseUtil.createId.mockReturnValue('user-id-cobalt');
@@ -814,9 +874,10 @@ describe('UserDomain', () => {
                     name: "cobaltReyes's Workspace",
                 },
             ]);
+            userVerificationUtil.createVerified.mockReturnValue(verified);
         });
 
-        it('prepares the create input with no verification for a plain user role', async () => {
+        it('creates a user-role account verified at the verification time with a used verification row', async () => {
             const result = await domain.prepareCreateByAdmin(
                 input,
                 'admin-cobalt',
@@ -832,10 +893,14 @@ describe('UserDomain', () => {
                 roleId: role1.id,
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
-                isVerified: false,
-                verification: null,
+                isVerified: true,
+                verifiedAt: now,
                 createdBy: 'admin-cobalt',
             });
+            expect(userVerificationUtil.createVerified).toHaveBeenCalledWith(
+                input.email
+            );
+            expect(result.input.verification).toBe(verified);
             expect(result.passwordString).toBe('random-password');
         });
 
@@ -847,31 +912,6 @@ describe('UserDomain', () => {
             );
 
             expect(result.input.name).toBeNull();
-        });
-
-        it('prepares the create input with a verified, used verification for an elevated role', async () => {
-            const verified: IUserCreateVerification = {
-                reference: 'ref-cobalt',
-                token: 'hashed-token',
-                type: EnumVerificationType.email,
-                to: input.email,
-                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
-                verifiedAt: now,
-                isUsed: true,
-            };
-            userVerificationUtil.createVerified.mockReturnValue(verified);
-
-            const result = await domain.prepareCreateByAdmin(
-                input,
-                'admin-cobalt',
-                { ...role1, type: EnumRoleType.admin }
-            );
-
-            expect(result.input.isVerified).toBe(true);
-            expect(userVerificationUtil.createVerified).toHaveBeenCalledWith(
-                input.email
-            );
-            expect(result.input.verification).toBe(verified);
         });
     });
 
@@ -1112,6 +1152,33 @@ describe('UserDomain', () => {
             );
         });
 
+        it('resets the two-factor attempt counter in the same transaction when activating', async () => {
+            userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
+
+            await domain.updateStatusByAdminInTx(
+                tx,
+                { ...target, status: EnumUserStatus.inactive },
+                EnumUserStatus.active
+            );
+
+            expect(userTwoFactorDomain.resetAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                target.id
+            );
+        });
+
+        it('leaves the two-factor counter when the status is not active', async () => {
+            userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
+
+            await domain.updateStatusByAdminInTx(
+                tx,
+                { ...target, status: EnumUserStatus.active },
+                EnumUserStatus.inactive
+            );
+
+            expect(userTwoFactorDomain.resetAttemptInTx).not.toHaveBeenCalled();
+        });
+
         it('throws UserStatusInvalidException without writing when the status is unchanged', async () => {
             const call = domain.updateStatusByAdminInTx(
                 tx,
@@ -1148,20 +1215,30 @@ describe('UserDomain', () => {
                 statusCode: EnumUserStatusCodeError.statusInvalid,
                 messagePath: 'user.error.statusInvalid',
             });
+            expect(userTwoFactorDomain.resetAttemptInTx).not.toHaveBeenCalled();
         });
     });
 
     describe('deleteSelfInTx', () => {
-        it('soft deletes the user on the given transaction', async () => {
+        it('soft-deletes with the deleted identity', async () => {
+            const identity: IUserDeletedIdentity = {
+                email: 'deleted.user-cobalt.cobalt@example.com',
+                username: 'deleted.user-cobalt.cobaltReyes',
+            };
+            userUtil.createDeletedIdentity.mockReturnValue(identity);
             userRepository.deleteSelfInTx.mockResolvedValue(baseUser);
 
             await expect(
-                domain.deleteSelfInTx(tx, 'user-cobalt', now)
+                domain.deleteSelfInTx(tx, baseUser, now)
             ).resolves.toBe(baseUser);
 
+            expect(userUtil.createDeletedIdentity).toHaveBeenCalledWith(
+                baseUser
+            );
             expect(userRepository.deleteSelfInTx).toHaveBeenCalledWith(
                 tx,
                 'user-cobalt',
+                identity,
                 now
             );
         });

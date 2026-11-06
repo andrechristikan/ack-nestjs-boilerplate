@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import type { VerifyOptions } from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthJwtRefreshStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
@@ -65,6 +66,16 @@ describe('AuthJwtRefreshStrategy', () => {
                 cacheMaxAge: 600000,
                 jwksUri: 'https://example.com/.well-known/jwks.json',
             });
+        });
+
+        it('verifies the configured audience and issuer', () => {
+            const verifyOptions = Reflect.get(
+                strategy,
+                '_verifOpts'
+            ) as VerifyOptions;
+
+            expect(verifyOptions.audience).toBe('aud');
+            expect(verifyOptions.issuer).toBe('iss');
         });
     });
 

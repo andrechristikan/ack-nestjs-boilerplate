@@ -102,5 +102,5 @@ export type IAuthJwtPayloadField<T> = Extract<keyof T, string>;
 
 export type IAuthJwtAccessTokenPayloadUser = Pick<
     IAuthJwtAccessTokenPayload,
-    'userId'
+    'userId' | 'loginWith'
 >;

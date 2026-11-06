@@ -259,6 +259,7 @@ export class MigrationUserSeed
                                 passwordAttempt: 0,
                                 signUpAt: today,
                                 isVerified: true,
+                                verifiedAt: today,
                                 signUpWith: EnumUserSignUpWith.credential,
                                 signUpFrom: EnumUserSignUpFrom.system,
                                 status: EnumUserStatus.active,

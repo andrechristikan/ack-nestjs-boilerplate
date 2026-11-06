@@ -12,10 +12,14 @@ export const UserTwoFactorEnableRequestSchema = z.strictObject({
             description: 'digit code from authenticator app',
             example: '654321',
         }),
-    password: z.string().min(1).meta({
-        description: 'current string password',
-        example: 'Current-pass1',
-    }),
+    password: z
+        .string()
+        .min(1)
+        .meta({
+            description: 'current string password',
+            example: 'Current-pass1',
+        })
+        .optional(),
 });
 
 /** @public */

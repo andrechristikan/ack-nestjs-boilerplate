@@ -8,7 +8,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -51,7 +50,6 @@ import type {
     IUserProfile,
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -93,10 +91,17 @@ export class UserDomain {
             throw new UserInactiveForbiddenException();
         }
 
-        const checkPasswordExpired: boolean =
-            this.authPasswordUtil.checkPasswordExpired(user.passwordExpired);
-        if (checkPasswordExpired) {
-            throw new UserPasswordExpiredException();
+        const gatesPasswordExpiry = this.userUtil.gatesPasswordExpiryOn(
+            payload.loginWith
+        );
+        if (gatesPasswordExpiry) {
+            const checkPasswordExpired: boolean =
+                this.authPasswordUtil.checkPasswordExpired(
+                    user.passwordExpired
+                );
+            if (checkPasswordExpired) {
+                throw new UserPasswordExpiredException();
+            }
         }
 
         if (requiredVerified === true && user.isVerified !== true) {
@@ -290,13 +295,7 @@ export class UserDomain {
         const workspaceContexts =
             this.userCreateUtil.buildPersonalWorkspaceContexts([username]);
         const workspaceContext = workspaceContexts[0]!;
-        const isVerified = role.type !== EnumRoleType.user;
-        let verification: IUserCreateVerification | null;
-        if (isVerified) {
-            verification = this.userVerificationUtil.createVerified(email);
-        } else {
-            verification = null;
-        }
+        const verification = this.userVerificationUtil.createVerified(email);
 
         return {
             input: {
@@ -308,7 +307,8 @@ export class UserDomain {
                 roleId: role.id,
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
-                isVerified,
+                isVerified: true,
+                verifiedAt: verification.verifiedAt,
                 acceptedTermPolicyTypes: [
                     ...UserTermPolicyContract.requiredTypes,
                 ],
@@ -375,7 +375,7 @@ export class UserDomain {
         }
     }
 
-    /** Writes the status guarded on the target's current one; activating a user resets its password attempt counter. */
+    /** Writes the status guarded on the target's current one; activating a user resets its password and two-factor attempt counters. */
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         { id, status: currentStatus, passwordAttempt }: IUser,
@@ -397,6 +397,10 @@ export class UserDomain {
         );
         if (!row) {
             throw new UserStatusInvalidException();
+        }
+
+        if (status === EnumUserStatus.active) {
+            await this.userTwoFactorDomain.resetAttemptInTx(tx, id);
         }
 
         return row;
@@ -430,9 +434,16 @@ export class UserDomain {
 
     async deleteSelfInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
+        user: IUser,
         deletedAt: Date
     ): Promise<User> {
-        return this.userRepository.deleteSelfInTx(tx, userId, deletedAt);
+        const identity = this.userUtil.createDeletedIdentity(user);
+
+        return this.userRepository.deleteSelfInTx(
+            tx,
+            user.id,
+            identity,
+            deletedAt
+        );
     }
 }

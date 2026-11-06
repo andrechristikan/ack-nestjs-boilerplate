@@ -285,4 +285,14 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
             },
         });
     }
+
+    async resetTwoFactorAttemptInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await tx.twoFactor.updateMany({
+            where: { userId },
+            data: { attempt: 0 },
+        });
+    }
 }

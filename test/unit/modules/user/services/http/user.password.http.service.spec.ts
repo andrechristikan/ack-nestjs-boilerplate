@@ -28,6 +28,7 @@ import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activi
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
+import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
@@ -48,10 +49,11 @@ import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
+import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
+import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { UserPasswordHttpService } from '@modules/user/services/http/user.password.http.service';
@@ -61,6 +63,7 @@ import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/us
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import type {
     IUser,
+    IUserCredentialAttempt,
     IUserForgotPassword,
     IUserForgotPasswordCreate,
     IUserTwoFactorVerifyResult,
@@ -71,6 +74,7 @@ describe('UserPasswordHttpService', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const userPasswordDomain: MockProxy<UserPasswordDomain> =
         mock<UserPasswordDomain>();
+    const userAuthDomain: MockProxy<UserAuthDomain> = mock<UserAuthDomain>();
     const userTwoFactorDomain: MockProxy<UserTwoFactorDomain> =
         mock<UserTwoFactorDomain>();
     const passwordHistoryDomain: MockProxy<PasswordHistoryDomain> =
@@ -87,7 +91,6 @@ describe('UserPasswordHttpService', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
     const notificationUtil: MockProxy<NotificationUtil> =
@@ -192,6 +195,10 @@ describe('UserPasswordHttpService', () => {
         updatedBy: null,
     };
     const twoFactorUser: IUser = { ...user, twoFactor: twoFactorRow };
+    const twoFactorSetupUser: IUser = {
+        ...user,
+        twoFactor: { ...twoFactorRow, requiredSetup: true },
+    };
     const passwordHistory = { id: 'history-linden' } as PasswordHistory;
     const twoFactorVerified: IUserTwoFactorVerifyResult = {
         method: EnumAuthTwoFactorMethod.code,
@@ -232,15 +239,18 @@ describe('UserPasswordHttpService', () => {
         notificationDomain.getListUserSetting.mockResolvedValue(settings);
         notificationUtil.mapRecipient.mockReturnValue(recipient);
         userTwoFactorDomain.countAttempt.mockResolvedValue(true);
+        userTwoFactorDomain.getProvidedMethod.mockReturnValue(
+            EnumAuthTwoFactorMethod.code
+        );
         userTwoFactorDomain.verify.mockResolvedValue(twoFactorVerified);
-        userUtil.hasPassword.mockReturnValue(true);
-        userUtil.isTwoFactorEnabled.mockReturnValue(false);
+        userUtil.requiresTwoFactorVerification.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserPasswordHttpService,
                 { provide: UserDomain, useValue: userDomain },
                 { provide: UserPasswordDomain, useValue: userPasswordDomain },
+                { provide: UserAuthDomain, useValue: userAuthDomain },
                 {
                     provide: UserTwoFactorDomain,
                     useValue: userTwoFactorDomain,
@@ -260,7 +270,6 @@ describe('UserPasswordHttpService', () => {
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: UserQueue, useValue: userQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: UserUtil, useValue: userUtil },
@@ -306,6 +315,11 @@ describe('UserPasswordHttpService', () => {
 
                 return passwordHistory;
             });
+            userPasswordDomain.markUnusedResetsUsedInTx.mockImplementation(
+                async () => {
+                    calls.push('markUnusedResetsUsed');
+                }
+            );
             sessionDomain.revokeActiveByUserInTx.mockImplementation(
                 async () => {
                     calls.push('revokeSessions');
@@ -353,6 +367,9 @@ describe('UserPasswordHttpService', () => {
                 password.passwordCreated,
                 'admin-linden'
             );
+            expect(
+                userPasswordDomain.markUnusedResetsUsedInTx
+            ).toHaveBeenCalledWith(tx, 'user-linden');
             expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -363,6 +380,7 @@ describe('UserPasswordHttpService', () => {
                 'begin',
                 'updatePassword',
                 'createHistory',
+                'markUnusedResetsUsed',
                 'revokeSessions',
                 'commit',
                 'purge',
@@ -444,17 +462,24 @@ describe('UserPasswordHttpService', () => {
             newPassword: 'new-password',
             oldPassword: 'old-password',
         };
+        const passwordAttempt: IUserCredentialAttempt = {
+            user,
+            hashedPassword: 'hashed-password',
+            isAttemptCounted: true,
+        };
 
         beforeEach(() => {
             authPasswordUtil.createPassword.mockResolvedValue(password);
             userDomain.updatePasswordInTx.mockResolvedValue(updatedRow);
             passwordHistoryDomain.createInTx.mockResolvedValue(passwordHistory);
             sessionDomain.revokeActiveByUserInTx.mockResolvedValue(revoked);
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(true);
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(
+                passwordAttempt
+            );
         });
 
         it('prepares the change-password row before the attempt counter moves', async () => {
-            userPasswordDomain.incrementPasswordAttempt.mockImplementation(
+            userPasswordDomain.countPasswordAttempt.mockImplementation(
                 async () => {
                     expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                         action: EnumActivityLogAction.userChangePassword,
@@ -463,7 +488,7 @@ describe('UserPasswordHttpService', () => {
                         activityLogDomain.stagePrepared
                     ).not.toHaveBeenCalled();
 
-                    return true;
+                    return passwordAttempt;
                 }
             );
             databaseService.withTransaction.mockImplementation(
@@ -473,7 +498,7 @@ describe('UserPasswordHttpService', () => {
             await service.changePassword(user, dto);
 
             expect(
-                userPasswordDomain.incrementPasswordAttempt
+                userPasswordDomain.countPasswordAttempt
             ).toHaveBeenCalledTimes(1);
         });
 
@@ -496,6 +521,11 @@ describe('UserPasswordHttpService', () => {
 
                 return passwordHistory;
             });
+            userPasswordDomain.markUnusedResetsUsedInTx.mockImplementation(
+                async () => {
+                    calls.push('markUnusedResetsUsed');
+                }
+            );
             sessionDomain.revokeActiveByUserInTx.mockImplementation(
                 async () => {
                     calls.push('revokeSessions');
@@ -512,26 +542,21 @@ describe('UserPasswordHttpService', () => {
             );
 
             expect(
-                userPasswordDomain.incrementPasswordAttempt
-            ).toHaveBeenCalledWith('user-linden');
-            expect(
-                userPasswordDomain.assertAttemptCounted
-            ).toHaveBeenCalledWith(true);
-            expect(
-                userPasswordDomain.assertOldPasswordMatch
-            ).toHaveBeenCalledWith(user, 'old-password');
-            expect(
-                userPasswordDomain.resetPasswordAttempt
-            ).toHaveBeenCalledWith('user-linden');
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(user);
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                passwordAttempt,
+                'old-password'
+            );
             expect(passwordHistoryDomain.assertNew).toHaveBeenCalledWith(
                 'user-linden',
                 'new-password'
             );
-            expect(
-                userPasswordDomain.assertOldPasswordMatch
-            ).toHaveBeenCalledBefore(passwordHistoryDomain.assertNew);
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledBefore(
+                passwordHistoryDomain.assertNew
+            );
             expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(1);
-            expect(userQueue.lockout).not.toHaveBeenCalled();
+            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(passwordHistoryDomain.assertNew).toHaveBeenCalledBefore(
                 authPasswordUtil.createPassword
             );
@@ -563,6 +588,9 @@ describe('UserPasswordHttpService', () => {
                 password.passwordCreated,
                 'user-linden'
             );
+            expect(
+                userPasswordDomain.markUnusedResetsUsedInTx
+            ).toHaveBeenCalledWith(tx, 'user-linden');
             expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -576,6 +604,7 @@ describe('UserPasswordHttpService', () => {
                 'begin',
                 'updatePassword',
                 'createHistory',
+                'markUnusedResetsUsed',
                 'revokeSessions',
                 'commit',
                 'purge',
@@ -593,26 +622,64 @@ describe('UserPasswordHttpService', () => {
             ]);
         });
 
-        it('skips the old password and history checks for an account with no password', async () => {
-            userUtil.hasPassword.mockReturnValue(false);
+        it('skips the password check for a passwordless account', async () => {
+            const passwordless: IUser = { ...user, password: null };
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(null);
 
-            await service.changePassword({ ...user, password: null }, dto);
+            await service.changePassword(passwordless, {
+                newPassword: 'new-password',
+            });
 
             expect(
-                userPasswordDomain.incrementPasswordAttempt
-            ).not.toHaveBeenCalled();
-            expect(
-                userPasswordDomain.assertOldPasswordMatch
-            ).not.toHaveBeenCalled();
-            expect(
-                userPasswordDomain.resetPasswordAttempt
-            ).not.toHaveBeenCalled();
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(passwordless);
+            expect(userAuthDomain.assertPasswordAttempt).not.toHaveBeenCalled();
             expect(passwordHistoryDomain.assertNew).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
+        it('counts an attempt and throws UserPasswordNotMatchException when the password is absent', async () => {
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(
+                new UserPasswordNotMatchException()
+            );
+
+            await expect(
+                service.changePassword(user, { newPassword: 'new-password' })
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.passwordNotMatch
+                    ],
+                messagePath: 'user.error.passwordNotMatch',
+            });
+
+            expect(
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledTimes(1);
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                passwordAttempt,
+                null
+            );
+            expect(passwordHistoryDomain.assertNew).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('rejects an expired password after a match', async () => {
+            const failure = new UserPasswordExpiredException();
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(failure);
+
+            await expect(service.changePassword(user, dto)).rejects.toBe(
+                failure
+            );
+
+            expect(passwordHistoryDomain.assertNew).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('verifies two-factor, records the verification on the transaction, and stages the verify row when two-factor is enabled', async () => {
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
             await service.changePassword(twoFactorUser, {
                 ...dto,
                 code: '123456',
@@ -650,8 +717,34 @@ describe('UserPasswordHttpService', () => {
             ]);
         });
 
+        it('skips two-factor verification while setup is required', async () => {
+            await expect(
+                service.changePassword(twoFactorSetupUser, dto)
+            ).resolves.toEqual({});
+
+            expect(userUtil.requiresTwoFactorVerification).toHaveBeenCalledWith(
+                twoFactorSetupUser
+            );
+            expect(userTwoFactorDomain.countAttempt).not.toHaveBeenCalled();
+            expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
+            expect(activityLogDomain.prepare).not.toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                })
+            );
+            expect(
+                userTwoFactorDomain.recordVerificationInTx
+            ).not.toHaveBeenCalled();
+            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                password,
+                'user-linden'
+            );
+        });
+
         it('writes nothing when the two-factor check rejects', async () => {
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
             const failure = new Error('invalid');
             userTwoFactorDomain.verify.mockRejectedValue(failure);
 
@@ -666,17 +759,59 @@ describe('UserPasswordHttpService', () => {
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout, stages both rows, and throws AuthTwoFactorAttemptMaxException when the two-factor budget is spent', async () => {
+        it('throws the method-required exception without counting an attempt', async () => {
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userTwoFactorDomain.getProvidedMethod.mockImplementation(() => {
+                throw new AuthTwoFactorMethodRequiredException();
+            });
+            await expect(
+                service.changePassword(twoFactorUser, {
+                    ...dto,
+                    code: '123456',
+                })
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorMethodRequired
+                    ],
+                messagePath: 'auth.error.twoFactorMethodRequired',
+            });
+
+            expect(userTwoFactorDomain.getProvidedMethod).toHaveBeenCalledWith(
+                null
+            );
+            expect(userTwoFactorDomain.countAttempt).not.toHaveBeenCalled();
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
+            expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('stages both lockout rows after the spent count and throws AuthTwoFactorAttemptMaxException when the two-factor budget is spent', async () => {
             const calls: string[] = [];
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            userTwoFactorDomain.countAttempt.mockResolvedValue(false);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userUtil.buildTwoFactorLockoutStages.mockReturnValue([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-linden',
+                    createdBy: 'user-linden',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: 'user-linden',
+                    createdBy: 'user-linden',
+                },
+            ]);
+            userTwoFactorDomain.countAttempt.mockImplementation(async () => {
+                calls.push('countAttempt');
+
+                return false;
+            });
             userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
                 calls.push('assert');
 
                 throw new AuthTwoFactorAttemptMaxException();
-            });
-            userQueue.lockout.mockImplementation(async () => {
-                calls.push('lockout');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 calls.push('stage');
@@ -708,12 +843,14 @@ describe('UserPasswordHttpService', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-linden');
+            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
+                'user-linden'
+            );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
                 activityLog,
             ]);
-            expect(calls).toEqual(['lockout', 'stage', 'assert']);
+            expect(calls).toEqual(['countAttempt', 'stage', 'assert']);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
@@ -721,10 +858,8 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('writes nothing when the old password check rejects', async () => {
-            const failure = new Error('mismatch');
-            userPasswordDomain.assertOldPasswordMatch.mockRejectedValue(
-                failure
-            );
+            const failure = new UserPasswordNotMatchException();
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(failure);
 
             await expect(service.changePassword(user, dto)).rejects.toBe(
                 failure
@@ -734,7 +869,7 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('throws UserPasswordNotMatchException on a wrong password under the max and keeps the attempt', async () => {
-            userPasswordDomain.assertOldPasswordMatch.mockRejectedValue(
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(
                 new UserPasswordNotMatchException()
             );
 
@@ -752,24 +887,39 @@ describe('UserPasswordHttpService', () => {
             expect(
                 userPasswordDomain.resetPasswordAttempt
             ).not.toHaveBeenCalled();
-            expect(userQueue.lockout).not.toHaveBeenCalled();
+            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout, stages both rows, and throws UserPasswordAttemptMaxException at the max attempt', async () => {
+        it('stages both lockout rows after the spent attempt is counted and throws UserPasswordAttemptMaxException at the max attempt', async () => {
             const calls: string[] = [];
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
-                false
-            );
-            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
-                calls.push('assert');
+            userPasswordDomain.countPasswordAttempt.mockImplementation(
+                async () => {
+                    calls.push('countAttempt');
 
-                throw new UserPasswordAttemptMaxException();
-            });
-            userQueue.lockout.mockImplementation(async () => {
-                calls.push('lockout');
-            });
+                    return { ...passwordAttempt, isAttemptCounted: false };
+                }
+            );
+            userUtil.buildPasswordLockoutStages.mockReturnValue([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-linden',
+                    createdBy: 'user-linden',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: 'user-linden',
+                    createdBy: 'user-linden',
+                },
+            ]);
+            userAuthDomain.assertPasswordAttempt.mockImplementation(
+                async () => {
+                    calls.push('assert');
+
+                    throw new UserPasswordAttemptMaxException();
+                }
+            );
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 calls.push('stage');
             });
@@ -796,17 +946,20 @@ describe('UserPasswordHttpService', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-linden');
+            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
+                'user-linden'
+            );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
                 activityLog,
             ]);
-            expect(calls).toEqual(['lockout', 'stage', 'assert']);
+            expect(calls).toEqual(['countAttempt', 'stage', 'assert']);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(
-                userPasswordDomain.assertOldPasswordMatch
-            ).not.toHaveBeenCalled();
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                { ...passwordAttempt, isAttemptCounted: false },
+                'old-password'
+            );
             expect(userDomain.updatePasswordInTx).not.toHaveBeenCalled();
         });
 
@@ -980,6 +1133,11 @@ describe('UserPasswordHttpService', () => {
                     calls.push('markResetUsed');
                 }
             );
+            userPasswordDomain.markUnusedResetsUsedInTx.mockImplementation(
+                async () => {
+                    calls.push('markUnusedResetsUsed');
+                }
+            );
             sessionDomain.revokeActiveByUserInTx.mockImplementation(
                 async () => {
                     calls.push('revokeSessions');
@@ -1044,6 +1202,9 @@ describe('UserPasswordHttpService', () => {
                 'forgot-linden',
                 password.passwordCreated
             );
+            expect(
+                userPasswordDomain.markUnusedResetsUsedInTx
+            ).toHaveBeenCalledWith(tx, 'user-linden');
             expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -1058,6 +1219,7 @@ describe('UserPasswordHttpService', () => {
                 'updatePassword',
                 'createHistory',
                 'markResetUsed',
+                'markUnusedResetsUsed',
                 'revokeSessions',
                 'commit',
                 'purge',
@@ -1076,7 +1238,7 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('verifies two-factor of the reset user, records it on the transaction, and stages the verify row when two-factor is enabled', async () => {
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
             userPasswordDomain.getOneActiveReset.mockResolvedValue(
                 resetTwoFactorRow
             );
@@ -1110,6 +1272,65 @@ describe('UserPasswordHttpService', () => {
                 activityLog,
                 activityLog,
             ]);
+        });
+
+        it('skips two-factor verification while setup is required', async () => {
+            userPasswordDomain.getOneActiveReset.mockResolvedValue({
+                ...resetRow,
+                user: twoFactorSetupUser,
+            });
+
+            await expect(service.resetPassword(dto)).resolves.toEqual({});
+
+            expect(userUtil.requiresTwoFactorVerification).toHaveBeenCalledWith(
+                twoFactorSetupUser
+            );
+            expect(userTwoFactorDomain.countAttempt).not.toHaveBeenCalled();
+            expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
+            expect(activityLogDomain.prepare).not.toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                })
+            );
+            expect(
+                userTwoFactorDomain.recordVerificationInTx
+            ).not.toHaveBeenCalled();
+            expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                password,
+                'user-linden'
+            );
+        });
+
+        it('throws the method-required exception without counting an attempt', async () => {
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userTwoFactorDomain.getProvidedMethod.mockImplementation(() => {
+                throw new AuthTwoFactorMethodRequiredException();
+            });
+            userPasswordDomain.getOneActiveReset.mockResolvedValue(
+                resetTwoFactorRow
+            );
+
+            await expect(
+                service.resetPassword({ ...dto, code: '123456' })
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorMethodRequired
+                    ],
+                messagePath: 'auth.error.twoFactorMethodRequired',
+            });
+
+            expect(userTwoFactorDomain.getProvidedMethod).toHaveBeenCalledWith(
+                null
+            );
+            expect(userTwoFactorDomain.countAttempt).not.toHaveBeenCalled();
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
+            expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the history check rejects', async () => {

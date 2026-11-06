@@ -29,6 +29,7 @@ import type {
     IUserTwoFactorVerifyInput,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { Injectable } from '@nestjs/common';
@@ -44,6 +45,7 @@ export class UserTwoFactorDomain {
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly sentryService: SentryService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly userQueue: UserQueue,
         private readonly configService: ConfigService
     ) {
         this.maxAttempt = this.configService.get<number>(
@@ -57,14 +59,6 @@ export class UserTwoFactorDomain {
         }
 
         return twoFactor;
-    }
-
-    private assertMethodProvided(
-        method: EnumAuthTwoFactorMethod | null
-    ): asserts method is EnumAuthTwoFactorMethod {
-        if (!method) {
-            throw new AuthTwoFactorMethodRequiredException();
-        }
     }
 
     private readSecret(encryptedSecret: string | null, userId: string): string {
@@ -174,12 +168,15 @@ export class UserTwoFactorDomain {
         return { user, pendingSecret };
     }
 
-    /** Counts one two-factor attempt before the code is checked; false when the attempt budget is spent. */
+    /** Counts one two-factor attempt before the code is checked and enqueues the lockout job when the budget is spent; false when the attempt budget is spent. */
     async countAttempt(user: IUser): Promise<boolean> {
         const attempt = await this.userTwoFactorRepository.incrementAttempt(
             user.id,
             this.maxAttempt
         );
+        if (attempt === null) {
+            await this.userQueue.lockout(user.id);
+        }
 
         return attempt !== null;
     }
@@ -190,15 +187,25 @@ export class UserTwoFactorDomain {
         }
     }
 
+    getProvidedMethod(
+        method: EnumAuthTwoFactorMethod | null
+    ): EnumAuthTwoFactorMethod {
+        if (!method) {
+            throw new AuthTwoFactorMethodRequiredException();
+        }
+
+        return method;
+    }
+
     /** Checks the code or backup code against the confirmed secret, accepts each TOTP step once, and resets the counter on a match; the caller counts the attempt and a backup code is not consumed here. */
     async verify(
         user: IUser,
         input: IUserTwoFactorVerifyInput
     ): Promise<IUserTwoFactorVerifyResult> {
-        this.assertMethodProvided(input.method);
+        const method = this.getProvidedMethod(input.method);
         const twoFactor = this.getEnabledTwoFactor(user);
 
-        const checked = this.checkCode(twoFactor, input.method, input);
+        const checked = this.checkCode(twoFactor, method, input);
         if (!checked) {
             throw new AuthTwoFactorInvalidException();
         }
@@ -220,7 +227,7 @@ export class UserTwoFactorDomain {
         return checked.verified;
     }
 
-    /** Checks a code against the pending secret and resets the counter on a match; the caller counts the attempt. */
+    /** Checks a code against the pending secret, accepts each TOTP step once, and resets the counter on a match; the caller counts the attempt. */
     async verifySetupCode(
         user: IUser,
         pendingSecret: string,
@@ -229,6 +236,15 @@ export class UserTwoFactorDomain {
         const secret = this.readSecret(pendingSecret, user.id);
         const totpStep = this.authTwoFactorUtil.verifyCode(secret, code.trim());
         if (totpStep === null) {
+            throw new AuthTwoFactorInvalidException();
+        }
+
+        // Sequential by design: the attempt resets only after the step is accepted
+        const isStepAccepted = await this.userTwoFactorRepository.markTotpUsed(
+            user.id,
+            totpStep
+        );
+        if (!isStepAccepted) {
             throw new AuthTwoFactorInvalidException();
         }
 
@@ -362,6 +378,16 @@ export class UserTwoFactorDomain {
         userId: string
     ): Promise<void> {
         await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
+            tx,
+            userId
+        );
+    }
+
+    async resetAttemptInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.userTwoFactorRepository.resetTwoFactorAttemptInTx(
             tx,
             userId
         );

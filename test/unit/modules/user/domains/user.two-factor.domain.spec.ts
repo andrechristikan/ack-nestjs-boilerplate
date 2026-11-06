@@ -28,6 +28,7 @@ import type {
     IUser,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
@@ -40,6 +41,7 @@ describe('UserTwoFactorDomain', () => {
         mock<AuthTwoFactorUtil>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -138,6 +140,7 @@ describe('UserTwoFactorDomain', () => {
                 { provide: AuthTwoFactorUtil, useValue: authTwoFactorUtil },
                 { provide: SentryService, useValue: sentryService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: UserQueue, useValue: userQueue },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -343,12 +346,18 @@ describe('UserTwoFactorDomain', () => {
             expect(
                 userTwoFactorRepository.incrementAttempt
             ).toHaveBeenCalledWith('user-quartz', 5);
+            expect(userQueue.lockout).not.toHaveBeenCalled();
         });
 
-        it('answers false when the guarded increment finds the budget spent', async () => {
+        it('answers false and enqueues the lockout when the guarded increment finds the budget spent', async () => {
             userTwoFactorRepository.incrementAttempt.mockResolvedValue(null);
 
             await expect(domain.countAttempt(baseUser)).resolves.toBe(false);
+            expect(userQueue.lockout).toHaveBeenCalledOnce();
+            expect(userQueue.lockout).toHaveBeenCalledWith('user-quartz');
+            expect(userQueue.lockout).toHaveBeenCalledAfter(
+                userTwoFactorRepository.incrementAttempt
+            );
         });
 
         it('answers false for every parallel attempt beyond the budget', async () => {
@@ -363,6 +372,7 @@ describe('UserTwoFactorDomain', () => {
                     domain.countAttempt(baseUser),
                 ])
             ).resolves.toEqual([true, false, false]);
+            expect(userQueue.lockout).toHaveBeenCalledTimes(2);
         });
     });
 
@@ -381,6 +391,28 @@ describe('UserTwoFactorDomain', () => {
                             EnumAuthStatusCodeError.twoFactorAttemptMax
                         ],
                     messagePath: 'auth.error.twoFactorAttemptMax',
+                })
+            );
+        });
+    });
+
+    describe('getProvidedMethod', () => {
+        it('returns the given method', () => {
+            expect(
+                domain.getProvidedMethod(EnumAuthTwoFactorMethod.backupCodes)
+            ).toBe(EnumAuthTwoFactorMethod.backupCodes);
+        });
+
+        it('throws AuthTwoFactorMethodRequiredException for a null method', () => {
+            expect(() => domain.getProvidedMethod(null)).toThrow(
+                expect.objectContaining({
+                    module: 'auth',
+                    statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
+                    statusCodeKey:
+                        EnumAuthStatusCodeError[
+                            EnumAuthStatusCodeError.twoFactorMethodRequired
+                        ],
+                    messagePath: 'auth.error.twoFactorMethodRequired',
                 })
             );
         });
@@ -597,6 +629,7 @@ describe('UserTwoFactorDomain', () => {
 
     describe('verifySetupCode', () => {
         beforeEach(() => {
+            userTwoFactorRepository.markTotpUsed.mockResolvedValue(true);
             authTwoFactorUtil.decryptSecret.mockReturnValue('plain-pending');
             authTwoFactorUtil.verifyCode.mockReturnValue(58123456);
         });
@@ -623,6 +656,36 @@ describe('UserTwoFactorDomain', () => {
             ).toHaveBeenCalledWith('user-quartz');
             expect(
                 userTwoFactorRepository.incrementAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('marks the TOTP step used before resetting the counter', async () => {
+            await domain.verifySetupCode(
+                baseUser,
+                'encrypted-pending',
+                '654321'
+            );
+
+            expect(userTwoFactorRepository.markTotpUsed).toHaveBeenCalledWith(
+                'user-quartz',
+                58123456
+            );
+            expect(userTwoFactorRepository.markTotpUsed).toHaveBeenCalledBefore(
+                userTwoFactorRepository.resetTwoFactorAttempt
+            );
+        });
+
+        it('throws AuthTwoFactorInvalidException when the step was already used', async () => {
+            userTwoFactorRepository.markTotpUsed.mockResolvedValue(false);
+
+            await expect(
+                domain.verifySetupCode(baseUser, 'encrypted-pending', '654321')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+            });
+            expect(
+                userTwoFactorRepository.resetTwoFactorAttempt
             ).not.toHaveBeenCalled();
         });
 
@@ -1081,6 +1144,16 @@ describe('UserTwoFactorDomain', () => {
 
             expect(
                 userTwoFactorRepository.resetTwoFactorByAdminInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz');
+        });
+    });
+
+    describe('resetAttemptInTx', () => {
+        it('resets the counter through the repository on the given transaction', async () => {
+            await domain.resetAttemptInTx(tx, 'user-quartz');
+
+            expect(
+                userTwoFactorRepository.resetTwoFactorAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz');
         });
     });

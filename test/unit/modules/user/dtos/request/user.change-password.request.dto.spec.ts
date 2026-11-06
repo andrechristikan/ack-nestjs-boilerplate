@@ -27,6 +27,23 @@ describe('UserChangePasswordRequestSchema', () => {
         expect(result).toEqual(minimal);
     });
 
+    it('accepts a payload without oldPassword', () => {
+        const result = UserChangePasswordRequestSchema.parse({
+            newPassword: payload.newPassword,
+        });
+
+        expect(result).toEqual({ newPassword: payload.newPassword });
+    });
+
+    it('rejects an empty oldPassword', () => {
+        expect(() =>
+            UserChangePasswordRequestSchema.parse({
+                ...payload,
+                oldPassword: '',
+            })
+        ).toThrow();
+    });
+
     it('rejects a newPassword failing the strength regex', () => {
         expect(() =>
             UserChangePasswordRequestSchema.parse({

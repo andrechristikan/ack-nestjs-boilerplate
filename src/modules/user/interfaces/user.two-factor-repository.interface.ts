@@ -56,4 +56,8 @@ export interface IUserTwoFactorRepository {
         maxAttempt: number
     ): Promise<number | null>;
     resetTwoFactorAttempt(userId: string): Promise<TwoFactor>;
+    resetTwoFactorAttemptInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void>;
 }

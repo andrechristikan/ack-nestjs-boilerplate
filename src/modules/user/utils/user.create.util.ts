@@ -1,4 +1,5 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
@@ -39,6 +40,7 @@ export class UserCreateUtil {
     constructor(
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService,
+        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
         this.personalWorkspaceNamePattern = this.configService.get<string>(
@@ -195,6 +197,7 @@ export class UserCreateUtil {
         { roleId, workspaceContext }: IUserSignUpResolved
     ): IUserCreateWithWorkspaceInput {
         const userId = this.databaseUtil.createId();
+        const verifiedAt = this.helperDateService.create();
         const acceptedTermPolicyTypes = this.buildAcceptedTermPolicyTypes(
             cookies,
             marketing
@@ -213,6 +216,7 @@ export class UserCreateUtil {
                     ? EnumUserSignUpWith.socialApple
                     : EnumUserSignUpWith.socialGoogle,
             isVerified: true,
+            verifiedAt,
             acceptedTermPolicyTypes,
             password: null,
             passwordHistoryType: UserCreateContract.social.passwordHistoryType,

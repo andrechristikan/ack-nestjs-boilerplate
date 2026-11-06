@@ -17,10 +17,12 @@ describe('UserTwoFactorSetupRequestSchema', () => {
         expect(result).toEqual({ password: 'Current-pass1' });
     });
 
-    it('rejects a payload without the current password', () => {
-        expect(() =>
-            UserTwoFactorSetupRequestSchema.parse({ backupCode: 'ABCD1234EF' })
-        ).toThrow();
+    it('accepts a payload without password', () => {
+        const result = UserTwoFactorSetupRequestSchema.parse({
+            backupCode: 'ABCD1234EF',
+        });
+
+        expect(result).toEqual({ backupCode: 'ABCD1234EF' });
     });
 
     it('rejects an empty current password', () => {

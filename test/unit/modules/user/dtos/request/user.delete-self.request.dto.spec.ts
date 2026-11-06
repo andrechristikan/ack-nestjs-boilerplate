@@ -15,8 +15,10 @@ describe('UserDeleteSelfRequestSchema', () => {
         ).toThrow();
     });
 
-    it('rejects a missing password', () => {
-        expect(() => UserDeleteSelfRequestSchema.parse({})).toThrow();
+    it('accepts a payload without password', () => {
+        const result = UserDeleteSelfRequestSchema.parse({});
+
+        expect(result).toEqual({});
     });
 
     it('rejects an undeclared key', () => {

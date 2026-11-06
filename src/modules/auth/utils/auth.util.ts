@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -28,12 +29,17 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class AuthUtil {
+    private readonly jtiLength: number;
+
     constructor(
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.jtiLength = this.configService.get<number>('auth.jwt.jtiLength')!;
+    }
 
     createPayloadAccessToken(
         data: User,
@@ -90,7 +96,7 @@ export class AuthUtil {
     }
 
     generateJti(): string {
-        return this.helperStringService.random(32);
+        return this.helperStringService.random(this.jtiLength);
     }
 
     createLoginIdentifiers(): IAuthLoginIdentifiers {
@@ -120,7 +126,7 @@ export class AuthUtil {
         return this.helperHashService.sha256Compare(sessionJtiDigest, jtiHash);
     }
 
-    /** Whole seconds left until `exp` (epoch seconds), negative once passed; a null `exp` counts as the epoch. */
+    /** Whole seconds left until `exp` (epoch seconds), negative once passed; a null `exp` leaves no remaining seconds. */
     remainingSeconds(exp: number | null): number {
         const today = this.helperDateService.create();
         const expiredAt = this.helperDateService.createFromTimestamp(

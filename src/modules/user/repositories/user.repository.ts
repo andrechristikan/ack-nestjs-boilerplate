@@ -22,6 +22,7 @@ import {
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserDeletedIdentity,
     IUserList,
     IUserProfile,
     IUserRecipient,
@@ -64,6 +65,7 @@ export class UserRepository implements IUserRepository {
             signUpWith: input.signUpWith,
             username: input.username,
             isVerified: input.isVerified,
+            verifiedAt: input.verifiedAt,
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
             lastWorkspaceChangedAt,
@@ -372,11 +374,14 @@ export class UserRepository implements IUserRepository {
     async deleteSelfInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        { email, username }: IUserDeletedIdentity,
         deletedAt: Date
     ): Promise<User> {
         return tx.user.softDelete({
             where: { id: userId, deletedAt: null },
             data: {
+                email,
+                username,
                 deletedAt,
                 status: EnumUserStatus.inactive,
             },
@@ -509,12 +514,19 @@ export class UserRepository implements IUserRepository {
         return count > 0;
     }
 
-    async markVerified(userId: string, verifiedAt: Date): Promise<User> {
+    async markVerifiedBySocial(
+        userId: string,
+        verifiedAt: Date
+    ): Promise<User> {
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 isVerified: true,
                 verifiedAt,
+                password: null,
+                passwordCreated: null,
+                passwordExpired: null,
+                passwordAttempt: 0,
                 updatedBy: userId,
             },
         });

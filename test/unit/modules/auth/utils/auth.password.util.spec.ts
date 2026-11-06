@@ -34,6 +34,7 @@ describe('AuthPasswordUtil', () => {
                 'auth.password.expiredTemporaryInMs': 3600000,
                 'auth.password.saltLength': 12,
                 'auth.password.periodInDays': 90,
+                'auth.password.temporaryLength': 14,
             };
             return values[key];
         });
@@ -126,13 +127,13 @@ describe('AuthPasswordUtil', () => {
     });
 
     describe('createPasswordRandom', () => {
-        it('generates a random 10-character password', () => {
+        it('generates a random password of the configured temporary length', () => {
             helperStringService.random.mockReturnValue('random-pass');
 
             const result = util.createPasswordRandom();
 
             expect(result).toBe('random-pass');
-            expect(helperStringService.random).toHaveBeenCalledWith(10);
+            expect(helperStringService.random).toHaveBeenCalledWith(14);
         });
     });
 

@@ -87,7 +87,6 @@ import { SessionRevokedException } from '@modules/session/exceptions/session.rev
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
@@ -163,7 +162,6 @@ describe('UserAuthHttpService', () => {
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const authJwtDomain: MockProxy<AuthJwtDomain> = mock<AuthJwtDomain>();
     const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
     const authTwoFactorDomain: MockProxy<AuthTwoFactorDomain> =
@@ -378,6 +376,7 @@ describe('UserAuthHttpService', () => {
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
         isVerified: false,
+        verifiedAt: null,
         acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
         password,
         passwordHistoryType: EnumPasswordHistoryType.signUp,
@@ -551,7 +550,6 @@ describe('UserAuthHttpService', () => {
                 { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: SessionDomain, useValue: sessionDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: UserQueue, useValue: userQueue },
                 { provide: AuthJwtDomain, useValue: authJwtDomain },
                 { provide: AuthUtil, useValue: authUtil },
                 {
@@ -998,9 +996,7 @@ describe('UserAuthHttpService', () => {
         };
 
         beforeEach(() => {
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue(
-                counted
-            );
+            userAuthDomain.countCredentialAttempt.mockResolvedValue(counted);
             userAuthDomain.verifyCredential.mockResolvedValue(true);
         });
 
@@ -1030,9 +1026,9 @@ describe('UserAuthHttpService', () => {
                 data: tokenOutcome,
             });
 
-            expect(
-                userAuthDomain.incrementCredentialAttempt
-            ).toHaveBeenCalledWith(dto.email);
+            expect(userAuthDomain.countCredentialAttempt).toHaveBeenCalledWith(
+                dto.email
+            );
             expect(
                 userPasswordDomain.assertAttemptCounted
             ).toHaveBeenCalledWith(counted.isAttemptCounted);
@@ -1154,18 +1150,33 @@ describe('UserAuthHttpService', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout and stages both rows before the attempt limit is answered', async () => {
+        it('stages both lockout rows after the spent count before the attempt limit is answered', async () => {
             const spent = { ...counted, isAttemptCounted: false };
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue(spent);
-            const failure = new Error('attempt max');
             const callOrder: string[] = [];
+            userAuthDomain.countCredentialAttempt.mockImplementation(
+                async () => {
+                    callOrder.push('countCredentialAttempt');
+
+                    return spent;
+                }
+            );
+            userUtil.buildPasswordLockoutStages.mockReturnValue([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-bramble',
+                    createdBy: 'user-bramble',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: 'user-bramble',
+                    createdBy: 'user-bramble',
+                },
+            ]);
+            const failure = new Error('attempt max');
             userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
                 callOrder.push('assert');
 
                 throw failure;
-            });
-            userQueue.lockout.mockImplementation(async () => {
-                callOrder.push('lockout');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1173,7 +1184,9 @@ describe('UserAuthHttpService', () => {
 
             await expect(service.loginCredential(dto)).rejects.toBe(failure);
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-bramble');
+            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
+                'user-bramble'
+            );
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-bramble',
@@ -1188,7 +1201,11 @@ describe('UserAuthHttpService', () => {
                 activityLog,
                 activityLog,
             ]);
-            expect(callOrder).toEqual(['lockout', 'stagePrepared', 'assert']);
+            expect(callOrder).toEqual([
+                'countCredentialAttempt',
+                'stagePrepared',
+                'assert',
+            ]);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userAuthDomain.verifyCredential).not.toHaveBeenCalled();
@@ -1196,7 +1213,7 @@ describe('UserAuthHttpService', () => {
 
         it('answers the unverified gate without sending a verification email or issuing a session', async () => {
             const unverified = { ...baseUser, isVerified: false };
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+            userAuthDomain.countCredentialAttempt.mockResolvedValue({
                 ...counted,
                 user: unverified,
             });
@@ -1222,7 +1239,7 @@ describe('UserAuthHttpService', () => {
 
         it('creates a challenge and issues nothing for an already set-up two-factor user', async () => {
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+            userAuthDomain.countCredentialAttempt.mockResolvedValue({
                 ...counted,
                 user: twoFactorUser,
             });
@@ -1262,7 +1279,7 @@ describe('UserAuthHttpService', () => {
                 ...twoFactorUser,
                 twoFactor: { ...twoFactor, enabled: true, requiredSetup: true },
             };
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+            userAuthDomain.countCredentialAttempt.mockResolvedValue({
                 ...counted,
                 user: requiresSetup,
             });
@@ -1314,7 +1331,7 @@ describe('UserAuthHttpService', () => {
                 ...twoFactorUser,
                 twoFactor: { ...twoFactor, enabled: true, requiredSetup: true },
             };
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+            userAuthDomain.countCredentialAttempt.mockResolvedValue({
                 ...counted,
                 user: requiresSetup,
             });
@@ -1333,7 +1350,7 @@ describe('UserAuthHttpService', () => {
         });
 
         it('returns the resolved lastWorkspaceId on the token outcome', async () => {
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+            userAuthDomain.countCredentialAttempt.mockResolvedValue({
                 ...counted,
                 user: { ...baseUser, ...lastWorkspace },
             });
@@ -1360,7 +1377,7 @@ describe('UserAuthHttpService', () => {
 
         it('returns the resolved lastWorkspaceId on the two-factor outcome', async () => {
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+            userAuthDomain.countCredentialAttempt.mockResolvedValue({
                 ...counted,
                 user: { ...twoFactorUser, ...lastWorkspace },
             });
@@ -1392,7 +1409,7 @@ describe('UserAuthHttpService', () => {
         it('returns the resolved lastWorkspaceId on the two-factor setup outcome', async () => {
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
             userUtil.requiresTwoFactorSetup.mockReturnValue(true);
-            userAuthDomain.incrementCredentialAttempt.mockResolvedValue({
+            userAuthDomain.countCredentialAttempt.mockResolvedValue({
                 ...counted,
                 user: {
                     ...twoFactorUser,
@@ -1615,16 +1632,29 @@ describe('UserAuthHttpService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout and stages both rows before the two-factor attempt limit is answered', async () => {
-            userTwoFactorDomain.countAttempt.mockResolvedValue(false);
+        it('stages both lockout rows after the spent count before the two-factor attempt limit is answered', async () => {
             const callOrder: string[] = [];
+            userTwoFactorDomain.countAttempt.mockImplementation(async () => {
+                callOrder.push('countAttempt');
+
+                return false;
+            });
+            userUtil.buildTwoFactorLockoutStages.mockReturnValue([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-bramble',
+                    createdBy: 'user-bramble',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: 'user-bramble',
+                    createdBy: 'user-bramble',
+                },
+            ]);
             userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
                 callOrder.push('assert');
 
                 throw new AuthTwoFactorAttemptMaxException();
-            });
-            userQueue.lockout.mockImplementation(async () => {
-                callOrder.push('lockout');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1642,7 +1672,9 @@ describe('UserAuthHttpService', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-bramble');
+            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
+                'user-bramble'
+            );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-bramble',
@@ -1657,7 +1689,11 @@ describe('UserAuthHttpService', () => {
                 activityLog,
                 activityLog,
             ]);
-            expect(callOrder).toEqual(['lockout', 'stagePrepared', 'assert']);
+            expect(callOrder).toEqual([
+                'countAttempt',
+                'stagePrepared',
+                'assert',
+            ]);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
@@ -1755,6 +1791,8 @@ describe('UserAuthHttpService', () => {
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userEnableTwoFactor,
+                userId: 'user-bramble',
+                createdBy: 'user-bramble',
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
@@ -1786,16 +1824,29 @@ describe('UserAuthHttpService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout and stages both rows before the two-factor attempt limit is answered', async () => {
-            userTwoFactorDomain.countAttempt.mockResolvedValue(false);
+        it('stages both lockout rows after the spent count before the two-factor attempt limit is answered', async () => {
             const callOrder: string[] = [];
+            userTwoFactorDomain.countAttempt.mockImplementation(async () => {
+                callOrder.push('countAttempt');
+
+                return false;
+            });
+            userUtil.buildTwoFactorLockoutStages.mockReturnValue([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-bramble',
+                    createdBy: 'user-bramble',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: 'user-bramble',
+                    createdBy: 'user-bramble',
+                },
+            ]);
             userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
                 callOrder.push('assert');
 
                 throw new AuthTwoFactorAttemptMaxException();
-            });
-            userQueue.lockout.mockImplementation(async () => {
-                callOrder.push('lockout');
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
@@ -1813,7 +1864,9 @@ describe('UserAuthHttpService', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-bramble');
+            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
+                'user-bramble'
+            );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-bramble',
@@ -1828,7 +1881,11 @@ describe('UserAuthHttpService', () => {
                 activityLog,
                 activityLog,
             ]);
-            expect(callOrder).toEqual(['lockout', 'stagePrepared', 'assert']);
+            expect(callOrder).toEqual([
+                'countAttempt',
+                'stagePrepared',
+                'assert',
+            ]);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verifySetupCode).not.toHaveBeenCalled();

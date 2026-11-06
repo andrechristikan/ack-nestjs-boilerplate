@@ -30,9 +30,9 @@ describe('UserPasswordUtil', () => {
         'home.url': 'https://example.com',
         'forgotPassword.reference.prefix': 'FGT',
         'forgotPassword.reference.length': 8,
-        'forgotPassword.expiredInMs': 15 * 60 * 1000,
+        'forgotPassword.expiredInMinutes': 15,
         'forgotPassword.tokenLength': 32,
-        'forgotPassword.resendInMs': 5 * 60 * 1000,
+        'forgotPassword.resendInMinutes': 5,
         'forgotPassword.linkPattern': '{homeUrl}/reset?token={token}',
     };
 

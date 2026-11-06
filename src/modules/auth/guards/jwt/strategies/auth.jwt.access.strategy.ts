@@ -28,10 +28,10 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
                 ExtractJwt.fromAuthHeaderWithScheme(AuthBearerScheme),
             ignoreExpiration: false,
             passReqToCallback: false,
+            audience: configService.get<string>('auth.jwt.audience')!,
+            issuer: configService.get<string>('auth.jwt.issuer')!,
             jsonWebTokenOptions: {
                 ignoreNotBefore: false,
-                audience: configService.get<string>('auth.jwt.audience')!,
-                issuer: configService.get<string>('auth.jwt.issuer')!,
             },
             secretOrKeyProvider: passportJwtSecret({
                 cache: true,

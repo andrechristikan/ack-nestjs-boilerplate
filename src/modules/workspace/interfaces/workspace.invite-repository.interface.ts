@@ -22,6 +22,10 @@ export interface IWorkspaceInviteRepository {
         workspaceId: string,
         email: string
     ): Promise<void>;
+    revokeAllPendingByEmailInTx(
+        tx: IDatabaseTransactionClient,
+        email: string
+    ): Promise<void>;
     clearProjectInTx(
         tx: IDatabaseTransactionClient,
         projectId: string

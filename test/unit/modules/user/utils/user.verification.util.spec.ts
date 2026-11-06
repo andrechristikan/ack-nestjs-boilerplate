@@ -35,9 +35,9 @@ describe('UserVerificationUtil', () => {
         'verification.reference.prefix': 'VRF',
         'verification.reference.length': 8,
         'verification.otpLength': 6,
-        'verification.expiredInMs': 15 * 60 * 1000,
+        'verification.expiredInMinutes': 15,
         'verification.tokenLength': 32,
-        'verification.resendInMs': 5 * 60 * 1000,
+        'verification.resendInMinutes': 5,
         'verification.linkPattern': '{homeUrl}/verify?token={token}',
     };
 

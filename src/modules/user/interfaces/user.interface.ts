@@ -39,6 +39,11 @@ import type {
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
+export interface IUserDeletedIdentity {
+    email: string;
+    username: string;
+}
+
 export interface IUser extends User {
     role: IRoleWithPolicies;
     twoFactor: TwoFactor | null;
@@ -141,7 +146,7 @@ export interface IUserSignUpWorkspaceInvite {
 export type IUserSignUpWorkspaceContext =
     IUserSignUpWorkspacePersonal | IUserSignUpWorkspaceInvite;
 
-export type IUserCreateRole = Pick<IRole, 'id' | 'type'>;
+export type IUserCreateRole = Pick<IRole, 'id'>;
 
 export interface IUserSignUpResolved {
     roleId: string;
@@ -170,6 +175,7 @@ export interface IUserCreateWithWorkspaceInput {
     signUpFrom: EnumUserSignUpFrom;
     signUpWith: EnumUserSignUpWith;
     isVerified: boolean;
+    verifiedAt: Date | null;
     acceptedTermPolicyTypes: EnumTermPolicyType[];
     password: IAuthPassword | null;
     passwordHistoryType: EnumPasswordHistoryType | null;

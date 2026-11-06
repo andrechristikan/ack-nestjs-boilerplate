@@ -205,7 +205,7 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         metadata: ActivityLogEmptyMetadataSchema,
     },
     [EnumActivityLogAction.userEnableTwoFactor]: {
-        user: EnumActivityLogUser.payload,
+        user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },

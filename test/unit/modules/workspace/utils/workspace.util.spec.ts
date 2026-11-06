@@ -114,6 +114,7 @@ describe('WorkspaceUtil', () => {
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
         isVerified: false,
+        verifiedAt: null,
         acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
         password: null,
         passwordHistoryType: null,

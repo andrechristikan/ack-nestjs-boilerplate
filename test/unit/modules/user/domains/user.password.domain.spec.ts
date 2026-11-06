@@ -19,7 +19,6 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IUser,
-    IUserPasswordSet,
     IUserForgotPassword,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
@@ -27,6 +26,7 @@ import { UserPasswordRepository } from '@modules/user/repositories/user.password
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 
@@ -40,6 +40,7 @@ describe('UserPasswordDomain', () => {
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const configGet = vi.fn<(key: string) => boolean | number | undefined>();
@@ -156,6 +157,7 @@ describe('UserPasswordDomain', () => {
                 { provide: UserPasswordUtil, useValue: userPasswordUtil },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: UserDomain, useValue: userDomain },
+                { provide: UserQueue, useValue: userQueue },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: ConfigService, useValue: configService },
             ],
@@ -232,6 +234,7 @@ describe('UserPasswordDomain', () => {
                     { provide: UserPasswordUtil, useValue: userPasswordUtil },
                     { provide: HelperHashService, useValue: helperHashService },
                     { provide: UserDomain, useValue: userDomain },
+                    { provide: UserQueue, useValue: userQueue },
                     { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                     { provide: ConfigService, useValue: configService },
                 ],
@@ -244,6 +247,54 @@ describe('UserPasswordDomain', () => {
             expect(
                 userRepository.incrementPasswordAttempt
             ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('countPasswordAttempt', () => {
+        it('returns null without counting when the user has no password', async () => {
+            userUtil.hasPassword.mockReturnValue(false);
+            const passwordless: IUser = { ...baseUser, password: null };
+
+            await expect(
+                domain.countPasswordAttempt(passwordless)
+            ).resolves.toBeNull();
+            expect(
+                userRepository.incrementPasswordAttempt
+            ).not.toHaveBeenCalled();
+            expect(userQueue.lockout).not.toHaveBeenCalled();
+        });
+
+        it('returns the counted attempt without enqueueing a lockout within the budget', async () => {
+            userUtil.hasPassword.mockReturnValue(true);
+            userRepository.incrementPasswordAttempt.mockResolvedValue(1);
+
+            await expect(
+                domain.countPasswordAttempt(baseUser)
+            ).resolves.toEqual({
+                user: baseUser,
+                hashedPassword: 'hashed-password',
+                isAttemptCounted: true,
+            });
+            expect(userUtil.hasPassword).toHaveBeenCalledWith(baseUser);
+            expect(
+                userRepository.incrementPasswordAttempt
+            ).toHaveBeenCalledWith('user-hollow', 5);
+            expect(userQueue.lockout).not.toHaveBeenCalled();
+        });
+
+        it('returns an uncounted attempt and enqueues one lockout when the budget is spent', async () => {
+            userUtil.hasPassword.mockReturnValue(true);
+            userRepository.incrementPasswordAttempt.mockResolvedValue(null);
+
+            await expect(
+                domain.countPasswordAttempt(baseUser)
+            ).resolves.toEqual({
+                user: baseUser,
+                hashedPassword: 'hashed-password',
+                isAttemptCounted: false,
+            });
+            expect(userQueue.lockout).toHaveBeenCalledTimes(1);
+            expect(userQueue.lockout).toHaveBeenCalledWith('user-hollow');
         });
     });
 
@@ -260,47 +311,6 @@ describe('UserPasswordDomain', () => {
                     messagePath: 'user.error.passwordAttemptMax',
                 })
             );
-        });
-    });
-
-    describe('assertOldPasswordMatch', () => {
-        const userWithPassword: IUserPasswordSet = {
-            ...baseUser,
-            password: 'hashed-password',
-        };
-
-        it('compares the old password against the stored hash and leaves the counter to the caller', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-
-            await domain.assertOldPasswordMatch(
-                userWithPassword,
-                'old-password'
-            );
-
-            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
-                'old-password',
-                'hashed-password'
-            );
-            expect(
-                userRepository.incrementPasswordAttempt
-            ).not.toHaveBeenCalled();
-            expect(userDomain.resetPasswordAttempt).not.toHaveBeenCalled();
-        });
-
-        it('throws UserPasswordNotMatchException on a wrong old password', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(false);
-
-            await expect(
-                domain.assertOldPasswordMatch(
-                    userWithPassword,
-                    'wrong-password'
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                messagePath: 'user.error.passwordNotMatch',
-            });
-            expect(userDomain.resetPasswordAttempt).not.toHaveBeenCalled();
         });
     });
 
@@ -322,7 +332,7 @@ describe('UserPasswordDomain', () => {
                 domain.prepareForgotPassword('hollow@example.com')
             ).resolves.toEqual({ user: baseUser, forgot });
 
-            expect(userUtil.getResendWaitInMinutes).not.toHaveBeenCalled();
+            expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
         });
 
         it('returns the payload when the previous request is past its resend window', async () => {
@@ -330,14 +340,14 @@ describe('UserPasswordDomain', () => {
             userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 lastForgot
             );
-            userUtil.getResendWaitInMinutes.mockReturnValue(null);
+            userUtil.isInsideResendWindow.mockReturnValue(false);
             userPasswordUtil.createForgot.mockReturnValue(forgot);
 
             await expect(
                 domain.prepareForgotPassword('hollow@example.com')
             ).resolves.toEqual({ user: baseUser, forgot });
 
-            expect(userUtil.getResendWaitInMinutes).toHaveBeenCalledWith(
+            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
                 lastForgot!.createdAt,
                 7
             );
@@ -356,22 +366,21 @@ describe('UserPasswordDomain', () => {
             expect(userPasswordUtil.createForgot).not.toHaveBeenCalled();
         });
 
-        it('throws UserForgotPasswordRequestLimitExceededException with the minutes left when resent too soon', async () => {
+        it('returns null inside the resend window', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 lastForgot
             );
-            userUtil.getResendWaitInMinutes.mockReturnValue(4);
+            userUtil.isInsideResendWindow.mockReturnValue(true);
 
             await expect(
                 domain.prepareForgotPassword('hollow@example.com')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode:
-                    EnumUserStatusCodeError.forgotPasswordRequestLimitExceeded,
-                messagePath: 'user.error.forgotPasswordRequestLimitExceeded',
-                messageProperties: { minutes: 4 },
-            });
+            ).resolves.toBeNull();
+
+            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
+                lastForgot!.createdAt,
+                7
+            );
             expect(userPasswordUtil.createForgot).not.toHaveBeenCalled();
         });
     });
@@ -455,6 +464,18 @@ describe('UserPasswordDomain', () => {
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
                 messagePath: 'user.error.verificationTokenInvalid',
             });
+        });
+    });
+
+    describe('markUnusedResetsUsedInTx', () => {
+        it("marks the user's unused resets used on the given transaction", async () => {
+            await expect(
+                domain.markUnusedResetsUsedInTx(tx, 'user-hollow')
+            ).resolves.toBeUndefined();
+
+            expect(
+                userPasswordRepository.markUnusedUsedByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-hollow');
         });
     });
 });

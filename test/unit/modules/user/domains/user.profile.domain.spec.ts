@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -44,6 +45,13 @@ describe('UserProfileDomain', () => {
     const fileService: MockProxy<FileService> = mock<FileService>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const configGet = vi.fn<(key: string) => number | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const configValues: Record<string, number> = {
+        'user.photo.filenameRandomLength': 24,
+    };
     const photoMaxSizeInBytes = 2048;
 
     let domain: UserProfileDomain;
@@ -140,6 +148,7 @@ describe('UserProfileDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
+        configGet.mockImplementation(key => configValues[key]);
         userUtil.buildPhotoProfilePath.mockImplementation(
             userId => `photo-profile/${userId}`
         );
@@ -161,6 +170,7 @@ describe('UserProfileDomain', () => {
                 { provide: FileService, useValue: fileService },
                 { provide: UserQueue, useValue: userQueue },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         domain = module.get(UserProfileDomain);
@@ -985,7 +995,7 @@ describe('UserProfileDomain', () => {
     });
 
     describe('createRandomFilenamePhotoProfileWithPath', () => {
-        it('substitutes the userId in the configured path and delegates to the file service', () => {
+        it('substitutes the userId in the configured path and delegates to the file service with the configured random length', () => {
             fileService.createRandomFilename.mockReturnValue(
                 'photo-profile/user-persimmon/random.png'
             );
@@ -999,7 +1009,7 @@ describe('UserProfileDomain', () => {
             expect(fileService.createRandomFilename).toHaveBeenCalledWith({
                 path: `photo-profile/${profile.id}`,
                 extension: EnumFileExtensionImage.png,
-                randomLength: 20,
+                randomLength: 24,
             });
         });
     });

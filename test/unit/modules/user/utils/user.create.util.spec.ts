@@ -21,6 +21,7 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
@@ -43,6 +44,8 @@ describe('UserCreateUtil', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
 
     let util: UserCreateUtil;
 
@@ -134,6 +137,7 @@ describe('UserCreateUtil', () => {
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
         isVerified: true,
+        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
         acceptedTermPolicyTypes: [
             EnumTermPolicyType.termsOfService,
             EnumTermPolicyType.privacy,
@@ -156,6 +160,7 @@ describe('UserCreateUtil', () => {
                     provide: HelperStringService,
                     useValue: helperStringService,
                 },
+                { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(configValues),
@@ -314,8 +319,11 @@ describe('UserCreateUtil', () => {
             workspaceContext: personalContext,
         };
 
+        const now = new Date('2026-03-01T00:00:00.000Z');
+
         beforeEach(() => {
             databaseUtil.createId.mockReturnValue('user-id-harbor');
+            helperDateService.create.mockReturnValue(now);
         });
 
         it('stores the email trimmed and lowercased', () => {
@@ -329,7 +337,7 @@ describe('UserCreateUtil', () => {
             expect(result.email).toBe('harbor@example.com');
         });
 
-        it('builds a Google social create input from the resolved ids', () => {
+        it('builds a Google social create input from the resolved ids, verified at creation time', () => {
             const result = util.buildSocialCreate(
                 'harbor@example.com',
                 EnumUserLoginWith.socialGoogle,
@@ -346,6 +354,7 @@ describe('UserCreateUtil', () => {
                 signUpFrom: EnumUserSignUpFrom.mobile,
                 signUpWith: EnumUserSignUpWith.socialGoogle,
                 isVerified: true,
+                verifiedAt: now,
                 password: null,
                 passwordHistoryType:
                     UserCreateContract.social.passwordHistoryType,

@@ -36,10 +36,10 @@ export class ApiKeyDomain {
         private readonly apiKeyRepository: ApiKeyRepository
     ) {}
 
-    private validateApiKey(
+    private getValidApiKey(
         apiKey: IApiKey | null,
         includeActive: boolean = false
-    ): asserts apiKey is IApiKey {
+    ): IApiKey {
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
@@ -51,7 +51,7 @@ export class ApiKeyDomain {
             }
         }
 
-        return;
+        return apiKey;
     }
 
     private validateStartAtIsFuture(startAt: Date): void {
@@ -140,8 +140,8 @@ export class ApiKeyDomain {
 
     async updateByAdmin(id: string, name: string): Promise<IApiKey> {
         // Sequential by design: gate before the work it guards
-        const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        const found = await this.apiKeyRepository.findOneById(id);
+        const apiKey = this.getValidApiKey(found, true);
 
         const updated = await this.apiKeyRepository.updateName(id, name);
         await this.apiKeyCache.deleteApiKey(apiKey.key);
@@ -157,8 +157,8 @@ export class ApiKeyDomain {
         this.validateStartAtIsFuture(startAt);
 
         // Sequential by design: gate before the work it guards
-        const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        const found = await this.apiKeyRepository.findOneById(id);
+        const apiKey = this.getValidApiKey(found, true);
 
         const newStartAt = this.helperDateService.create(startAt, {
             dayOf: EnumHelperDateDayOf.start,
@@ -183,8 +183,8 @@ export class ApiKeyDomain {
 
     async resetByAdmin(id: string): Promise<IApiKeyWithSecret> {
         // Sequential by design: gate before the work it guards
-        const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        const found = await this.apiKeyRepository.findOneById(id);
+        const apiKey = this.getValidApiKey(found, true);
 
         const secret: string = this.apiKeyCredentialUtil.createSecret();
         const hash: string = this.apiKeyCredentialUtil.createHash(

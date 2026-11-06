@@ -241,7 +241,6 @@ export class SessionRepository implements ISessionRepository {
             where: {
                 userId,
                 isRevoked: false,
-                expiredAt: { gte: revokedAt },
             },
             select: { id: true },
         });
@@ -274,7 +273,6 @@ export class SessionRepository implements ISessionRepository {
                 userId,
                 deviceOwnershipId,
                 isRevoked: false,
-                expiredAt: { gte: revokedAt },
             },
             select: { id: true },
         });

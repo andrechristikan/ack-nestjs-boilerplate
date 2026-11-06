@@ -11,7 +11,6 @@ import type { IUserCreateVerification } from '@modules/user/interfaces/user.crea
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
-import ms from 'ms';
 
 @Injectable()
 export class UserVerificationUtil {
@@ -42,17 +41,15 @@ export class UserVerificationUtil {
         this.verificationOtpLength = this.configService.get<number>(
             'verification.otpLength'
         )!;
-        const verificationExpiredInMs = this.configService.get<number>(
-            'verification.expiredInMs'
+        this.verificationExpiredInMinutes = this.configService.get<number>(
+            'verification.expiredInMinutes'
         )!;
-        this.verificationExpiredInMinutes = verificationExpiredInMs / ms('1m');
         this.verificationTokenLength = this.configService.get<number>(
             'verification.tokenLength'
         )!;
-        const verificationResendInMs = this.configService.get<number>(
-            'verification.resendInMs'
+        this.verificationResendInMinutes = this.configService.get<number>(
+            'verification.resendInMinutes'
         )!;
-        this.verificationResendInMinutes = verificationResendInMs / ms('1m');
         this.verificationLinkPattern = this.configService.get<string>(
             'verification.linkPattern'
         )!;

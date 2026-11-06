@@ -19,6 +19,7 @@ import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
+import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
@@ -34,7 +35,6 @@ import type {
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
@@ -44,13 +44,13 @@ export class UserTwoFactorHttpService {
         private readonly userTwoFactorDomain: UserTwoFactorDomain,
         private readonly userDomain: UserDomain,
         private readonly userPasswordDomain: UserPasswordDomain,
+        private readonly userAuthDomain: UserAuthDomain,
         private readonly roleDomain: RoleDomain,
         private readonly sessionDomain: SessionDomain,
         private readonly deviceDomain: DeviceDomain,
         private readonly notificationDomain: NotificationDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
-        private readonly userQueue: UserQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userUtil: UserUtil,
@@ -75,19 +75,12 @@ export class UserTwoFactorHttpService {
         const isAttemptCounted =
             await this.userTwoFactorDomain.countAttempt(user);
         if (!isAttemptCounted) {
-            const lockoutLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            await this.userQueue.lockout(user.id);
+            const lockoutStages = this.userUtil.buildTwoFactorLockoutStages(
+                user.id
+            );
+            const lockoutLogs = lockoutStages.map(stage =>
+                this.activityLogDomain.prepare(stage)
+            );
 
             this.activityLogDomain.stagePrepared(lockoutLogs);
         }
@@ -97,37 +90,26 @@ export class UserTwoFactorHttpService {
 
     private async assertPasswordMatched(
         user: IUser,
-        password: string
+        password: string | null
     ): Promise<void> {
-        const hasPassword = this.userUtil.hasPassword(user);
-        if (!hasPassword) {
+        const attempt =
+            await this.userPasswordDomain.countPasswordAttempt(user);
+        if (attempt === null) {
             return;
         }
 
-        const isAttemptCounted =
-            await this.userPasswordDomain.incrementPasswordAttempt(user.id);
-        if (!isAttemptCounted) {
-            const lockoutLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            await this.userQueue.lockout(user.id);
+        if (!attempt.isAttemptCounted) {
+            const lockoutStages = this.userUtil.buildPasswordLockoutStages(
+                user.id
+            );
+            const lockoutLogs = lockoutStages.map(stage =>
+                this.activityLogDomain.prepare(stage)
+            );
 
             this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
-        this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);
-        // Sequential by design: the attempt resets only after the password matches
-        await this.userPasswordDomain.assertOldPasswordMatch(user, password);
-        await this.userPasswordDomain.resetPasswordAttempt(user.id);
+        await this.userAuthDomain.assertPasswordAttempt(attempt, password);
     }
 
     getTwoFactorStatus(
@@ -150,7 +132,7 @@ export class UserTwoFactorHttpService {
             }),
         ];
         // Sequential by design: gate before the work it guards
-        await this.assertPasswordMatched(user, password);
+        await this.assertPasswordMatched(user, password ?? null);
         const backupCodeForSetup =
             this.userTwoFactorDomain.getBackupCodeForSetup(
                 user,
@@ -190,7 +172,7 @@ export class UserTwoFactorHttpService {
         { code, password }: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         // Sequential by design: gate before the work it guards
-        await this.assertPasswordMatched(user, password);
+        await this.assertPasswordMatched(user, password ?? null);
         const pendingSecret = this.userTwoFactorDomain.getPendingSecret(user);
         // Sequential by design: gate before the work it guards
         await this.assertTwoFactorAttemptCounted(user);
@@ -204,6 +186,8 @@ export class UserTwoFactorHttpService {
         const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userEnableTwoFactor,
+                userId: user.id,
+                createdBy: user.id,
             }),
         ];
         const backupCodes = await this.userTwoFactorDomain.enableTwoFactor(

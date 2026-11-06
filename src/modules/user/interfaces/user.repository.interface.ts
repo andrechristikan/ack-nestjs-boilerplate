@@ -11,6 +11,7 @@ import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/use
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserDeletedIdentity,
     IUserList,
     IUserProfile,
     IUserRecipient,
@@ -91,6 +92,7 @@ export interface IUserRepository {
     deleteSelfInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        { email, username }: IUserDeletedIdentity,
         deletedAt: Date
     ): Promise<User>;
     claimUsername(
@@ -123,7 +125,7 @@ export interface IUserRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<boolean>;
-    markVerified(userId: string, verifiedAt: Date): Promise<User>;
+    markVerifiedBySocial(userId: string, verifiedAt: Date): Promise<User>;
     markVerifiedInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

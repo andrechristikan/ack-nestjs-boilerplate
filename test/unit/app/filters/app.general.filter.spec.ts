@@ -22,7 +22,7 @@ import type { ResponseMetadataDto } from '@common/response/dtos/response.metadat
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
+import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 
 describe('AppGeneralFilter', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -219,16 +219,17 @@ describe('AppGeneralFilter', () => {
         });
 
         it('translates the exception messagePath with its messageProperties and the metadata language', async () => {
-            const exception =
-                new UserForgotPasswordRequestLimitExceededException(30);
+            const exception = new UserImportEmailExistException(
+                'a@example.com'
+            );
 
             await filter.catch(exception, argumentsHost);
 
             expect(messageService.setMessage).toHaveBeenCalledWith(
-                'user.error.forgotPasswordRequestLimitExceeded',
+                'user.error.importEmailExist',
                 {
                     customLanguage: EnumMessageLanguage.en,
-                    properties: { minutes: 30 },
+                    properties: { emails: 'a@example.com' },
                 }
             );
         });

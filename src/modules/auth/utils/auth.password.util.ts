@@ -15,6 +15,7 @@ export class AuthPasswordUtil {
     private readonly passwordExpiredTemporaryInMs: number;
     private readonly passwordSaltLength: number;
     private readonly passwordPeriodInDays: number;
+    private readonly passwordTemporaryLength: number;
 
     constructor(
         private readonly helperHashService: HelperHashService,
@@ -33,6 +34,9 @@ export class AuthPasswordUtil {
         )!;
         this.passwordPeriodInDays = this.configService.get<number>(
             'auth.password.periodInDays'
+        )!;
+        this.passwordTemporaryLength = this.configService.get<number>(
+            'auth.password.temporaryLength'
         )!;
     }
 
@@ -84,7 +88,7 @@ export class AuthPasswordUtil {
     }
 
     createPasswordRandom(): string {
-        return this.helperStringService.random(10);
+        return this.helperStringService.random(this.passwordTemporaryLength);
     }
 
     /** True when the expiry date has passed; false when no expiry is set. */

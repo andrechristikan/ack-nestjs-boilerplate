@@ -1,8 +1,13 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import type {
+    IActivityLogMetadata,
+    IActivityLogStageInput,
+} from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserUsernameRegex } from '@modules/user/constants/user.constant';
 import type {
     IUser,
+    IUserDeletedIdentity,
     IUserPasswordSet,
     IUserTwoFactorEnabled,
     IUserTwoFactorStatus,
@@ -25,10 +30,13 @@ export class UserUtil {
 
     private readonly uploadPhotoProfilePath: string;
     private readonly photoMaxSizeInBytes: number;
+    private readonly deleteSelfEmailPattern: string;
+    private readonly deleteSelfUsernamePattern: string;
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService
     ) {
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguage'
@@ -38,6 +46,12 @@ export class UserUtil {
         )!;
         this.photoMaxSizeInBytes = this.configService.get<number>(
             'user.photo.maxSizeInBytes'
+        )!;
+        this.deleteSelfEmailPattern = this.configService.get<string>(
+            'user.deleteSelf.emailPattern'
+        )!;
+        this.deleteSelfUsernamePattern = this.configService.get<string>(
+            'user.deleteSelf.usernamePattern'
         )!;
         this.profanity = new Profanity({
             languages: availableLanguages,
@@ -99,6 +113,40 @@ export class UserUtil {
         return user.password !== null;
     }
 
+    buildPasswordLockoutStages(
+        userId: string
+    ): IActivityLogStageInput<EnumActivityLogAction>[] {
+        return [
+            {
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId,
+                createdBy: userId,
+            },
+            {
+                action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                userId,
+                createdBy: userId,
+            },
+        ];
+    }
+
+    buildTwoFactorLockoutStages(
+        userId: string
+    ): IActivityLogStageInput<EnumActivityLogAction>[] {
+        return [
+            {
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId,
+                createdBy: userId,
+            },
+            {
+                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                userId,
+                createdBy: userId,
+            },
+        ];
+    }
+
     isTwoFactorEnabled(user: IUser): user is IUserTwoFactorEnabled {
         return !!user.twoFactor?.enabled;
     }
@@ -107,11 +155,39 @@ export class UserUtil {
         return user.twoFactor.requiredSetup;
     }
 
+    requiresTwoFactorVerification(user: IUser): boolean {
+        return (
+            user.twoFactor?.enabled === true &&
+            user.twoFactor.requiredSetup === false
+        );
+    }
+
+    createDeletedIdentity({
+        id,
+        email,
+        username,
+    }: IUser): IUserDeletedIdentity {
+        const deletedEmail = this.helperStringService.fillPattern(
+            this.deleteSelfEmailPattern,
+            { id, email }
+        );
+        const deletedUsername = this.helperStringService.fillPattern(
+            this.deleteSelfUsernamePattern,
+            { id, username }
+        );
+
+        return { email: deletedEmail, username: deletedUsername };
+    }
+
     isDeleteSelfRefused({ role }: IUser): boolean {
         return (
             role.type === EnumRoleType.admin ||
             role.type === EnumRoleType.superAdmin
         );
+    }
+
+    gatesPasswordExpiryOn(loginWith: EnumUserLoginWith): boolean {
+        return loginWith === EnumUserLoginWith.credential;
     }
 
     revokesSessionsOn(status: EnumUserStatus): boolean {
@@ -126,23 +202,17 @@ export class UserUtil {
             : EnumActivityLogAction.userUpdateStatus;
     }
 
-    /** Whole minutes, rounded up, left before a resend is allowed after `lastCreatedAt`; null once the window has passed. */
-    getResendWaitInMinutes(
+    isInsideResendWindow(
         lastCreatedAt: Date,
         resendInMinutes: number
-    ): number | null {
+    ): boolean {
         const now = this.helperDateService.create();
         const canResendAt = this.helperDateService.forward(
             lastCreatedAt,
             Duration.fromObject({ minutes: resendInMinutes })
         );
-        if (now >= canResendAt) {
-            return null;
-        }
 
-        const wait = this.helperDateService.diff(canResendAt, now);
-
-        return Math.ceil(wait.as('minutes'));
+        return now < canResendAt;
     }
 
     checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {

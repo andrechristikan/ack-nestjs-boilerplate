@@ -9,7 +9,6 @@ import type { User, Verification } from '@generated/prisma-client/client';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
-import { UserVerificationEmailResendLimitExceededException } from '@modules/user/exceptions/user.verification-email-resend-limit-exceeded.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IUserVerificationCreate,
@@ -93,7 +92,7 @@ export class UserVerificationDomain {
         }
     }
 
-    /** Resolves the active, unverified user of an email; null when none, and a verification email still inside its resend window throws. */
+    /** Resolves the active, unverified user of an email; null when none, or when the last verification email is inside its resend window. */
     async getOneForResendByEmail(email: string): Promise<User | null> {
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user || user.isVerified) {
@@ -106,24 +105,23 @@ export class UserVerificationDomain {
                 user.id
             );
         if (lastVerification) {
-            const waitInMinutes = this.userUtil.getResendWaitInMinutes(
+            const isInsideResendWindow = this.userUtil.isInsideResendWindow(
                 lastVerification.createdAt,
                 this.userVerificationUtil.verificationResendInMinutes
             );
-            if (waitInMinutes !== null) {
-                throw new UserVerificationEmailResendLimitExceededException(
-                    waitInMinutes
-                );
+            if (isInsideResendWindow) {
+                return null;
             }
         }
 
         return user;
     }
 
-    async markVerified(userId: string): Promise<void> {
+    /** Marks the user verified and clears its password, password dates, and password attempt counter in the same write. */
+    async markVerifiedBySocial(userId: string): Promise<User> {
         const verifiedAt = this.helperDateService.create();
 
-        await this.userRepository.markVerified(userId, verifiedAt);
+        return this.userRepository.markVerifiedBySocial(userId, verifiedAt);
     }
 
     async persistVerificationEmail(

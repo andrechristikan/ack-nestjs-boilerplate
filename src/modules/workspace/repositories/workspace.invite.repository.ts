@@ -154,6 +154,37 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         });
     }
 
+    async revokeAllPendingByEmailInTx(
+        tx: IDatabaseTransactionClient,
+        email: string
+    ): Promise<void> {
+        const now = this.helperDateService.create();
+        const pending = await tx.workspaceInvite.findMany({
+            where: {
+                email,
+                status: EnumWorkspaceInviteStatus.pending,
+            },
+            select: { id: true, expiredAt: true },
+        });
+
+        for (const { id, expiredAt } of pending) {
+            const nonce = this.helperHashService.sha256Hash(id);
+            await tx.workspaceInvite.updateMany({
+                where: {
+                    id,
+                    status: EnumWorkspaceInviteStatus.pending,
+                },
+                data: {
+                    status:
+                        expiredAt <= now
+                            ? EnumWorkspaceInviteStatus.expired
+                            : EnumWorkspaceInviteStatus.revoked,
+                    nonce,
+                },
+            });
+        }
+    }
+
     async clearProjectInTx(
         tx: IDatabaseTransactionClient,
         projectId: string

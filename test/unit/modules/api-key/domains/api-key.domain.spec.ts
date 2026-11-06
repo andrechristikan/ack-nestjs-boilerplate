@@ -897,18 +897,11 @@ describe('ApiKeyDomain', () => {
         });
     });
 
-    describe('validateApiKey', () => {
-        type ValidateApiKey = (
-            apiKey: IApiKey | null,
-            includeActive?: boolean
-        ) => asserts apiKey is IApiKey;
-
+    describe('getValidApiKey', () => {
         it('throws ApiKeyNotFoundException when the api key is null', () => {
-            const validateApiKey: ValidateApiKey = domain['validateApiKey'];
-
             let thrown: unknown;
             try {
-                validateApiKey(null);
+                domain['getValidApiKey'](null);
             } catch (error) {
                 thrown = error;
             }
@@ -926,12 +919,9 @@ describe('ApiKeyDomain', () => {
         });
 
         it('throws ApiKeyInactiveException when includeActive is true and the api key is inactive', () => {
-            const validateApiKey: ValidateApiKey =
-                domain['validateApiKey'].bind(domain);
-
             let thrown: unknown;
             try {
-                validateApiKey({ ...apiKey, isActive: false }, true);
+                domain['getValidApiKey']({ ...apiKey, isActive: false }, true);
             } catch (error) {
                 thrown = error;
             }
@@ -948,17 +938,16 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('returns with no throw when includeActive is false, whatever the active flag', () => {
-            const validateApiKey: ValidateApiKey = domain['validateApiKey'];
+        it('returns the api key when includeActive is false, whatever the active flag', () => {
+            const inactiveApiKey: ApiKey = { ...apiKey, isActive: false };
 
-            expect(() => validateApiKey(apiKey, false)).not.toThrow();
+            expect(domain['getValidApiKey'](inactiveApiKey, false)).toBe(
+                inactiveApiKey
+            );
         });
 
-        it('returns with no throw when includeActive is true and the api key is active', () => {
-            const validateApiKey: ValidateApiKey =
-                domain['validateApiKey'].bind(domain);
-
-            expect(() => validateApiKey(apiKey, true)).not.toThrow();
+        it('returns the api key when includeActive is true and the api key is active', () => {
+            expect(domain['getValidApiKey'](apiKey, true)).toBe(apiKey);
         });
     });
 

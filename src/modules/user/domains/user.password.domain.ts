@@ -2,20 +2,20 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { User } from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
-import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
+    IUser,
+    IUserCredentialAttempt,
     IUserForgotPassword,
     IUserForgotPasswordCreate,
     IUserForgotPasswordPrepared,
-    IUserPasswordSet,
     IUserPasswordTemporary,
 } from '@modules/user/interfaces/user.interface';
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
@@ -33,6 +33,7 @@ export class UserPasswordDomain {
         private readonly userPasswordUtil: UserPasswordUtil,
         private readonly helperHashService: HelperHashService,
         private readonly userDomain: UserDomain,
+        private readonly userQueue: UserQueue,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly configService: ConfigService
     ) {
@@ -72,27 +73,30 @@ export class UserPasswordDomain {
         return attempt !== null;
     }
 
+    /** Counts one password attempt for a user holding a password and enqueues the lockout job when the budget is spent; null for a passwordless user, isAttemptCounted false on a spent budget. */
+    async countPasswordAttempt(
+        user: IUser
+    ): Promise<IUserCredentialAttempt | null> {
+        const hasPassword = this.userUtil.hasPassword(user);
+        if (!hasPassword) {
+            return null;
+        }
+
+        const isAttemptCounted = await this.incrementPasswordAttempt(user.id);
+        if (!isAttemptCounted) {
+            await this.userQueue.lockout(user.id);
+        }
+
+        return { user, hashedPassword: user.password, isAttemptCounted };
+    }
+
     assertAttemptCounted(isAttemptCounted: boolean): void {
         if (!isAttemptCounted) {
             throw new UserPasswordAttemptMaxException();
         }
     }
 
-    /** Checks the old password against the stored hash; the caller counts the attempt and resets the counter. */
-    async assertOldPasswordMatch(
-        user: IUserPasswordSet,
-        password: string
-    ): Promise<void> {
-        const isPasswordValid = await this.authPasswordUtil.validatePassword(
-            password,
-            user.password
-        );
-        if (!isPasswordValid) {
-            throw new UserPasswordNotMatchException();
-        }
-    }
-
-    /** Resolves the active user of an email with a reset payload; null when no active user holds the email, and a request inside the resend window throws. */
+    /** Resolves the active user of an email with a reset payload; null when no active user holds the email or the last request is inside the resend window. */
     async prepareForgotPassword(
         email: string
     ): Promise<IUserForgotPasswordPrepared | null> {
@@ -107,14 +111,12 @@ export class UserPasswordDomain {
                 user.id
             );
         if (lastForgotPassword) {
-            const waitInMinutes = this.userUtil.getResendWaitInMinutes(
+            const isInsideResendWindow = this.userUtil.isInsideResendWindow(
                 lastForgotPassword.createdAt,
                 this.userPasswordUtil.forgotResendInMinutes
             );
-            if (waitInMinutes !== null) {
-                throw new UserForgotPasswordRequestLimitExceededException(
-                    waitInMinutes
-                );
+            if (isInsideResendWindow) {
+                return null;
             }
         }
 
@@ -161,5 +163,12 @@ export class UserPasswordDomain {
         if (!isMarkedUsed) {
             throw new UserTokenInvalidException();
         }
+    }
+
+    async markUnusedResetsUsedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.userPasswordRepository.markUnusedUsedByUserInTx(tx, userId);
     }
 }

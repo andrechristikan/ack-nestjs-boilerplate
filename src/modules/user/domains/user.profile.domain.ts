@@ -32,10 +32,12 @@ import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserProfileDomain {
     private readonly logger = new Logger(UserProfileDomain.name);
+    private readonly photoFilenameRandomLength: number;
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -43,8 +45,13 @@ export class UserProfileDomain {
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
         private readonly userQueue: UserQueue,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.photoFilenameRandomLength = this.configService.get<number>(
+            'user.photo.filenameRandomLength'
+        )!;
+    }
 
     private async deletePreviousPhoto(
         userId: string,
@@ -84,7 +91,7 @@ export class UserProfileDomain {
         return this.fileService.createRandomFilename({
             path,
             extension,
-            randomLength: 20,
+            randomLength: this.photoFilenameRandomLength,
         });
     }
 

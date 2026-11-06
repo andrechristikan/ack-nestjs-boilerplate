@@ -30,7 +30,8 @@ export const UserChangePasswordRequestSchema =
                     example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
                         .alphanumeric(5)
                         .toUpperCase()}@@!123`,
-                }),
+                })
+                .optional(),
         });
 
 /** @public */

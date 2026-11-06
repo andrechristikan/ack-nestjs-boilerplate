@@ -143,10 +143,16 @@ const forEachRestriction = {
     message: 'Use for...of, not .forEach.',
 };
 
+const assertsSignatureRestriction = {
+    selector: 'TSTypePredicate[asserts=true]',
+    message: 'Return the narrowed value instead of an assertion signature',
+};
+
 const codeStyleSyntaxRestrictions = [
     ...baseSyntaxRestrictions,
     ...undefinedSyntaxRestrictions,
     forEachRestriction,
+    assertsSignatureRestriction,
 ];
 
 const newDateRestriction = {
@@ -354,6 +360,7 @@ const testSyntaxRestrictions = [
             'A spec declares no class; apply the decorator to a plain object and read the metadata',
     },
     forEachRestriction,
+    assertsSignatureRestriction,
 ];
 
 export default [

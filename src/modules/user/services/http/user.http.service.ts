@@ -30,7 +30,6 @@ import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
@@ -79,7 +78,6 @@ export class UserHttpService {
         private readonly deviceDomain: DeviceDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
-        private readonly userQueue: UserQueue,
         private readonly sessionUtil: SessionUtil,
         private readonly userProfileDomain: UserProfileDomain,
         private readonly userUtil: UserUtil,
@@ -98,44 +96,26 @@ export class UserHttpService {
 
     private async assertPasswordMatched(
         user: IUser,
-        password: string
+        password: string | null
     ): Promise<void> {
-        const hasPassword = this.userUtil.hasPassword(user);
-        if (!hasPassword) {
+        const attempt =
+            await this.userPasswordDomain.countPasswordAttempt(user);
+        if (attempt === null) {
             return;
         }
 
-        const isAttemptCounted =
-            await this.userPasswordDomain.incrementPasswordAttempt(user.id);
-        if (!isAttemptCounted) {
-            const lockoutLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            await this.userQueue.lockout(user.id);
+        if (!attempt.isAttemptCounted) {
+            const lockoutStages = this.userUtil.buildPasswordLockoutStages(
+                user.id
+            );
+            const lockoutLogs = lockoutStages.map(stage =>
+                this.activityLogDomain.prepare(stage)
+            );
 
             this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
-        this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);
-        // Sequential by design: the attempt resets only after the password matches
-        const isMatch = await this.userAuthDomain.verifyCredential(
-            {
-                user,
-                hashedPassword: user.password,
-                isAttemptCounted,
-            },
-            password
-        );
-        this.userAuthDomain.assertPasswordMatched(isMatch);
+        await this.userAuthDomain.assertPasswordAttempt(attempt, password);
     }
 
     private async cascadeDeletedWorkspacesInTx(
@@ -350,7 +330,7 @@ export class UserHttpService {
         ];
 
         // Sequential by design: gate before the work it guards
-        await this.assertPasswordMatched(user, password);
+        await this.assertPasswordMatched(user, password ?? null);
 
         const now = this.helperDateService.create();
         let deleted: User;
@@ -380,6 +360,10 @@ export class UserHttpService {
                             tx,
                             userId
                         );
+                        await this.workspaceInviteDomain.revokeAllPendingByEmailInTx(
+                            tx,
+                            user.email
+                        );
                         await this.workspaceMemberDomain.removeByUserInTx(
                             tx,
                             userId
@@ -408,7 +392,7 @@ export class UserHttpService {
                         );
                         const row = await this.userDomain.deleteSelfInTx(
                             tx,
-                            userId,
+                            user,
                             now
                         );
 

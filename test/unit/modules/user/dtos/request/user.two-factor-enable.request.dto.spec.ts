@@ -18,10 +18,12 @@ describe('UserTwoFactorEnableRequestSchema', () => {
         ).toThrow();
     });
 
-    it('rejects a payload without the current password', () => {
-        expect(() =>
-            UserTwoFactorEnableRequestSchema.parse({ code: '654321' })
-        ).toThrow();
+    it('accepts a payload without password', () => {
+        const result = UserTwoFactorEnableRequestSchema.parse({
+            code: '654321',
+        });
+
+        expect(result).toEqual({ code: '654321' });
     });
 
     it('rejects an empty current password', () => {

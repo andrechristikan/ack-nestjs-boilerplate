@@ -317,7 +317,7 @@ describe('UserVerificationDomain', () => {
                 domain.getOneForResendByEmail('flint@example.com')
             ).resolves.toBe(user);
 
-            expect(userUtil.getResendWaitInMinutes).not.toHaveBeenCalled();
+            expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
         });
 
         it('returns the user when the previous verification is past its resend window', async () => {
@@ -326,13 +326,13 @@ describe('UserVerificationDomain', () => {
             userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
                 verification
             );
-            userUtil.getResendWaitInMinutes.mockReturnValue(null);
+            userUtil.isInsideResendWindow.mockReturnValue(false);
 
             await expect(
                 domain.getOneForResendByEmail('flint@example.com')
             ).resolves.toBe(user);
 
-            expect(userUtil.getResendWaitInMinutes).toHaveBeenCalledWith(
+            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
                 verification.createdAt,
                 7
             );
@@ -365,7 +365,7 @@ describe('UserVerificationDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws UserVerificationEmailResendLimitExceededException when resent too soon', async () => {
+        it('returns null inside the resend window', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue({
                 ...baseUser,
                 isVerified: false,
@@ -373,25 +373,36 @@ describe('UserVerificationDomain', () => {
             userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
                 verification
             );
-            userUtil.getResendWaitInMinutes.mockReturnValue(5);
+            userUtil.isInsideResendWindow.mockReturnValue(true);
 
             await expect(
                 domain.getOneForResendByEmail('flint@example.com')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode:
-                    EnumUserStatusCodeError.verificationEmailResendLimitExceeded,
-                messagePath: 'user.error.verificationEmailResendLimitExceeded',
-                messageProperties: { minutes: 5 },
-            });
+            ).resolves.toBeNull();
+
+            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
+                verification.createdAt,
+                7
+            );
         });
     });
 
-    describe('markVerified', () => {
-        it('marks the user verified', async () => {
-            await domain.markVerified('user-flint');
+    describe('markVerifiedBySocial', () => {
+        it('marks the user verified and returns the written row', async () => {
+            const writtenRow = {
+                ...baseUser,
+                isVerified: true,
+                verifiedAt: now,
+                password: null,
+                passwordCreated: null,
+                passwordExpired: null,
+                passwordAttempt: 0,
+            };
+            userRepository.markVerifiedBySocial.mockResolvedValue(writtenRow);
 
-            expect(userRepository.markVerified).toHaveBeenCalledWith(
+            await expect(
+                domain.markVerifiedBySocial('user-flint')
+            ).resolves.toBe(writtenRow);
+            expect(userRepository.markVerifiedBySocial).toHaveBeenCalledWith(
                 'user-flint',
                 now
             );

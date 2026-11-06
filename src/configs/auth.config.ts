@@ -23,6 +23,7 @@ export interface IConfigAuth {
         };
         audience: string;
         issuer: string;
+        jtiLength: number;
     };
     password: {
         attempt: boolean;
@@ -31,6 +32,7 @@ export interface IConfigAuth {
         expiredInMs: number;
         expiredTemporaryInMs: number;
         periodInDays: number;
+        temporaryLength: number;
     };
     apple: {
         clientId: string | null;
@@ -101,6 +103,7 @@ export default registerAs('auth', (): IConfigAuth => {
 
             audience: process.env.AUTH_JWT_AUDIENCE!,
             issuer: process.env.AUTH_JWT_ISSUER!,
+            jtiLength: 32,
         },
 
         password: {
@@ -110,6 +113,7 @@ export default registerAs('auth', (): IConfigAuth => {
             expiredInMs: ms('182d'),
             expiredTemporaryInMs: ms('3d'),
             periodInDays: ms('90d') / ms('1d'),
+            temporaryLength: 10,
         },
 
         apple: {

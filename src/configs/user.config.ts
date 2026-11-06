@@ -6,6 +6,7 @@ export interface IConfigUser {
     uploadPhotoProfilePath: string;
     photo: {
         maxSizeInBytes: number;
+        filenameRandomLength: number;
     };
     maxDataImport: number;
     maxDataExport: number;
@@ -19,6 +20,8 @@ export interface IConfigUser {
     };
     deleteSelf: {
         timeoutInMs: number;
+        emailPattern: string;
+        usernamePattern: string;
     };
     jobId: {
         deletePhotoPattern: string;
@@ -29,6 +32,7 @@ export default registerAs('user', (): IConfigUser => ({
     uploadPhotoProfilePath: 'users/{userId}/profile',
     photo: {
         maxSizeInBytes: bytes('2mb') ?? 0,
+        filenameRandomLength: 20,
     },
     maxDataImport: 50,
     maxDataExport: 500,
@@ -42,6 +46,8 @@ export default registerAs('user', (): IConfigUser => ({
     },
     deleteSelf: {
         timeoutInMs: ms('30s'),
+        emailPattern: 'deleted.{id}.{email}',
+        usernamePattern: 'deleted.{id}.{username}',
     },
     jobId: {
         deletePhotoPattern: '{process}-{nonce}',

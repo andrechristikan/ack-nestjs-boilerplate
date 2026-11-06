@@ -69,10 +69,7 @@ export class UserPasswordRepository implements IUserPasswordRepository {
         { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate
     ): Promise<ForgotPassword> {
         return this.databaseService.withTransaction(async tx => {
-            await tx.forgotPassword.updateMany({
-                where: { userId, isUsed: false },
-                data: { isUsed: true },
-            });
+            await this.markUnusedUsedByUserInTx(tx, userId);
 
             return tx.forgotPassword.create({
                 data: {
@@ -101,5 +98,15 @@ export class UserPasswordRepository implements IUserPasswordRepository {
         });
 
         return count > 0;
+    }
+
+    async markUnusedUsedByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await tx.forgotPassword.updateMany({
+            where: { userId, isUsed: false },
+            data: { isUsed: true },
+        });
     }
 }

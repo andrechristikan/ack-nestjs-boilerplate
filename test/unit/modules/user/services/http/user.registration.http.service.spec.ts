@@ -243,6 +243,7 @@ describe('UserRegistrationHttpService', () => {
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
         isVerified: false,
+        verifiedAt: null,
         acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
         password,
         passwordHistoryType: EnumPasswordHistoryType.signUp,
@@ -887,6 +888,20 @@ describe('UserRegistrationHttpService', () => {
             );
         });
 
+        it('reads the role and the country before preparing the import', async () => {
+            await service.importByAdmin(rows, 'admin-bramble');
+
+            expect(roleDomain.getByName).toHaveBeenCalledWith('user');
+            expect(countryDomain.getIdByAlpha2Code).toHaveBeenCalledWith('ID');
+            expect(userImportDomain.prepareImportByAdmin).toHaveBeenCalledWith(
+                imported,
+                'admin-bramble',
+                role,
+                'country-bramble',
+                usernameChecks
+            );
+        });
+
         it('throws the email error before reading the default role', async () => {
             userImportDomain.getExistingEmails.mockResolvedValue([
                 'bramble@example.com',
@@ -907,18 +922,6 @@ describe('UserRegistrationHttpService', () => {
                 messagePath: 'user.error.importEmailExist',
             });
             expect(roleDomain.getByName).not.toHaveBeenCalled();
-            expect(countryDomain.getIdByAlpha2Code).not.toHaveBeenCalled();
-        });
-
-        it('reads the default role before the default country', async () => {
-            roleDomain.getByName.mockRejectedValue(new RoleNotFoundException());
-            countryDomain.getIdByAlpha2Code.mockRejectedValue(
-                new CountryNotFoundException()
-            );
-
-            await expect(
-                service.importByAdmin(rows, 'admin-bramble')
-            ).rejects.toMatchObject({ module: 'role' });
             expect(countryDomain.getIdByAlpha2Code).not.toHaveBeenCalled();
         });
 

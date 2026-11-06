@@ -157,6 +157,16 @@ export class WorkspaceInviteDomain {
         );
     }
 
+    async revokeAllPendingByEmailInTx(
+        tx: IDatabaseTransactionClient,
+        email: string
+    ): Promise<void> {
+        await this.workspaceInviteRepository.revokeAllPendingByEmailInTx(
+            tx,
+            email
+        );
+    }
+
     async clearProjectInTx(
         tx: IDatabaseTransactionClient,
         projectId: string

@@ -8,6 +8,7 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumVerificationType,
 } from '@generated/prisma-client/client';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -22,14 +23,18 @@ import type {
     IUser,
     IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 
 describe('UserImportDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
+    const userVerificationUtil: MockProxy<UserVerificationUtil> =
+        mock<UserVerificationUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -118,6 +123,10 @@ describe('UserImportDomain', () => {
                 { provide: UserRepository, useValue: userRepository },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
+                {
+                    provide: UserVerificationUtil,
+                    useValue: userVerificationUtil,
+                },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: ConfigService, useValue: configService },
@@ -144,6 +153,21 @@ describe('UserImportDomain', () => {
             existing: [],
             badWords: [false, false],
         };
+        const verifiedOne: IUserCreateVerification = {
+            reference: 'ref-one',
+            token: 'hashed-token-one',
+            type: EnumVerificationType.email,
+            to: 'thistle@example.com',
+            expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+            verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+            isUsed: true,
+        };
+        const verifiedTwo: IUserCreateVerification = {
+            ...verifiedOne,
+            reference: 'ref-two',
+            token: 'hashed-token-two',
+            to: 'marigold@example.com',
+        };
 
         beforeEach(() => {
             databaseUtil.createId
@@ -167,6 +191,9 @@ describe('UserImportDomain', () => {
                     name: "marigoldFinch's Workspace",
                 },
             ]);
+            userVerificationUtil.createVerified
+                .mockReturnValueOnce(verifiedOne)
+                .mockReturnValueOnce(verifiedTwo);
         });
 
         it('builds the import inputs for every row', async () => {
@@ -187,9 +214,7 @@ describe('UserImportDomain', () => {
                 roleId: role.id,
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
-                isVerified: false,
                 password,
-                verification: null,
                 createdBy: 'admin-thistle',
             });
             expect(result.passwordHasheds).toEqual([password, password]);
@@ -197,6 +222,38 @@ describe('UserImportDomain', () => {
                 'password-one',
                 'password-two',
             ]);
+        });
+
+        it('creates every imported user verified at the verification time with a used verification row', async () => {
+            const result = await domain.prepareImportByAdmin(
+                rows,
+                'admin-thistle',
+                role,
+                'country-thistle',
+                clearChecks
+            );
+
+            expect(userVerificationUtil.createVerified).toHaveBeenCalledTimes(
+                2
+            );
+            expect(userVerificationUtil.createVerified).toHaveBeenNthCalledWith(
+                1,
+                'thistle@example.com'
+            );
+            expect(userVerificationUtil.createVerified).toHaveBeenNthCalledWith(
+                2,
+                'marigold@example.com'
+            );
+            expect(result.inputs[0]).toMatchObject({
+                isVerified: true,
+                verifiedAt: verifiedOne.verifiedAt,
+                verification: verifiedOne,
+            });
+            expect(result.inputs[1]).toMatchObject({
+                isVerified: true,
+                verifiedAt: verifiedTwo.verifiedAt,
+                verification: verifiedTwo,
+            });
         });
 
         it('hashes every generated password as a temporary one', async () => {
@@ -254,18 +311,6 @@ describe('UserImportDomain', () => {
                 messageProperties: { emails: 'thistle@example.com' },
             });
             expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
-        });
-
-        it('marks accounts verified when the default role is not plain user', async () => {
-            const result = await domain.prepareImportByAdmin(
-                rows,
-                'admin-thistle',
-                { ...role, type: EnumRoleType.admin },
-                'country-thistle',
-                clearChecks
-            );
-
-            expect(result.inputs[0]!.isVerified).toBe(true);
         });
 
         it('throws UserImportUsernameExistException when a username already exists', async () => {

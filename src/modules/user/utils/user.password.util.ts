@@ -5,7 +5,6 @@ import type { IUserForgotPasswordCreate } from '@modules/user/interfaces/user.in
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
-import ms from 'ms';
 
 @Injectable()
 export class UserPasswordUtil {
@@ -31,17 +30,15 @@ export class UserPasswordUtil {
         this.forgotPasswordReferenceLength = this.configService.get<number>(
             'forgotPassword.reference.length'
         )!;
-        const forgotExpiredInMs = this.configService.get<number>(
-            'forgotPassword.expiredInMs'
+        this.forgotExpiredInMinutes = this.configService.get<number>(
+            'forgotPassword.expiredInMinutes'
         )!;
-        this.forgotExpiredInMinutes = forgotExpiredInMs / ms('1m');
         this.forgotTokenLength = this.configService.get<number>(
             'forgotPassword.tokenLength'
         )!;
-        const forgotResendInMs = this.configService.get<number>(
-            'forgotPassword.resendInMs'
+        this.forgotResendInMinutes = this.configService.get<number>(
+            'forgotPassword.resendInMinutes'
         )!;
-        this.forgotResendInMinutes = forgotResendInMs / ms('1m');
         this.forgotLinkPattern = this.configService.get<string>(
             'forgotPassword.linkPattern'
         )!;

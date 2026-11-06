@@ -462,6 +462,18 @@ describe('WorkspaceInviteDomain', () => {
         });
     });
 
+    describe('revokeAllPendingByEmailInTx', () => {
+        it('revokes the pending invites to the email in every workspace on the given transaction', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+
+            await domain.revokeAllPendingByEmailInTx(tx, 'invitee@example.com');
+
+            expect(
+                workspaceInviteRepository.revokeAllPendingByEmailInTx
+            ).toHaveBeenCalledWith(tx, 'invitee@example.com');
+        });
+    });
+
     describe('clearProjectInTx', () => {
         it('clears the project from the pending invites on the given transaction', async () => {
             const tx = {} as IDatabaseTransactionClient;

@@ -60,7 +60,6 @@ import type {
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
@@ -97,7 +96,6 @@ export class UserAuthHttpService {
         private readonly authUtil: AuthUtil,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
-        private readonly userQueue: UserQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
@@ -397,19 +395,12 @@ export class UserAuthHttpService {
         const isAttemptCounted =
             await this.userTwoFactorDomain.countAttempt(user);
         if (!isAttemptCounted) {
-            const lockoutLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            await this.userQueue.lockout(user.id);
+            const lockoutStages = this.userUtil.buildTwoFactorLockoutStages(
+                user.id
+            );
+            const lockoutLogs = lockoutStages.map(stage =>
+                this.activityLogDomain.prepare(stage)
+            );
 
             this.activityLogDomain.stagePrepared(lockoutLogs);
         }
@@ -708,23 +699,14 @@ export class UserAuthHttpService {
         device,
     }: UserLoginRequestDto): Promise<IResponseReturn<IUserLoginOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
-        const attempt =
-            await this.userAuthDomain.incrementCredentialAttempt(email);
+        const attempt = await this.userAuthDomain.countCredentialAttempt(email);
         if (!attempt.isAttemptCounted) {
-            const userId = attempt.user.id;
-            const lockoutLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId,
-                    createdBy: userId,
-                }),
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    userId,
-                    createdBy: userId,
-                }),
-            ];
-            await this.userQueue.lockout(userId);
+            const lockoutStages = this.userUtil.buildPasswordLockoutStages(
+                attempt.user.id
+            );
+            const lockoutLogs = lockoutStages.map(stage =>
+                this.activityLogDomain.prepare(stage)
+            );
 
             this.activityLogDomain.stagePrepared(lockoutLogs);
         }
@@ -843,6 +825,8 @@ export class UserAuthHttpService {
         const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userEnableTwoFactor,
+                userId: user.id,
+                createdBy: user.id,
             }),
         ];
         const backupCodes = await this.userTwoFactorDomain.enableTwoFactor(

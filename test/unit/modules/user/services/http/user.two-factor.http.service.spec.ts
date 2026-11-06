@@ -32,11 +32,15 @@ import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
+import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
+import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
+import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import { UserTwoFactorHttpService } from '@modules/user/services/http/user.two-factor.http.service';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
@@ -44,6 +48,7 @@ import type { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/
 import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 import type {
     IUser,
+    IUserCredentialAttempt,
     IUserTwoFactorSetup,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
@@ -59,6 +64,7 @@ describe('UserTwoFactorHttpService', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const userPasswordDomain: MockProxy<UserPasswordDomain> =
         mock<UserPasswordDomain>();
+    const userAuthDomain: MockProxy<UserAuthDomain> = mock<UserAuthDomain>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
     const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
@@ -73,7 +79,6 @@ describe('UserTwoFactorHttpService', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
 
@@ -153,6 +158,11 @@ describe('UserTwoFactorHttpService', () => {
         ...TestRecipient,
         userId: user.id,
     };
+    const passwordAttempt: IUserCredentialAttempt = {
+        user,
+        hashedPassword: 'hashed-password',
+        isAttemptCounted: true,
+    };
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
@@ -173,6 +183,7 @@ describe('UserTwoFactorHttpService', () => {
             async fn => fn(tx) as never
         );
         userTwoFactorDomain.countAttempt.mockResolvedValue(true);
+        userPasswordDomain.countPasswordAttempt.mockResolvedValue(null);
         userTwoFactorDomain.verify.mockResolvedValue(verified);
         deviceDomain.getNotificationTokens.mockResolvedValue(
             notificationTokens
@@ -193,6 +204,7 @@ describe('UserTwoFactorHttpService', () => {
                     provide: UserPasswordDomain,
                     useValue: userPasswordDomain,
                 },
+                { provide: UserAuthDomain, useValue: userAuthDomain },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: SessionDomain, useValue: sessionDomain },
                 { provide: DeviceDomain, useValue: deviceDomain },
@@ -206,7 +218,6 @@ describe('UserTwoFactorHttpService', () => {
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: UserQueue, useValue: userQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
             ],
         }).compile();
@@ -375,6 +386,65 @@ describe('UserTwoFactorHttpService', () => {
             ).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
+
+        it('skips the password check for a passwordless account', async () => {
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(null);
+            userTwoFactorDomain.getBackupCodeForSetup.mockReturnValue(null);
+
+            await service.setupTwoFactor(user, {});
+
+            expect(
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(user);
+            expect(userAuthDomain.assertPasswordAttempt).not.toHaveBeenCalled();
+            expect(userTwoFactorDomain.saveSetup).toHaveBeenCalledTimes(1);
+        });
+
+        it('counts an attempt and throws UserPasswordNotMatchException when the password is absent', async () => {
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(
+                passwordAttempt
+            );
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(
+                new UserPasswordNotMatchException()
+            );
+            userTwoFactorDomain.getBackupCodeForSetup.mockReturnValue(null);
+
+            await expect(
+                service.setupTwoFactor(user, {})
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.passwordNotMatch
+                    ],
+                messagePath: 'user.error.passwordNotMatch',
+            });
+
+            expect(
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledTimes(1);
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                passwordAttempt,
+                null
+            );
+            expect(userTwoFactorDomain.saveSetup).not.toHaveBeenCalled();
+        });
+
+        it('rejects an expired password after a match', async () => {
+            const failure = new UserPasswordExpiredException();
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(
+                passwordAttempt
+            );
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(failure);
+            userTwoFactorDomain.getBackupCodeForSetup.mockReturnValue(null);
+
+            await expect(service.setupTwoFactor(user, setupDto)).rejects.toBe(
+                failure
+            );
+
+            expect(userTwoFactorDomain.saveSetup).not.toHaveBeenCalled();
+        });
     });
 
     describe('enableTwoFactor', () => {
@@ -421,6 +491,8 @@ describe('UserTwoFactorHttpService', () => {
             expect(calls).toEqual(['verifySetupCode', 'enableTwoFactor']);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userEnableTwoFactor,
+                userId: 'user-marten',
+                createdBy: 'user-marten',
             });
             expect(userTwoFactorDomain.enableTwoFactor).toHaveBeenCalledBefore(
                 activityLogDomain.stagePrepared
@@ -453,6 +525,76 @@ describe('UserTwoFactorHttpService', () => {
             ).rejects.toBe(failure);
             expect(userTwoFactorDomain.enableTwoFactor).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('skips the password check for a passwordless account', async () => {
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(null);
+            userTwoFactorDomain.getPendingSecret.mockReturnValue(
+                'pending-secret'
+            );
+            userTwoFactorDomain.enableTwoFactor.mockResolvedValue(['CODE1']);
+
+            await service.enableTwoFactor(user, { code: '123456' });
+
+            expect(
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(user);
+            expect(userAuthDomain.assertPasswordAttempt).not.toHaveBeenCalled();
+            expect(userTwoFactorDomain.enableTwoFactor).toHaveBeenCalledTimes(
+                1
+            );
+        });
+
+        it('counts an attempt and throws UserPasswordNotMatchException when the password is absent', async () => {
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(
+                passwordAttempt
+            );
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(
+                new UserPasswordNotMatchException()
+            );
+            userTwoFactorDomain.getPendingSecret.mockReturnValue(
+                'pending-secret'
+            );
+            userTwoFactorDomain.enableTwoFactor.mockResolvedValue(['CODE1']);
+
+            await expect(
+                service.enableTwoFactor(user, { code: '123456' })
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.passwordNotMatch
+                    ],
+                messagePath: 'user.error.passwordNotMatch',
+            });
+
+            expect(
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledTimes(1);
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                passwordAttempt,
+                null
+            );
+            expect(userTwoFactorDomain.enableTwoFactor).not.toHaveBeenCalled();
+        });
+
+        it('rejects an expired password after a match', async () => {
+            const failure = new UserPasswordExpiredException();
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(
+                passwordAttempt
+            );
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(failure);
+            userTwoFactorDomain.getPendingSecret.mockReturnValue(
+                'pending-secret'
+            );
+            userTwoFactorDomain.enableTwoFactor.mockResolvedValue(['CODE1']);
+
+            await expect(service.enableTwoFactor(user, enableDto)).rejects.toBe(
+                failure
+            );
+
+            expect(userTwoFactorDomain.enableTwoFactor).not.toHaveBeenCalled();
         });
     });
 
@@ -828,29 +970,31 @@ describe('UserTwoFactorHttpService', () => {
     describe('assertPasswordMatched', () => {
         const lockoutLogs = [activityLog, activityLog];
 
-        it('counts the attempt, matches the password, and resets the counter before any other step of setup', async () => {
-            const calls: string[] = [];
-            userUtil.hasPassword.mockReturnValue(true);
-            userPasswordDomain.incrementPasswordAttempt.mockImplementation(
-                async () => {
-                    calls.push('incrementPasswordAttempt');
-
-                    return true;
-                }
+        beforeEach(() => {
+            userTwoFactorDomain.getPendingSecret.mockReturnValue(
+                'pending-secret'
             );
-            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
-                calls.push('assertAttemptCounted');
+            userTwoFactorDomain.enableTwoFactor.mockResolvedValue(['CODE1']);
+            userTwoFactorDomain.getBackupCodeForSetup.mockReturnValue(null);
+            userTwoFactorDomain.setup.mockResolvedValue({
+                encryptedSecret: 'encrypted-pending',
+                secret: 'secret',
+                otpauthUrl: 'otpauth://totp/secret',
             });
-            userPasswordDomain.assertOldPasswordMatch.mockImplementation(
+        });
+
+        it('counts the attempt and verifies the credential before any other step of setup', async () => {
+            const calls: string[] = [];
+            userPasswordDomain.countPasswordAttempt.mockImplementation(
                 async () => {
-                    calls.push('assertOldPasswordMatch');
+                    calls.push('countPasswordAttempt');
+
+                    return passwordAttempt;
                 }
             );
-            userPasswordDomain.resetPasswordAttempt.mockImplementation(
+            userAuthDomain.assertPasswordAttempt.mockImplementation(
                 async () => {
-                    calls.push('resetPasswordAttempt');
-
-                    return {} as never;
+                    calls.push('assertPasswordAttempt');
                 }
             );
             userTwoFactorDomain.getBackupCodeForSetup.mockImplementation(() => {
@@ -858,98 +1002,78 @@ describe('UserTwoFactorHttpService', () => {
 
                 return null;
             });
-            userTwoFactorDomain.setup.mockResolvedValue({
-                encryptedSecret: 'encrypted-pending',
-                secret: 'secret',
-                otpauthUrl: 'otpauth://totp/secret',
-            });
 
             await service.setupTwoFactor(user, { password: 'Current-pass1' });
 
             expect(
-                userPasswordDomain.incrementPasswordAttempt
-            ).toHaveBeenCalledWith('user-marten');
-            expect(
-                userPasswordDomain.assertOldPasswordMatch
-            ).toHaveBeenCalledWith(user, 'Current-pass1');
-            expect(
-                userPasswordDomain.resetPasswordAttempt
-            ).toHaveBeenCalledWith('user-marten');
+                userPasswordDomain.countPasswordAttempt
+            ).toHaveBeenCalledWith(user);
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                passwordAttempt,
+                'Current-pass1'
+            );
             expect(calls).toEqual([
-                'incrementPasswordAttempt',
-                'assertAttemptCounted',
-                'assertOldPasswordMatch',
-                'resetPasswordAttempt',
+                'countPasswordAttempt',
+                'assertPasswordAttempt',
                 'getBackupCodeForSetup',
             ]);
         });
 
-        it('counts and matches the password before enable verifies the setup code', async () => {
+        it('counts and verifies the credential before enable verifies the setup code', async () => {
             const calls: string[] = [];
-            userUtil.hasPassword.mockReturnValue(true);
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            userPasswordDomain.assertOldPasswordMatch.mockImplementation(
-                async () => {
-                    calls.push('assertOldPasswordMatch');
-                }
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(
+                passwordAttempt
             );
-            userTwoFactorDomain.getPendingSecret.mockReturnValue(
-                'pending-secret'
+            userAuthDomain.assertPasswordAttempt.mockImplementation(
+                async () => {
+                    calls.push('assertPasswordAttempt');
+                }
             );
             userTwoFactorDomain.verifySetupCode.mockImplementation(async () => {
                 calls.push('verifySetupCode');
             });
-            userTwoFactorDomain.enableTwoFactor.mockResolvedValue(['CODE1']);
 
             await service.enableTwoFactor(user, {
                 code: '123456',
                 password: 'Current-pass1',
             });
 
-            expect(
-                userPasswordDomain.assertOldPasswordMatch
-            ).toHaveBeenCalledWith(user, 'Current-pass1');
-            expect(calls).toEqual([
-                'assertOldPasswordMatch',
-                'verifySetupCode',
-            ]);
-        });
-
-        it('checks nothing for a user without a password', async () => {
-            userUtil.hasPassword.mockReturnValue(false);
-            userTwoFactorDomain.getPendingSecret.mockReturnValue(
-                'pending-secret'
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                passwordAttempt,
+                'Current-pass1'
             );
-            userTwoFactorDomain.enableTwoFactor.mockResolvedValue(['CODE1']);
-
-            await service.enableTwoFactor(user, {
-                code: '123456',
-                password: 'anything',
-            });
-
-            expect(
-                userPasswordDomain.incrementPasswordAttempt
-            ).not.toHaveBeenCalled();
-            expect(
-                userPasswordDomain.assertOldPasswordMatch
-            ).not.toHaveBeenCalled();
+            expect(calls).toEqual(['assertPasswordAttempt', 'verifySetupCode']);
         });
 
-        it('enqueues the lockout, stages both rows, and answers the attempt limit when the budget is spent', async () => {
-            const limit = new Error('attempt max');
+        it('stages both lockout rows after the spent attempt is counted and answers the attempt limit', async () => {
+            const limit = new UserPasswordAttemptMaxException();
             const calls: string[] = [];
-            userUtil.hasPassword.mockReturnValue(true);
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(
-                false
-            );
-            userPasswordDomain.assertAttemptCounted.mockImplementation(() => {
-                calls.push('assert');
+            userPasswordDomain.countPasswordAttempt.mockImplementation(
+                async () => {
+                    calls.push('countPasswordAttempt');
 
-                throw limit;
-            });
-            userQueue.lockout.mockImplementation(async () => {
-                calls.push('lockout');
-            });
+                    return { ...passwordAttempt, isAttemptCounted: false };
+                }
+            );
+            userUtil.buildPasswordLockoutStages.mockReturnValue([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-marten',
+                    createdBy: 'user-marten',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: 'user-marten',
+                    createdBy: 'user-marten',
+                },
+            ]);
+            userAuthDomain.assertPasswordAttempt.mockImplementation(
+                async () => {
+                    calls.push('assert');
+
+                    throw limit;
+                }
+            );
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 calls.push('stagePrepared');
             });
@@ -958,7 +1082,9 @@ describe('UserTwoFactorHttpService', () => {
                 service.setupTwoFactor(user, { password: 'Current-pass1' })
             ).rejects.toBe(limit);
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-marten');
+            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
+                'user-marten'
+            );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-marten',
@@ -972,30 +1098,35 @@ describe('UserTwoFactorHttpService', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
                 lockoutLogs
             );
-            expect(calls).toEqual(['lockout', 'stagePrepared', 'assert']);
+            expect(calls).toEqual([
+                'countPasswordAttempt',
+                'stagePrepared',
+                'assert',
+            ]);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(
-                userPasswordDomain.assertOldPasswordMatch
-            ).not.toHaveBeenCalled();
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                { ...passwordAttempt, isAttemptCounted: false },
+                'Current-pass1'
+            );
             expect(userTwoFactorDomain.saveSetup).not.toHaveBeenCalled();
         });
 
-        it('saves nothing and keeps the counter when the password does not match', async () => {
-            const mismatch = new Error('password not match');
-            userUtil.hasPassword.mockReturnValue(true);
-            userPasswordDomain.incrementPasswordAttempt.mockResolvedValue(true);
-            userPasswordDomain.assertOldPasswordMatch.mockRejectedValue(
-                mismatch
+        it('saves nothing when the password does not match', async () => {
+            const mismatch = new UserPasswordNotMatchException();
+            userPasswordDomain.countPasswordAttempt.mockResolvedValue(
+                passwordAttempt
             );
+            userAuthDomain.assertPasswordAttempt.mockRejectedValue(mismatch);
 
             await expect(
                 service.setupTwoFactor(user, { password: 'wrong' })
             ).rejects.toBe(mismatch);
 
-            expect(
-                userPasswordDomain.resetPasswordAttempt
-            ).not.toHaveBeenCalled();
+            expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
+                passwordAttempt,
+                'wrong'
+            );
             expect(userTwoFactorDomain.setup).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.saveSetup).not.toHaveBeenCalled();
         });
@@ -1004,21 +1135,36 @@ describe('UserTwoFactorHttpService', () => {
     describe('assertTwoFactorAttemptCounted', () => {
         const limit = new AuthTwoFactorAttemptMaxException();
         const lockoutLogs = [activityLog, activityLog];
+        const lockoutStages = [
+            {
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId: 'user-marten',
+                createdBy: 'user-marten',
+            },
+            {
+                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                userId: 'user-marten',
+                createdBy: 'user-marten',
+            },
+        ];
 
         beforeEach(() => {
             userTwoFactorDomain.countAttempt.mockResolvedValue(false);
+            userUtil.buildTwoFactorLockoutStages.mockReturnValue(lockoutStages);
             userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
                 throw limit;
             });
         });
 
-        it('enqueues the lockout, stages both rows, and answers the attempt limit before the backup code of a setup is verified', async () => {
+        it('stages both lockout rows after the spent count and answers the attempt limit before the backup code of a setup is verified', async () => {
             const calls: string[] = [];
             userTwoFactorDomain.getBackupCodeForSetup.mockReturnValue(
                 'BACKUP1'
             );
-            userQueue.lockout.mockImplementation(async () => {
-                calls.push('lockout');
+            userTwoFactorDomain.countAttempt.mockImplementation(async () => {
+                calls.push('countAttempt');
+
+                return false;
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 calls.push('stagePrepared');
@@ -1031,21 +1177,20 @@ describe('UserTwoFactorHttpService', () => {
                 })
             ).rejects.toBe(limit);
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-marten');
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId: 'user-marten',
-                createdBy: 'user-marten',
-            });
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                userId: 'user-marten',
-                createdBy: 'user-marten',
-            });
+            expect(userTwoFactorDomain.countAttempt).toHaveBeenCalledWith(user);
+            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
+                'user-marten'
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+                lockoutStages[0]
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+                lockoutStages[1]
+            );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
                 lockoutLogs
             );
-            expect(calls).toEqual(['lockout', 'stagePrepared']);
+            expect(calls).toEqual(['countAttempt', 'stagePrepared']);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
@@ -1055,7 +1200,7 @@ describe('UserTwoFactorHttpService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout and answers the attempt limit before enable verifies the setup code', async () => {
+        it('stages the lockout rows and answers the attempt limit before enable verifies the setup code', async () => {
             userTwoFactorDomain.getPendingSecret.mockReturnValue(
                 'pending-secret'
             );
@@ -1067,7 +1212,9 @@ describe('UserTwoFactorHttpService', () => {
                 })
             ).rejects.toBe(limit);
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-marten');
+            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
+                'user-marten'
+            );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
                 lockoutLogs
             );
@@ -1075,7 +1222,7 @@ describe('UserTwoFactorHttpService', () => {
             expect(userTwoFactorDomain.enableTwoFactor).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout and answers the attempt limit before disable verifies the code', async () => {
+        it('stages the lockout rows and answers the attempt limit before disable verifies the code', async () => {
             await expect(
                 service.disableTwoFactor(user, {
                     method: EnumAuthTwoFactorMethod.code,
@@ -1091,7 +1238,9 @@ describe('UserTwoFactorHttpService', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-marten');
+            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
+                'user-marten'
+            );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
                 lockoutLogs
             );
@@ -1100,14 +1249,16 @@ describe('UserTwoFactorHttpService', () => {
             expect(userTwoFactorDomain.disableInTx).not.toHaveBeenCalled();
         });
 
-        it('enqueues the lockout and answers the attempt limit before regenerate verifies the code', async () => {
+        it('stages the lockout rows and answers the attempt limit before regenerate verifies the code', async () => {
             await expect(
                 service.regenerateTwoFactorBackupCodes(user, {
                     code: '123456',
                 })
             ).rejects.toBe(limit);
 
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-marten');
+            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
+                'user-marten'
+            );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
                 lockoutLogs
             );

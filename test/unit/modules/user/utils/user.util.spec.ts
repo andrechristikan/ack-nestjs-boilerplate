@@ -14,6 +14,7 @@ import {
 import type { TwoFactor, User } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Duration } from 'luxon';
 
@@ -26,6 +27,8 @@ describe('UserUtil', () => {
 
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
 
     let util: UserUtil;
 
@@ -33,6 +36,8 @@ describe('UserUtil', () => {
         'message.availableLanguage': ['en'],
         'user.uploadPhotoProfilePath': 'users/{userId}/profile',
         'user.photo.maxSizeInBytes': 2048,
+        'user.deleteSelf.emailPattern': 'removed.{id}.{email}',
+        'user.deleteSelf.usernamePattern': 'removed.{id}.{username}',
     };
 
     const user: User = {
@@ -117,37 +122,60 @@ describe('UserUtil', () => {
                 UserUtil,
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: HelperStringService, useValue: helperStringService },
             ],
         }).compile();
         util = module.get(UserUtil);
     });
 
-    describe('getResendWaitInMinutes', () => {
-        const now = new Date('2026-03-01T00:00:00.000Z');
+    describe('createDeletedIdentity', () => {
+        it('fills the configured deleted email and username patterns from the row id', () => {
+            helperStringService.fillPattern
+                .mockReturnValueOnce(
+                    'deleted.user-marigold.marigold@example.com'
+                )
+                .mockReturnValueOnce('deleted.user-marigold.marigoldFinch');
 
-        beforeEach(() => {
-            helperDateService.create.mockReturnValue(now);
-            helperDateService.diff.mockImplementation((from, to) =>
-                Duration.fromMillis(from.getTime() - to.getTime())
+            expect(util.createDeletedIdentity(iUser)).toEqual({
+                email: 'deleted.user-marigold.marigold@example.com',
+                username: 'deleted.user-marigold.marigoldFinch',
+            });
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'removed.{id}.{email}',
+                { id: 'user-marigold', email: 'marigold@example.com' }
+            );
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'removed.{id}.{username}',
+                { id: 'user-marigold', username: 'marigoldFinch' }
             );
         });
+    });
 
-        it('returns the whole minutes left, rounded up, while the window is open', () => {
-            const lastCreatedAt = new Date(now.getTime() - 30_000);
+    describe('isInsideResendWindow', () => {
+        const lastCreatedAt = new Date('2026-03-01T00:00:00.000Z');
 
-            expect(util.getResendWaitInMinutes(lastCreatedAt, 5)).toBe(5);
+        it('returns true one minute after the last request with a five-minute window', () => {
+            helperDateService.create.mockReturnValue(
+                new Date('2026-03-01T00:01:00.000Z')
+            );
+
+            expect(util.isInsideResendWindow(lastCreatedAt, 5)).toBe(true);
         });
 
-        it('returns null once the window has passed', () => {
-            const lastCreatedAt = new Date(now.getTime() - 6 * 60 * 1000);
+        it('returns false at the exact end of the window', () => {
+            helperDateService.create.mockReturnValue(
+                new Date('2026-03-01T00:05:00.000Z')
+            );
 
-            expect(util.getResendWaitInMinutes(lastCreatedAt, 5)).toBeNull();
+            expect(util.isInsideResendWindow(lastCreatedAt, 5)).toBe(false);
         });
 
-        it('returns null at the exact end of the window', () => {
-            const lastCreatedAt = new Date(now.getTime() - 5 * 60 * 1000);
+        it('returns false once the window has passed', () => {
+            helperDateService.create.mockReturnValue(
+                new Date('2026-03-01T00:06:00.000Z')
+            );
 
-            expect(util.getResendWaitInMinutes(lastCreatedAt, 5)).toBeNull();
+            expect(util.isInsideResendWindow(lastCreatedAt, 5)).toBe(false);
         });
     });
 
@@ -365,6 +393,26 @@ describe('UserUtil', () => {
         });
     });
 
+    describe('gatesPasswordExpiryOn', () => {
+        it('returns true for credential', () => {
+            expect(
+                util.gatesPasswordExpiryOn(EnumUserLoginWith.credential)
+            ).toBe(true);
+        });
+
+        it('returns false for socialGoogle', () => {
+            expect(
+                util.gatesPasswordExpiryOn(EnumUserLoginWith.socialGoogle)
+            ).toBe(false);
+        });
+
+        it('returns false for socialApple', () => {
+            expect(
+                util.gatesPasswordExpiryOn(EnumUserLoginWith.socialApple)
+            ).toBe(false);
+        });
+    });
+
     describe('resolveStatusActivityLogAction', () => {
         it('resolves userBlocked for blocked', () => {
             expect(
@@ -404,6 +452,40 @@ describe('UserUtil', () => {
 
         it('returns false when the user has no password', () => {
             expect(util.hasPassword({ ...iUser, password: null })).toBe(false);
+        });
+    });
+
+    describe('buildPasswordLockoutStages', () => {
+        it('returns the revoke-all-sessions and max-password-attempt stages owned by the user', () => {
+            expect(util.buildPasswordLockoutStages('user-1')).toEqual([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                },
+            ]);
+        });
+    });
+
+    describe('buildTwoFactorLockoutStages', () => {
+        it('returns the revoke-all-sessions and max-two-factor-attempt stages owned by the user', () => {
+            expect(util.buildTwoFactorLockoutStages('user-1')).toEqual([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                },
+            ]);
         });
     });
 
@@ -448,6 +530,46 @@ describe('UserUtil', () => {
                 util.requiresTwoFactorSetup({
                     ...iUser,
                     twoFactor: { ...enabled, requiredSetup: false },
+                })
+            ).toBe(false);
+        });
+    });
+
+    describe('requiresTwoFactorVerification', () => {
+        const enabled = { ...twoFactorRow, enabled: true };
+
+        it('returns true when the enabled row requires no setup', () => {
+            expect(
+                util.requiresTwoFactorVerification({
+                    ...iUser,
+                    twoFactor: { ...enabled, requiredSetup: false },
+                })
+            ).toBe(true);
+        });
+
+        it('returns false when the enabled row still requires setup', () => {
+            expect(
+                util.requiresTwoFactorVerification({
+                    ...iUser,
+                    twoFactor: { ...enabled, requiredSetup: true },
+                })
+            ).toBe(false);
+        });
+
+        it('returns false when the two-factor row is disabled', () => {
+            expect(
+                util.requiresTwoFactorVerification({
+                    ...iUser,
+                    twoFactor: { ...twoFactorRow, enabled: false },
+                })
+            ).toBe(false);
+        });
+
+        it('returns false when the user has no two-factor row', () => {
+            expect(
+                util.requiresTwoFactorVerification({
+                    ...iUser,
+                    twoFactor: null,
                 })
             ).toBe(false);
         });

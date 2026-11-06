@@ -39,28 +39,35 @@ export class UserAuthDomain {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    /** Resolves the active credential user of an email and counts one password attempt; isAttemptCounted is false when the budget is spent, and an unknown, inactive, or passwordless account throws the credential error. */
-    async incrementCredentialAttempt(
+    /** Resolves the active credential user of an email, counts one password attempt, and enqueues the lockout job when the budget is spent; isAttemptCounted is false on a spent budget, and an unknown, inactive, or passwordless account throws the credential error. */
+    async countCredentialAttempt(
         email: string
     ): Promise<IUserCredentialAttempt> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
-        if (!user || user.status !== EnumUserStatus.active || !user.password) {
+        if (!user || user.status !== EnumUserStatus.active) {
             throw new UserCredentialInvalidException();
         }
 
-        const isAttemptCounted =
-            await this.userPasswordDomain.incrementPasswordAttempt(user.id);
+        const attempt =
+            await this.userPasswordDomain.countPasswordAttempt(user);
+        if (!attempt) {
+            throw new UserCredentialInvalidException();
+        }
 
-        return { user, hashedPassword: user.password, isAttemptCounted };
+        return attempt;
     }
 
-    /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch, so the caller records the failure before asserting it, and an expired password throws after a match. */
+    /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch or a null password, so the caller records the failure before asserting it, and an expired password throws after a match. */
     async verifyCredential(
         { user, hashedPassword }: IUserCredentialAttempt,
-        password: string
+        plainPassword: string | null
     ): Promise<boolean> {
+        if (plainPassword === null) {
+            return false;
+        }
+
         const isPasswordValid = await this.authPasswordUtil.validatePassword(
-            password,
+            plainPassword,
             hashedPassword
         );
         if (!isPasswordValid) {
@@ -76,6 +83,17 @@ export class UserAuthDomain {
         }
 
         return true;
+    }
+
+    /** Asserts the password of a counted attempt: a spent budget throws the max-attempt error, a match resets the counter, a mismatch or a null password throws not-match, and an expired password throws after a match. */
+    async assertPasswordAttempt(
+        attempt: IUserCredentialAttempt,
+        plainPassword: string | null
+    ): Promise<void> {
+        this.userPasswordDomain.assertAttemptCounted(attempt.isAttemptCounted);
+
+        const isMatch = await this.verifyCredential(attempt, plainPassword);
+        this.assertPasswordMatched(isMatch);
     }
 
     assertPasswordMatched(isMatch: boolean): void {
@@ -111,9 +129,11 @@ export class UserAuthDomain {
     }
 
     async verifyEmailBySocial(user: IUser): Promise<IUser> {
-        await this.userVerificationDomain.markVerified(user.id);
+        const row = await this.userVerificationDomain.markVerifiedBySocial(
+            user.id
+        );
 
-        return { ...user, isVerified: true };
+        return { ...user, ...row };
     }
 
     assertVerified(user: IUser): void {
@@ -159,6 +179,7 @@ export class UserAuthDomain {
                 signUpFrom: from,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
+                verifiedAt: null,
                 acceptedTermPolicyTypes,
                 password,
                 passwordHistoryType:

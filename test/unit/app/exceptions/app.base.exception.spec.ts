@@ -1,7 +1,7 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
-import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
+import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 
 describe('AppBaseException', () => {
     describe('constructor', () => {
@@ -34,10 +34,13 @@ describe('AppBaseException', () => {
         });
 
         it('assigns messageProperties from the options', () => {
-            const exception =
-                new UserForgotPasswordRequestLimitExceededException(30);
+            const exception = new UserImportEmailExistException(
+                'a@example.com'
+            );
 
-            expect(exception.messageProperties).toEqual({ minutes: 30 });
+            expect(exception.messageProperties).toEqual({
+                emails: 'a@example.com',
+            });
             expect(exception.rawError).toBeNull();
         });
 

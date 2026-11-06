@@ -4,10 +4,14 @@ import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/reques
 /** @public */
 export const UserTwoFactorSetupRequestSchema =
     UserLoginVerifyTwoFactorRequestSchema.pick({ backupCode: true }).extend({
-        password: z.string().min(1).meta({
-            description: 'current string password',
-            example: 'Current-pass1',
-        }),
+        password: z
+            .string()
+            .min(1)
+            .meta({
+                description: 'current string password',
+                example: 'Current-pass1',
+            })
+            .optional(),
     });
 
 /** @public */

@@ -407,12 +407,10 @@ export class UserRegistrationHttpService {
         ]);
         this.userImportDomain.assertEmailsAvailable(existingEmails);
 
-        // Sequential by design: gate before the work it guards
-        const role = await this.roleDomain.getByName(this.userRoleName);
-        // Sequential by design: gate before the work it guards
-        const countryId = await this.countryDomain.getIdByAlpha2Code(
-            this.userCountryName
-        );
+        const [role, countryId] = await Promise.all([
+            this.roleDomain.getByName(this.userRoleName),
+            this.countryDomain.getIdByAlpha2Code(this.userCountryName),
+        ]);
 
         const { inputs, passwordHasheds, passwordStrings } =
             await this.userImportDomain.prepareImportByAdmin(

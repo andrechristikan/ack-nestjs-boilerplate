@@ -27,6 +27,7 @@ import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
+import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
@@ -40,7 +41,6 @@ import type {
     IUserTwoFactorVerifyInput,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
@@ -49,6 +49,7 @@ export class UserPasswordHttpService {
     constructor(
         private readonly userDomain: UserDomain,
         private readonly userPasswordDomain: UserPasswordDomain,
+        private readonly userAuthDomain: UserAuthDomain,
         private readonly userTwoFactorDomain: UserTwoFactorDomain,
         private readonly passwordHistoryDomain: PasswordHistoryDomain,
         private readonly sessionDomain: SessionDomain,
@@ -59,7 +60,6 @@ export class UserPasswordHttpService {
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
-        private readonly userQueue: UserQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userUtil: UserUtil,
@@ -80,38 +80,34 @@ export class UserPasswordHttpService {
         return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
-    private async verifyTwoFactorIfEnabled(
+    private async verifyTwoFactorIfRequired(
         user: IUser,
         input: IUserTwoFactorVerifyInput
     ): Promise<IUserTwoFactorVerifyResult | null> {
-        const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
-        if (!isTwoFactorEnabled) {
+        const requiresTwoFactorVerification =
+            this.userUtil.requiresTwoFactorVerification(user);
+        if (!requiresTwoFactorVerification) {
             return null;
         }
+
+        const method = this.userTwoFactorDomain.getProvidedMethod(input.method);
 
         const isAttemptCounted =
             await this.userTwoFactorDomain.countAttempt(user);
         if (!isAttemptCounted) {
-            const lockoutLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            await this.userQueue.lockout(user.id);
+            const lockoutStages = this.userUtil.buildTwoFactorLockoutStages(
+                user.id
+            );
+            const lockoutLogs = lockoutStages.map(stage =>
+                this.activityLogDomain.prepare(stage)
+            );
 
             this.activityLogDomain.stagePrepared(lockoutLogs);
         }
 
         this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
 
-        return this.userTwoFactorDomain.verify(user, input);
+        return this.userTwoFactorDomain.verify(user, { ...input, method });
     }
 
     async updatePasswordByAdmin(
@@ -152,6 +148,10 @@ export class UserPasswordHttpService {
                         password.passwordCreated,
                         user.id
                     );
+                await this.userPasswordDomain.markUnusedResetsUsedInTx(
+                    tx,
+                    userId
+                );
                 const revoked = await this.sessionDomain.revokeActiveByUserInTx(
                     tx,
                     userId,
@@ -219,42 +219,31 @@ export class UserPasswordHttpService {
                 action: EnumActivityLogAction.userChangePassword,
             }),
         ];
-        const hasPassword = this.userUtil.hasPassword(user);
-        if (hasPassword) {
-            // Sequential by design: gate before the work it guards
-            const isAttemptCounted =
-                await this.userPasswordDomain.incrementPasswordAttempt(user.id);
-            if (!isAttemptCounted) {
-                const lockoutLogs = [
-                    this.activityLogDomain.prepare({
-                        action: EnumActivityLogAction.userRevokeAllSessions,
-                        userId: user.id,
-                        createdBy: user.id,
-                    }),
-                    this.activityLogDomain.prepare({
-                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                        userId: user.id,
-                        createdBy: user.id,
-                    }),
-                ];
-                await this.userQueue.lockout(user.id);
+        // Sequential by design: gate before the work it guards
+        const attempt =
+            await this.userPasswordDomain.countPasswordAttempt(user);
+        if (attempt !== null) {
+            if (!attempt.isAttemptCounted) {
+                const lockoutStages = this.userUtil.buildPasswordLockoutStages(
+                    user.id
+                );
+                const lockoutLogs = lockoutStages.map(stage =>
+                    this.activityLogDomain.prepare(stage)
+                );
 
                 this.activityLogDomain.stagePrepared(lockoutLogs);
             }
 
-            this.userPasswordDomain.assertAttemptCounted(isAttemptCounted);
-            await this.userPasswordDomain.assertOldPasswordMatch(
-                user,
-                oldPassword
+            await this.userAuthDomain.assertPasswordAttempt(
+                attempt,
+                oldPassword ?? null
             );
-            await Promise.all([
-                this.userPasswordDomain.resetPasswordAttempt(user.id),
-                this.passwordHistoryDomain.assertNew(user.id, newPassword),
-            ]);
+            // Sequential by design: gate before the work it guards
+            await this.passwordHistoryDomain.assertNew(user.id, newPassword);
         }
 
         // Sequential by design: gate before the work it guards
-        const twoFactorVerified = await this.verifyTwoFactorIfEnabled(user, {
+        const twoFactorVerified = await this.verifyTwoFactorIfRequired(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
             method: method ?? null,
@@ -291,6 +280,10 @@ export class UserPasswordHttpService {
                         password.passwordCreated,
                         user.id
                     );
+                await this.userPasswordDomain.markUnusedResetsUsedInTx(
+                    tx,
+                    user.id
+                );
                 const revoked = await this.sessionDomain.revokeActiveByUserInTx(
                     tx,
                     user.id,
@@ -387,7 +380,7 @@ export class UserPasswordHttpService {
         await this.passwordHistoryDomain.assertNew(reset.userId, newPassword);
 
         // Sequential by design: gate before the work it guards
-        const twoFactorVerified = await this.verifyTwoFactorIfEnabled(
+        const twoFactorVerified = await this.verifyTwoFactorIfRequired(
             reset.user,
             {
                 code: code ?? null,
@@ -438,6 +431,10 @@ export class UserPasswordHttpService {
                     tx,
                     reset.id,
                     password.passwordCreated
+                );
+                await this.userPasswordDomain.markUnusedResetsUsedInTx(
+                    tx,
+                    reset.userId
                 );
                 const sessions =
                     await this.sessionDomain.revokeActiveByUserInTx(

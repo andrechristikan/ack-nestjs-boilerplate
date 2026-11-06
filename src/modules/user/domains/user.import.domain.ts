@@ -5,7 +5,6 @@ import type {
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
-    EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
@@ -26,6 +25,7 @@ import type {
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -37,6 +37,7 @@ export class UserImportDomain {
         private readonly userRepository: UserRepository,
         private readonly userUtil: UserUtil,
         private readonly userCreateUtil: UserCreateUtil,
+        private readonly userVerificationUtil: UserVerificationUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
@@ -119,28 +120,35 @@ export class UserImportDomain {
         );
         const workspaceContexts =
             this.userCreateUtil.buildPersonalWorkspaceContexts(usernames);
-        const isVerified = role.type !== EnumRoleType.user;
+        const verifications = emails.map(email =>
+            this.userVerificationUtil.createVerified(email)
+        );
         const inputs: IUserCreateWithWorkspaceInput[] = data.map(
-            ({ email, name }, index) => ({
-                userId: userIds[index]!,
-                email,
-                name,
-                username: usernames[index]!,
-                countryId,
-                roleId: role.id,
-                signUpFrom: EnumUserSignUpFrom.admin,
-                signUpWith: EnumUserSignUpWith.credential,
-                isVerified,
-                acceptedTermPolicyTypes: [
-                    ...UserTermPolicyContract.requiredTypes,
-                ],
-                password: passwordHasheds[index]!,
-                passwordHistoryType:
-                    UserCreateContract.admin.passwordHistoryType,
-                verification: null,
-                workspaceContext: workspaceContexts[index]!,
-                createdBy,
-            })
+            ({ email, name }, index) => {
+                const verification = verifications[index]!;
+
+                return {
+                    userId: userIds[index]!,
+                    email,
+                    name,
+                    username: usernames[index]!,
+                    countryId,
+                    roleId: role.id,
+                    signUpFrom: EnumUserSignUpFrom.admin,
+                    signUpWith: EnumUserSignUpWith.credential,
+                    isVerified: true,
+                    verifiedAt: verification.verifiedAt,
+                    acceptedTermPolicyTypes: [
+                        ...UserTermPolicyContract.requiredTypes,
+                    ],
+                    password: passwordHasheds[index]!,
+                    passwordHistoryType:
+                        UserCreateContract.admin.passwordHistoryType,
+                    verification,
+                    workspaceContext: workspaceContexts[index]!,
+                    createdBy,
+                };
+            }
         );
 
         return { inputs, passwordHasheds, passwordStrings: passwords };

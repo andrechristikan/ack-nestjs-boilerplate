@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -32,10 +33,18 @@ describe('AuthUtil', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const configGet = vi.fn<(key: string) => number | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const configValues: Record<string, number> = {
+        'auth.jwt.jtiLength': 40,
+    };
     let util: AuthUtil;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation(key => configValues[key]);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthUtil,
@@ -46,6 +55,7 @@ describe('AuthUtil', () => {
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         util = module.get(AuthUtil);
@@ -205,13 +215,13 @@ describe('AuthUtil', () => {
     });
 
     describe('generateJti', () => {
-        it('generates a random 32-character jti', () => {
+        it('generates a random jti of the configured length', () => {
             helperStringService.random.mockReturnValue('random-jti-value');
 
             const result = util.generateJti();
 
             expect(result).toBe('random-jti-value');
-            expect(helperStringService.random).toHaveBeenCalledWith(32);
+            expect(helperStringService.random).toHaveBeenCalledWith(40);
         });
     });
 
@@ -227,7 +237,7 @@ describe('AuthUtil', () => {
                 jti: 'jti-value',
             });
             expect(databaseUtil.createId).toHaveBeenCalledTimes(1);
-            expect(helperStringService.random).toHaveBeenCalledWith(32);
+            expect(helperStringService.random).toHaveBeenCalledWith(40);
         });
     });
 
