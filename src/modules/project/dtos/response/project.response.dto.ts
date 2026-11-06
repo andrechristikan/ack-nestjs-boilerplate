@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
-/**
- * Base project shape: the stored project row.
- * @public
- */
+/** @public */
 export const ProjectResponseSchema = DatabaseResponseSchema.extend({
     workspaceId: z.string().meta({
         description: 'Identifier of the workspace the project belongs to',
@@ -25,8 +22,5 @@ export const ProjectResponseSchema = DatabaseResponseSchema.extend({
     }),
 });
 
-/**
- * Stored project.
- * @public
- */
+/** @public */
 export type ProjectResponseDto = z.infer<typeof ProjectResponseSchema>;

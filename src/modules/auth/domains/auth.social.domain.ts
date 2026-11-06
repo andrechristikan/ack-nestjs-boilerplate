@@ -9,7 +9,6 @@ import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
 
-/** Verifies Google and Apple identity tokens. See docs/authentication.md. */
 @Injectable()
 export class AuthSocialDomain {
     private readonly appleClientIds: string[];

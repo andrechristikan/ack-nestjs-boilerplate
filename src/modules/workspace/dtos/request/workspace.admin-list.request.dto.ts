@@ -7,10 +7,7 @@ import {
     WorkspaceDefaultAvailableSearch,
 } from '@modules/workspace/constants/workspace.list.constant';
 
-/**
- * Offset list query for admin workspace listing.
- * @public
- */
+/** @public */
 export const WorkspaceAdminListRequestSchema =
     PaginationOffsetQuerySchema.extend({
         search: PaginationOffsetQuerySchema.shape.search.meta({
@@ -37,10 +34,7 @@ export const WorkspaceAdminListRequestSchema =
         }),
     });
 
-/**
- * Inferred DTO for WorkspaceAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type WorkspaceAdminListRequestDto = z.infer<
     typeof WorkspaceAdminListRequestSchema
 >;

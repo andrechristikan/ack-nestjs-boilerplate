@@ -17,10 +17,6 @@ import { UserDomainModule } from '@modules/user/user.domain.module';
 import { WorkspaceDomainModule } from '@modules/workspace/workspace.domain.module';
 import { Module } from '@nestjs/common';
 
-/**
- * Mounts controllers shared across access levels: user, password history,
- * activity log, session, term policy, device, and notification.
- */
 @Module({
     controllers: [
         UserSharedController,

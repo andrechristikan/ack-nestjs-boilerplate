@@ -16,9 +16,6 @@ import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
-/**
- * Enqueues the activity log rows a request staged, one job per flush under a fresh job id.
- */
 @Injectable()
 export class ActivityLogQueue extends QueueBase {
     private readonly createManyJobIdPattern: string;

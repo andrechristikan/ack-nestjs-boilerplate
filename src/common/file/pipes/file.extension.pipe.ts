@@ -6,9 +6,6 @@ import { FileExtensionContract } from '@common/file/contracts/file.extension.con
 import { FileService } from '@common/file/services/file.service';
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 
-/**
- * Builds a pipe that rejects uploaded files whose declared extension or magic bytes fall outside `allowedExtensions`.
- */
 export function FileExtensionPipe(
     allowedExtensions: EnumFileExtension[]
 ): Type<PipeTransform> {

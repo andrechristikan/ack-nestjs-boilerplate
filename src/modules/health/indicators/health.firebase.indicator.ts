@@ -4,9 +4,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
-/**
- * Reports Firebase Admin SDK initialization as a Terminus health indicator.
- */
 @Injectable()
 export class HealthFirebaseIndicator {
     private readonly logger = new Logger(HealthFirebaseIndicator.name);
@@ -16,9 +13,6 @@ export class HealthFirebaseIndicator {
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
-    /**
-     * Down when Firebase is not configured, or unless the Admin SDK finished initializing.
-     */
     async isHealthy(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {

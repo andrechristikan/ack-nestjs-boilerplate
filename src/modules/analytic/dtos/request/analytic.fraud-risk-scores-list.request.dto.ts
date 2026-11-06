@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { AnalyticFraudRiskScoreAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticFraudRiskScoresRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores.request.dto';
 
-/**
- * Analytic Fraud Risk Scores List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticFraudRiskScoresListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
@@ -28,10 +25,7 @@ export const AnalyticFraudRiskScoresListRequestSchema =
         })
         .extend(AnalyticFraudRiskScoresRequestSchema.shape);
 
-/**
- * Inferred DTO for AnalyticFraudRiskScoresListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticFraudRiskScoresListRequestDto = z.infer<
     typeof AnalyticFraudRiskScoresListRequestSchema
 >;

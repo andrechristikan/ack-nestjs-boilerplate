@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `database` kit.
- * @public
- */
+/** @public */
 export enum EnumDatabaseStatusCodeError {
     uniqueValueGenerationFailed = 51800,
     writeConflict = 51801,

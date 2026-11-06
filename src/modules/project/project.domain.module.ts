@@ -6,7 +6,6 @@ import { Module } from '@nestjs/common';
 import { ProjectAnalyticDomain } from '@modules/project/domains/project.analytic.domain';
 import { ProjectMemberAnalyticDomain } from '@modules/project/domains/project.member.analytic.domain';
 
-/** Project domain services backing `@Project*Protected` guards and the project HTTP layer. */
 @Module({
     controllers: [],
     providers: [

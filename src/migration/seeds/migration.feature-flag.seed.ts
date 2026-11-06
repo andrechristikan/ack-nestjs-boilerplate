@@ -10,9 +10,6 @@ import { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds feature flag toggles for the current environment.
- */
 @Command({
     name: 'featureFlag',
     description: 'Seed/Remove Feature Flags',

@@ -40,12 +40,6 @@ export default registerAs('app', (): IConfigApp => {
         http: {
             host: process.env.HTTP_HOST!,
             port: Number(process.env.HTTP_PORT!),
-            /**
-             * Trusted proxy NETWORK list for Express `trust proxy` — the `proxy-addr` preset names
-             * (`loopback, linklocal, uniquelocal`) or explicit CIDRs, never a hop count and never
-             * `true`. Empty trusts no proxy, so `req.ip` is the direct socket peer and a client
-             * cannot forge it through `X-Forwarded-For`.
-             */
             trustedProxy:
                 process.env.HTTP_TRUSTED_PROXY === ''
                     ? null

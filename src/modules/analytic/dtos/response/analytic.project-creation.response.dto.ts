@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { AnalyticWorkspaceCountResponseSchema } from '@modules/analytic/dtos/response/analytic.workspace-count.response.dto';
 
-/**
- * Shapes the projects created in a window and their split per workspace.
- * @public
- */
+/** @public */
 export const AnalyticProjectCreationResponseSchema = z.object({
     created: z.number().meta({
         description: 'Projects created inside the window',
@@ -17,10 +14,7 @@ export const AnalyticProjectCreationResponseSchema = z.object({
     }),
 });
 
-/**
- * Projects created in a window and their split per workspace.
- * @public
- */
+/** @public */
 export type AnalyticProjectCreationResponseDto = z.infer<
     typeof AnalyticProjectCreationResponseSchema
 >;

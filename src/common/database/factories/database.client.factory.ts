@@ -25,7 +25,6 @@ export class DatabaseClientFactory extends PrismaClient<
         });
     }
 
-    /** Applies the audit extension to this connection. */
     create(): IDatabaseClient {
         const extension = this.databaseExtensionFactory.build();
 

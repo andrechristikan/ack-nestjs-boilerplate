@@ -47,7 +47,6 @@ export class TermPolicyUtil {
         return uniqueLanguages.length === languages.length;
     }
 
-    /** True when the size is within `termPolicy.content.maxSizeInBytes`. */
     isContentSizeAllowed(size: number): boolean {
         return size <= this.contentMaxSizeInBytes;
     }
@@ -59,7 +58,6 @@ export class TermPolicyUtil {
         });
     }
 
-    /** True when the key names a file under the storage path of the type and version. */
     isContentKeyInPath(
         type: EnumTermPolicyType,
         version: number,
@@ -71,7 +69,7 @@ export class TermPolicyUtil {
         return key.startsWith(prefix) && key.length > prefix.length;
     }
 
-    /** Builds the private S3 key `{path}/{language}.{ext}`, stripping any leading slash. */
+    /** Builds the S3 key `{path}/{language}.{extension}` with the extension lowercased, dropping a leading slash. */
     createRandomFilenameContentWithPath(
         type: EnumTermPolicyType,
         version: number,

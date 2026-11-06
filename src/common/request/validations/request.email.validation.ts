@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Email address that passes every format check, reporting only the first one that fails.
- * @public
- */
+/** @public */
 export const RequestEmailSchema = z.string().superRefine((value, ctx) => {
     if (!/\S+@\S+\.\S+/.test(value)) {
         ctx.addIssue({

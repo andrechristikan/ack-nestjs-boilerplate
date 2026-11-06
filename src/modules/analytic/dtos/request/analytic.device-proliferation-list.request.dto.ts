@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { AnalyticDeviceProliferationAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 
-/**
- * Analytic Device Proliferation List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticDeviceProliferationListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
         orderBy: z
@@ -25,10 +22,7 @@ export const AnalyticDeviceProliferationListRequestSchema =
             }),
     });
 
-/**
- * Inferred DTO for AnalyticDeviceProliferationListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticDeviceProliferationListRequestDto = z.infer<
     typeof AnalyticDeviceProliferationListRequestSchema
 >;

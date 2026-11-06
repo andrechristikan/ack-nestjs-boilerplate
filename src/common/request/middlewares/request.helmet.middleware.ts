@@ -4,9 +4,6 @@ import type { NextFunction, Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 
-/**
- * Applies the non-documents Helmet profile to every request.
- */
 @Injectable()
 export class RequestHelmetMiddleware implements NestMiddleware {
     private readonly maxAgeInSeconds: number;

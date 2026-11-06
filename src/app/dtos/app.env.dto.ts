@@ -15,10 +15,7 @@ import {
     RequestOptionalEnvUrlSchema,
 } from '@common/request/validations/request.optional-env.validation';
 
-/**
- * Validated shape of all application environment variables.
- * @public
- */
+/** @public */
 export const AppEnvSchema = z
     .object({
         APP_NAME: z.string().min(1),
@@ -156,8 +153,5 @@ export const AppEnvSchema = z
         );
     });
 
-/**
- * Validated application environment variables, inferred from `AppEnvSchema`.
- * @public
- */
+/** @public */
 export type AppEnvDto = z.infer<typeof AppEnvSchema>;

@@ -1,7 +1,4 @@
-/**
- * Names of the registered BullMQ queues.
- * @public
- */
+/** @public */
 export enum EnumQueue {
     activityLog = 'activityLog',
     notification = 'notification',
@@ -13,20 +10,14 @@ export enum EnumQueue {
     workspace = 'workspace',
 }
 
-/**
- * BullMQ job priorities; a lower value runs first.
- * @public
- */
+/** @public */
 export enum EnumQueuePriority {
     high = 1,
     medium = 5,
     low = 10,
 }
 
-/**
- * BullMQ job states as `Job.getState()` reports them; the values equal BullMQ's own strings.
- * @public
- */
+/** @public */
 export enum EnumQueueJobState {
     completed = 'completed',
     failed = 'failed',

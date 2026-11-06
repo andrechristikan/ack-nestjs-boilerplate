@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { AnalyticImpossibleTravelAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
 
-/**
- * Analytic Impossible Travel List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticImpossibleTravelListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
@@ -28,10 +25,7 @@ export const AnalyticImpossibleTravelListRequestSchema =
         })
         .extend(AnalyticOptionalDateRangeRequestSchema.shape);
 
-/**
- * Inferred DTO for AnalyticImpossibleTravelListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticImpossibleTravelListRequestDto = z.infer<
     typeof AnalyticImpossibleTravelListRequestSchema
 >;

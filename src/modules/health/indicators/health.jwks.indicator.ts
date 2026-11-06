@@ -4,9 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
-/**
- * Reports JWKS endpoint availability as a Terminus health indicator.
- */
 @Injectable()
 export class HealthJwksIndicator {
     private readonly logger = new Logger(HealthJwksIndicator.name);
@@ -29,9 +26,6 @@ export class HealthJwksIndicator {
         )!;
     }
 
-    /**
-     * Down when the URI is empty or not a valid URL, or when fetching it within the timeout does not yield a key set.
-     */
     private async checkUri(
         key: EnumHealthIndicatorKey,
         uri?: string
@@ -72,18 +66,12 @@ export class HealthJwksIndicator {
         }
     }
 
-    /**
-     * Down when the access-token JWKS endpoint is not configured or does not answer with a key set.
-     */
     async isHealthyAccessToken(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {
         return this.checkUri(key, this.accessTokenJwksUri);
     }
 
-    /**
-     * Down when the refresh-token JWKS endpoint is not configured or does not answer with a key set.
-     */
     async isHealthyRefreshToken(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {

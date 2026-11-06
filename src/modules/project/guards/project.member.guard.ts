@@ -12,10 +12,6 @@ import { ProjectMemberDomain } from '@modules/project/domains/project.member.dom
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
-/**
- * Confirms the already-authenticated user (loaded by `UserGuard`) is a member of the project
- * resolved by `ProjectGuard`, which must run before this guard.
- */
 @Injectable()
 export class ProjectMemberGuard implements CanActivate {
     constructor(

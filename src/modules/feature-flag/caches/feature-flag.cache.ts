@@ -12,7 +12,6 @@ import type KeyvRedis from '@keyv/redis';
 import type { Cache } from 'cache-manager';
 import type Keyv from 'keyv';
 
-/** Reads and writes the cached feature flag record, a read-through entry guarded by a lease; a read, lease take, or set failure logs and falls through, a delete failure throws. */
 @Injectable()
 export class FeatureFlagCache {
     private readonly logger = new Logger(FeatureFlagCache.name);
@@ -94,7 +93,7 @@ export class FeatureFlagCache {
         }
     }
 
-    /** Writes the entry and drops the lease in one script, only while the lease still holds the token. */
+    /** Writes the entry and drops the lease in one script, only while the lease still holds the token; a store failure is logged, not thrown. */
     async setFeatureFlag(
         key: string,
         featureFlag: FeatureFlag,

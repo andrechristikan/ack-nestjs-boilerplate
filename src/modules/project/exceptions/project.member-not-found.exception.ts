@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 
-/**
- * Raised when the requested project member does not exist.
- * @public
- */
+/** @public */
 export class ProjectMemberNotFoundException extends AppBaseException {
     readonly module = 'project';
     readonly statusCode = EnumProjectStatusCodeError.memberNotFound;

@@ -3,10 +3,7 @@ import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { EnumDevicePlatform } from '@generated/prisma-client/client';
 
-/**
- * Base device shape: the stored device row without the fingerprint and the notification token.
- * @public
- */
+/** @public */
 export const DeviceResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -25,8 +22,5 @@ export const DeviceResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored device without fingerprint and notification token.
- * @public
- */
+/** @public */
 export type DeviceResponseDto = z.infer<typeof DeviceResponseSchema>;

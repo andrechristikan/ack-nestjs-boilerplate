@@ -1,9 +1,6 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Raised at boot when a configured JWT key does not parse as the expected format; the parser error rides in `rawError`.
- * @public
- */
+/** @public */
 export class AuthJwtConfigInvalidException extends AppUnknownException {
     constructor(
         readonly configKey: string,

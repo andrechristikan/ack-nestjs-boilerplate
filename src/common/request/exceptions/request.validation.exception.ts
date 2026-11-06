@@ -3,10 +3,7 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
-/**
- * Carries Standard Schema validation issues to the global filter as a 422.
- * @public
- */
+/** @public */
 export class RequestValidationException extends AppBaseException {
     readonly module = 'request';
     readonly statusCode = EnumRequestStatusCodeError.validation;

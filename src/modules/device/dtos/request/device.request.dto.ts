@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import { DeviceFingerprintRegex } from '@modules/device/constants/device.constant';
 
-/**
- * Validates the device a client signs in from.
- * @public
- */
+/** @public */
 export const DeviceRequestSchema = z.strictObject({
     fingerprint: z.string().trim().regex(DeviceFingerprintRegex).meta({
         description: 'Device fingerprint to uniquely identify the device',
@@ -25,8 +22,5 @@ export const DeviceRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Device a client signs in from.
- * @public
- */
+/** @public */
 export type DeviceRequestDto = z.infer<typeof DeviceRequestSchema>;

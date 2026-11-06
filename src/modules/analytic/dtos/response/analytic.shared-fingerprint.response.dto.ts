@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one device fingerprint shared by several users.
- * @public
- */
+/** @public */
 export const AnalyticSharedFingerprintResponseSchema = z.object({
     fingerprint: z.string().meta({
         description: 'Device fingerprint the users share',
@@ -23,10 +20,7 @@ export const AnalyticSharedFingerprintResponseSchema = z.object({
     }),
 });
 
-/**
- * One device fingerprint shared by several users.
- * @public
- */
+/** @public */
 export type AnalyticSharedFingerprintResponseDto = z.infer<
     typeof AnalyticSharedFingerprintResponseSchema
 >;

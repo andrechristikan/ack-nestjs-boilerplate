@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one login that happened after an admin revoked the user's session.
- * @public
- */
+/** @public */
 export const AnalyticSessionAfterAdminResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user who logged back in',
@@ -20,10 +17,7 @@ export const AnalyticSessionAfterAdminResponseSchema = z.object({
     }),
 });
 
-/**
- * One login that happened after an admin revoked the user's session.
- * @public
- */
+/** @public */
 export type AnalyticSessionAfterAdminResponseDto = z.infer<
     typeof AnalyticSessionAfterAdminResponseSchema
 >;

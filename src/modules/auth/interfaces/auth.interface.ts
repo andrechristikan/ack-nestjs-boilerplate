@@ -49,7 +49,6 @@ export type IAuthJwtRefreshTokenPayload = Omit<
     'type' | 'roleId' | 'username' | 'email' | 'verification'
 >;
 
-/** A token payload whose `sub` and `jti` claims passed the shape check. */
 export type IAuthJwtPayloadIdentified<
     T extends { sub?: string; jti?: string },
 > = T & { sub: string; jti: string };

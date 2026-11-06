@@ -13,7 +13,6 @@ import { ConfigService } from '@nestjs/config';
 import { generateSecret, generateURI, verifySync } from 'otplib';
 import type { HashAlgorithm, OTPStrategy } from 'otplib';
 
-/** 2FA utility: TOTP secrets and codes, backup codes, secret encryption, and the otpauth key URI. */
 @Injectable()
 export class AuthTwoFactorUtil {
     private readonly strategy: OTPStrategy;
@@ -59,7 +58,6 @@ export class AuthTwoFactorUtil {
         )!;
     }
 
-    /** Builds the otpauth key URI consumed by authenticator apps (QR code). */
     createKeyUri(email: string, secret: string): string {
         return generateURI({
             issuer: this.issuer,
@@ -72,14 +70,13 @@ export class AuthTwoFactorUtil {
         });
     }
 
-    /** Generates a TOTP secret of the configured length. */
     generateSecret(): string {
         return generateSecret({
             length: this.secretLength,
         });
     }
 
-    /** Verifies a TOTP code against the secret, allowing a configurable time-step window; answers the matched time step, or null when the code does not match. */
+    /** Returns the matched time step, or null when the code does not match; accepts codes up to the configured window of steps old. */
     verifyCode(secret: string, code: string): number | null {
         const verified = verifySync({
             token: code,
@@ -98,7 +95,6 @@ export class AuthTwoFactorUtil {
         return verified.timeStep;
     }
 
-    /** Generates uppercase alphanumeric recovery backup codes plus their SHA-256 hashes for storage. */
     generateBackupCodes(): IAuthTwoFactorBackupCodes {
         const codes = Array.from({ length: this.backupCodesCount }, () =>
             this.helperStringService.randomUppercase(this.backupCodesLength)
@@ -110,7 +106,7 @@ export class AuthTwoFactorUtil {
         };
     }
 
-    /** Matches an input code against stored hashes, returning the matched index. */
+    /** Compares the SHA-256 hash of the input with the stored hashes; index is -1 when none matches. */
     verifyBackupCode(
         backupCodes: string[],
         input: string
@@ -126,7 +122,6 @@ export class AuthTwoFactorUtil {
         };
     }
 
-    /** Encrypts the secret with the configured key, bound to the user id. */
     encryptSecret(secret: string, userId: string): string {
         return this.helperEncryptionService.aes256Encrypt(
             secret,
@@ -136,7 +131,7 @@ export class AuthTwoFactorUtil {
         );
     }
 
-    /** Decrypts a secret encrypted for the user; throws when the payload fails to decrypt. */
+    /** Decrypts a secret encrypted for the same user id; a malformed payload or another user id throws HelperDecryptFailedException. */
     decryptSecret(encryptedSecret: string, userId: string): string {
         return this.helperEncryptionService.aes256Decrypt(
             encryptedSecret,
@@ -146,7 +141,7 @@ export class AuthTwoFactorUtil {
         );
     }
 
-    /** Maps a failed secret decryption to the exception for the caller to throw; null for any other error. */
+    /** Maps a failed decryption to the secret-unavailable exception for the caller to throw; null for any other error. */
     toDecryptException(
         err: unknown
     ): AuthTwoFactorSecretUnavailableException | null {

@@ -7,9 +7,6 @@ import { Queue } from 'bullmq';
 import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
-/**
- * Owns the workspace queue connection; schedules the recurring invite and join-request expiry sweeps.
- */
 @Injectable()
 export class WorkspaceQueue extends QueueBase {
     private readonly defTz: string;
@@ -27,12 +24,7 @@ export class WorkspaceQueue extends QueueBase {
         )!;
     }
 
-    /**
-     * Schedules the recurring stale-invite expiry sweep (hourly, on the hour, in the
-     * configured timezone). `immediately: true` is BullMQ's native scheduler option
-     * to also run the job right now, at every call — safe to re-run on every app
-     * bootstrap since the sweep is idempotent (it only flips already-past-due rows).
-     */
+    /** Creates or replaces the stale-invite expiry scheduler on the configured cron and timezone, and runs the sweep at once on every call. */
     async scheduleInviteExpirySweep(): Promise<void> {
         await this.queue.upsertJobScheduler(
             EnumWorkspaceProcess.expireStaleInvites,
@@ -51,7 +43,7 @@ export class WorkspaceQueue extends QueueBase {
         );
     }
 
-    /** Schedules the recurring stale-join-request expiry sweep on the invite sweep cron. */
+    /** Creates or replaces the stale-join-request expiry scheduler on the invite sweep cron and timezone, and runs the sweep at once on every call. */
     async scheduleJoinRequestExpirySweep(): Promise<void> {
         await this.queue.upsertJobScheduler(
             EnumWorkspaceProcess.expireStaleJoinRequests,

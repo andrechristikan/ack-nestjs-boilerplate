@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumActivityLogStatusCodeError } from '@modules/activity-log/enums/activity-log.status-code.enum';
 
-/**
- * Raised when a staged activity log breaks its action contract.
- * @public
- */
+/** @public */
 export class ActivityLogContractInvalidException extends AppBaseException {
     readonly module = 'activityLog';
     readonly statusCode = EnumActivityLogStatusCodeError.contractInvalid;

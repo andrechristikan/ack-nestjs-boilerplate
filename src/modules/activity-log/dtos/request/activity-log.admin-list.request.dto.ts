@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 
-/**
- * Activity Log Admin List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const ActivityLogAdminListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
         orderBy: z
@@ -25,10 +22,7 @@ export const ActivityLogAdminListRequestSchema =
             }),
     });
 
-/**
- * Inferred DTO for ActivityLogAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type ActivityLogAdminListRequestDto = z.infer<
     typeof ActivityLogAdminListRequestSchema
 >;

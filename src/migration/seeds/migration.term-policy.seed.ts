@@ -26,9 +26,6 @@ import { readFileSync } from 'fs';
 import { Command } from 'nest-commander';
 import { join } from 'path';
 
-/**
- * Seeds version 1 of every term policy type, published with its bundled `en` template. Uploads the template to S3 when configured and stores the row either way.
- */
 @Command({
     name: 'termPolicy',
     description: 'Seed/Remove Term Policies',

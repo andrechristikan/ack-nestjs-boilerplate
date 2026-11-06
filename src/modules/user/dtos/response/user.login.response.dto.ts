@@ -3,10 +3,7 @@ import { faker } from '@faker-js/faker';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserTwoFactorResponseSchema } from '@modules/user/dtos/response/user.two-factor.response.dto';
 
-/**
- * Login outcome: either the issued token pair, or the two-factor challenge that gates it.
- * @public
- */
+/** @public */
 export const UserLoginResponseSchema = z.object({
     isTwoFactorEnable: z.boolean().meta({
         description:
@@ -31,8 +28,5 @@ export const UserLoginResponseSchema = z.object({
     }),
 });
 
-/**
- * Login outcome: tokens or a two-factor challenge.
- * @public
- */
+/** @public */
 export type UserLoginResponseDto = z.infer<typeof UserLoginResponseSchema>;

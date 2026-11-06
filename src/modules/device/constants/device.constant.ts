@@ -1,39 +1,24 @@
 import type { Prisma } from '@generated/prisma-client/client';
 
-/**
- * Characters and length a device fingerprint accepts.
- * @public
- */
+/** @public */
 export const DeviceFingerprintRegex = /^[A-Za-z0-9._:-]{8,128}$/;
 
-/**
- * Column a push-token read of a device ownership returns.
- * @public
- */
+/** @public */
 export const DeviceOwnershipNotificationTokenSelect = {
     notificationToken: true,
 } satisfies Prisma.DeviceOwnershipSelect;
 
-/**
- * Column a revocation check of a device ownership returns.
- * @public
- */
+/** @public */
 export const DeviceOwnershipRevokedSelect = {
     isRevoked: true,
 } satisfies Prisma.DeviceOwnershipSelect;
 
-/**
- * Column a device lookup of a device ownership returns.
- * @public
- */
+/** @public */
 export const DeviceOwnershipDeviceIdSelect = {
     deviceId: true,
 } satisfies Prisma.DeviceOwnershipSelect;
 
-/**
- * Column the current-session marker of a device ownership list returns.
- * @public
- */
+/** @public */
 export const DeviceOwnershipSessionIdSelect = {
     id: true,
 } satisfies Prisma.SessionSelect;

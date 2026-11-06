@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Absolute URL that does not end with a slash.
- * @public
- */
+/** @public */
 export const RequestUrlNoTrailingSlashSchema = z
     .url()
     .refine(url => !url.endsWith('/'))

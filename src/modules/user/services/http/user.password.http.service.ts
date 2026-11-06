@@ -80,7 +80,6 @@ export class UserPasswordHttpService {
         return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
-    /** Verifies the code or backup code while the user has two-factor on; answers null while it is off. */
     private async verifyTwoFactorIfEnabled(
         user: IUser,
         input: IUserTwoFactorVerifyInput

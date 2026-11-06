@@ -25,9 +25,6 @@ import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
-/**
- * Consumes the push queue (FCM); rate-limited to stay under Firebase send quota.
- */
 @QueueProcessor(EnumQueue.notificationPush, {
     limiter: {
         max: FirebaseMaxRateLimitPerDuration,
@@ -43,7 +40,6 @@ export class NotificationPushProcessor extends QueueProcessorBase {
         super(sentryService, messageService);
     }
 
-    /** Dispatches each job to its handler by job name. */
     protected async handle(
         job: Job<unknown, IQueueResponse, EnumNotificationPushProcess>
     ): Promise<IQueueResponse> {

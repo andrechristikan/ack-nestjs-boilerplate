@@ -32,10 +32,7 @@ import type {
     IWorkspaceMemberFieldValue,
 } from '@modules/workspace/interfaces/workspace.interface';
 
-/**
- * Requires `x-workspace-id` to resolve to an existing, non-deleted workspace. Place directly above `@UserProtected()`.
- * @public
- */
+/** @public */
 export function WorkspaceProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(WorkspaceGuard),
@@ -43,10 +40,7 @@ export function WorkspaceProtected(): MethodDecorator {
     );
 }
 
-/**
- * Reads the current workspace, or one of its fields, that `WorkspaceGuard` stored. Throws `WorkspaceGuardMissingException` when the workspace is absent and `RequestContextMissingException` when the requested field is null.
- * @public
- */
+/** @public */
 export const WorkspaceCurrent = createParamDecorator<
     IWorkspaceField | undefined,
     Workspace | IWorkspaceFieldValue
@@ -74,12 +68,7 @@ export const WorkspaceCurrent = createParamDecorator<
     return value;
 });
 
-/**
- * Requires the caller to be a member of the workspace resolved by `@WorkspaceProtected()`. Stack
- * above it. Pass `roles` to additionally require the caller's workspace membership role to be one of them; omit
- * `roles` to only require membership.
- * @public
- */
+/** @public */
 export function WorkspaceMemberProtected(
     ...roles: EnumWorkspaceMemberRole[]
 ): MethodDecorator {
@@ -97,10 +86,7 @@ export function WorkspaceMemberProtected(
     );
 }
 
-/**
- * Reads the caller's workspace member row, or one of its fields, that `WorkspaceMemberGuard` stored. Throws `WorkspaceMemberGuardMissingException` when the member is absent and `RequestContextMissingException` when the requested field is null.
- * @public
- */
+/** @public */
 export const WorkspaceMemberCurrent = createParamDecorator<
     IWorkspaceMemberField | undefined,
     WorkspaceMember | IWorkspaceMemberFieldValue

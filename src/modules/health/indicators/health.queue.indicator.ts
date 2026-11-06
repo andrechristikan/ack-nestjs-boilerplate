@@ -6,9 +6,6 @@ import type { HealthIndicatorResult } from '@nestjs/terminus';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { Queue } from 'bullmq';
 
-/**
- * Reports BullMQ Redis client readiness as a Terminus health indicator.
- */
 @Injectable()
 export class HealthQueueIndicator {
     constructor(
@@ -17,9 +14,6 @@ export class HealthQueueIndicator {
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
-    /**
-     * Down unless the notification queue Redis client status is ready.
-     */
     async isHealthy(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {

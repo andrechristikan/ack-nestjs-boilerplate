@@ -6,10 +6,7 @@ import {
 } from '@generated/prisma-client/client';
 import { TermPolicyContentSchema } from '@modules/term-policy/dtos/term-policy.content.dto';
 
-/**
- * Base term-policy shape: the stored terms or policy row with its localized contents.
- * @public
- */
+/** @public */
 export const TermPolicyResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -36,8 +33,5 @@ export const TermPolicyResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored term policy with its localized contents.
- * @public
- */
+/** @public */
 export type TermPolicyResponseDto = z.infer<typeof TermPolicyResponseSchema>;

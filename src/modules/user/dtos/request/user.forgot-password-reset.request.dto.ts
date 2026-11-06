@@ -3,10 +3,7 @@ import { faker } from '@faker-js/faker';
 import { UserChangePasswordRequestSchema } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 
-/**
- * Validates the body for resetting a password with a reset token.
- * @public
- */
+/** @public */
 export const UserForgotPasswordResetRequestSchema =
     UserChangePasswordRequestSchema.pick({ newPassword: true }).extend({
         method: UserLoginVerifyTwoFactorRequestSchema.shape.method.optional(),
@@ -21,10 +18,7 @@ export const UserForgotPasswordResetRequestSchema =
             }),
     });
 
-/**
- * Body for resetting a password with a reset token.
- * @public
- */
+/** @public */
 export type UserForgotPasswordResetRequestDto = z.infer<
     typeof UserForgotPasswordResetRequestSchema
 >;

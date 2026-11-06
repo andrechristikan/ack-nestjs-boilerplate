@@ -20,7 +20,6 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 
-/** Renders and delivers the password, two-factor and new-device login push messages. */
 @Injectable()
 export class NotificationPushSecurityDomain {
     constructor(

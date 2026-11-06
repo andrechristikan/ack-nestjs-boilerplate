@@ -1,7 +1,4 @@
-/**
- * Job names on the term-policy queue.
- * @public
- */
+/** @public */
 export enum EnumTermPolicyProcess {
     deleteContent = 'deleteContent',
     copyContent = 'copyContent',

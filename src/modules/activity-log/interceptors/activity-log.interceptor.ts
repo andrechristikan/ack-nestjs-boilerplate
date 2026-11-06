@@ -11,11 +11,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
-/**
- * Flushes staged activity logs after the handler settles.
- * Success and error both flush every staged activity log, each flush enqueued as one job.
- * A flush failure never changes the handler outcome; an error that is neither an `AppBaseException` nor an `HttpException` leaves wrapped in `AppUnknownException`.
- */
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
     private readonly logger = new Logger(ActivityLogInterceptor.name);

@@ -9,10 +9,6 @@ import { FileExceedMaxDataImportException } from '@common/file/exceptions/file.e
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import type { IFileCsvValidationOptions } from '@common/file/interfaces/file.interface';
 
-/**
- * Builds a pipe that validates every parsed CSV row against `schema`,
- * collecting per-row failures into a `FileImportException`.
- */
 export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
     schema: TSchema,
     options?: IFileCsvValidationOptions
@@ -36,10 +32,6 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
             )!;
         }
 
-        /**
-         * Validates rows in bounded chunks, concurrent within a chunk, keeping input order;
-         * throws `FileImportException` with row indexes on any failure.
-         */
         private async validateRows(
             data: unknown[]
         ): Promise<StandardSchemaV1.InferOutput<TSchema>[]> {
@@ -80,10 +72,6 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
             return rows;
         }
 
-        /**
-         * Throws when rows are empty or exceed the configured row cap,
-         * then forwards to row validation.
-         */
         private async parse(
             value: unknown[]
         ): Promise<StandardSchemaV1.InferOutput<TSchema>[]> {

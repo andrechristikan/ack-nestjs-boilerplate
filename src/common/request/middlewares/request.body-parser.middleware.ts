@@ -7,10 +7,6 @@ import { RequestPayloadTooLargeException } from '@common/request/exceptions/requ
 import { RequestUnsupportedMediaTypeException } from '@common/request/exceptions/request.unsupported-media-type.exception';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 
-/**
- * Parses the body per content-type (json, urlencoded, text, octet-stream) with configured size
- * limits. Multipart is skipped on purpose, left to Multer for file uploads.
- */
 @Injectable()
 export class RequestBodyParserMiddleware implements NestMiddleware {
     private readonly jsonLimitInBytes: number;

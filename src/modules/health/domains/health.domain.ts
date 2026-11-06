@@ -38,9 +38,6 @@ export class HealthDomain {
         private readonly queueIndicator: HealthQueueIndicator
     ) {}
 
-    /**
-     * Runs the indicators and unwraps the health result Terminus reports through `ServiceUnavailableException`; any other failure is wrapped in `AppUnknownException`.
-     */
     private async check(
         indicators: HealthIndicatorFunction[]
     ): Promise<HealthCheckResult> {

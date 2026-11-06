@@ -1,21 +1,12 @@
 import type { IDatabaseModelRelations } from '@common/database/interfaces/database.extension.interface';
 
-/**
- * Injection token of the audited, extended Prisma client.
- * @public
- */
+/** @public */
 export const DatabaseClientToken = Symbol('DatabaseClient');
 
-/**
- * Collection and operation of a Prisma MongoDB query event, `db.<Collection>.<operation>(`.
- * @public
- */
+/** @public */
 export const DatabaseQueryTargetRegex = /^db\.(\w+)\.(\w+)\(/;
 
-/**
- * Relation field to related model map per Prisma model, used to stamp audit fields on nested writes.
- * @public
- */
+/** @public */
 export const DatabaseModelRelations = {
     ApiKey: {},
     Role: { policies: 'Policy', users: 'User' },
@@ -89,10 +80,7 @@ export const DatabaseModelRelations = {
     ProjectMember: { project: 'Project', user: 'User' },
 } as const satisfies IDatabaseModelRelations;
 
-/**
- * Prisma error codes meaning the database cannot be reached or its connection pool is exhausted.
- * @public
- */
+/** @public */
 export const DatabaseUnavailableCodes: readonly string[] = [
     'P1001',
     'P1002',
@@ -101,32 +89,17 @@ export const DatabaseUnavailableCodes: readonly string[] = [
     'P2024',
 ];
 
-/**
- * Prisma error code of a unique-constraint violation.
- * @public
- */
+/** @public */
 export const DatabaseUniqueConstraintCode = 'P2002';
 
-/**
- * Prisma error code of a transaction write conflict or deadlock.
- * @public
- */
+/** @public */
 export const DatabaseWriteConflictCode = 'P2034';
 
-/**
- * Prisma error code of inconsistent column data, such as a malformed ObjectId.
- * @public
- */
+/** @public */
 export const DatabaseIdInvalidCode = 'P2023';
 
-/**
- * Prisma error code of a transaction API failure, such as an expired or closed interactive transaction.
- * @public
- */
+/** @public */
 export const DatabaseTransactionExpiredCode = 'P2028';
 
-/**
- * Mask written in place of a credential, and in place of a whole value that is not a url, in a logged connection url.
- * @public
- */
+/** @public */
 export const DatabaseUrlCensoredValue = '***';

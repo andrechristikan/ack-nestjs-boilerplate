@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { AwsS3PresignRequestSchema } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 
-/**
- * Validates a presign request for one part of a multipart upload.
- * @public
- */
+/** @public */
 export const AwsS3PresignPartRequestSchema = AwsS3PresignRequestSchema.extend({
     partNumber: z.number().int().min(1).max(AwsS3MaxPartNumber).meta({
         description: 'Part number for multipart upload',
@@ -17,10 +14,7 @@ export const AwsS3PresignPartRequestSchema = AwsS3PresignRequestSchema.extend({
     }),
 });
 
-/**
- * Presign request for one part of a multipart upload.
- * @public
- */
+/** @public */
 export type AwsS3PresignPartRequestDto = z.infer<
     typeof AwsS3PresignPartRequestSchema
 >;

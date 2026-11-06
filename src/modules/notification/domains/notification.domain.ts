@@ -129,7 +129,6 @@ export class NotificationDomain {
         );
     }
 
-    /** Rejects any type/channel pair not in the allowed combinations list. */
     validateUserSetting(
         type: EnumNotificationType,
         channel: EnumNotificationChannel

@@ -5,12 +5,6 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RequestSchemaMissingException } from '@common/request/exceptions/request.schema-missing.exception';
 
-/**
- * The global validation pipe. Fail-closed on body and param: a value reaching
- * a handler with no schema attached is a wiring defect. Query without a schema
- * still passes. Empty Standard Schema issue paths are stamped with the bound
- * argument name before exceptionFactory so errors[].property is the param name.
- */
 @Injectable()
 export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
     private stampEmptyIssuePaths(

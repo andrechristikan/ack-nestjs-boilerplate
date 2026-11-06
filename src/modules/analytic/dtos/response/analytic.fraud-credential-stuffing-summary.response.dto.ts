@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-summary.response.dto';
 
-/**
- * Shapes the credential stuffing result: the count, its window, and the threshold used.
- * @public
- */
+/** @public */
 export const AnalyticFraudCredentialStuffingSummaryResponseSchema =
     AnalyticFraudSummaryResponseSchema.extend({
         meta: z
@@ -20,10 +17,7 @@ export const AnalyticFraudCredentialStuffingSummaryResponseSchema =
             }),
     });
 
-/**
- * Credential stuffing result with the threshold it applied.
- * @public
- */
+/** @public */
 export type AnalyticFraudCredentialStuffingSummaryResponseDto = z.infer<
     typeof AnalyticFraudCredentialStuffingSummaryResponseSchema
 >;

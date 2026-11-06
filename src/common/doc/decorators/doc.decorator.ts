@@ -21,13 +21,6 @@ import {
 } from '@common/request/constants/request.constant';
 import { faker } from '@faker-js/faker';
 
-/**
- * Documents the responses a status may return, composed with every other entry at that status
- * so a later decorator cannot erase an earlier one. Dedupes by
- * `httpStatus:statusCode:messagePath`. One entry emits a plain schema with field examples;
- * two or more emit one shared envelope schema plus named OpenAPI `examples` keyed by
- * `messagePath`.
- */
 function DocResponseError(
     httpStatus: HttpStatus,
     ...entries: IDocResponseErrorOptions[]
@@ -128,10 +121,7 @@ function DocResponseError(
     };
 }
 
-/**
- * Documents each error entry in order, each composed with every other entry at its status.
- * @public
- */
+/** @public */
 export function DocErrors(...entries: IDocResponseEntry[]): MethodDecorator {
     return applyDecorators(
         ...entries.map(({ httpStatus, ...entry }) =>
@@ -140,11 +130,7 @@ export function DocErrors(...entries: IDocResponseEntry[]): MethodDecorator {
     );
 }
 
-/**
- * Base endpoint doc: operation metadata, language/correlation headers, the global error kit
- * every endpoint can return, then each `errors` entry a flow adds.
- * @public
- */
+/** @public */
 export function Doc(options?: IDocOptions): MethodDecorator {
     const summary = options?.summary ?? null;
     const deprecated = options?.deprecated ?? null;

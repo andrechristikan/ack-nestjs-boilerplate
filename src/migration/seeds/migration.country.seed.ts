@@ -10,9 +10,6 @@ import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds country reference data for the current environment.
- */
 @Command({
     name: 'country',
     description: 'Seed/Remove Countries',

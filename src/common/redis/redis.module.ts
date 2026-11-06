@@ -5,9 +5,6 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-/**
- * Global module providing the shared Keyv Redis client used as the cache backend, and `RedisUtil`.
- */
 @Module({})
 export class RedisCacheModule {
     static forRoot(): DynamicModule {

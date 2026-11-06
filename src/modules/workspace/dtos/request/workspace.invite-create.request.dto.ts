@@ -7,10 +7,7 @@ import {
 } from '@generated/prisma-client/client';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
-/**
- * Validates the body for inviting an email to the workspace.
- * @public
- */
+/** @public */
 export const WorkspaceInviteCreateRequestSchema = z.strictObject({
     email: z
         .string()
@@ -51,10 +48,7 @@ export const WorkspaceInviteCreateRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for inviting an email to the workspace.
- * @public
- */
+/** @public */
 export type WorkspaceInviteCreateRequestDto = z.infer<
     typeof WorkspaceInviteCreateRequestSchema
 >;

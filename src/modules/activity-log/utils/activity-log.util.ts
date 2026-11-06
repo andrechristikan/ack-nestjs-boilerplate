@@ -21,9 +21,6 @@ export class ActivityLogUtil {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    /**
-     * Resolves the human-readable description from the `activityLog.<action>` i18n key, interpolating metadata.
-     */
     getDescription(
         action: string,
         metadata: IActivityLogMetadata | null

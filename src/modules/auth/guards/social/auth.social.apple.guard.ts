@@ -9,7 +9,6 @@ import { AuthDomain } from '@modules/auth/domains/auth.domain';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
-/** Guard validating an Apple ID token and attaching the social payload to the request. */
 @Injectable()
 export class AuthSocialAppleGuard implements CanActivate {
     constructor(private readonly authDomain: AuthDomain) {}

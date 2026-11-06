@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
-/**
- * Raised when a workspace invite is no longer pending.
- * @public
- */
+/** @public */
 export class WorkspaceInviteAlreadyProcessedException extends AppBaseException {
     readonly module = 'workspace';
     readonly statusCode = EnumWorkspaceStatusCodeError.inviteAlreadyProcessed;

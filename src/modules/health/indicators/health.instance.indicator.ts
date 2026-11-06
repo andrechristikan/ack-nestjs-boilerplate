@@ -28,9 +28,6 @@ export class HealthInstanceIndicator {
         this.diskPath = this.configService.get<string>('health.diskPath')!;
     }
 
-    /**
-     * Checks resident set size against `health.memoryRssThresholdInBytes`.
-     */
     async isHealthyMemoryRss(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {
@@ -40,9 +37,6 @@ export class HealthInstanceIndicator {
         );
     }
 
-    /**
-     * Checks used heap against `health.memoryHeapThresholdInBytes`.
-     */
     async isHealthyMemoryHeap(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {
@@ -52,9 +46,6 @@ export class HealthInstanceIndicator {
         );
     }
 
-    /**
-     * Checks disk usage of `health.diskPath` against `health.diskThresholdPercent`.
-     */
     async isHealthyStorage(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {

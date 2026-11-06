@@ -6,9 +6,6 @@ import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter
 import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 
-/**
- * Global module exposing `PaginationService`, `PaginationQueryUtil`, `PaginationOffsetUtil`, and `PaginationFilterUtil` app-wide.
- */
 @Module({})
 export class PaginationModule {
     static forRoot(): DynamicModule {

@@ -8,9 +8,6 @@ import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
-/**
- * Consumes the workspace queue; the recurring stale-invite and stale-join-request expiry sweeps.
- */
 @QueueProcessor(EnumQueue.workspace)
 export class WorkspaceProcessor extends QueueProcessorBase {
     constructor(
@@ -21,7 +18,6 @@ export class WorkspaceProcessor extends QueueProcessorBase {
         super(sentryService, messageService);
     }
 
-    /** Dispatches each job to its handler by job name. */
     protected async handle(
         job: Job<unknown, IQueueResponse, EnumWorkspaceProcess>
     ): Promise<IQueueResponse> {

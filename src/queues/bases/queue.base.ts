@@ -7,9 +7,6 @@ import type {
     IQueueJobData,
 } from '@queues/interfaces/queue.interface';
 
-/**
- * Base for queue classes; owns the post-commit enqueue that logs and reports a failure instead of throwing it.
- */
 export abstract class QueueBase {
     private readonly logger = new Logger(QueueBase.name);
 

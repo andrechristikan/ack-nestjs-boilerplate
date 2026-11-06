@@ -8,10 +8,7 @@ import {
 } from '@modules/project/constants/project.list.constant';
 import { faker } from '@faker-js/faker';
 
-/**
- * Offset list query for admin project listing.
- * @public
- */
+/** @public */
 export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
     {
         search: PaginationOffsetQuerySchema.shape.search.meta({
@@ -39,10 +36,7 @@ export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
     }
 );
 
-/**
- * Inferred DTO for ProjectAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type ProjectAdminListRequestDto = z.infer<
     typeof ProjectAdminListRequestSchema
 >;

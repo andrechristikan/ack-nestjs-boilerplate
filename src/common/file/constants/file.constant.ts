@@ -3,23 +3,13 @@ import bytes from 'bytes';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 
-/**
- * Default maximum size of one uploaded file.
- * @public
- */
+/** @public */
 export const FileSizeInBytes: number = bytes('10mb') ?? 0;
 
-/**
- * Default maximum number of files in one multiple-file upload.
- * @public
- */
+/** @public */
 export const FileMaxMultiple: number = 3;
 
-/**
- * Error entries the `FileUpload*` decorators document: the extension, required, size, count,
- * field, and multipart upload errors.
- * @public
- */
+/** @public */
 export const FileUploadDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNSUPPORTED_MEDIA_TYPE,

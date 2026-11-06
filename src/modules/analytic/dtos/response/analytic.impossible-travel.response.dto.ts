@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one impossible travel detection between two sessions of a user.
- * @public
- */
+/** @public */
 export const AnalyticImpossibleTravelResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user who moved',
@@ -28,10 +25,7 @@ export const AnalyticImpossibleTravelResponseSchema = z.object({
     }),
 });
 
-/**
- * One impossible travel detection between two sessions of a user.
- * @public
- */
+/** @public */
 export type AnalyticImpossibleTravelResponseDto = z.infer<
     typeof AnalyticImpossibleTravelResponseSchema
 >;

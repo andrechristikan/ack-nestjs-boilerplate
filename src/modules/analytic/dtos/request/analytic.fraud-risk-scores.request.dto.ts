@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validates the minimum score query for listing fraud risk scores.
- * @public
- */
+/** @public */
 export const AnalyticFraudRiskScoresRequestSchema = z.strictObject({
     minScore: z.coerce.number().int().min(0).optional().meta({
         description: 'Minimum risk score filter',
@@ -11,10 +8,7 @@ export const AnalyticFraudRiskScoresRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Fraud risk score list query.
- * @public
- */
+/** @public */
 export type AnalyticFraudRiskScoresRequestDto = z.infer<
     typeof AnalyticFraudRiskScoresRequestSchema
 >;

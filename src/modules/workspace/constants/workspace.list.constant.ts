@@ -5,113 +5,70 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 
-/**
- * Fields the workspace lists search.
- * @public
- */
+/** @public */
 export const WorkspaceDefaultAvailableSearch = [
     Prisma.WorkspaceScalarFieldEnum.slug,
     Prisma.WorkspaceScalarFieldEnum.name,
 ] as const satisfies ReadonlyArray<Prisma.WorkspaceScalarFieldEnum>;
 
-/**
- * Sort fields the admin offset workspace list accepts.
- * @public
- */
+/** @public */
 export const WorkspaceDefaultAvailableOrderBy = [
     Prisma.WorkspaceScalarFieldEnum.createdAt,
     Prisma.WorkspaceScalarFieldEnum.name,
 ] as const satisfies ReadonlyArray<Prisma.WorkspaceScalarFieldEnum>;
 
-/**
- * Cursor-route allow-list: every field here is immutable, and a sort key that moves makes a scroll skip and repeat rows.
- * @public
- */
+/** @public */
 export const WorkspaceCursorAvailableOrderBy = [
     Prisma.WorkspaceScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.WorkspaceScalarFieldEnum>;
 
-/**
- * Sort fields the admin offset and user cursor workspace-member lists accept. `joinedAt` is set by
- * the schema default and no repository rewrites it, so the key cannot move a row mid-scroll.
- * @public
- */
+/** @public */
 export const WorkspaceMemberDefaultAvailableOrderBy = [
     Prisma.WorkspaceMemberScalarFieldEnum.joinedAt,
 ] as const satisfies ReadonlyArray<Prisma.WorkspaceMemberScalarFieldEnum>;
 
-/**
- * Workspace roles the workspace member list filter accepts.
- * @public
- */
+/** @public */
 export const WorkspaceMemberDefaultRole = Object.values(
     EnumWorkspaceMemberRole
 );
 
-/**
- * Fields the workspace invite list searches.
- * @public
- */
+/** @public */
 export const WorkspaceInviteDefaultAvailableSearch = [
     Prisma.WorkspaceInviteScalarFieldEnum.email,
     Prisma.WorkspaceInviteScalarFieldEnum.reference,
 ] as const satisfies ReadonlyArray<Prisma.WorkspaceInviteScalarFieldEnum>;
 
-/**
- * Cursor-route allow-list: every field here is immutable, and a sort key that moves makes a scroll skip and repeat rows.
- * @public
- */
+/** @public */
 export const WorkspaceInviteDefaultAvailableOrderBy = [
     Prisma.WorkspaceInviteScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.WorkspaceInviteScalarFieldEnum>;
 
-/**
- * Invite statuses the workspace invite list filter accepts.
- * @public
- */
+/** @public */
 export const WorkspaceInviteDefaultStatus = Object.values(
     EnumWorkspaceInviteStatus
 );
 
-/**
- * Sort fields the workspace join-request list accepts.
- * @public
- */
+/** @public */
 export const WorkspaceJoinRequestDefaultAvailableOrderBy = [
     Prisma.WorkspaceJoinRequestScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.WorkspaceJoinRequestScalarFieldEnum>;
 
-/**
- * Join-request statuses the workspace join-request list filter accepts.
- * @public
- */
+/** @public */
 export const WorkspaceJoinRequestDefaultStatus = Object.values(
     EnumWorkspaceJoinRequestStatus
 );
 
-/**
- * Cursor scope of the user workspace list.
- * @public
- */
+/** @public */
 export const WorkspaceUserListCursorScope = 'WorkspaceUserListCursorScope';
 
-/**
- * Cursor scope of the user workspace member list.
- * @public
- */
+/** @public */
 export const WorkspaceMemberUserListCursorScope =
     'WorkspaceMemberUserListCursorScope';
 
-/**
- * Cursor scope of the user workspace invite list.
- * @public
- */
+/** @public */
 export const WorkspaceInviteUserListCursorScope =
     'WorkspaceInviteUserListCursorScope';
 
-/**
- * Cursor scope of the user workspace join-request list.
- * @public
- */
+/** @public */
 export const WorkspaceJoinRequestUserListCursorScope =
     'WorkspaceJoinRequestUserListCursorScope';

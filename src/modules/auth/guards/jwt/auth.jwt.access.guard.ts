@@ -8,7 +8,6 @@ import {
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/** Guard for JWT access token routes; stores the validated payload in the request store. */
 @Injectable()
 export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
     constructor(
@@ -18,7 +17,6 @@ export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
         super();
     }
 
-    /** Validates the Passport result, then persists the payload to the request store. */
     handleRequest<T = IAuthJwtAccessTokenPayload>(
         err: Error,
         user: IAuthJwtAccessTokenPayload,

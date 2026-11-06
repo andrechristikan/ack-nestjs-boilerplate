@@ -77,10 +77,6 @@ export class RequestUtil {
         };
     }
 
-    /**
-     * Build the request-log context (ua / ip / geo) from a raw request.
-     * Called once per HTTP request from the request-log middleware.
-     */
     buildRequestLog(req: Request): IRequestLog {
         const userAgent = this.parseUserAgent(
             req.headers['user-agent'] ?? null

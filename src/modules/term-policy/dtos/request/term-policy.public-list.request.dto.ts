@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 
-/**
- * Term Policy Public List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const TermPolicyPublicListRequestSchema =
     PaginationCursorQuerySchema.omit({ search: true }).extend({
         orderBy: z
@@ -29,10 +26,7 @@ export const TermPolicyPublicListRequestSchema =
         }),
     });
 
-/**
- * Inferred DTO for TermPolicyPublicListRequestSchema.
- * @public
- */
+/** @public */
 export type TermPolicyPublicListRequestDto = z.infer<
     typeof TermPolicyPublicListRequestSchema
 >;

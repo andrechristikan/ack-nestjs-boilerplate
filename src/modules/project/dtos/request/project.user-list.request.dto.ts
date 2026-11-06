@@ -6,10 +6,7 @@ import {
     ProjectDefaultAvailableSearch,
 } from '@modules/project/constants/project.list.constant';
 
-/**
- * Project User List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const ProjectUserListRequestSchema = PaginationCursorQuerySchema.extend({
     search: PaginationCursorQuerySchema.shape.search.meta({
         description: `Search query, available fields: ${ProjectDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
@@ -31,10 +28,7 @@ export const ProjectUserListRequestSchema = PaginationCursorQuerySchema.extend({
         }),
 });
 
-/**
- * Inferred DTO for ProjectUserListRequestSchema.
- * @public
- */
+/** @public */
 export type ProjectUserListRequestDto = z.infer<
     typeof ProjectUserListRequestSchema
 >;

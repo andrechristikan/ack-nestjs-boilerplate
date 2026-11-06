@@ -5,10 +5,6 @@ import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
-/**
- * Resolves the active, non-deleted workspace from the workspace id in the request store (set by
- * `RequestWorkspaceMiddleware`) and caches it for the guards stacked above this one.
- */
 @Injectable()
 export class WorkspaceGuard implements CanActivate {
     constructor(

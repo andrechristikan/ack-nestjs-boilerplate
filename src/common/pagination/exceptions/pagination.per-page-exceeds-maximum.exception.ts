@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 
-/**
- * Raised when `perPage` exceeds the maximum.
- * @public
- */
+/** @public */
 export class PaginationPerPageExceedsMaximumException extends AppBaseException {
     readonly module = 'pagination';
     readonly statusCode = EnumPaginationStatusCodeError.perPageExceedsMaximum;

@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 
-/**
- * Password History Admin List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const PasswordHistoryAdminListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
         orderBy: z
@@ -25,10 +22,7 @@ export const PasswordHistoryAdminListRequestSchema =
             }),
     });
 
-/**
- * Inferred DTO for PasswordHistoryAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type PasswordHistoryAdminListRequestDto = z.infer<
     typeof PasswordHistoryAdminListRequestSchema
 >;

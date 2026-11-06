@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes the standing two-factor attempt counters.
- * @public
- */
+/** @public */
 export const AnalyticTwoFactorAttemptResponseSchema = z.object({
     usersWithAttempts: z.number().meta({
         description: 'Users holding at least one recorded attempt',
@@ -16,10 +13,7 @@ export const AnalyticTwoFactorAttemptResponseSchema = z.object({
     }),
 });
 
-/**
- * Standing two-factor attempt counters.
- * @public
- */
+/** @public */
 export type AnalyticTwoFactorAttemptResponseDto = z.infer<
     typeof AnalyticTwoFactorAttemptResponseSchema
 >;

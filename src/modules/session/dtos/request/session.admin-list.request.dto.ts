@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
 import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 
-/**
- * Offset list query for admin session listing.
- * @public
- */
+/** @public */
 export const SessionAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
     search: true,
 }).extend({
@@ -31,10 +28,7 @@ export const SessionAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
     }),
 });
 
-/**
- * Inferred DTO for SessionAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type SessionAdminListRequestDto = z.infer<
     typeof SessionAdminListRequestSchema
 >;

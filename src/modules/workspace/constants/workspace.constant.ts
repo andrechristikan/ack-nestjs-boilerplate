@@ -5,53 +5,28 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IWorkspaceActiveFilter } from '@modules/workspace/interfaces/workspace.interface';
 
-/**
- * Request-store key holding the workspace the workspace guard resolved.
- * @public
- */
+/** @public */
 export const WorkspaceStoreKey = 'WorkspaceStoreKey';
 
-/**
- * Request-store key holding the caller's workspace membership.
- * @public
- */
+/** @public */
 export const WorkspaceMemberStoreKey = 'WorkspaceMemberStoreKey';
 
-/**
- * Route metadata key holding the workspace roles `@WorkspaceMemberProtected` requires.
- * @public
- */
+/** @public */
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
-/**
- * Matches a `Workspace` that is not soft-deleted, including documents written before this field
- * was set explicitly at create time. Prisma's MongoDB connector compiles `{ deletedAt: null }`
- * alone into a query that also requires the field to be present (an `isSet` guard), so it silently
- * excludes any document where `deletedAt` was never persisted at all — as opposed to persisted and
- * explicitly `null`. This OR restores "active" semantics for that data, top-level or nested.
- * @public
- */
+/** @public */
 export const WorkspaceActiveFilter: IWorkspaceActiveFilter = [
     { deletedAt: null },
     { deletedAt: { isSet: false } },
 ];
 
-/**
- * Pattern hashed into `WorkspaceInvite.nonce` while the invite is pending.
- * @public
- */
+/** @public */
 export const WorkspaceInviteNoncePattern = '{workspaceId}:{email}';
 
-/**
- * Pattern hashed into `WorkspaceJoinRequest.nonce` while the join request is pending.
- * @public
- */
+/** @public */
 export const WorkspaceJoinRequestNoncePattern = '{workspaceId}:{userId}';
 
-/**
- * Columns a user-scope workspace invite list read returns; the invite token is never among them.
- * @public
- */
+/** @public */
 export const WorkspaceInviteUserListSelect = {
     id: true,
     workspaceId: true,
@@ -71,10 +46,7 @@ export const WorkspaceInviteUserListSelect = {
     updatedBy: true,
 } satisfies Prisma.WorkspaceInviteSelect;
 
-/**
- * Error entries `@WorkspaceProtected` documents: the missing `x-workspace-id` header and the missing workspace.
- * @public
- */
+/** @public */
 export const WorkspaceProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.BAD_REQUEST,
@@ -88,10 +60,7 @@ export const WorkspaceProtectedDocErrors: IDocResponseEntry[] = [
     },
 ];
 
-/**
- * Error entries the role-less `@WorkspaceMemberProtected()` documents for `WorkspaceMemberGuard`: the missing user and workspace stores and the non-member caller.
- * @public
- */
+/** @public */
 export const WorkspaceMemberProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,
@@ -110,10 +79,7 @@ export const WorkspaceMemberProtectedDocErrors: IDocResponseEntry[] = [
     },
 ];
 
-/**
- * Error entries `@WorkspaceMemberProtected(...roles)` documents for `WorkspaceMemberGuard` and `WorkspaceRoleGuard`: the missing user, workspace, and member stores, the non-member caller, and the forbidden role.
- * @public
- */
+/** @public */
 export const WorkspaceRoleProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,

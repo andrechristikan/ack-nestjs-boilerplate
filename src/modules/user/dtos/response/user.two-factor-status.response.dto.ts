@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Current two-factor authentication state of the signed-in account.
- * @public
- */
+/** @public */
 export const UserTwoFactorStatusResponseSchema = z.object({
     isEnabled: z.boolean().meta({
         description:
@@ -30,10 +27,7 @@ export const UserTwoFactorStatusResponseSchema = z.object({
     }),
 });
 
-/**
- * Two-factor state of the signed-in account.
- * @public
- */
+/** @public */
 export type UserTwoFactorStatusResponseDto = z.infer<
     typeof UserTwoFactorStatusResponseSchema
 >;

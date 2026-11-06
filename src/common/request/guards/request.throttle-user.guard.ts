@@ -13,9 +13,6 @@ import type {
 } from '@common/request/interfaces/request.interface';
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 
-/**
- * Enforces the per-user limiter of `@RequestThrottle`; it runs after the JWT guard that sets `request.user`.
- */
 @Injectable()
 export class RequestThrottleUserGuard implements CanActivate {
     private readonly name = EnumRequestThrottleName.user;

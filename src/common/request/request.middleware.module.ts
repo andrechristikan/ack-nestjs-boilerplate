@@ -20,9 +20,6 @@ import { RequestThrottleModule } from '@common/request/request.throttle.module';
 import { RequestThrottleDefaultGuard } from '@common/request/guards/request.throttle-default.guard';
 import { RequestThrottleRouteGuard } from '@common/request/guards/request.throttle-route.guard';
 
-/**
- * Registers the Redis-backed throttler guards and applies the security/perf/monitoring middleware chain to all routes.
- */
 @Module({
     controllers: [],
     providers: [

@@ -10,10 +10,6 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 
-/**
- * Validates the request user's role against the route's required roles
- * and stashes the resolved policies in the request store.
- */
 @Injectable()
 export class RoleGuard implements CanActivate {
     constructor(

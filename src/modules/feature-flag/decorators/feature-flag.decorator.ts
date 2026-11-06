@@ -9,10 +9,7 @@ import { FeatureFlagKeyEmptyException } from '@modules/feature-flag/exceptions/f
 import { FeatureFlagKeyNestedException } from '@modules/feature-flag/exceptions/feature-flag.key-nested.exception';
 import type { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 
-/**
- * Guards a route behind a feature flag; `keyPath` is a bare flag key.
- * @public
- */
+/** @public */
 export function FeatureFlagProtected(
     keyPath: EnumFeatureFlagKey
 ): MethodDecorator {

@@ -3,28 +3,16 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 
-/**
- * Route metadata key holding the API key types a handler accepts.
- * @public
- */
+/** @public */
 export const ApiKeyXTypeMetaKey = 'ApiKeyXTypeMetaKey';
 
-/**
- * Request-store key holding the validated API key.
- * @public
- */
+/** @public */
 export const ApiKeyStoreKey = 'ApiKeyStoreKey';
 
-/**
- * OpenAPI apiKey scheme name for X-API-Key Protected routes.
- * @public
- */
+/** @public */
 export const ApiKeyDocSecurityName = 'xApiKey';
 
-/**
- * Columns an api key read returns toward HTTP; the credential hash is never among them.
- * @public
- */
+/** @public */
 export const ApiKeySelect = {
     id: true,
     type: true,
@@ -39,16 +27,10 @@ export const ApiKeySelect = {
     updatedBy: true,
 } satisfies Prisma.ApiKeySelect;
 
-/**
- * Request header carrying the API key credential.
- * @public
- */
+/** @public */
 export const ApiKeyHeaderName = 'x-api-key';
 
-/**
- * Error entries `@ApiKeySystemProtected` documents: the missing, invalid, expired, and forbidden key and the missing key store.
- * @public
- */
+/** @public */
 export const ApiKeySystemProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,
@@ -77,10 +59,7 @@ export const ApiKeySystemProtectedDocErrors: IDocResponseEntry[] = [
     },
 ];
 
-/**
- * Error entries `@ApiKeyProtected` documents: the missing, invalid, expired, and forbidden key and the missing key store.
- * @public
- */
+/** @public */
 export const ApiKeyProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,

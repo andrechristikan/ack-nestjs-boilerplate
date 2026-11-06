@@ -3,9 +3,6 @@ import type { IMigrationOptions } from '@migration/interfaces/migration.interfac
 import { Logger } from '@nestjs/common';
 import { CommandRunner, Option } from 'nest-commander';
 
-/**
- * Base seed command: dispatches to `seed()` or `remove()` based on the required `--type` flag.
- */
 export abstract class MigrationSeedBase extends CommandRunner {
     private readonly baseLogger: Logger = new Logger(MigrationSeedBase.name);
 

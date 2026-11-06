@@ -15,9 +15,6 @@ import {
 } from '@common/request/constants/request.constant';
 import { RequestTimeoutException } from '@common/request/exceptions/request.timeout.exception';
 
-/**
- * Applies the global request timeout, or a per-route override from `@RequestTimeout`.
- */
 @Injectable()
 export class RequestTimeoutInterceptor implements NestInterceptor {
     private readonly maxTimeoutInMs: number;

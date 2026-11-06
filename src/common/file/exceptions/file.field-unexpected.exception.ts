@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 
-/**
- * Raised when a file arrives under a multipart field the route does not accept.
- * @public
- */
+/** @public */
 export class FileFieldUnexpectedException extends AppBaseException {
     readonly module = 'file';
     readonly statusCode = EnumFileStatusCodeError.fieldUnexpected;

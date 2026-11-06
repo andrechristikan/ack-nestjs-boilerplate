@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 
-/**
- * Device Shared List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const DeviceSharedListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
@@ -26,10 +23,7 @@ export const DeviceSharedListRequestSchema = PaginationCursorQuerySchema.omit({
         }),
 });
 
-/**
- * Inferred DTO for DeviceSharedListRequestSchema.
- * @public
- */
+/** @public */
 export type DeviceSharedListRequestDto = z.infer<
     typeof DeviceSharedListRequestSchema
 >;

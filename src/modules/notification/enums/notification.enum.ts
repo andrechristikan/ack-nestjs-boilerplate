@@ -1,7 +1,4 @@
-/**
- * Job names on the notification and notification email queues.
- * @public
- */
+/** @public */
 export enum EnumNotificationProcess {
     welcomeByAdmin = 'welcomeByAdmin',
     welcome = 'welcome',
@@ -25,10 +22,7 @@ export enum EnumNotificationProcess {
     workspaceJoinRejected = 'workspaceJoinRejected',
 }
 
-/**
- * Job names on the notification push queue.
- * @public
- */
+/** @public */
 export enum EnumNotificationPushProcess {
     cleanupTokens = 'cleanupTokens',
     cleanupStaleTokens = 'cleanupStaleTokens',
@@ -43,10 +37,7 @@ export enum EnumNotificationPushProcess {
     workspaceJoinRejected = 'workspaceJoinRejected',
 }
 
-/**
- * Kinds of stored notification, each with its own type and channels.
- * @public
- */
+/** @public */
 export enum EnumNotificationKind {
     welcome = 'welcome',
     welcomeSocial = 'welcomeSocial',
@@ -68,10 +59,7 @@ export enum EnumNotificationKind {
     workspaceJoinRejected = 'workspaceJoinRejected',
 }
 
-/**
- * Steps a notification job runs, recorded in the job data so a retry skips completed ones.
- * @public
- */
+/** @public */
 export enum EnumNotificationStep {
     createNotification = 'createNotification',
     sendEmail = 'sendEmail',

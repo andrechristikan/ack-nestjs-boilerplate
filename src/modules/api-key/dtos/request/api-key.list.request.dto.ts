@@ -8,10 +8,7 @@ import {
 } from '@modules/api-key/constants/api-key.list.constant';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 
-/**
- * Offset list query for admin API key listing.
- * @public
- */
+/** @public */
 export const ApiKeyListRequestSchema = PaginationOffsetQuerySchema.extend({
     search: PaginationOffsetQuerySchema.shape.search.meta({
         description: `Search query, available fields: ${ApiKeyDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
@@ -44,8 +41,5 @@ export const ApiKeyListRequestSchema = PaginationOffsetQuerySchema.extend({
         }),
 });
 
-/**
- * Inferred DTO for ApiKeyListRequestSchema.
- * @public
- */
+/** @public */
 export type ApiKeyListRequestDto = z.infer<typeof ApiKeyListRequestSchema>;

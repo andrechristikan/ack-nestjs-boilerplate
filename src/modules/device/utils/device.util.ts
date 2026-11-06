@@ -14,7 +14,7 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceUtil {
-    /** Maps a device platform onto the push provider that serves it. */
+    /** Android maps to fcm and ios to apns; web and a null platform have no provider, so null. */
     resolveNotificationProvider(
         platform: EnumDevicePlatform | null
     ): EnumDeviceNotificationProvider | null {
@@ -38,7 +38,6 @@ export class DeviceUtil {
         };
     }
 
-    /** Projects an ownership and the number of sessions its removal revoked into device activity metadata. */
     mapActivityLogMetadata(
         deviceOwnership: IDeviceOwnership,
         sessionCount: number
@@ -50,7 +49,6 @@ export class DeviceUtil {
         };
     }
 
-    /** Projects an ownership into the metadata of the admin row that removed it. */
     mapActivityLogActorMetadata(
         deviceOwnership: IDeviceOwnership,
         sessionCount: number
@@ -68,7 +66,6 @@ export class DeviceUtil {
         };
     }
 
-    /** Projects an ownership into the metadata of the owner's row for an admin removal. */
     mapActivityLogTargetMetadata(
         deviceOwnership: IDeviceOwnership,
         actorUserId: string,
@@ -86,7 +83,7 @@ export class DeviceUtil {
         };
     }
 
-    /** Scores each user's device count against the population and returns those above the z-score threshold, highest first. */
+    /** Returns the users whose device-count z-score is above the threshold, highest count first; scores are 0 when the standard deviation is 0. */
     findProliferationOutliers(
         counts: IDeviceOwnershipAnalyticUserCount[],
         zScoreThreshold: number

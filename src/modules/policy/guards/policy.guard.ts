@@ -14,9 +14,6 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { Policy } from '@generated/prisma-client/client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/**
- * Enforces the policies declared by `@PolicyProtected` against the request user.
- */
 @Injectable()
 export class PolicyGuard implements CanActivate {
     constructor(

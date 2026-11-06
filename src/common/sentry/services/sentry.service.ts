@@ -3,9 +3,6 @@ import * as Sentry from '@sentry/nestjs';
 import type { CaptureContext, Log, SeverityLevel } from '@sentry/nestjs';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 
-/**
- * Reports exceptions, messages and structured logs to Sentry without ever throwing.
- */
 @Injectable()
 export class SentryService {
     private readonly logger = new Logger(SentryService.name);
@@ -29,10 +26,6 @@ export class SentryService {
         }
     }
 
-    /**
-     * Sends a structured log to Sentry Logs. `attributes` skip the pino redaction and are scrubbed
-     * only by `beforeSendLog` in `instrument.ts`, a safety net, so they must never carry a credential.
-     */
     log(
         level: EnumLoggerLevel,
         message: string,

@@ -75,7 +75,6 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    /** Records a verified two-factor use; a backup-code result is written only while the stored codes still equal `currentBackupCodes`, and `false` means nothing was written. */
     async verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -149,7 +148,6 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    /** Confirms the pending authenticator only while `secretEncrypted` is still the stored pending secret; `false` means nothing was written. */
     async enableTwoFactor(
         userId: string,
         secretEncrypted: string,
@@ -183,7 +181,6 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    /** Disables two-factor only while it is enabled; `false` means nothing was written. */
     async disableTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string
@@ -205,7 +202,6 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         return count > 0;
     }
 
-    /** Replaces the backup codes only while two-factor is enabled; `false` means nothing was written. */
     async regenerateTwoFactorBackupCodes(
         userId: string,
         backupCodesHashed: string[]
@@ -242,7 +238,6 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    /** Accepts a TOTP step once: writes it only while it is newer than the stored one; `false` means the step was already used. */
     async markTotpUsed(userId: string, step: number): Promise<boolean> {
         const { count } =
             await this.databaseService.client.twoFactor.updateMany({
@@ -260,7 +255,6 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         return count > 0;
     }
 
-    /** Counts one attempt only while the stored count is below `maxAttempt`; the new count, or `null` when the budget is spent. */
     async incrementAttempt(
         userId: string,
         maxAttempt: number

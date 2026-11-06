@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes the failed login volume of a window against the lockout threshold.
- * @public
- */
+/** @public */
 export const AnalyticLockoutResponseSchema = z.object({
     failed: z.number().meta({
         description: 'Failed login attempts inside the window',
@@ -16,10 +13,7 @@ export const AnalyticLockoutResponseSchema = z.object({
     }),
 });
 
-/**
- * Failed login volume of a window against the lockout threshold.
- * @public
- */
+/** @public */
 export type AnalyticLockoutResponseDto = z.infer<
     typeof AnalyticLockoutResponseSchema
 >;

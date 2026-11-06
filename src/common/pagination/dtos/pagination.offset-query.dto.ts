@@ -6,10 +6,7 @@ import {
     PaginationDefaultPerPage,
 } from '@common/pagination/constants/pagination.constant';
 
-/**
- * Offset list query: page, perPage, and search; a module list schema extends it and declares its own `orderBy` inline over its allow-list.
- * @public
- */
+/** @public */
 export const PaginationOffsetQuerySchema = z.strictObject({
     page: z.coerce
         .number()
@@ -38,10 +35,7 @@ export const PaginationOffsetQuerySchema = z.strictObject({
         }),
 });
 
-/**
- * Inferred DTO for PaginationOffsetQuerySchema.
- * @public
- */
+/** @public */
 export type PaginationOffsetQueryDto = z.infer<
     typeof PaginationOffsetQuerySchema
 >;

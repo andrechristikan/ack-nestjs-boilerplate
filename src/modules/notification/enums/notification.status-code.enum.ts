@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `notification` module.
- * @public
- */
+/** @public */
 export enum EnumNotificationStatusCodeError {
     notFound = 51200,
     alreadyRead = 51201,

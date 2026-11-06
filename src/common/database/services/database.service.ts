@@ -32,10 +32,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         this.client = this.databaseClient;
     }
 
-    /**
-     * Opens the connection and throws on failure, so boot fails loudly rather than serving a
-     * process with no database.
-     */
     private async connect(): Promise<void> {
         try {
             await this.client.$connect();
@@ -48,10 +44,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    /**
-     * Closes the connection. A failure is logged and swallowed, because throwing here would abort
-     * the shutdown sequence and leave the process alive with its signal handlers already consumed.
-     */
     private async disconnect(): Promise<void> {
         try {
             await this.client.$disconnect();
@@ -61,10 +53,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    /**
-     * Subscribes to Prisma log events, only in debug mode. Registered on the raw factory instance
-     * because an extended client does not expose `$on`.
-     */
     private async setupLogging(): Promise<void> {
         if (this.isDebugMode) {
             this.databaseClientFactory.$on('query', this.logQuery.bind(this));
@@ -74,10 +62,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    /**
-     * Reads the collection and operation off a query event; the statement text and its params carry
-     * filter values, so neither is kept.
-     */
     private describeQuery(event: Prisma.QueryEvent): IDatabaseQueryLog {
         const match = DatabaseQueryTargetRegex.exec(event.query);
 
@@ -88,39 +72,24 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         };
     }
 
-    /**
-     * Logs the model, action, and duration of one query at verbose level.
-     */
     private logQuery(event: Prisma.QueryEvent): void {
         const queryLog = this.describeQuery(event);
 
         this.logger.verbose(queryLog, 'A Prisma query was executed');
     }
 
-    /**
-     * Logs a Prisma error event.
-     */
     private logError(event: Prisma.LogEvent): void {
         this.logger.error(event, 'A Prisma error occurred');
     }
 
-    /**
-     * Logs a Prisma warning event.
-     */
     private logWarn(event: Prisma.LogEvent): void {
         this.logger.warn(event, 'A Prisma warning occurred');
     }
 
-    /**
-     * Logs a Prisma info event.
-     */
     private logInfo(event: Prisma.LogEvent): void {
         this.logger.log(event, 'A Prisma info event occurred');
     }
 
-    /**
-     * Registers the log handlers before connecting, so a failure during connect is already logged.
-     */
     async onModuleInit(): Promise<void> {
         try {
             // Sequential by design: side effects whose order is part of the contract
@@ -138,16 +107,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    /**
-     * Closes the connection on shutdown.
-     */
     async onModuleDestroy(): Promise<void> {
         await this.disconnect();
     }
 
-    /**
-     * Opens a Prisma interactive transaction and runs `fn` on the tx-bound client; omitted `options` use Prisma's defaults (`maxWait` 2 s, `timeout` 5 s).
-     */
     async withTransaction<T>(
         fn: (tx: IDatabaseTransactionClient) => Promise<T>,
         options?: IDatabaseTransactionOptions

@@ -5,10 +5,6 @@ import type { DynamicModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { QueueConfigKey } from '@queues/constants/queue.constant';
 
-/**
- * Registers the BullMQ producer Redis connection, fail-fast. A processor's worker opens its own
- * connection through `QueueProcessor`. Named queues are registered by the owning feature's domain module.
- */
 @Module({})
 export class QueueModule {
     static forRoot(): DynamicModule {

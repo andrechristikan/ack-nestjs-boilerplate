@@ -46,7 +46,7 @@ export class FeatureFlagDomain {
         }
     }
 
-    /** Read-through: the cached flag, or the row loaded from the database and cached while this reader holds the lease. */
+    /** Read-through: the cached flag, else the database row, cached only while this reader holds the lease; null when no row exists. */
     async getByKey(key: EnumFeatureFlagKey): Promise<FeatureFlag | null> {
         const cached = await this.featureFlagCache.getFeatureFlag(key);
         if (cached) {

@@ -25,7 +25,6 @@ import { UserTwoFactorAnalyticDomain } from '@modules/user/domains/user.two-fact
 import { UserVerificationAnalyticDomain } from '@modules/user/domains/user.verification.analytic.domain';
 import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobile-number.analytic.domain';
 
-/** User domains backing `UserGuard` and the user HTTP layer. */
 @Module({
     controllers: [],
     providers: [

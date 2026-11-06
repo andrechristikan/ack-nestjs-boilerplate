@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-summary.response.dto';
 
-/**
- * Shapes the login spike by IP result: the count, its window, and the threshold used.
- * @public
- */
+/** @public */
 export const AnalyticAnomalyLoginSpikeIpSummaryResponseSchema =
     AnalyticAnomalySummaryResponseSchema.extend({
         meta: z
@@ -20,10 +17,7 @@ export const AnalyticAnomalyLoginSpikeIpSummaryResponseSchema =
             }),
     });
 
-/**
- * Login spike by IP result with the threshold it applied.
- * @public
- */
+/** @public */
 export type AnalyticAnomalyLoginSpikeIpSummaryResponseDto = z.infer<
     typeof AnalyticAnomalyLoginSpikeIpSummaryResponseSchema
 >;

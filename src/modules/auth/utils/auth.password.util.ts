@@ -9,7 +9,6 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { PasswordHistory } from '@generated/prisma-client/client';
 
-/** Hashes passwords and evaluates password dates. See docs/authentication.md. */
 @Injectable()
 export class AuthPasswordUtil {
     private readonly passwordExpiredInMs: number;
@@ -47,7 +46,6 @@ export class AuthPasswordUtil {
         );
     }
 
-    /** Builds the bcrypt hash plus expiry and period dates; temporary uses a shorter expiry. */
     async createPassword(
         password: string,
         options?: IAuthPasswordOptions
@@ -99,7 +97,7 @@ export class AuthPasswordUtil {
         return today > passwordExpired;
     }
 
-    /** Returns the matching history record if the password was used before, blocking recent reuse. */
+    /** Returns the first of the given histories the password matches, null when it matches none. */
     async checkPasswordPeriod(
         histories: PasswordHistory[],
         password: string

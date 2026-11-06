@@ -1,25 +1,15 @@
 import { Prisma } from '@generated/prisma-client/client';
 
-/**
- * HKDF purpose that seals secrets inside queued notification jobs.
- * @public
- */
+/** @public */
 export const NotificationPayloadEncryptionPurpose = 'notification.payload';
 
-/**
- * Prisma where of a term policy recipient row neither emailed nor claimed.
- * Spread with the term policy id and a batch id filter.
- * @public
- */
+/** @public */
 export const NotificationTermPolicyRecipientSendWhere = {
     sentAt: null,
     claimedAt: null,
 } satisfies Prisma.TermPolicyRecipientWhereInput;
 
-/**
- * Columns a term policy recipient state read returns.
- * @public
- */
+/** @public */
 export const NotificationTermPolicyRecipientStateSelect = {
     userId: true,
     notificationId: true,
@@ -28,10 +18,7 @@ export const NotificationTermPolicyRecipientStateSelect = {
     claimedAt: true,
 } satisfies Prisma.TermPolicyRecipientSelect;
 
-/**
- * Columns a term policy email send reads from a recipient row.
- * @public
- */
+/** @public */
 export const NotificationTermPolicyRecipientSendSelect = {
     userId: true,
 } satisfies Prisma.TermPolicyRecipientSelect;

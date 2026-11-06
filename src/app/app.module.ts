@@ -7,9 +7,6 @@ import { AppHttpFilter } from '@app/filters/app.http.filter';
 import { AppValidationFilter } from '@app/filters/app.validation.filter';
 import { AppValidationImportFilter } from '@app/filters/app.validation-import.filter';
 
-/**
- * Root module: registers the global exception filters and imports Common and Router.
- */
 @Module({
     controllers: [],
     providers: [

@@ -7,9 +7,6 @@ import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
-/**
- * Base for queue processors; owns process/job.log and reports fatal job failures to Sentry.
- */
 export abstract class QueueProcessorBase extends WorkerHost {
     private readonly logger = new Logger(QueueProcessorBase.name);
 

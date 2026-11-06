@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `feature-flag` module.
- * @public
- */
+/** @public */
 export enum EnumFeatureFlagStatusCodeError {
     notFound = 50600,
     disabled = 50601,

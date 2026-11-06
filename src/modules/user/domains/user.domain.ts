@@ -360,7 +360,6 @@ export class UserDomain {
         }
     }
 
-    /** Reads a user with its role for an admin write. */
     async getOneWithRole(userId: string): Promise<IUser> {
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {

@@ -7,9 +7,6 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 
-/**
- * Global module exposing `DatabaseService` and `DatabaseUtil` app-wide.
- */
 @Module({})
 export class DatabaseModule {
     static forRoot(): DynamicModule {

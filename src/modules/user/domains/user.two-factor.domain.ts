@@ -67,7 +67,6 @@ export class UserTwoFactorDomain {
         }
     }
 
-    /** An absent secret is an expected account state; a secret that fails to decrypt is an operator fault and is reported. */
     private readSecret(encryptedSecret: string | null, userId: string): string {
         if (!encryptedSecret) {
             throw new AuthTwoFactorSecretUnavailableException();
@@ -88,7 +87,6 @@ export class UserTwoFactorDomain {
         }
     }
 
-    /** Checks a TOTP code against the confirmed secret, or a backup code against the stored hashes; null when it does not match, otherwise the verified result with the matched TOTP step (null for a backup code) and the backup codes left once a used one is removed. */
     private checkCode(
         twoFactor: TwoFactor,
         method: EnumAuthTwoFactorMethod,
@@ -136,7 +134,6 @@ export class UserTwoFactorDomain {
         };
     }
 
-    /** Resolves the active, verified user of a login challenge whose two-factor is enabled. */
     private async getOneEnabledForLogin(userId: string): Promise<IUser> {
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
@@ -223,7 +220,7 @@ export class UserTwoFactorDomain {
         return checked.verified;
     }
 
-    /** Checks a code from a newly set-up authenticator against the pending secret and resets the counter on a match; the caller counts the attempt. */
+    /** Checks a code against the pending secret and resets the counter on a match; the caller counts the attempt. */
     async verifySetupCode(
         user: IUser,
         pendingSecret: string,
@@ -238,7 +235,7 @@ export class UserTwoFactorDomain {
         await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
     }
 
-    /** Generates a new secret with its encrypted form bound to the user and the otpauth URL for enrollment. */
+    /** Generates the secret, its encrypted form bound to the user, and the otpauth URL for enrollment, storing nothing. */
     async setup(user: IUser): Promise<IUserTwoFactorSetupSecret> {
         const secret = this.authTwoFactorUtil.generateSecret();
         const encryptedSecret = this.authTwoFactorUtil.encryptSecret(
@@ -289,7 +286,7 @@ export class UserTwoFactorDomain {
         return pendingSecret;
     }
 
-    /** Makes the pending authenticator the account's secret and issues a fresh set of backup codes; a pending secret that moved on, or a write conflict over it, answers that setup is required. */
+    /** Makes the pending secret the account's secret and returns plain backup codes, storing only their hashes; a pending secret that no longer matches, or a write conflict over it, throws the setup-required exception. */
     async enableTwoFactor(
         userId: string,
         pendingSecret: string

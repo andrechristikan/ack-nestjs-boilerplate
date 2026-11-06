@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one IP address failing logins across many accounts.
- * @public
- */
+/** @public */
 export const AnalyticCredentialStuffingResponseSchema = z.object({
     ipAddress: z.string().meta({
         description: 'IP address the failed logins came from',
@@ -20,10 +17,7 @@ export const AnalyticCredentialStuffingResponseSchema = z.object({
     }),
 });
 
-/**
- * One IP address failing logins across many accounts.
- * @public
- */
+/** @public */
 export type AnalyticCredentialStuffingResponseDto = z.infer<
     typeof AnalyticCredentialStuffingResponseSchema
 >;

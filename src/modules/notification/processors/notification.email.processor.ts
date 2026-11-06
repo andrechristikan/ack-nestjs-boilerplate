@@ -34,9 +34,6 @@ import {
     AwsSESRateLimitPerDuration,
 } from '@common/aws/constants/aws.constant';
 
-/**
- * Consumes the email queue; rate-limited to stay under the AWS SES send quota.
- */
 @QueueProcessor(EnumQueue.notificationEmail, {
     limiter: {
         max: AwsSESRateLimitPerDuration,
@@ -52,7 +49,6 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
         super(sentryService, messageService);
     }
 
-    /** Dispatches each job to its handler by job name. */
     protected async handle(
         job: Job<unknown, IQueueResponse, EnumNotificationProcess>
     ): Promise<IQueueResponse> {

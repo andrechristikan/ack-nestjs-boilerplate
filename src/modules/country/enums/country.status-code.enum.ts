@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `country` module.
- * @public
- */
+/** @public */
 export enum EnumCountryStatusCodeError {
     notFound = 50900,
 }

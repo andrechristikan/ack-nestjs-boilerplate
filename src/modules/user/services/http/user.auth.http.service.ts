@@ -70,7 +70,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 
-/** Owns the transactions that issue sessions: credential, social, and two-factor login, social first sign-in, refresh, and logout. */
 @Injectable()
 export class UserAuthHttpService {
     private readonly userRoleName: string;
@@ -129,7 +128,6 @@ export class UserAuthHttpService {
         return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
-    /** Creates the user a social sign-in introduces, with its workspace and invite join on one transaction, retrying the personal-workspace slug candidates in turn; null when the user already exists or sign-up is closed. */
     private async signUpWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
@@ -271,7 +269,6 @@ export class UserAuthHttpService {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    /** Creates the session and stamps the login in one transaction, then signs the tokens and caches the login entry; the sessions of a repeat device are revoked and their cache purge is enqueued with the new-device notice. */
     private async createTokenAndSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -374,7 +371,6 @@ export class UserAuthHttpService {
         return tokens;
     }
 
-    /** Writes the login entry of a committed session; when the write fails the session is revoked, its purge is enqueued, and the failure is rethrown, so no token outlives an entry that was never written. */
     private async setLoginOrRevoke(
         userId: string,
         sessionId: string,
@@ -397,7 +393,6 @@ export class UserAuthHttpService {
         }
     }
 
-    /** Counts one two-factor attempt, locks the account out when the budget is spent, and answers the attempt limit. */
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
         const isAttemptCounted =
             await this.userTwoFactorDomain.countAttempt(user);
@@ -422,7 +417,6 @@ export class UserAuthHttpService {
         this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
     }
 
-    /** Logs a verified user in: tokens directly, or the two-factor challenge (with a fresh setup when two-factor still requires one). */
     private async resolveLoginOutcome(
         user: IUser,
         device: IDeviceIdentity,
@@ -502,7 +496,6 @@ export class UserAuthHttpService {
         };
     }
 
-    /** Answers the unverified gate, then logs the user in and stages the login rows. */
     private async completeLogin(
         user: IUser,
         device: IDeviceIdentity,
@@ -545,7 +538,6 @@ export class UserAuthHttpService {
         return outcome;
     }
 
-    /** Rotates the session by compare-and-set on the presented jti; a replayed token revokes the session and answers no tokens with the ref to purge, and a write conflict answers no tokens and revokes nothing. */
     private async rotateSession(
         user: IUser,
         refreshToken: string

@@ -24,7 +24,6 @@ export class AuthDomain {
         private readonly authUtil: AuthUtil
     ) {}
 
-    /** Rejects an access token payload missing its `sub`, `sessionId`, or `jti`. */
     validateJwtAccessStrategy(
         payload: IAuthJwtAccessTokenPayload
     ): IAuthJwtPayloadIdentified<IAuthJwtAccessTokenPayload> {
@@ -36,7 +35,7 @@ export class AuthDomain {
         return payload;
     }
 
-    /** Rejects a token whose session has no stored jti digest (no login) or whose jti does not hash to the digest stored for the session. */
+    /** Throws the session-revoked exception when the session digest is null (no login stored) or the token jti does not hash to it. */
     validateJwtAccessSession(
         payload: IAuthJwtPayloadIdentified<IAuthJwtAccessTokenPayload>,
         sessionJtiDigest: string | null

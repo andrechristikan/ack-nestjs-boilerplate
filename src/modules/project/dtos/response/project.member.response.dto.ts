@@ -5,10 +5,7 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Base project-member shape: the row binding a user to the project they are assigned to.
- * @public
- */
+/** @public */
 export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -55,10 +52,7 @@ export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Project member with the user it binds.
- * @public
- */
+/** @public */
 export type ProjectMemberResponseDto = z.infer<
     typeof ProjectMemberResponseSchema
 >;

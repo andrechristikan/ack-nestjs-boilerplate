@@ -27,11 +27,6 @@ import { AnalyticAdminController } from '@modules/analytic/controllers/analytic.
 import { UserDomainModule } from '@modules/user/user.domain.module';
 import { Module } from '@nestjs/common';
 
-/**
- * Mounts administrative controllers: API key, role, policy, user, password history,
- * activity log, session, term policy, feature flag, device, workspace, and
- * project (read-only).
- */
 @Module({
     controllers: [
         ApiKeyAdminController,

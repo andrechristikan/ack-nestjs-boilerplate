@@ -5,10 +5,7 @@ import {
     EnumAnalyticFraudContributingSignal,
 } from '@modules/analytic/enums/analytic.enum';
 
-/**
- * Shapes one user fraud risk score with its band and signals.
- * @public
- */
+/** @public */
 export const AnalyticFraudRiskScoreResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the scored user',
@@ -33,10 +30,7 @@ export const AnalyticFraudRiskScoreResponseSchema = z.object({
         }),
 });
 
-/**
- * Fraud risk score of one user.
- * @public
- */
+/** @public */
 export type AnalyticFraudRiskScoreResponseDto = z.infer<
     typeof AnalyticFraudRiskScoreResponseSchema
 >;

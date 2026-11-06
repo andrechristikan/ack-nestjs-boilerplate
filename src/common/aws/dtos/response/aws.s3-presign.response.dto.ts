@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Response shape for an AWS S3 presigned URL.
- * @public
- */
+/** @public */
 export const AwsS3PresignResponseSchema = z.object({
     key: z.string().meta({
         description: 'S3 object key/path',
@@ -28,10 +25,7 @@ export const AwsS3PresignResponseSchema = z.object({
     }),
 });
 
-/**
- * Presigned S3 upload URL with its object details.
- * @public
- */
+/** @public */
 export type AwsS3PresignResponseDto = z.infer<
     typeof AwsS3PresignResponseSchema
 >;

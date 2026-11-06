@@ -7,7 +7,6 @@ import type {
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-/** Reads the app and message bags the hello probe returns. */
 @Injectable()
 export class HelloUtil {
     private readonly appName: string;

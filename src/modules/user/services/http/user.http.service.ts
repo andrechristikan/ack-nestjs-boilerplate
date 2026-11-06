@@ -96,7 +96,6 @@ export class UserHttpService {
         )!;
     }
 
-    /** Counts one password attempt, locks the account out when the budget is spent, and checks the current password of a user that has one. */
     private async assertPasswordMatched(
         user: IUser,
         password: string
@@ -139,7 +138,6 @@ export class UserHttpService {
         this.userAuthDomain.assertPasswordMatched(isMatch);
     }
 
-    /** Soft-deletes the projects and closes the pending invites and join requests of each soft-deleted workspace on the given transaction. */
     private async cascadeDeletedWorkspacesInTx(
         tx: IDatabaseTransactionClient,
         workspaceIds: string[],

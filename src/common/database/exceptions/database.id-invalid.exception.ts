@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
-/**
- * Raised when a request carries a malformed identifier the database rejects (Prisma `P2023`).
- * @public
- */
+/** @public */
 export class DatabaseIdInvalidException extends AppBaseException {
     readonly module = 'database';
     readonly statusCode = EnumDatabaseStatusCodeError.idInvalid;

@@ -19,10 +19,7 @@ import type {
     IAuthJwtPayloadField,
 } from '@modules/auth/interfaces/auth.interface';
 
-/**
- * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request; throws `AuthJwtGuardMissingException` when the request carries no payload and `RequestContextMissingException` when the requested field is null.
- * @public
- */
+/** @public */
 export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
     field?: IAuthJwtPayloadField<T>
 ) => ParameterDecorator = createParamDecorator<string | undefined, unknown>(
@@ -50,10 +47,7 @@ export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
     }
 );
 
-/**
- * Extracts the raw JWT token from the Authorization header, stripping the scheme prefix.
- * @public
- */
+/** @public */
 export const AuthJwtToken = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): string | null => {
         const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
@@ -64,10 +58,7 @@ export const AuthJwtToken = createParamDecorator(
     }
 );
 
-/**
- * Protects a route with JWT access token authentication and documents the Bearer access scheme and its guard errors.
- * @public
- */
+/** @public */
 export function AuthJwtAccessProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtAccessGuard),
@@ -76,10 +67,7 @@ export function AuthJwtAccessProtected(): MethodDecorator {
     );
 }
 
-/**
- * Protects a route with JWT refresh token authentication; used by token refresh endpoints.
- * @public
- */
+/** @public */
 export function AuthJwtRefreshProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtRefreshGuard),

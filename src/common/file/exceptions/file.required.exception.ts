@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 
-/**
- * Raised when a required uploaded file is missing or empty.
- * @public
- */
+/** @public */
 export class FileRequiredException extends AppBaseException {
     readonly module = 'file';
     readonly statusCode = EnumFileStatusCodeError.required;

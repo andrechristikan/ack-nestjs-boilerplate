@@ -1,15 +1,9 @@
 import { Prisma } from '@generated/prisma-client/client';
 
-/**
- * Request-store key holding the activity logs staged for flush.
- * @public
- */
+/** @public */
 export const ActivityLogStageStoreKey = 'ActivityLogStageStoreKey';
 
-/**
- * Columns an analytic read of the activity log returns.
- * @public
- */
+/** @public */
 export const ActivityLogAnalyticListSelect = {
     id: true,
     userId: true,
@@ -20,9 +14,6 @@ export const ActivityLogAnalyticListSelect = {
     workspaceId: true,
 } satisfies Prisma.ActivityLogSelect;
 
-/**
- * Cursor scope of the internal activity-log action-range read.
- * @public
- */
+/** @public */
 export const ActivityLogActionRangeCursorScope =
     'ActivityLogActionRangeCursorScope';

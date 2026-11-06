@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes how long users take to accept a published term policy.
- * @public
- */
+/** @public */
 export const AnalyticTermPolicyTimeToAcceptResponseSchema = z.object({
     count: z.number().meta({
         description: 'Acceptances measured',
@@ -16,10 +13,7 @@ export const AnalyticTermPolicyTimeToAcceptResponseSchema = z.object({
     }),
 });
 
-/**
- * How long users take to accept a published term policy.
- * @public
- */
+/** @public */
 export type AnalyticTermPolicyTimeToAcceptResponseDto = z.infer<
     typeof AnalyticTermPolicyTimeToAcceptResponseSchema
 >;

@@ -3,10 +3,7 @@ import { faker } from '@faker-js/faker';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { EnumUserStatus } from '@generated/prisma-client/client';
 
-/**
- * Query filter for the admin user export.
- * @public
- */
+/** @public */
 export const UserExportRequestSchema = z.strictObject({
     status: z
         .string()
@@ -25,8 +22,5 @@ export const UserExportRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Inferred DTO for UserExportRequestSchema.
- * @public
- */
+/** @public */
 export type UserExportRequestDto = z.infer<typeof UserExportRequestSchema>;

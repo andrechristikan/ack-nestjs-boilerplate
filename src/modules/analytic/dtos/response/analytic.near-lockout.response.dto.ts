@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one user sitting close to the password attempt lockout threshold.
- * @public
- */
+/** @public */
 export const AnalyticNearLockoutResponseSchema = z.object({
     id: z.string().meta({
         description: 'Identifier of the user near lockout',
@@ -31,10 +28,7 @@ export const AnalyticNearLockoutResponseSchema = z.object({
     }),
 });
 
-/**
- * One user sitting close to the password attempt lockout threshold.
- * @public
- */
+/** @public */
 export type AnalyticNearLockoutResponseDto = z.infer<
     typeof AnalyticNearLockoutResponseSchema
 >;

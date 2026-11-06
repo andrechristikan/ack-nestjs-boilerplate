@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validates the body for deleting the signed-in account.
- * @public
- */
+/** @public */
 export const UserDeleteSelfRequestSchema = z.strictObject({
     password: z.string().min(1).meta({
         description: 'current string password',
@@ -11,10 +8,7 @@ export const UserDeleteSelfRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for deleting the signed-in account.
- * @public
- */
+/** @public */
 export type UserDeleteSelfRequestDto = z.infer<
     typeof UserDeleteSelfRequestSchema
 >;

@@ -7,10 +7,6 @@ import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Applies access/CORS/lifecycle policies to the public and private S3 buckets; removal is a no-op. Skips with a warning
- * when S3 or `AWS_S3_IAM_ARN` is not configured.
- */
 @Command({
     name: 'awsS3Config',
     description: 'Setting AWS S3 Configurations',

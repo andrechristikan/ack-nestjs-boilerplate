@@ -8,9 +8,6 @@ import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
-/**
- * Validates the X-API-Key header and stores the resolved `ApiKey` in the request store under `ApiKeyStoreKey`.
- */
 @Injectable()
 export class ApiKeyXApiKeyGuard implements CanActivate {
     constructor(

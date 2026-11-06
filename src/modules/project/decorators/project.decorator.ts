@@ -30,11 +30,7 @@ import type {
     IProjectMemberFieldValue,
 } from '@modules/project/interfaces/project.interface';
 
-/**
- * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace. A route without a `:projectId` path param answers `RequestContextMissingException`, because the route path is not readable at decoration time.
- * Documents `projectId` and the project errors.
- * @public
- */
+/** @public */
 export function ProjectProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ProjectGuard),
@@ -48,10 +44,7 @@ export function ProjectProtected(): MethodDecorator {
     );
 }
 
-/**
- * Reads the current project, or one of its fields, that `ProjectGuard` stored. Throws `ProjectGuardMissingException` when the project is absent and `RequestContextMissingException` when the requested field is null.
- * @public
- */
+/** @public */
 export const ProjectCurrent = createParamDecorator<
     IProjectField | undefined,
     Project | IProjectFieldValue
@@ -77,14 +70,7 @@ export const ProjectCurrent = createParamDecorator<
     return value;
 });
 
-/**
- * Requires the caller to be a member of the project resolved by `@ProjectProtected()`. Stack above
- * it. Pass `roles` to instead require the caller's
- * project membership role to be one of them, which a workspace owner or admin satisfies without holding a
- * `ProjectMember` row at all; omit `roles` to demand a `ProjectMember` row of the caller with no
- * bypass.
- * @public
- */
+/** @public */
 export function ProjectMemberProtected(
     ...roles: EnumProjectMemberRole[]
 ): MethodDecorator {
@@ -102,10 +88,7 @@ export function ProjectMemberProtected(
     );
 }
 
-/**
- * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `ProjectMemberGuardMissingException`; a requested field that is null throws `RequestContextMissingException`.
- * @public
- */
+/** @public */
 export const ProjectMemberCurrent = createParamDecorator<
     IProjectMemberField | undefined,
     ProjectMember | IProjectMemberFieldValue

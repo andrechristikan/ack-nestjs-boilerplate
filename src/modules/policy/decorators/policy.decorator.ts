@@ -18,10 +18,7 @@ import { PolicyGuardMissingException } from '@modules/policy/exceptions/policy.g
 import { PolicyProtectedActionEmptyException } from '@modules/policy/exceptions/policy.protected-action-empty.exception';
 import { PolicyProtectedEmptyException } from '@modules/policy/exceptions/policy.protected-empty.exception';
 
-/**
- * Protects a route, requiring the caller to hold the given policies, and documents the policy errors and the missing user and policy stores.
- * @public
- */
+/** @public */
 export function PolicyProtected(
     ...requiredPolicies: PolicyRequestDto[]
 ): MethodDecorator {
@@ -40,10 +37,7 @@ export function PolicyProtected(
     );
 }
 
-/**
- * Reads the caller's role policies that `RoleGuard` stored; an empty list is a valid value, and a missing store entry throws `PolicyGuardMissingException`.
- * @public
- */
+/** @public */
 export const PolicyCurrent = createParamDecorator((): Policy[] => {
     const policies =
         ClsServiceManager.getClsService().get<Policy[] | null>(

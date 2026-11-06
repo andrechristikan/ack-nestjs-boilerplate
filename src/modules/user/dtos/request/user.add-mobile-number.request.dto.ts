@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
 
-/**
- * Validates the body for adding a mobile number.
- * @public
- */
+/** @public */
 export const UserAddMobileNumberRequestSchema = UserCreateRequestSchema.pick({
     countryId: true,
 }).extend({
@@ -32,10 +29,7 @@ export const UserAddMobileNumberRequestSchema = UserCreateRequestSchema.pick({
         }),
 });
 
-/**
- * Body for adding a mobile number.
- * @public
- */
+/** @public */
 export type UserAddMobileNumberRequestDto = z.infer<
     typeof UserAddMobileNumberRequestSchema
 >;

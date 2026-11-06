@@ -88,7 +88,7 @@ export class WorkspaceInviteDomain {
         return invite;
     }
 
-    /** Reads the pending invite of a token that belongs to the email. */
+    /** Gates and reads like `validateInviteToken`; an invite issued to another email throws the invalid-invite exception. */
     async validateInviteForEmail(
         token: string,
         email: string
@@ -105,7 +105,7 @@ export class WorkspaceInviteDomain {
         return invite;
     }
 
-    /** Reads the invite a sign-up carries; null when it carries no token. */
+    /** Null when the sign-up carries no token; otherwise the pending invite of the token for the email, or the invalid-invite exception. */
     async getSignUpInvite(
         token: string | null,
         email: string
@@ -182,7 +182,7 @@ export class WorkspaceInviteDomain {
         );
     }
 
-    /** Gates on `workspace.invitationAllowed`, then asserts the project id and role come together. */
+    /** Gates on `workspace.invitationAllowed`, then asserts the project id and role are both set or both null. */
     async assertProjectRolePaired({
         projectId,
         projectRole,
@@ -277,7 +277,7 @@ export class WorkspaceInviteDomain {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    /** Gates on `workspace.invitationAllowed`, then reads the pending invite of the workspace. */
+    /** Gates on `workspace.invitationAllowed`, then reads the invite of the workspace; a missing one throws not-found and a non-pending one already-processed. */
     async getPendingById(
         workspaceInviteId: string,
         workspaceId: string

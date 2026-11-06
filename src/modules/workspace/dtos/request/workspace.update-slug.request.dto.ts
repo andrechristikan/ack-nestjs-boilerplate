@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validates the body for changing a workspace slug.
- * @public
- */
+/** @public */
 export const WorkspaceUpdateSlugRequestSchema = z.strictObject({
     slug: z.string().min(1).meta({
         description:
@@ -12,10 +9,7 @@ export const WorkspaceUpdateSlugRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for changing a workspace slug.
- * @public
- */
+/** @public */
 export type WorkspaceUpdateSlugRequestDto = z.infer<
     typeof WorkspaceUpdateSlugRequestSchema
 >;

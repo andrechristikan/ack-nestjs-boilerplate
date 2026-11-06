@@ -20,7 +20,6 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 
-/** Renders and delivers the workspace invite and join-request push messages. */
 @Injectable()
 export class NotificationPushWorkspaceDomain {
     constructor(

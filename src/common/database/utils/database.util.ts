@@ -16,9 +16,6 @@ import { DatabaseTransactionExpiredException } from '@common/database/exceptions
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 
-/**
- * BSON ObjectId helpers and deep-clone casts to Prisma `JsonObject` types.
- */
 @Injectable()
 export class DatabaseUtil {
     checkIdIsValid(id: string): boolean {
@@ -29,11 +26,7 @@ export class DatabaseUtil {
         return new ObjectId().toHexString();
     }
 
-    /**
-     * Masks a connection url for a log line: the password is dropped, the username keeps its first
-     * letter, every host stays, and the query is removed. A string without the `scheme://` shape
-     * returns the censored value.
-     */
+    /** Masks a connection url for a log line: the password and query are dropped, the username keeps its first letter, and a string without `scheme://` returns `DatabaseUrlCensoredValue`. */
     censorUrl(url: string): string {
         const schemeEnd = url.indexOf('://');
         if (schemeEnd === -1) {
@@ -67,10 +60,6 @@ export class DatabaseUtil {
         return `${scheme}${user}${hosts}${path}`;
     }
 
-    /**
-     * True when `error` is a Prisma unique-constraint violation naming `field`, so a caller can tell
-     * its own generated value apart from any other unique key on the same table.
-     */
     isUniqueCollision(error: unknown, field: IDatabaseScalarField): boolean {
         if (
             !(error instanceof Prisma.PrismaClientKnownRequestError) ||
@@ -89,9 +78,7 @@ export class DatabaseUtil {
         );
     }
 
-    /**
-     * Returns the exception for a Prisma write conflict (`P2034`), malformed id (`P2023`), expired transaction (`P2028`), or a connection failure, or `null` for any other error.
-     */
+    /** Maps a Prisma write conflict, malformed id, expired transaction, or connection failure to its exception; null for any other error. */
     toException(error: unknown): AppBaseException | null {
         if (error instanceof Prisma.PrismaClientInitializationError) {
             return new DatabaseUnavailableException();
@@ -120,16 +107,10 @@ export class DatabaseUtil {
         return null;
     }
 
-    /**
-     * Deep-clones `data` and casts it to a Prisma-compatible plain object.
-     */
     toPlainObject<T, N = Prisma.JsonObject>(data: T): N {
         return structuredClone(data as unknown) as N;
     }
 
-    /**
-     * Deep-clones `data` and casts it to a Prisma-compatible plain array.
-     */
     toPlainArray<T, N = Prisma.JsonObject>(data: T): N[] {
         return structuredClone(data) as N[];
     }

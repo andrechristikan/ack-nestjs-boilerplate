@@ -6,7 +6,6 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { Injectable } from '@nestjs/common';
 import { UnrecoverableError } from 'bullmq';
 
-/** Stamps the processed and sent times on a push delivery row. */
 @Injectable()
 export class NotificationPushDeliveryDomain {
     constructor(

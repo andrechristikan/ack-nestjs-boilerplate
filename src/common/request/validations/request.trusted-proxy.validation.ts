@@ -13,11 +13,7 @@ const RequestTrustedProxyAddressSchemas = [
     z.cidrv6(),
 ];
 
-/**
- * Comma-separated trusted proxy network list for Express `trust proxy`: the `proxy-addr` presets
- * `loopback`, `linklocal`, `uniquelocal`, and IP or CIDR entries; never a hop count or a boolean.
- * @public
- */
+/** @public */
 export const RequestTrustedProxySchema = z
     .string()
     .refine(

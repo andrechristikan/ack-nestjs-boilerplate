@@ -3,58 +3,31 @@ import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 
-/**
- * Passport strategy name of the JWT access-token guard.
- * @public
- */
+/** @public */
 export const AuthJwtAccessGuardKey = 'AuthJwtAccessGuardKey';
 
-/**
- * Passport strategy name of the JWT refresh-token guard.
- * @public
- */
+/** @public */
 export const AuthJwtRefreshGuardKey = 'AuthJwtRefreshGuardKey';
 
-/**
- * OpenAPI Bearer scheme name for JWT access-token routes.
- * @public
- */
+/** @public */
 export const AuthJwtAccessDocSecurityName = 'accessToken';
 
-/**
- * OpenAPI Bearer scheme name for JWT refresh-token routes.
- * @public
- */
+/** @public */
 export const AuthJwtRefreshDocSecurityName = 'refreshToken';
 
-/**
- * OpenAPI Bearer scheme name for Google social-auth routes.
- * @public
- */
+/** @public */
 export const AuthSocialGoogleDocSecurityName = 'google';
 
-/**
- * OpenAPI Bearer scheme name for Apple social-auth routes.
- * @public
- */
+/** @public */
 export const AuthSocialAppleDocSecurityName = 'apple';
 
-/**
- * Request-store key holding the verified JWT payload.
- * @public
- */
+/** @public */
 export const AuthPayloadStoreKey = 'AuthPayloadStoreKey';
 
-/**
- * HKDF purpose that seals stored two-factor secrets.
- * @public
- */
+/** @public */
 export const AuthTwoFactorSecretEncryptionPurpose = 'auth.twoFactor.secret';
 
-/**
- * Node network error codes that mark an unreachable key or identity provider endpoint.
- * @public
- */
+/** @public */
 export const AuthProviderNetworkErrorCodes: readonly string[] = [
     'ECONNREFUSED',
     'ECONNRESET',
@@ -65,35 +38,20 @@ export const AuthProviderNetworkErrorCodes: readonly string[] = [
     'ENETUNREACH',
 ];
 
-/**
- * Error name `jwks-rsa` gives a JWKS endpoint that answers an HTTP error or no usable key.
- * @public
- */
+/** @public */
 export const AuthJwksErrorName = 'JwksError';
 
-/**
- * Message prefix `google-auth-library` puts on a failed certificate fetch.
- * @public
- */
+/** @public */
 export const AuthGoogleCertificateErrorPrefix =
     'Failed to retrieve verification certificates';
 
-/**
- * Request header carrying the JWT or social ID token.
- * @public
- */
+/** @public */
 export const AuthHeaderName = 'Authorization';
 
-/**
- * Scheme preceding the token in `AuthHeaderName`, and the `tokenType` a login response reports.
- * @public
- */
+/** @public */
 export const AuthBearerScheme = 'Bearer';
 
-/**
- * Error entries `@AuthJwtAccessProtected` documents: the invalid access token, the revoked session, and the unavailable key provider.
- * @public
- */
+/** @public */
 export const AuthJwtAccessProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,
@@ -112,10 +70,7 @@ export const AuthJwtAccessProtectedDocErrors: IDocResponseEntry[] = [
     },
 ];
 
-/**
- * Error entries `@AuthJwtRefreshProtected` documents: the invalid refresh token and the unavailable key provider.
- * @public
- */
+/** @public */
 export const AuthJwtRefreshProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,
@@ -129,10 +84,7 @@ export const AuthJwtRefreshProtectedDocErrors: IDocResponseEntry[] = [
     },
 ];
 
-/**
- * Error entries `@AuthSocialGoogleProtected` documents: the invalid and missing Google token, the provider not configured, and the unavailable provider.
- * @public
- */
+/** @public */
 export const AuthSocialGoogleProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,
@@ -156,10 +108,7 @@ export const AuthSocialGoogleProtectedDocErrors: IDocResponseEntry[] = [
     },
 ];
 
-/**
- * Error entries `@AuthSocialAppleProtected` documents: the invalid and missing Apple token, the provider not configured, and the unavailable provider.
- * @public
- */
+/** @public */
 export const AuthSocialAppleProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,

@@ -25,14 +25,6 @@ import { FeatureFlagDomainModule } from '@modules/feature-flag/feature-flag.doma
 import { SentryModule } from '@common/sentry/sentry.module';
 import { AppEnvSchema } from '@app/dtos/app.env.dto';
 
-/**
- * Composes kit `forRoot()` modules and the app-wide `@Global()` feature domains.
- *
- * Bootstraps the following in order:
- * - Config, message, logger, Sentry, Redis cache, BullMQ connections, cache, database, request, response
- * - Shared utilities: helper, pagination, file, Firebase
- * - Feature modules: activity log, API key, auth, feature flag, role, policy, term policy, session, notification
- */
 @Module({
     controllers: [],
     providers: [],

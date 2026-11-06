@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Encryption secret: exactly 64 base64url characters.
- * @public
- */
+/** @public */
 export const RequestEncryptionSecretSchema = z
     .string()
     .regex(/^[A-Za-z0-9_-]{64}$/)

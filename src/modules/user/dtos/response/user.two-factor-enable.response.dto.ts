@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Backup codes issued when two-factor authentication is enabled or regenerated.
- * @public
- */
+/** @public */
 export const UserTwoFactorEnableResponseSchema = z.object({
     backupCodes: z.array(z.string()).meta({
         description:
@@ -12,10 +9,7 @@ export const UserTwoFactorEnableResponseSchema = z.object({
     }),
 });
 
-/**
- * Backup codes issued by enabling or regenerating two-factor.
- * @public
- */
+/** @public */
 export type UserTwoFactorEnableResponseDto = z.infer<
     typeof UserTwoFactorEnableResponseSchema
 >;

@@ -5,9 +5,6 @@ import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 import * as Sentry from '@sentry/nestjs';
 
-/**
- * Reports Sentry client readiness as a Terminus health indicator.
- */
 @Injectable()
 export class HealthSentryIndicator {
     private readonly logger = new Logger(HealthSentryIndicator.name);
@@ -23,9 +20,6 @@ export class HealthSentryIndicator {
         this.dsn = dsn ?? null;
     }
 
-    /**
-     * Down when no DSN is configured, or unless the client is initialized and enabled.
-     */
     async isHealthy(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {

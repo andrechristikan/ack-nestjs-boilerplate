@@ -8,11 +8,7 @@ import {
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 
-/**
- * Paginated response envelope without `data`. A route documenting a page adds it with
- * `.extend({ data: z.array(item) })`.
- * @public
- */
+/** @public */
 export const ResponsePaginationSchema = ResponseSchema.extend({
     metadata: ResponsePaginationMetadataSchema.meta({
         description: 'Contain metadata about API',
@@ -44,10 +40,7 @@ export const ResponsePaginationSchema = ResponseSchema.extend({
     }),
 });
 
-/**
- * Paginated response envelope: statusCode, message, pagination metadata, and a `data` array.
- * @public
- */
+/** @public */
 export type ResponsePaginationDto<T> = {
     statusCode: number;
     message: string;

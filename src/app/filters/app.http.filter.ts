@@ -8,10 +8,6 @@ import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto'
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 
-/**
- * Handles framework `HttpException`: builds the standard error envelope from the HTTP status
- * and reports 5xx to Sentry.
- */
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
     private readonly logger = new Logger(AppHttpFilter.name);

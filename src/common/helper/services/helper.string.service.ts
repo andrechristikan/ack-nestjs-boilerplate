@@ -58,7 +58,6 @@ export class HelperStringService {
         );
     }
 
-    /** Fills every `{token}` of a pattern in ONE pass, so a substituted value is never read again as a token. */
     fillPattern(pattern: string, values: Record<string, string>): string {
         return pattern.replace(
             HelperStringPatternTokenRegex,

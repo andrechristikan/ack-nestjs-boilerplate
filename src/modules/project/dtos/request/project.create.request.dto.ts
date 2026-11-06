@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validates the body for creating a project.
- * @public
- */
+/** @public */
 export const ProjectCreateRequestSchema = z.strictObject({
     name: z.string().min(1).max(150).meta({
         description: 'Project name',
@@ -15,10 +12,7 @@ export const ProjectCreateRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for creating a project.
- * @public
- */
+/** @public */
 export type ProjectCreateRequestDto = z.infer<
     typeof ProjectCreateRequestSchema
 >;

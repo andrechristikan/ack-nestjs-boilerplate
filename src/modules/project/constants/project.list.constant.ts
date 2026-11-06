@@ -1,48 +1,29 @@
 import { Prisma } from '@generated/prisma-client/client';
 
-/**
- * Fields the project lists search.
- * @public
- */
+/** @public */
 export const ProjectDefaultAvailableSearch = [
     Prisma.ProjectScalarFieldEnum.name,
 ] as const satisfies ReadonlyArray<Prisma.ProjectScalarFieldEnum>;
 
-/**
- * Sort fields the admin offset project list accepts.
- * @public
- */
+/** @public */
 export const ProjectDefaultAvailableOrderBy = [
     Prisma.ProjectScalarFieldEnum.createdAt,
     Prisma.ProjectScalarFieldEnum.name,
 ] as const satisfies ReadonlyArray<Prisma.ProjectScalarFieldEnum>;
 
-/**
- * Cursor-route allow-list: every field here is immutable, and a sort key that moves makes a scroll skip and repeat rows.
- * @public
- */
+/** @public */
 export const ProjectCursorAvailableOrderBy = [
     Prisma.ProjectScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.ProjectScalarFieldEnum>;
 
-/**
- * Cursor-route allow-list. `joinedAt` is set by the schema default and no repository rewrites it,
- * so the key cannot move a row mid-scroll.
- * @public
- */
+/** @public */
 export const ProjectMemberDefaultAvailableOrderBy = [
     Prisma.ProjectMemberScalarFieldEnum.joinedAt,
 ] as const satisfies ReadonlyArray<Prisma.ProjectMemberScalarFieldEnum>;
 
-/**
- * Cursor scope of the user project list.
- * @public
- */
+/** @public */
 export const ProjectUserListCursorScope = 'ProjectUserListCursorScope';
 
-/**
- * Cursor scope of the user project member list.
- * @public
- */
+/** @public */
 export const ProjectMemberUserListCursorScope =
     'ProjectMemberUserListCursorScope';

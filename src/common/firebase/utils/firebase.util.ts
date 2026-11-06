@@ -3,9 +3,6 @@ import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { FirebasePrivateKeyPemMarker } from '@common/firebase/constants/firebase.constant';
 
-/**
- * Normalizes the service-account private key into a PEM the Admin SDK accepts.
- */
 @Injectable()
 export class FirebaseUtil {
     constructor(

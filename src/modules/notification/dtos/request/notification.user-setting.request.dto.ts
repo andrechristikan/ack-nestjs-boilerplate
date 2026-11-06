@@ -4,10 +4,7 @@ import {
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 
-/**
- * Validates the body for toggling one notification channel and type.
- * @public
- */
+/** @public */
 export const NotificationUserSettingRequestSchema = z.strictObject({
     channel: z
         .enum([
@@ -35,10 +32,7 @@ export const NotificationUserSettingRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for toggling one notification channel and type.
- * @public
- */
+/** @public */
 export type NotificationUserSettingRequestDto = z.infer<
     typeof NotificationUserSettingRequestSchema
 >;

@@ -21,9 +21,6 @@ import {
     randomBytes,
 } from 'node:crypto';
 
-/**
- * AES-256-GCM with a key derived by HKDF-SHA-256 from a base64url-encoded 48-byte secret, a random per-payload salt and the purpose, and the context bound as authenticated data.
- */
 @Injectable()
 export class HelperEncryptionService {
     private decodeSecret(secret: string): Buffer {
@@ -143,10 +140,6 @@ export class HelperEncryptionService {
         }
     }
 
-    /**
-     * Frames a base64 DER key as PEM under the label (`PRIVATE KEY` PKCS#8, `PUBLIC KEY` SPKI);
-     * throws when the bytes are not a key of that kind.
-     */
     derBase64ToPem(der: string, label: EnumHelperPemLabel): string {
         const body = Buffer.from(der, 'base64').toString('base64');
         const lines = body.match(/.{1,64}/g)?.join('\n') ?? '';

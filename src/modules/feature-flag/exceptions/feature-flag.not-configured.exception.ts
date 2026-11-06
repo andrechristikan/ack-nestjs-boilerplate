@@ -3,10 +3,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 
-/**
- * Raised when a route or domain gates on a flag key with no stored row: a server-side configuration fault, not a caller error.
- * @public
- */
+/** @public */
 export class FeatureFlagNotConfiguredException extends AppBaseException {
     readonly module = 'featureFlag';
     readonly statusCode = EnumFeatureFlagStatusCodeError.notConfigured;

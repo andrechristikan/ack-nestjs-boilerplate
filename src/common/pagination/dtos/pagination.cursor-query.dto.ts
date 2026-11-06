@@ -5,10 +5,7 @@ import {
     PaginationDefaultPerPage,
 } from '@common/pagination/constants/pagination.constant';
 
-/**
- * Cursor list query: cursor, perPage, and search; a module list schema extends it and declares its own `orderBy` inline over its allow-list.
- * @public
- */
+/** @public */
 export const PaginationCursorQuerySchema = z.strictObject({
     cursor: z.string().optional().meta({
         description: 'The pagination cursor returned from the previous request',
@@ -34,10 +31,7 @@ export const PaginationCursorQuerySchema = z.strictObject({
         }),
 });
 
-/**
- * Inferred DTO for PaginationCursorQuerySchema.
- * @public
- */
+/** @public */
 export type PaginationCursorQueryDto = z.infer<
     typeof PaginationCursorQuerySchema
 >;

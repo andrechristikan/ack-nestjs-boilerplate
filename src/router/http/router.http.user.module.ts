@@ -11,9 +11,6 @@ import { UserDomainModule } from '@modules/user/user.domain.module';
 import { WorkspaceDomainModule } from '@modules/workspace/workspace.domain.module';
 import { Module } from '@nestjs/common';
 
-/**
- * Mounts controllers for the authenticated end-user scope.
- */
 @Module({
     controllers: [
         UserUserController,

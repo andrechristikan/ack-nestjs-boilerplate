@@ -16,9 +16,6 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TerminusModule } from '@nestjs/terminus';
 
-/**
- * Wires Terminus and the custom indicators for system health checks.
- */
 @Module({
     controllers: [],
     providers: [

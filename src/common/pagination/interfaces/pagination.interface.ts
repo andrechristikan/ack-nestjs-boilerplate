@@ -19,7 +19,6 @@ export type IPaginationOrderBy = Record<
     EnumPaginationOrderDirectionType
 >;
 
-/** The `orderBy` value a list DTO parses (zod output of an optional field): one `field:direction` string, an empty string, or absent. */
 export type IPaginationOrderByQuery = string | undefined;
 
 export interface IPaginationQuery {
@@ -201,9 +200,6 @@ export interface IPaginationCursorToken {
     fingerprint: string;
 }
 
-/**
- * One filter helper result: Prisma `where` fragment plus the scalar the store surfaces.
- */
 export interface IPaginationQueryFilterResult<
     TWhere extends Record<string, unknown> = Record<string, unknown>,
 > {

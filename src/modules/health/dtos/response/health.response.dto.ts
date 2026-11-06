@@ -3,10 +3,7 @@ import { HealthIndicatorResultPartialSchema } from '@modules/health/dtos/health.
 import { HealthIndicatorResultSchema } from '@modules/health/dtos/health.indicator-result.dto';
 import { EnumHealthStatus } from '@modules/health/enums/health.enum';
 
-/**
- * Field list every health check response carries, per route descriptions and examples.
- * @public
- */
+/** @public */
 export const HealthResponseSchema = z.object({
     status: z.enum(EnumHealthStatus),
     info: HealthIndicatorResultPartialSchema.optional(),
@@ -14,8 +11,5 @@ export const HealthResponseSchema = z.object({
     details: HealthIndicatorResultSchema,
 });
 
-/**
- * Fields every health check result carries.
- * @public
- */
+/** @public */
 export type HealthResponseDto = z.infer<typeof HealthResponseSchema>;

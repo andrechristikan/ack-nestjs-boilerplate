@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Secret material handed to the client to register an authenticator app.
- * @public
- */
+/** @public */
 export const UserTwoFactorSetupResponseSchema = z.object({
     secret: z.string().meta({
         description: 'Base32 encoded secret to be stored in authenticator apps',
@@ -17,10 +14,7 @@ export const UserTwoFactorSetupResponseSchema = z.object({
     }),
 });
 
-/**
- * Authenticator app setup material.
- * @public
- */
+/** @public */
 export type UserTwoFactorSetupResponseDto = z.infer<
     typeof UserTwoFactorSetupResponseSchema
 >;

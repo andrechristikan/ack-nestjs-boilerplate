@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one account takeover detection with the indicators that raised it.
- * @public
- */
+/** @public */
 export const AnalyticAccountTakeoverResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the taken over user',
@@ -20,10 +17,7 @@ export const AnalyticAccountTakeoverResponseSchema = z.object({
     }),
 });
 
-/**
- * One account takeover detection with the indicators that raised it.
- * @public
- */
+/** @public */
 export type AnalyticAccountTakeoverResponseDto = z.infer<
     typeof AnalyticAccountTakeoverResponseSchema
 >;

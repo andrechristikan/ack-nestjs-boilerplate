@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `user` module.
- * @public
- */
+/** @public */
 export enum EnumUserStatusCodeError {
     notFound = 51000,
     notSelf = 51001,

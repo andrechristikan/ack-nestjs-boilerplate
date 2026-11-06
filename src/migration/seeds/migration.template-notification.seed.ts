@@ -10,9 +10,6 @@ import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Imports email notification templates into AWS SES, skipping any already present. Skips with a warning when SES is not configured.
- */
 @Command({
     name: 'templateEmailNotification',
     description: 'Seed/Remove Emails',

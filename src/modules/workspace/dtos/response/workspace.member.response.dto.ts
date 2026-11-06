@@ -5,10 +5,7 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Base workspace-member shape: the row binding a user to the workspace they belong to.
- * @public
- */
+/** @public */
 export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -55,10 +52,7 @@ export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Workspace member with the user it binds.
- * @public
- */
+/** @public */
 export type WorkspaceMemberResponseDto = z.infer<
     typeof WorkspaceMemberResponseSchema
 >;

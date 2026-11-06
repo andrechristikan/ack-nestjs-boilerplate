@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { AwsS3PresignRequestSchema } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 
-/**
- * Validates the body for saving an uploaded profile photo.
- * @public
- */
+/** @public */
 export const UserUpdateProfilePhotoRequestSchema =
     AwsS3PresignRequestSchema.pick({ key: true }).extend({
         key: AwsS3PresignRequestSchema.shape.key.meta({
@@ -13,10 +10,7 @@ export const UserUpdateProfilePhotoRequestSchema =
         }),
     });
 
-/**
- * Body for saving an uploaded profile photo.
- * @public
- */
+/** @public */
 export type UserUpdateProfilePhotoRequestDto = z.infer<
     typeof UserUpdateProfilePhotoRequestSchema
 >;

@@ -5,9 +5,6 @@ import cors from 'cors';
 import type { CorsOptions } from 'cors';
 import { ConfigService } from '@nestjs/config';
 
-/**
- * Applies CORS with configured origin validation and credential handling.
- */
 @Injectable()
 export class RequestCorsMiddleware implements NestMiddleware {
     private readonly allowedOrigin: string | boolean | string[];
@@ -64,9 +61,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
         callback(null, false);
     }
 
-    /**
-     * Credentials are disabled for wildcard origins, per the CORS security spec.
-     */
     private shouldAllowCredentials(): boolean {
         if (typeof this.allowedOrigin === 'string') {
             return this.allowedOrigin !== '*';
@@ -79,10 +73,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
         return true;
     }
 
-    /**
-     * Matches an origin against patterns by scheme (when the pattern names one), hostname, and
-     * port, with the default port of the scheme normalized, or by wildcard subdomain.
-     */
     private isOriginAllowed(origin: string, patterns: string[]): boolean {
         const isValidOrigin = this.isValidOrigin(origin);
         if (!isValidOrigin) {
@@ -119,9 +109,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
         });
     }
 
-    /**
-     * Accepts only well-formed http(s) origins with no path, query, or hash.
-     */
     private isValidOrigin(origin: string): boolean {
         try {
             const url = new URL(origin);
@@ -157,9 +144,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
         }
     }
 
-    /**
-     * Splits a pattern into its optional scheme, lowercased hostname, and port.
-     */
     private parsePattern(pattern: string): {
         protocol: string | null;
         hostname: string;
@@ -177,9 +161,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
         };
     }
 
-    /**
-     * Empties the default port of its scheme, the form `URL` reports for an origin.
-     */
     private normalizePort(protocol: string, port: string): string {
         if (
             (protocol === 'http:' && port === '80') ||
@@ -191,9 +172,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
         return port;
     }
 
-    /**
-     * Matches `*.example.com`-style wildcards against a hostname; the base domain matches too.
-     */
     private matchWildcardHostname(
         hostname: string,
         patternHostname: string

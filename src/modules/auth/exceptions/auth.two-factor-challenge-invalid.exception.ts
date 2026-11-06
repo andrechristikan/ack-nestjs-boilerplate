@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
-/**
- * Raised when a two-factor challenge token is invalid or expired.
- * @public
- */
+/** @public */
 export class AuthTwoFactorChallengeInvalidException extends AppBaseException {
     readonly module = 'auth';
     readonly statusCode = EnumAuthStatusCodeError.twoFactorChallengeInvalid;

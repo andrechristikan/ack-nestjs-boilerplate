@@ -58,7 +58,7 @@ export class UserProfileDomain {
         await this.deleteOwnedPhoto(userId, previousPhoto);
     }
 
-    /** Enqueues the delete of a stored photo that sits under the profile path of the user. */
+    /** Enqueues the photo delete; does nothing when the photo is null or not under the profile path of the user. */
     async deleteOwnedPhoto(
         userId: string,
         photo: UserPhoto | null

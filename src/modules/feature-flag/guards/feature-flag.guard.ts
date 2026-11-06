@@ -10,9 +10,6 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 
-/**
- * Denies the request unless the route's feature flag is active for the caller.
- */
 @Injectable()
 export class FeatureFlagGuard implements CanActivate {
     private readonly anonymousIdMaxLength: number;

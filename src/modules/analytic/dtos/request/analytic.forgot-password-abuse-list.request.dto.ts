@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { AnalyticForgotPasswordAbuseAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 
-/**
- * Analytic Forgot Password Abuse List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticForgotPasswordAbuseListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
@@ -28,10 +25,7 @@ export const AnalyticForgotPasswordAbuseListRequestSchema =
         })
         .extend(AnalyticWindowRequestSchema.shape);
 
-/**
- * Inferred DTO for AnalyticForgotPasswordAbuseListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticForgotPasswordAbuseListRequestDto = z.infer<
     typeof AnalyticForgotPasswordAbuseListRequestSchema
 >;

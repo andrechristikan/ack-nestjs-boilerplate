@@ -16,7 +16,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from '@common/message/services/message.service';
 
-/** Renders and sends the sign-up, welcome and verification emails. */
 @Injectable()
 export class NotificationEmailAccountDomain {
     private readonly noreplyEmail: string;

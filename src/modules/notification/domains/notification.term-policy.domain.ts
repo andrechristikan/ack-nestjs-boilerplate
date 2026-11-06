@@ -24,7 +24,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from '@common/message/services/message.service';
 
-/** Writes and fans out the term-policy publication and acceptance notifications. */
 @Injectable()
 export class NotificationTermPolicyDomain {
     readonly emailBatchSize: number;
@@ -177,7 +176,7 @@ export class NotificationTermPolicyDomain {
         return pendingBatchIds.length;
     }
 
-    /** Creates the rows of the fresh users and enqueues their new batch, and returns how many batches it enqueued. */
+    /** Creates the rows of the fresh users and enqueues them as one batch; returns 0 when there are none, otherwise 1. */
     async sendFreshBatch(
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload,

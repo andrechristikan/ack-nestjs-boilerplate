@@ -39,7 +39,6 @@ import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-/** Owns the transactions that create accounts: sign-up, admin create, and admin import. */
 @Injectable()
 export class UserRegistrationHttpService {
     private readonly userRoleName: string;
@@ -92,7 +91,6 @@ export class UserRegistrationHttpService {
         this.activityLogDomain.stagePrepared(activityLogs);
     }
 
-    /** Writes the sign-up account, its personal or invited workspace, and its term-policy acceptance on one transaction, retrying the personal-workspace slug candidates in turn. */
     private async createSignUpUser(
         input: IUserCreateWithWorkspaceInput
     ): Promise<IUser> {
@@ -192,7 +190,6 @@ export class UserRegistrationHttpService {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    /** Writes the accounts an admin creates or imports, with their personal workspaces, on one transaction, retrying the personal-workspace slug candidates in turn. */
     private async createAdminUsers(
         inputs: IUserCreateWithWorkspaceInput[],
         timeoutInMs: number

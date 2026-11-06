@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes the added, updated and deleted mobile numbers of a window.
- * @public
- */
+/** @public */
 export const AnalyticMobileChurnResponseSchema = z.object({
     added: z.number().meta({
         description: 'Mobile numbers added inside the window',
@@ -20,10 +17,7 @@ export const AnalyticMobileChurnResponseSchema = z.object({
     }),
 });
 
-/**
- * Added, updated and deleted mobile numbers of a window.
- * @public
- */
+/** @public */
 export type AnalyticMobileChurnResponseDto = z.infer<
     typeof AnalyticMobileChurnResponseSchema
 >;

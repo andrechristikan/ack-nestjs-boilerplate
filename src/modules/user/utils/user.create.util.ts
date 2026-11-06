@@ -29,7 +29,6 @@ import type {
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-/** Shapes the inputs, workspace contexts, and activity rows of a new account and maps the collision its create raises onto a user exception. */
 @Injectable()
 export class UserCreateUtil {
     private readonly personalWorkspaceNamePattern: string;
@@ -148,7 +147,6 @@ export class UserCreateUtil {
         });
     }
 
-    /** Builds the workspace context of a sign-up: the invite's when it carries one, otherwise the username's personal workspace. */
     buildSignUpWorkspaceContext(
         invite: WorkspaceInvite | null,
         username: string
@@ -224,7 +222,7 @@ export class UserCreateUtil {
         };
     }
 
-    /** Lists the activity stage inputs of every created user under one contract row, in input order. */
+    /** Lists each user's activity stage inputs under the contract; `users[i]` must be the created user of `inputs[i]`. */
     buildStages(
         contract: IUserCreateContract,
         inputs: IUserCreateWithWorkspaceInput[],
@@ -255,7 +253,6 @@ export class UserCreateUtil {
         return stages;
     }
 
-    /** Lists the stage inputs of an admin create: the admin create row naming the new user, then the user's rows under the admin contract. */
     buildCreateByAdminStages(
         input: IUserCreateWithWorkspaceInput,
         user: IUser
@@ -279,7 +276,6 @@ export class UserCreateUtil {
         ];
     }
 
-    /** Lists the stage inputs of an admin import: the admin import row carrying the user count, then every user's rows under the admin contract. */
     buildImportByAdminStages(
         inputs: IUserCreateWithWorkspaceInput[],
         users: IUser[]
@@ -339,7 +335,6 @@ export class UserCreateUtil {
         return inputs.map(({ userId }) => userId);
     }
 
-    /** Maps the social provider onto the feature-flag key that gates its sign-up. */
     resolveSocialFeatureFlagKey(
         loginWith: EnumUserLoginWith
     ): EnumFeatureFlagKey {
@@ -348,7 +343,7 @@ export class UserCreateUtil {
             : EnumFeatureFlagKey.loginWithApple;
     }
 
-    /** Translates a unique collision raised by the create into its user exception, returning anything else untouched. */
+    /** Maps a username or email unique collision to its user exception and returns any other error untouched. */
     mapCreateCollision(error: unknown): unknown {
         const isUsernameCollision = this.databaseUtil.isUniqueCollision(
             error,

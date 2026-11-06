@@ -3,10 +3,7 @@ import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import type { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 
-/**
- * Base feature-flag shape: the stored feature-flag row.
- * @public
- */
+/** @public */
 export const FeatureFlagResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -33,8 +30,5 @@ export const FeatureFlagResponseSchema = DatabaseResponseSchema.omit({
         .nullable(),
 });
 
-/**
- * Stored feature flag.
- * @public
- */
+/** @public */
 export type FeatureFlagResponseDto = z.infer<typeof FeatureFlagResponseSchema>;

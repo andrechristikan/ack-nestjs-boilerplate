@@ -17,7 +17,6 @@ import { ConfigService } from '@nestjs/config';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { MessageService } from '@common/message/services/message.service';
 
-/** Renders and sends the term-policy publication email to one batch of recipients. */
 @Injectable()
 export class NotificationEmailTermPolicyDomain {
     private readonly noreplyEmail: string;

@@ -10,7 +10,7 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 import { Global, Module } from '@nestjs/common';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
 
-/** Shared module: SessionDomain for the JWT access strategy; SessionDomain, SessionQueue, and SessionUtil for the user and device services; SessionAnalyticDomain for the aggregation domain. */
+/** Shared module: SessionDomain for the JWT access strategy and the user and device services; SessionQueue for the user and device services; SessionUtil for the user HTTP service; SessionAnalyticDomain for the aggregation domain. */
 @Global()
 @Module({
     controllers: [],

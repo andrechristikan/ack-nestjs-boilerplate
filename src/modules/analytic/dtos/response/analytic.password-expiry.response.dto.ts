@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes how many stored passwords are past their expiry.
- * @public
- */
+/** @public */
 export const AnalyticPasswordExpiryResponseSchema = z.object({
     expired: z.number().meta({
         description: 'Users whose password is past its expiry',
@@ -25,10 +22,7 @@ export const AnalyticPasswordExpiryResponseSchema = z.object({
     }),
 });
 
-/**
- * How many stored passwords are past their expiry.
- * @public
- */
+/** @public */
 export type AnalyticPasswordExpiryResponseDto = z.infer<
     typeof AnalyticPasswordExpiryResponseSchema
 >;

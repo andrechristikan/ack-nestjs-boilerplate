@@ -1,7 +1,4 @@
-/**
- * Languages the application has message files for.
- * @public
- */
+/** @public */
 export enum EnumMessageLanguage {
     en = 'en',
 }

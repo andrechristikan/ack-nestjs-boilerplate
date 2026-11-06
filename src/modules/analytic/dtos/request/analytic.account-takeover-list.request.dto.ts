@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { AnalyticAccountTakeoverAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 
-/**
- * Analytic Account Takeover List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticAccountTakeoverListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
@@ -28,10 +25,7 @@ export const AnalyticAccountTakeoverListRequestSchema =
         })
         .extend(AnalyticDateRangeRequestSchema.shape);
 
-/**
- * Inferred DTO for AnalyticAccountTakeoverListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticAccountTakeoverListRequestDto = z.infer<
     typeof AnalyticAccountTakeoverListRequestSchema
 >;

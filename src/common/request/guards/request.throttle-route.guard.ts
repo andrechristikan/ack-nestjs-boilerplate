@@ -13,9 +13,6 @@ import type {
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 import { RequestUtil } from '@common/request/utils/request.util';
 
-/**
- * Enforces the per-route limiter of `@RequestThrottle` before any route-level guard runs.
- */
 @Injectable()
 export class RequestThrottleRouteGuard implements CanActivate {
     private readonly name = EnumRequestThrottleName.route;

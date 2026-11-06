@@ -84,7 +84,7 @@ export class SessionDomain {
         }
     }
 
-    /** Rotates the cached jti by compare-and-set and answers the outcome. */
+    /** Rotates the cached jti by compare-and-set; answers updated, absent, or mismatch. */
     async updateLogin(
         userId: string,
         sessionId: string,
@@ -150,7 +150,7 @@ export class SessionDomain {
         );
     }
 
-    /** Revokes a session as its own user when its token cannot be honoured (a replayed refresh token, a login entry that could not be written); returns the ref to purge, none when it was already revoked. */
+    /** Revokes the session as its own user; returns the ref to purge, or an empty list when it was already revoked. */
     async revokeIfActive(
         userId: string,
         sessionId: string

@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `aws` kit.
- * @public
- */
+/** @public */
 export enum EnumAwsStatusCodeError {
     s3KeyInvalid = 51400,
     s3FileRequired = 51401,

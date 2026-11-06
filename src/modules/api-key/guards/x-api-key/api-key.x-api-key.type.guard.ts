@@ -11,10 +11,6 @@ import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyGuardMissingException } from '@modules/api-key/exceptions/api-key.guard-missing.exception';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 
-/**
- * Authorizes the request by matching the resolved API key type against the types required via `ApiKeyXTypeMetaKey`.
- * Must run after `ApiKeyXApiKeyGuard`.
- */
 @Injectable()
 export class ApiKeyXApiKeyTypeGuard implements CanActivate {
     constructor(

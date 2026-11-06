@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes how many forgot-password tokens were issued and then used.
- * @public
- */
+/** @public */
 export const AnalyticForgotPasswordConversionResponseSchema = z.object({
     created: z.number().meta({
         description: 'Forgot-password tokens issued inside the window',
@@ -20,10 +17,7 @@ export const AnalyticForgotPasswordConversionResponseSchema = z.object({
     }),
 });
 
-/**
- * How many forgot-password tokens were issued and then used.
- * @public
- */
+/** @public */
 export type AnalyticForgotPasswordConversionResponseDto = z.infer<
     typeof AnalyticForgotPasswordConversionResponseSchema
 >;

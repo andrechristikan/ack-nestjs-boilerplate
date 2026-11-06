@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validates the activity-log metadata of a term policy action.
- * @public
- */
+/** @public */
 export const ActivityLogTermPolicyMetadataSchema = z.strictObject({
     termPolicyId: z.string().exactOptional(),
     termPolicyType: z.string().exactOptional(),
@@ -11,10 +8,7 @@ export const ActivityLogTermPolicyMetadataSchema = z.strictObject({
     timestamp: z.union([z.string(), z.date()]).exactOptional(),
 });
 
-/**
- * Activity-log metadata of a term policy action.
- * @public
- */
+/** @public */
 export type ActivityLogTermPolicyMetadataDto = z.infer<
     typeof ActivityLogTermPolicyMetadataSchema
 >;

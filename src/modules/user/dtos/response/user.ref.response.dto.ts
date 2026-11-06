@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { UserSchema } from '@modules/user/dtos/user.dto';
 
-/**
- * Minimal user shape embedded in another module's response.
- * @public
- */
+/** @public */
 export const UserRefResponseSchema = UserSchema.pick({
     id: true,
     createdAt: true,
@@ -18,8 +15,5 @@ export const UserRefResponseSchema = UserSchema.pick({
     photo: true,
 });
 
-/**
- * Minimal user shape embedded in another module's response.
- * @public
- */
+/** @public */
 export type UserRefResponseDto = z.infer<typeof UserRefResponseSchema>;

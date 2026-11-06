@@ -28,7 +28,7 @@ import { Global, Module } from '@nestjs/common';
 import { QueueConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
 
-/** Shared module: NotificationDomain, NotificationQueue, NotificationEmailQueue, and NotificationUtil for the user, workspace, and term-policy HTTP services; the template domains for the notification template seed. */
+/** Shared module: NotificationDomain, NotificationQueue, and NotificationUtil for the user, workspace, and term-policy HTTP services; NotificationEmailQueue for the workspace invite HTTP service; the template domains for the notification template seed. */
 @Global()
 @Module({
     controllers: [],

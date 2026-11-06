@@ -9,7 +9,6 @@ import { Injectable } from '@nestjs/common';
 export class FeatureFlagUtil {
     constructor(private readonly helperHashService: HelperHashService) {}
 
-    /** Distinguishes string[] from number[] so an array value cannot silently change element type on update. */
     private metadataValueType(value: IFeatureFlagMetadataValue): string {
         if (Array.isArray(value)) {
             return value.length > 0 ? `array:${typeof value[0]}` : 'array';
@@ -18,7 +17,7 @@ export class FeatureFlagUtil {
         return typeof value;
     }
 
-    /** True only when both have identical keys and matching value types, with no empty/nullish value; false when the stored metadata is null. */
+    /** True only when the incoming metadata has the same keys and value types as the stored one and no empty or null value; false when the stored metadata is null. */
     isMetadataValid(
         oldMetadata: IFeatureFlagMetadata | null,
         newMetadata: IFeatureFlagMetadata
@@ -56,7 +55,6 @@ export class FeatureFlagUtil {
         return true;
     }
 
-    /** Deterministic bucketing salted by flag key so each flag buckets a user independently. */
     isInRollout(
         rolloutPercent: number,
         key: string,

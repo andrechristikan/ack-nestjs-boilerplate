@@ -11,7 +11,6 @@ import {
 } from '@modules/auth/constants/auth.constant';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
-/** Passport strategy validating refresh tokens via JWKS, default algorithm ES512. */
 @Injectable()
 export class AuthJwtRefreshStrategy extends PassportStrategy(
     Strategy,
@@ -53,7 +52,6 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
         });
     }
 
-    /** Runs after signature verification; delegates session/payload checks to AuthDomain. */
     async validate(
         data: IAuthJwtRefreshTokenPayload
     ): Promise<IAuthJwtRefreshTokenPayload> {

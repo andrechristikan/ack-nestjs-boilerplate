@@ -6,10 +6,7 @@ import { RequestGeoLocationResponseSchema } from '@common/request/dtos/response/
 import { RequestUserAgentResponseSchema } from '@common/request/dtos/response/request.user-agent.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Base session shape: the stored session row without the JWT identifier.
- * @public
- */
+/** @public */
 export const SessionResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -130,8 +127,5 @@ export const SessionResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored session without the JWT identifier.
- * @public
- */
+/** @public */
 export type SessionResponseDto = z.infer<typeof SessionResponseSchema>;

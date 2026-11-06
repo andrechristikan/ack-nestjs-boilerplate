@@ -6,10 +6,6 @@ export interface IQueueResponse {
     [key: string]: unknown;
 }
 
-/**
- * Worker tuning a processor may override. `name` and `connection` are owned by
- * `QueueProcessor` and the shared Redis connection.
- */
 export type IQueueProcessorOptions = Omit<WorkerOptions, 'name' | 'connection'>;
 
 export type IQueueJobData = Parameters<Queue['add']>[1];

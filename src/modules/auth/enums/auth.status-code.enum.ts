@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `auth` module.
- * @public
- */
+/** @public */
 export enum EnumAuthStatusCodeError {
     jwtAccessTokenInvalid = 50800,
     jwtRefreshTokenInvalid = 50801,

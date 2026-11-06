@@ -22,9 +22,6 @@ import { Queue } from 'bullmq';
 import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
-/**
- * Enqueues push notification jobs (FCM) onto the push queue under a fixed job id.
- */
 @Injectable()
 export class NotificationPushQueue extends QueueBase {
     private readonly defTz: string;

@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { AnalyticUserCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 
-/**
- * Analytic Refresh Spike List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticRefreshSpikeListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
@@ -28,10 +25,7 @@ export const AnalyticRefreshSpikeListRequestSchema =
         })
         .extend(AnalyticWindowRequestSchema.shape);
 
-/**
- * Inferred DTO for AnalyticRefreshSpikeListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticRefreshSpikeListRequestDto = z.infer<
     typeof AnalyticRefreshSpikeListRequestSchema
 >;

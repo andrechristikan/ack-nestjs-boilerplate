@@ -14,7 +14,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Keyv from 'keyv';
 
-/** Manages TTL-based session cache entries. */
 @Injectable()
 export class SessionCache {
     private readonly loginKeyPattern: string;
@@ -128,7 +127,6 @@ return 'updated'
             : EnumSessionCacheUpdate.absent;
     }
 
-    /** Deletes exactly the given session login entries of a user. */
     async deleteLogins(userId: string, sessions: ISessionRef[]): Promise<void> {
         if (sessions.length === 0) {
             return;

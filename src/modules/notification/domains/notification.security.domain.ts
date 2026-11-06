@@ -22,7 +22,6 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { Injectable } from '@nestjs/common';
 import { MessageService } from '@common/message/services/message.service';
 
-/** Writes and fans out the password, two-factor and new-device login notifications. */
 @Injectable()
 export class NotificationSecurityDomain {
     constructor(

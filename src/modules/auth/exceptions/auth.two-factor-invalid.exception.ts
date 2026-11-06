@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
-/**
- * Raised when a two-factor code or backup code is wrong.
- * @public
- */
+/** @public */
 export class AuthTwoFactorInvalidException extends AppBaseException {
     readonly module = 'auth';
     readonly statusCode = EnumAuthStatusCodeError.twoFactorInvalid;

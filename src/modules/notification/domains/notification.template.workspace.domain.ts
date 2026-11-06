@@ -12,7 +12,6 @@ import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-/** Manages the SES templates for the workspace invite and join-request emails. */
 @Injectable()
 export class NotificationTemplateWorkspaceDomain {
     constructor(

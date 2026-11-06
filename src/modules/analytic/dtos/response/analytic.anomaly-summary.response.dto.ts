@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes an anomaly detector result that applies no thresholds: the count and its window.
- * @public
- */
+/** @public */
 export const AnalyticAnomalySummaryResponseSchema = z.object({
     count: z.number().meta({
         description: 'Rows the detector flagged',
@@ -16,10 +13,7 @@ export const AnalyticAnomalySummaryResponseSchema = z.object({
     }),
 });
 
-/**
- * Anomaly detector result without thresholds.
- * @public
- */
+/** @public */
 export type AnalyticAnomalySummaryResponseDto = z.infer<
     typeof AnalyticAnomalySummaryResponseSchema
 >;

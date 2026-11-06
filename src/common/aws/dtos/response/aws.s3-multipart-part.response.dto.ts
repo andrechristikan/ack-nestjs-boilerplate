@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Response shape for a single part in an AWS S3 multipart upload.
- * @public
- */
+/** @public */
 export const AwsS3MultipartPartResponseSchema = z.object({
     eTag: z.string().meta({
         description: 'ETag from aws after init multipart',
@@ -20,10 +17,7 @@ export const AwsS3MultipartPartResponseSchema = z.object({
     }),
 });
 
-/**
- * One uploaded part of an S3 multipart upload.
- * @public
- */
+/** @public */
 export type AwsS3MultipartPartResponseDto = z.infer<
     typeof AwsS3MultipartPartResponseSchema
 >;

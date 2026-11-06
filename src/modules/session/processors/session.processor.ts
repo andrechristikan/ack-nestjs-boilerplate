@@ -9,9 +9,6 @@ import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
-/**
- * Consumes the session queue; currently only the revoked-login cache purge.
- */
 @QueueProcessor(EnumQueue.session)
 export class SessionProcessor extends QueueProcessorBase {
     constructor(
@@ -22,7 +19,6 @@ export class SessionProcessor extends QueueProcessorBase {
         super(sentryService, messageService);
     }
 
-    /** Dispatches each job to its handler by job name. */
     protected async handle(
         job: Job<ISessionPurgeLoginsPayload, IQueueResponse, EnumSessionProcess>
     ): Promise<IQueueResponse> {

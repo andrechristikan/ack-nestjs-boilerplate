@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
-/**
- * Base workspace shape: the stored workspace row.
- * @public
- */
+/** @public */
 export const WorkspaceResponseSchema = DatabaseResponseSchema.extend({
     name: z.string().meta({
         description: 'Workspace name',
@@ -25,8 +22,5 @@ export const WorkspaceResponseSchema = DatabaseResponseSchema.extend({
     }),
 });
 
-/**
- * Stored workspace.
- * @public
- */
+/** @public */
 export type WorkspaceResponseDto = z.infer<typeof WorkspaceResponseSchema>;

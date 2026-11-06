@@ -12,7 +12,6 @@ import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-/** Manages the SES templates for the sign-up, welcome and verification emails. */
 @Injectable()
 export class NotificationTemplateAccountDomain {
     constructor(

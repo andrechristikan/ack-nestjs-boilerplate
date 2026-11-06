@@ -26,9 +26,6 @@ import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
-/**
- * Consumes the main notification queue and fans each job out to email, push, and in-app channels.
- */
 @QueueProcessor(EnumQueue.notification)
 export class NotificationProcessor extends QueueProcessorBase {
     constructor(
@@ -39,7 +36,6 @@ export class NotificationProcessor extends QueueProcessorBase {
         super(sentryService, messageService);
     }
 
-    /** Dispatches each job to its handler by job name. */
     protected async handle(
         job: Job<unknown, IQueueResponse, EnumNotificationProcess>
     ): Promise<IQueueResponse> {

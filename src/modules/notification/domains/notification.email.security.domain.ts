@@ -16,7 +16,6 @@ import { ConfigService } from '@nestjs/config';
 import { flatten } from 'flat';
 import { MessageService } from '@common/message/services/message.service';
 
-/** Renders and sends the password, two-factor and new-device login emails. */
 @Injectable()
 export class NotificationEmailSecurityDomain {
     private readonly noreplyEmail: string;

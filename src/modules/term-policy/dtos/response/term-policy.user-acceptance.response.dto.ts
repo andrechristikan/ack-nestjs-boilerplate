@@ -9,10 +9,7 @@ import {
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Shapes a term policy acceptance of a user with the accepted policy.
- * @public
- */
+/** @public */
 export const TermPolicyUserAcceptanceResponseSchema =
     DatabaseResponseSchema.omit({
         updatedAt: true,
@@ -74,10 +71,7 @@ export const TermPolicyUserAcceptanceResponseSchema =
         }),
     });
 
-/**
- * Term policy acceptance of a user.
- * @public
- */
+/** @public */
 export type TermPolicyUserAcceptanceResponseDto = z.infer<
     typeof TermPolicyUserAcceptanceResponseSchema
 >;

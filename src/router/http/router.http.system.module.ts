@@ -10,10 +10,6 @@ import { UserSystemController } from '@modules/user/controllers/user.system.cont
 import { UserHttpModule } from '@modules/user/user.http.module';
 import { Module } from '@nestjs/common';
 
-/**
- * Mounts system-level controllers (machine-to-machine via API key): user, health,
- * feature flag, policy, and role.
- */
 @Module({
     controllers: [
         UserSystemController,

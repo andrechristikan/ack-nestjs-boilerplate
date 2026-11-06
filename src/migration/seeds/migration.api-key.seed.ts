@@ -12,9 +12,6 @@ import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds environment-specific API keys; removal also clears their cache entries.
- */
 @Command({
     name: 'apiKey',
     description: 'Seed/Remove Api Keys',

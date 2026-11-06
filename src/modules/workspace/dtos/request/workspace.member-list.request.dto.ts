@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 
-/**
- * Workspace Member List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const WorkspaceMemberListRequestSchema =
     PaginationCursorQuerySchema.omit({ search: true }).extend({
         orderBy: z
@@ -29,10 +26,7 @@ export const WorkspaceMemberListRequestSchema =
         }),
     });
 
-/**
- * Inferred DTO for WorkspaceMemberListRequestSchema.
- * @public
- */
+/** @public */
 export type WorkspaceMemberListRequestDto = z.infer<
     typeof WorkspaceMemberListRequestSchema
 >;

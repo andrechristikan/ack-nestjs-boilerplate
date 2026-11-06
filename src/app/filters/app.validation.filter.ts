@@ -7,9 +7,6 @@ import { RequestValidationException } from '@common/request/exceptions/request.v
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
-/**
- * Formats `RequestValidationException` into the standard error envelope with localized field errors.
- */
 @Catch(RequestValidationException)
 export class AppValidationFilter implements ExceptionFilter {
     constructor(

@@ -19,7 +19,6 @@ import type { TwoFactor, User } from '@generated/prisma-client/client';
 import { Profanity } from '@2toad/profanity';
 import { Duration } from 'luxon';
 
-/** Username checks, profile photo path, resend window, two-factor mapping, and activity-log mapping. */
 @Injectable()
 export class UserUtil {
     private readonly profanity: Profanity;
@@ -48,7 +47,7 @@ export class UserUtil {
         });
     }
 
-    /** True when the username does NOT match the allowed pattern (i.e. should be rejected). */
+    /** True when the username does not match the allowed pattern, so true rejects it. */
     checkUsernamePattern(username: string): boolean {
         return !!username.search(UserUsernameRegex);
     }
@@ -57,14 +56,12 @@ export class UserUtil {
         return this.uploadPhotoProfilePath.replace('{userId}', () => userId);
     }
 
-    /** True when the key sits under the profile photo path of the user. */
     isPhotoProfileKeyOwned(userId: string, key: string): boolean {
         const photoPath = this.buildPhotoProfilePath(userId);
 
         return key.startsWith(`${photoPath}/`);
     }
 
-    /** True when the size is within `user.photo.maxSizeInBytes`. */
     isPhotoSizeAllowed(size: number): boolean {
         return size <= this.photoMaxSizeInBytes;
     }
@@ -73,7 +70,7 @@ export class UserUtil {
         return this.profanity.exists(str);
     }
 
-    /** Maps a two-factor record to status, deriving the pending-confirmation flag; a missing record is disabled. */
+    /** A null record maps to a disabled status; isPendingConfirmation is true while a pending secret is held. */
     mapTwoFactor(twoFactor: TwoFactor | null): IUserTwoFactorStatus {
         if (twoFactor === null) {
             return {
@@ -94,27 +91,22 @@ export class UserUtil {
         };
     }
 
-    /** True when the user has not verified the email yet. */
     isUnverified(user: IUser): boolean {
         return !user.isVerified;
     }
 
-    /** True when the user holds a password hash; false for an account created through social sign-in. */
     hasPassword(user: IUser): user is IUserPasswordSet {
         return user.password !== null;
     }
 
-    /** True when the user holds a two-factor row that is enabled. */
     isTwoFactorEnabled(user: IUser): user is IUserTwoFactorEnabled {
         return !!user.twoFactor?.enabled;
     }
 
-    /** True when the enabled two-factor row still needs a fresh authenticator setup. */
     requiresTwoFactorSetup(user: IUserTwoFactorEnabled): boolean {
         return user.twoFactor.requiredSetup;
     }
 
-    /** True when the account's role refuses deleting itself: admin and superAdmin. */
     isDeleteSelfRefused({ role }: IUser): boolean {
         return (
             role.type === EnumRoleType.admin ||
@@ -122,12 +114,10 @@ export class UserUtil {
         );
     }
 
-    /** True when moving to the status ends the open sessions; only active keeps them. */
     revokesSessionsOn(status: EnumUserStatus): boolean {
         return status !== EnumUserStatus.active;
     }
 
-    /** Maps the new status onto the activity-log action that records the change. */
     resolveStatusActivityLogAction(
         status: EnumUserStatus
     ): EnumActivityLogAction {
@@ -159,7 +149,6 @@ export class UserUtil {
         return phoneCodes.includes(phoneCode);
     }
 
-    /** Maps the login method onto the activity-log action that records it. */
     resolveLoginActivityLogAction(
         loginWith: EnumUserLoginWith
     ): EnumActivityLogAction {

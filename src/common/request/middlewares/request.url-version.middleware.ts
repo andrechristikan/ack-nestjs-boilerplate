@@ -6,9 +6,6 @@ import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestVersionStoreKey } from '@common/request/constants/request.constant';
 
-/**
- * Extracts the API version from the URL prefix into the request store, defaulting when disabled.
- */
 @Injectable()
 export class RequestUrlVersionMiddleware implements NestMiddleware {
     private readonly globalPrefix: string;

@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 
-/**
- * Project Member List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const ProjectMemberListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
@@ -26,10 +23,7 @@ export const ProjectMemberListRequestSchema = PaginationCursorQuerySchema.omit({
         }),
 });
 
-/**
- * Inferred DTO for ProjectMemberListRequestSchema.
- * @public
- */
+/** @public */
 export type ProjectMemberListRequestDto = z.infer<
     typeof ProjectMemberListRequestSchema
 >;

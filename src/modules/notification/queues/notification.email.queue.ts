@@ -36,9 +36,6 @@ import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
-/**
- * Enqueues email notification jobs onto the email queue, each under a fixed job id.
- */
 @Injectable()
 export class NotificationEmailQueue extends QueueBase {
     private readonly batchDelayInMs: number;
@@ -646,7 +643,7 @@ export class NotificationEmailQueue extends QueueBase {
         );
     }
 
-    /** Enqueues the workspace invite email for a registered invitee (has `userId`); called by the main notification processor after the `Notification` row is created. */
+    /** Enqueues the invite email of a registered invitee from a notification job step, after its `Notification` row exists; a failed add throws and fails that step. */
     async sendWorkspaceInvite(
         sendPayload: INotificationEmailSendEncryptedPayload,
         data: INotificationWorkspaceInviteEncryptedPayload
@@ -671,7 +668,7 @@ export class NotificationEmailQueue extends QueueBase {
         });
     }
 
-    /** Enqueues the workspace invite email directly for an unregistered invitee (no `userId`, no `Notification` row); the address and the link are sealed to the invite reference. */
+    /** Enqueues the invite email of an invitee with no account, with no `Notification` row; the address and link are encrypted with the invite reference as context. */
     async sendWorkspaceInviteUnregistered(
         email: string,
         {

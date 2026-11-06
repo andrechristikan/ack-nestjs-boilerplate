@@ -8,7 +8,6 @@ import type {
     IApiKeyHeader,
 } from '@modules/api-key/interfaces/api-key.interface';
 
-/** Mints and verifies the API key credential pair. */
 @Injectable()
 export class ApiKeyCredentialUtil {
     private readonly env: EnumAppEnvironment;
@@ -21,9 +20,7 @@ export class ApiKeyCredentialUtil {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
     }
 
-    /**
-     * Builds a public key prefixed with the current environment for traceability.
-     */
+    /** Prefixes the key with the environment; a null or empty key draws a random one. */
     createKey(key: string | null): string {
         if (key !== null && key !== '') {
             return `${this.env}_${key}`;
@@ -33,9 +30,6 @@ export class ApiKeyCredentialUtil {
         return `${this.env}_${random}`;
     }
 
-    /**
-     * Derives the SHA-256 hash stored for credential verification.
-     */
     createHash(key: string, secret: string): string {
         return this.helperHashService.sha256Hash(`${key}:${secret}`);
     }
@@ -44,9 +38,6 @@ export class ApiKeyCredentialUtil {
         return this.helperStringService.random(50);
     }
 
-    /**
-     * Generates a fresh key/secret pair plus the hash to persist.
-     */
     generateCredential(): IApiKeyGenerateCredential {
         const key = this.createKey(null);
         const secret = this.createSecret();
@@ -55,9 +46,7 @@ export class ApiKeyCredentialUtil {
         return { key, secret, hash };
     }
 
-    /**
-     * Splits a `key:secret` header into its two halves; null when it is not exactly two non-blank parts.
-     */
+    /** Splits a `key:secret` header; null unless it has exactly two non-blank parts. */
     parseHeader(header: string): IApiKeyHeader | null {
         const [key, secret, ...rest] = header.split(':');
         if (
@@ -73,9 +62,6 @@ export class ApiKeyCredentialUtil {
         return { key, secret };
     }
 
-    /**
-     * Verifies the supplied key/secret by re-deriving the hash and comparing it to the stored one.
-     */
     validateCredential(
         key: string,
         secret: string,

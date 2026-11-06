@@ -9,10 +9,7 @@ import {
 import { faker } from '@faker-js/faker';
 import { EnumUserStatus } from '@generated/prisma-client/client';
 
-/**
- * Offset list query for admin user listing.
- * @public
- */
+/** @public */
 export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
     search: PaginationOffsetQuerySchema.shape.search.meta({
         description: `Search query, available fields: ${UserDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
@@ -49,8 +46,5 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
     }),
 });
 
-/**
- * Inferred DTO for UserListRequestSchema.
- * @public
- */
+/** @public */
 export type UserListRequestDto = z.infer<typeof UserListRequestSchema>;

@@ -6,10 +6,7 @@ import {
     WorkspaceInviteDefaultAvailableSearch,
 } from '@modules/workspace/constants/workspace.list.constant';
 
-/**
- * Workspace Invite List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const WorkspaceInviteListRequestSchema =
     PaginationCursorQuerySchema.extend({
         search: PaginationCursorQuerySchema.shape.search.meta({
@@ -36,10 +33,7 @@ export const WorkspaceInviteListRequestSchema =
         }),
     });
 
-/**
- * Inferred DTO for WorkspaceInviteListRequestSchema.
- * @public
- */
+/** @public */
 export type WorkspaceInviteListRequestDto = z.infer<
     typeof WorkspaceInviteListRequestSchema
 >;

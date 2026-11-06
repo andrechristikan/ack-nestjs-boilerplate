@@ -6,10 +6,7 @@ import {
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationKindContracts } from '@modules/notification/interfaces/notification.interface';
 
-/**
- * Per-kind notification rule: type, priority, whether the user may opt out, i18n title and body, and the pending and delivered channels of the stored row.
- * @public
- */
+/** @public */
 export const NotificationKindContract: INotificationKindContracts = {
     [EnumNotificationKind.welcome]: {
         type: EnumNotificationType.userActivity,

@@ -10,10 +10,6 @@ import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds the superadmin, admin, and user roles. The policy rows each role grants are seeded by
- * `MigrationPolicySeed`, which runs after this one.
- */
 @Command({
     name: 'role',
     description: 'Seed/Remove Roles',

@@ -7,18 +7,10 @@ import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-co
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
-/**
- * Metadata key holding the decorated method's documented `IDocResponseEntry` records, the
- * doc decorators' input, kept apart from the assembled `swagger/apiResponse` entries.
- * @public
- */
+/** @public */
 export const DocResponseEntryMetaKey = 'DocResponseEntryMetaKey';
 
-/**
- * Error entries `Doc` documents on every endpoint: the app, request, helper, database, redis,
- * and aws kit errors any route can answer.
- * @public
- */
+/** @public */
 export const DocGlobalErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,

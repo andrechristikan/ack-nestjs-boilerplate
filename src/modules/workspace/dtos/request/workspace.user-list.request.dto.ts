@@ -6,10 +6,7 @@ import {
     WorkspaceDefaultAvailableSearch,
 } from '@modules/workspace/constants/workspace.list.constant';
 
-/**
- * Workspace User List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const WorkspaceUserListRequestSchema =
     PaginationCursorQuerySchema.extend({
         search: PaginationCursorQuerySchema.shape.search.meta({
@@ -32,10 +29,7 @@ export const WorkspaceUserListRequestSchema =
             }),
     });
 
-/**
- * Inferred DTO for WorkspaceUserListRequestSchema.
- * @public
- */
+/** @public */
 export type WorkspaceUserListRequestDto = z.infer<
     typeof WorkspaceUserListRequestSchema
 >;

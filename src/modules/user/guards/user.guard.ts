@@ -10,7 +10,6 @@ import {
 import { AuthJwtGuardMissingException } from '@modules/auth/exceptions/auth.jwt-guard-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/** Validates the authenticated user and stores it in the request context for `UserCurrent`. */
 @Injectable()
 export class UserGuard implements CanActivate {
     constructor(

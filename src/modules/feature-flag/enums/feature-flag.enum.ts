@@ -1,7 +1,4 @@
-/**
- * Seeded feature-flag keys a route or domain gates on.
- * @public
- */
+/** @public */
 export enum EnumFeatureFlagKey {
     loginWithGoogle = 'loginWithGoogle',
     loginWithApple = 'loginWithApple',
@@ -11,10 +8,7 @@ export enum EnumFeatureFlagKey {
     workspace = 'workspace',
 }
 
-/**
- * Seeded feature-flag metadata sub-keys code reads.
- * @public
- */
+/** @public */
 export enum EnumFeatureFlagMetadataKey {
     signUpAllowed = 'signUpAllowed',
     forgotAllowed = 'forgotAllowed',

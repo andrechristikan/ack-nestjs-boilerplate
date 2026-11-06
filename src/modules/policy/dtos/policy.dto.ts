@@ -5,10 +5,7 @@ import {
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
 
-/**
- * Base policy shape: one `(subject, action[])` combination stored in the Policies collection.
- * @public
- */
+/** @public */
 export const PolicySchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -27,8 +24,5 @@ export const PolicySchema = DatabaseResponseSchema.omit({
         }),
 });
 
-/**
- * Stored policy: one subject with its allowed actions.
- * @public
- */
+/** @public */
 export type PolicyDto = z.infer<typeof PolicySchema>;

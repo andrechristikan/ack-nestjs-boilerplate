@@ -6,10 +6,7 @@ import {
     CountryDefaultAvailableSearch,
 } from '@modules/country/constants/country.list.constant';
 
-/**
- * Country List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const CountryListRequestSchema = PaginationCursorQuerySchema.extend({
     search: PaginationCursorQuerySchema.shape.search.meta({
         description: `Search query, available fields: ${CountryDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
@@ -31,8 +28,5 @@ export const CountryListRequestSchema = PaginationCursorQuerySchema.extend({
         }),
 });
 
-/**
- * Inferred DTO for CountryListRequestSchema.
- * @public
- */
+/** @public */
 export type CountryListRequestDto = z.infer<typeof CountryListRequestSchema>;

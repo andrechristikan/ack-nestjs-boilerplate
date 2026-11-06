@@ -3,9 +3,6 @@ import { EnumHealthStatus } from '@modules/health/enums/health.enum';
 import { Injectable } from '@nestjs/common';
 import type { HealthCheckResult, HealthCheckStatus } from '@nestjs/terminus';
 
-/**
- * Recognizes a Terminus check result and maps it onto the module's health response.
- */
 @Injectable()
 export class HealthUtil {
     private isIndicatorMap(value: unknown): boolean {

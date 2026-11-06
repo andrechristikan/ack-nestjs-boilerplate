@@ -13,11 +13,6 @@ import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-/**
- * Enforces the roles declared by `@ProjectMemberProtected(...roles)` against the project resolved by
- * `ProjectGuard` and the workspace membership resolved by `WorkspaceMemberGuard`, both of which must
- * run before this guard. A workspace owner or admin passes without a `ProjectMember` row.
- */
 @Injectable()
 export class ProjectRoleGuard implements CanActivate {
     constructor(

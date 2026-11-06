@@ -11,10 +11,6 @@ import {
     LoggerUrlStaticSegmentRegex,
 } from '@common/logger/constants/logger.constant';
 
-/**
- * Redacts credentials and identifiers from a Sentry event, breadcrumb, or log before it leaves the
- * process. It injects nothing, so `src/instrument.ts` builds it before Nest boots.
- */
 export class SentryUtil {
     private readonly sensitiveFields = new Set(
         LoggerSensitiveFields.map(field => field.toLowerCase())

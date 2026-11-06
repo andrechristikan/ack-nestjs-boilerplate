@@ -14,7 +14,6 @@ export const ConfigureOptions: NestApplicationOptions = {
     routeResolutionStrategy: 'specificity',
 };
 
-/** Applies the HTTP settings `main.ts` and an e2e app share. */
 export function configure(app: NestApplication): NestApplication {
     app.useLogger(app.get(PinoLogger));
 

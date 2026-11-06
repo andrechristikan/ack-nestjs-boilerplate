@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
-/**
- * Nested two-factor state stored against a user; the secret material never leaves the server.
- * @public
- */
+/** @public */
 export const UserTwoFactorSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -28,8 +25,5 @@ export const UserTwoFactorSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored two-factor state of a user, without secret material.
- * @public
- */
+/** @public */
 export type UserTwoFactorDto = z.infer<typeof UserTwoFactorSchema>;

@@ -4,9 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
-/**
- * Reports Apple Sign In client id presence as a Terminus health indicator.
- */
 @Injectable()
 export class HealthAppleIndicator {
     private readonly clientId: string | null;
@@ -27,9 +24,6 @@ export class HealthAppleIndicator {
         this.signInClientId = signInClientId ?? null;
     }
 
-    /**
-     * Down when neither the Apple client id nor the sign-in client id is set.
-     */
     async isHealthy(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {

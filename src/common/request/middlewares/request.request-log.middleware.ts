@@ -6,9 +6,6 @@ import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestUtil } from '@common/request/utils/request.util';
 
-/**
- * Computes the request-log context (ua / ip / geo) once per request and stores it under `RequestLogStoreKey`.
- */
 @Injectable()
 export class RequestRequestLogMiddleware implements NestMiddleware {
     constructor(

@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { AnalyticCredentialStuffingAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 
-/**
- * Analytic Credential Stuffing List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticCredentialStuffingListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
@@ -28,10 +25,7 @@ export const AnalyticCredentialStuffingListRequestSchema =
         })
         .extend(AnalyticWindowRequestSchema.shape);
 
-/**
- * Inferred DTO for AnalyticCredentialStuffingListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticCredentialStuffingListRequestDto = z.infer<
     typeof AnalyticCredentialStuffingListRequestSchema
 >;

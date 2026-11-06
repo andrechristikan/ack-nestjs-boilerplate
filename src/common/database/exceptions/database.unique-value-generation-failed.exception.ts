@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
-/**
- * Raised when every attempt to draw a unique generated value collides.
- * @public
- */
+/** @public */
 export class DatabaseUniqueValueGenerationFailedException extends AppBaseException {
     readonly module = 'database';
     readonly statusCode =

@@ -11,10 +11,6 @@ import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-/**
- * Enforces the roles declared by `@WorkspaceMemberProtected(...roles)` against the membership
- * resolved by `WorkspaceMemberGuard`, which must run before this guard.
- */
 @Injectable()
 export class WorkspaceRoleGuard implements CanActivate {
     constructor(

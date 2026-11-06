@@ -12,7 +12,6 @@ import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-/** Manages the SES templates for the password, two-factor and new-device login emails. */
 @Injectable()
 export class NotificationTemplateSecurityDomain {
     constructor(

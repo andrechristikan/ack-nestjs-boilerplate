@@ -11,9 +11,6 @@ import type { ResponseMetadataDto } from '@common/response/dtos/response.metadat
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
-/**
- * Translates every error no other filter claims into the standard error envelope: an `AppBaseException` as itself, a known database or Redis failure as its typed exception, anything else as a 500; reports 5xx to Sentry.
- */
 @Catch()
 export class AppGeneralFilter implements ExceptionFilter {
     private readonly logger = new Logger(AppGeneralFilter.name);
@@ -49,10 +46,6 @@ export class AppGeneralFilter implements ExceptionFilter {
         return mapped ?? new AppUnknownException(exception);
     }
 
-    /**
-     * A described `AppUnknownException` is reported as itself so Sentry shows the description with
-     * the cause chained; any other `AppBaseException` reports its `rawError` when it has one.
-     */
     private getReported(exception: unknown): unknown {
         if (
             exception instanceof AppUnknownException &&

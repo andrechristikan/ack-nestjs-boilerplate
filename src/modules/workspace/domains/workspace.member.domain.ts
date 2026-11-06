@@ -127,7 +127,7 @@ export class WorkspaceMemberDomain {
         return member;
     }
 
-    /** Enforces `allowedRoles` against the caller's membership. An `owner` satisfies every role check structurally and is therefore never listed in a route's `allowedRoles`. */
+    /** An `owner` passes without being in `allowedRoles`; any other role must be in it, otherwise throws `WorkspaceRoleForbiddenException`. */
     validateWorkspaceRoleGuard(
         member: WorkspaceMember,
         allowedRoles: EnumWorkspaceMemberRole[]

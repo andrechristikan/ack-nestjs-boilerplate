@@ -3,9 +3,6 @@ import type { DynamicModule } from '@nestjs/common';
 import { SentryModule as SentryNestModule } from '@sentry/nestjs/setup';
 import { SentryService } from '@common/sentry/services/sentry.service';
 
-/**
- * Global module wiring the Sentry Nest integration once and exposing `SentryService` app-wide.
- */
 @Module({})
 export class SentryModule {
     static forRoot(): DynamicModule {

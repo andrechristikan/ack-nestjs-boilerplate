@@ -3,13 +3,7 @@ import { QueueConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueProcessorOptions } from '@queues/interfaces/queue.interface';
 
-/**
- * Registers a BullMQ processor with an env-derived consumer worker name and its own Redis
- * connection. The worker keeps BullMQ's connection defaults (offline queue on,
- * `maxRetriesPerRequest: null`); the fail-fast options belong to the producer queues.
- * Name and connection are resolved from env at decoration time, not at runtime.
- * @public
- */
+/** @public */
 export function QueueProcessor(
     name: EnumQueue,
     options?: IQueueProcessorOptions

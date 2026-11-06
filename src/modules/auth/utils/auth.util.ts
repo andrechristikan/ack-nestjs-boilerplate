@@ -26,7 +26,6 @@ import {
 import type { User } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
-/** Auth utility: shapes the JWT payloads, the token pair, the login identifiers, and the guard exceptions. See docs/authentication.md. */
 @Injectable()
 export class AuthUtil {
     constructor(
@@ -36,7 +35,6 @@ export class AuthUtil {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    /** Assembles the access token payload from the user and login context. */
     createPayloadAccessToken(
         data: User,
         sessionId: string,
@@ -58,7 +56,6 @@ export class AuthUtil {
         };
     }
 
-    /** Derives the minimal refresh token payload from an access token payload. */
     createPayloadRefreshToken({
         sessionId,
         userId,
@@ -92,12 +89,10 @@ export class AuthUtil {
         };
     }
 
-    /** Generates a random 32-character jti used to bind a token to its session. */
     generateJti(): string {
         return this.helperStringService.random(32);
     }
 
-    /** Mints a new session id and a new jti. */
     createLoginIdentifiers(): IAuthLoginIdentifiers {
         const sessionId = this.databaseUtil.createId();
         const jti = this.generateJti();
@@ -105,7 +100,6 @@ export class AuthUtil {
         return { sessionId, jti };
     }
 
-    /** True when the payload carries string `sub` and `jti` claims and a `sessionId`. */
     isTokenPayloadValid<
         T extends { sub?: string; jti?: string; sessionId: string },
     >(payload: T): payload is IAuthJwtPayloadIdentified<T> {
@@ -120,14 +114,13 @@ export class AuthUtil {
         );
     }
 
-    /** Compares the session's stored jti digest with the SHA-256 hash of the token jti. */
     isJtiMatch(sessionJtiDigest: string, jti: string): boolean {
         const jtiHash = this.helperHashService.sha256Hash(jti);
 
         return this.helperHashService.sha256Compare(sessionJtiDigest, jtiHash);
     }
 
-    /** Whole seconds left until the token's `exp` (epoch seconds); a missing `exp` counts as the epoch. */
+    /** Whole seconds left until `exp` (epoch seconds), negative once passed; a null `exp` counts as the epoch. */
     remainingSeconds(exp: number | null): number {
         const today = this.helperDateService.create();
         const expiredAt = this.helperDateService.createFromTimestamp(
@@ -140,11 +133,7 @@ export class AuthUtil {
             : Math.floor(remaining.milliseconds / 1000);
     }
 
-    /**
-     * Maps an unreachable key or identity provider to its exception, returning `null` for every other error.
-     * `jwks-rsa` flags a failed fetch with `isEndpointUnavailable` (4.x) or names it `JwksError`; `google-auth-library` prefixes its certificate fetch failure; a raw Node network error carries a `code`.
-     * A `SigningKeyNotFoundError`, a `JwksRateLimitError`, and a token verification error name a bad token, not an outage.
-     */
+    /** Maps an unreachable key or identity provider to its exception; null for every other error, a bad token included. */
     toProviderUnavailableException(
         error: unknown
     ): AuthProviderUnavailableException | null {

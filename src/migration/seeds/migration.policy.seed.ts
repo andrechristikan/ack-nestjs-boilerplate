@@ -10,10 +10,6 @@ import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds the policy rows each seeded role grants. Requires roles to already be seeded, and
- * aborts otherwise.
- */
 @Command({
     name: 'policy',
     description: 'Seed/Remove Policies',

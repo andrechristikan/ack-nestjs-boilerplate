@@ -14,9 +14,6 @@ import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
-/**
- * Enqueues the S3 content delete that follows a committed draft delete and the S3 content copy that follows a committed publish.
- */
 @Injectable()
 export class TermPolicyQueue extends QueueBase {
     private readonly deleteContentJobIdPattern: string;

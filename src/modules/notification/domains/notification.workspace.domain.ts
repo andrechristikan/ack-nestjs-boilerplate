@@ -21,7 +21,6 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { Injectable } from '@nestjs/common';
 import { MessageService } from '@common/message/services/message.service';
 
-/** Writes and fans out the workspace invite and join-request notifications. */
 @Injectable()
 export class NotificationWorkspaceDomain {
     constructor(

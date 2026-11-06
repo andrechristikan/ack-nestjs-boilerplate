@@ -25,10 +25,7 @@ import type {
     IApiKeyFieldValue,
 } from '@modules/api-key/interfaces/api-key.interface';
 
-/**
- * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored. Throws `ApiKeyGuardMissingException` when the request carries no key and `RequestContextMissingException` when the requested field is null.
- * @public
- */
+/** @public */
 export const ApiKeyPayload = createParamDecorator<
     IApiKeyField | undefined,
     ApiKey | IApiKeyFieldValue
@@ -53,10 +50,7 @@ export const ApiKeyPayload = createParamDecorator<
     return value;
 });
 
-/**
- * Requires a valid X-API-Key and restricts the route to system-type API keys.
- * @public
- */
+/** @public */
 export function ApiKeySystemProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
@@ -66,10 +60,7 @@ export function ApiKeySystemProtected(): MethodDecorator {
     );
 }
 
-/**
- * Requires a valid X-API-Key and restricts the route to default-type API keys.
- * @public
- */
+/** @public */
 export function ApiKeyProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),

@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes a counted analytics metric expressed as a share of a total.
- * @public
- */
+/** @public */
 export const AnalyticMetricRateResponseSchema = z.object({
     count: z.number().meta({
         description: 'Number of rows matching the metric window',
@@ -20,10 +17,7 @@ export const AnalyticMetricRateResponseSchema = z.object({
     }),
 });
 
-/**
- * Counted analytics metric expressed as a share of a total.
- * @public
- */
+/** @public */
 export type AnalyticMetricRateResponseDto = z.infer<
     typeof AnalyticMetricRateResponseSchema
 >;

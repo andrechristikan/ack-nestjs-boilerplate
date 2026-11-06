@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-summary.response.dto';
 
-/**
- * Shapes the failed login spike result: the count, its window, and the thresholds and statistics used.
- * @public
- */
+/** @public */
 export const AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema =
     AnalyticAnomalySummaryResponseSchema.extend({
         meta: z
@@ -25,10 +22,7 @@ export const AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema =
             }),
     });
 
-/**
- * Failed login spike result with the thresholds and statistics it applied.
- * @public
- */
+/** @public */
 export type AnalyticAnomalyFailedLoginSpikeSummaryResponseDto = z.infer<
     typeof AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema
 >;

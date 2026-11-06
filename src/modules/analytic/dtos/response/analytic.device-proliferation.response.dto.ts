@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one user holding an outlying number of devices.
- * @public
- */
+/** @public */
 export const AnalyticDeviceProliferationResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user holding the devices',
@@ -20,10 +17,7 @@ export const AnalyticDeviceProliferationResponseSchema = z.object({
     }),
 });
 
-/**
- * One user holding an outlying number of devices.
- * @public
- */
+/** @public */
 export type AnalyticDeviceProliferationResponseDto = z.infer<
     typeof AnalyticDeviceProliferationResponseSchema
 >;

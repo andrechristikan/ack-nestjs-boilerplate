@@ -13,7 +13,6 @@ import {
 } from '@common/redis/constants/redis.constant';
 import type { IApiKeyCache } from '@modules/api-key/interfaces/api-key.interface';
 
-/** Reads and writes the cached API key record, a read-through entry guarded by a lease. */
 @Injectable()
 export class ApiKeyCache {
     private readonly logger = new Logger(ApiKeyCache.name);
@@ -112,7 +111,7 @@ export class ApiKeyCache {
         }
     }
 
-    /** Writes the entry and drops the lease in one script, only while the lease still holds the token. */
+    /** Writes the entry and drops the lease in one script, only while the lease still holds the token; a store failure is logged, not thrown. */
     async setApiKey(apiKey: ApiKey, leaseToken: string): Promise<void> {
         const cached: IApiKeyCache = {
             ...apiKey,

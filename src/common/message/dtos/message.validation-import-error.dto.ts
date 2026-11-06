@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { MessageValidationErrorSchema } from '@common/message/dtos/message.validation-error.dto';
 
-/**
- * Failed validation issues grouped by the imported row they came from.
- * @public
- */
+/** @public */
 export const MessageValidationImportErrorSchema = z.object({
     row: z.number().meta({
         description: 'Row of the imported file the errors belong to',
@@ -22,10 +19,7 @@ export const MessageValidationImportErrorSchema = z.object({
     }),
 });
 
-/**
- * Localized validation failures of one imported row.
- * @public
- */
+/** @public */
 export type MessageValidationImportErrorDto = z.infer<
     typeof MessageValidationImportErrorSchema
 >;

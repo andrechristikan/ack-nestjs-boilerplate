@@ -4,9 +4,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
-/**
- * Reports AWS SES reachability as a Terminus health indicator.
- */
 @Injectable()
 export class HealthAwsSESIndicator {
     private readonly logger = new Logger(HealthAwsSESIndicator.name);
@@ -16,9 +13,6 @@ export class HealthAwsSESIndicator {
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
-    /**
-     * Down when SES is not configured, or when the SES connection check fails or throws.
-     */
     async isHealthy(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {

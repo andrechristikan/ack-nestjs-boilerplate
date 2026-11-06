@@ -22,10 +22,6 @@ import { FileExceedMaxSizeExportException } from '@common/file/exceptions/file.e
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { ResponseFileDataInvalidException } from '@common/response/exceptions/response.file-data-invalid.exception';
 
-/**
- * Builds an interceptor that streams CSV/PDF return values as a `StreamableFile`, setting
- * download and standard headers, and rejects a CSV with more data rows than the configured cap.
- */
 export function ResponseFileInterceptor(
     options?: IResponseFileInterceptorOptions
 ): Type<NestInterceptor> {

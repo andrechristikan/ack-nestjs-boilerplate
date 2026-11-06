@@ -14,9 +14,6 @@ import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
-/**
- * Consumes the user queue: the replaced profile photo delete and the lockout of a user that spent its attempt budget.
- */
 @QueueProcessor(EnumQueue.user)
 export class UserProcessor extends QueueProcessorBase {
     constructor(
@@ -27,7 +24,6 @@ export class UserProcessor extends QueueProcessorBase {
         super(sentryService, messageService);
     }
 
-    /** Dispatches each job to its handler by job name. */
     protected async handle(
         job: Job<unknown, IQueueResponse, EnumUserProcess>
     ): Promise<IQueueResponse> {

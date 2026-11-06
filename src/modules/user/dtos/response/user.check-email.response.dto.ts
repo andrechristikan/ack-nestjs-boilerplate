@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Outcome of checking an email against the blocklist and the existing accounts.
- * @public
- */
+/** @public */
 export const UserCheckEmailResponseSchema = z.object({
     badWord: z.boolean().meta({
         description: 'Whether the value contains a blocked word',
@@ -15,10 +12,7 @@ export const UserCheckEmailResponseSchema = z.object({
     }),
 });
 
-/**
- * Email check outcome.
- * @public
- */
+/** @public */
 export type UserCheckEmailResponseDto = z.infer<
     typeof UserCheckEmailResponseSchema
 >;

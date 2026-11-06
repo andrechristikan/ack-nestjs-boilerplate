@@ -29,11 +29,6 @@ import { ResponsePaginationShapeInvalidException } from '@common/response/except
 import { ResponsePaginationTypeInvalidException } from '@common/response/exceptions/response.pagination-type-invalid.exception';
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
 
-/**
- * Wraps paginated handler results into the standard envelope, serializing every item against the
- * route's declared schema, merging pagination state from the per-request store into the metadata
- * and localizing the message.
- */
 @Injectable()
 export class ResponsePaginationInterceptor<T> implements NestInterceptor {
     constructor(
@@ -51,9 +46,6 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         );
     }
 
-    /**
-     * Asserts the result is a pagination shape with a valid `type` and an array `data`.
-     */
     private validatePaginationResponse(
         responseData: IResponsePaginationReturn<T>
     ): void {
@@ -73,9 +65,6 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         }
     }
 
-    /**
-     * A page without a declared item schema is a route that promised no data, so it fails closed.
-     */
     private async serialize(
         schema: StandardSchemaV1 | null,
         items: unknown[]
@@ -102,9 +91,6 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         return serialized;
     }
 
-    /**
-     * Cursor type contributes `nextCursor`; offset type contributes page fields.
-     */
     intercept(
         context: ExecutionContext,
         next: CallHandler

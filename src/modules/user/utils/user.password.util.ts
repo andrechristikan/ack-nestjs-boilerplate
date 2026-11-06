@@ -7,7 +7,6 @@ import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 import ms from 'ms';
 
-/** Generates forgot-password references, tokens, links, and expiry. */
 @Injectable()
 export class UserPasswordUtil {
     private readonly homeUrl: string;
@@ -69,7 +68,6 @@ export class UserPasswordUtil {
         );
     }
 
-    /** Builds the tokenized reset link request of a forgot-password. */
     createForgot(): IUserForgotPasswordCreate {
         const token = this.createToken();
         const hashedToken = this.helperHashService.sha256Hash(token);

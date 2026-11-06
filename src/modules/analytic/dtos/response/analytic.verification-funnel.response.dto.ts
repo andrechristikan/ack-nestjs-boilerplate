@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes the email and mobile verification funnels of a window.
- * @public
- */
+/** @public */
 export const AnalyticVerificationFunnelResponseSchema = z.object({
     email: z
         .object({
@@ -64,10 +61,7 @@ export const AnalyticVerificationFunnelResponseSchema = z.object({
         }),
 });
 
-/**
- * Email and mobile verification funnels of a window.
- * @public
- */
+/** @public */
 export type AnalyticVerificationFunnelResponseDto = z.infer<
     typeof AnalyticVerificationFunnelResponseSchema
 >;

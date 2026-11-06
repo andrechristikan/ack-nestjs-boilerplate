@@ -1,25 +1,16 @@
 import { Prisma } from '@generated/prisma-client/client';
 
-/**
- * Sort fields the admin offset password-history list accepts.
- * @public
- */
+/** @public */
 export const PasswordHistoryDefaultAvailableOrderBy = [
     Prisma.PasswordHistoryScalarFieldEnum.createdAt,
     Prisma.PasswordHistoryScalarFieldEnum.expiredAt,
 ] as const satisfies ReadonlyArray<Prisma.PasswordHistoryScalarFieldEnum>;
 
-/**
- * Cursor-route allow-list: every field here is immutable, and a sort key that moves makes a scroll skip and repeat rows.
- * @public
- */
+/** @public */
 export const PasswordHistoryCursorAvailableOrderBy = [
     Prisma.PasswordHistoryScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.PasswordHistoryScalarFieldEnum>;
 
-/**
- * Cursor scope of the shared password-history list.
- * @public
- */
+/** @public */
 export const PasswordHistorySharedListCursorScope =
     'PasswordHistorySharedListCursorScope';

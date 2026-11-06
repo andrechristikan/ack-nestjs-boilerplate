@@ -22,7 +22,6 @@ import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt
 import { AuthJwtConfigMissingException } from '@modules/auth/exceptions/auth.jwt-config-missing.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 
-/** Signs, verifies and rotates the access/refresh token pair. See docs/authentication.md. */
 @Injectable()
 export class AuthJwtDomain {
     private readonly jwtAccessTokenKid: string;
@@ -93,7 +92,6 @@ export class AuthJwtDomain {
         this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer')!;
     }
 
-    /** Reads a base64 DER key from config and frames it as PEM under the label; `expected` names the key kind in the invalid-config error. */
     private parseRequiredBase64Der(
         configKey: string,
         label: EnumHelperPemLabel,
@@ -130,7 +128,7 @@ export class AuthJwtDomain {
         } as JwtSignOptions);
     }
 
-    /** Signs a refresh token with the refresh private key; expiresIn (seconds) overrides the configured default. */
+    /** `expiresIn` is in seconds and replaces the configured refresh lifetime. */
     createRefreshToken(
         subject: string,
         jti: string,
@@ -183,7 +181,7 @@ export class AuthJwtDomain {
         }
     }
 
-    /** Decodes a JWT payload WITHOUT signature verification; use only on already-verified tokens. */
+    /** Decodes a JWT payload without verifying its signature; call it only on an already verified token. */
     payloadToken<T>(token: string): T {
         return this.jwtService.decode<T>(token);
     }
@@ -196,7 +194,6 @@ export class AuthJwtDomain {
         return jti;
     }
 
-    /** Signs the access and refresh token pair for the user. */
     createTokens(
         user: IUser,
         { sessionId, jti, deviceOwnershipId, loginAt }: IAuthTokenSignInput,
@@ -234,7 +231,7 @@ export class AuthJwtDomain {
         );
     }
 
-    /** Rotates the token pair with a new jti, reusing the session and capping the refresh expiry at the old token's remaining lifetime. */
+    /** Decodes the given refresh token without verifying it, then signs another pair under a fresh jti in the same session; the issued refresh token expires when the old one would. */
     refreshToken(
         user: IUser,
         refreshTokenFromRequest: string

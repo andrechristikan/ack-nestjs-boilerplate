@@ -26,10 +26,7 @@ import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
 import { DocErrors } from '@common/doc/decorators/doc.decorator';
 
-/**
- * Overrides the global request timeout for a route.
- * @public
- */
+/** @public */
 export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
     return applyDecorators(
         SetMetadata(RequestCustomTimeoutMetaKey, true),
@@ -37,10 +34,7 @@ export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
     );
 }
 
-/**
- * Restricts a route to the given application environments.
- * @public
- */
+/** @public */
 export function RequestEnvProtected(
     ...envs: EnumAppEnvironment[]
 ): MethodDecorator {
@@ -55,10 +49,7 @@ export function RequestEnvProtected(
     );
 }
 
-/**
- * Switches on the `route` and `user` throttle limiters for one endpoint.
- * @public
- */
+/** @public */
 export function RequestThrottle(
     options: IRequestThrottleOptions
 ): MethodDecorator {
@@ -68,10 +59,7 @@ export function RequestThrottle(
     );
 }
 
-/**
- * Reads the client IP resolved once per request into the request-log store; throws when it is unresolved.
- * @public
- */
+/** @public */
 export const RequestIPAddress = createParamDecorator((): string => {
     const requestLog =
         ClsServiceManager.getClsService().get<IRequestLog | null>(
@@ -91,10 +79,7 @@ export const RequestIPAddress = createParamDecorator((): string => {
     return ipAddress;
 });
 
-/**
- * Reads the user agent parsed once per request into the request-log store; throws when it is absent.
- * @public
- */
+/** @public */
 export const RequestUserAgent = createParamDecorator((): UserAgent => {
     const requestLog =
         ClsServiceManager.getClsService().get<IRequestLog | null>(
@@ -114,10 +99,7 @@ export const RequestUserAgent = createParamDecorator((): UserAgent => {
     return userAgent;
 });
 
-/**
- * Reads the IP-derived geolocation resolved once per request into the request-log store; throws when it is unresolved.
- * @public
- */
+/** @public */
 export const RequestGeoLocation = createParamDecorator((): GeoLocation => {
     const requestLog =
         ClsServiceManager.getClsService().get<IRequestLog | null>(

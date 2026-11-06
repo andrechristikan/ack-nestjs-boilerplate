@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
-/**
- * Raised when two-factor authentication is already enabled.
- * @public
- */
+/** @public */
 export class AuthTwoFactorAlreadyEnabledException extends AppBaseException {
     readonly module = 'auth';
     readonly statusCode = EnumAuthStatusCodeError.twoFactorAlreadyEnabled;

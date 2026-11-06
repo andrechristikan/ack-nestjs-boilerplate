@@ -1,7 +1,4 @@
-/**
- * Job failure that carries whether it is fatal for Sentry reporting.
- * @public
- */
+/** @public */
 export class QueueException extends Error {
     constructor(
         readonly message: string,

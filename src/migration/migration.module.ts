@@ -13,9 +13,6 @@ import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';
 import { UserDomainModule } from '@modules/user/user.domain.module';
 
-/**
- * Registers all `nest-commander` seed/remove commands for initial data migration.
- */
 @Module({
     controllers: [],
     providers: [

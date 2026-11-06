@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 
-/**
- * Notification List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const NotificationListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
@@ -26,10 +23,7 @@ export const NotificationListRequestSchema = PaginationCursorQuerySchema.omit({
         }),
 });
 
-/**
- * Inferred DTO for NotificationListRequestSchema.
- * @public
- */
+/** @public */
 export type NotificationListRequestDto = z.infer<
     typeof NotificationListRequestSchema
 >;

@@ -20,9 +20,6 @@ import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds one default personal workspace (owner membership, no project) per seeded user. Requires users to already be seeded, and aborts otherwise.
- */
 @Command({
     name: 'workspace',
     description: 'Seed/Remove Default Workspaces',

@@ -42,9 +42,6 @@ import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
-/**
- * Enqueues jobs onto the main notification queue, each under a fixed job id.
- */
 @Injectable()
 export class NotificationQueue extends QueueBase {
     private readonly encryptionSecretKey: string;
@@ -222,7 +219,6 @@ export class NotificationQueue extends QueueBase {
         await this.addSideEffect(name, data, opts, description);
     }
 
-    /** Queues one welcomeByAdmin job per user in a single `addBulk`. */
     async sendWelcomeByAdminBulk(
         items: INotificationWelcomeByAdminItem[],
         createdBy: string
@@ -820,7 +816,7 @@ export class NotificationQueue extends QueueBase {
         );
     }
 
-    /** Queues the workspace invite notification for a registered invitee (has `userId`); creates a `Notification` row plus email and push. */
+    /** For a registered invitee: the job creates the `Notification` row, then sends the email and push the recipient's channels allow. */
     async sendWorkspaceInvite(
         recipient: INotificationRecipient,
         { inviteAcceptLink, ...invite }: INotificationWorkspaceInvitePayload,
@@ -869,7 +865,6 @@ export class NotificationQueue extends QueueBase {
         );
     }
 
-    /** Queues the workspace join-request notification for every reviewer (workspace owner/admin) in a single `addBulk`. */
     async sendWorkspaceJoinRequestBulk(
         recipients: INotificationRecipient[],
         payload: INotificationWorkspaceJoinRequestPayload,

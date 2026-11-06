@@ -19,11 +19,7 @@ import type {
 } from '@common/file/interfaces/file.interface';
 import { DocErrors } from '@common/doc/decorators/doc.decorator';
 
-/**
- * Accepts one file under a single multipart field, with a size limit.
- * Emits multipart OpenAPI (`ApiConsumes` + binary `ApiBody`) and the upload error kit.
- * @public
- */
+/** @public */
 export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     const field = options?.field ?? 'file';
 
@@ -50,11 +46,7 @@ export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     );
 }
 
-/**
- * Accepts several files under one multipart field, with size and count limits.
- * Emits multipart OpenAPI (`ApiConsumes` + binary `ApiBody`) and the upload error kit.
- * @public
- */
+/** @public */
 export function FileUploadMultiple(
     options?: IFileUploadMultiple
 ): MethodDecorator {
@@ -82,11 +74,7 @@ export function FileUploadMultiple(
     );
 }
 
-/**
- * Accepts files under several named multipart fields, each with its own count limit.
- * Emits multipart OpenAPI (`ApiConsumes` + binary `ApiBody`) and the upload error kit.
- * @public
- */
+/** @public */
 export function FileUploadMultipleFields(
     fields: IFileUploadMultipleField[],
     options?: IFileUploadMultipleFieldOptions

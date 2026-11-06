@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Validates the body for switching the active workspace.
- * @public
- */
+/** @public */
 export const WorkspaceSwitchRequestSchema = z.strictObject({
     workspaceId: z
         .string()
@@ -16,10 +13,7 @@ export const WorkspaceSwitchRequestSchema = z.strictObject({
         }),
 });
 
-/**
- * Body for switching the active workspace.
- * @public
- */
+/** @public */
 export type WorkspaceSwitchRequestDto = z.infer<
     typeof WorkspaceSwitchRequestSchema
 >;

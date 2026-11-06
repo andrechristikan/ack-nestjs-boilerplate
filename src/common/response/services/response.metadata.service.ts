@@ -21,9 +21,6 @@ import {
 } from '@common/response/constants/response.constant';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 
-/**
- * Builds the standard response metadata from the request store and mirrors it to response headers.
- */
 @Injectable()
 export class ResponseMetadataService {
     private readonly defaultLanguage: EnumMessageLanguage;

@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-summary.response.dto';
 
-/**
- * Shapes the device proliferation result: the count, its window, and the threshold and statistics used.
- * @public
- */
+/** @public */
 export const AnalyticAnomalyDeviceProliferationSummaryResponseSchema =
     AnalyticAnomalySummaryResponseSchema.extend({
         meta: z
@@ -37,10 +34,7 @@ export const AnalyticAnomalyDeviceProliferationSummaryResponseSchema =
             }),
     });
 
-/**
- * Device proliferation result with the threshold and statistics it applied.
- * @public
- */
+/** @public */
 export type AnalyticAnomalyDeviceProliferationSummaryResponseDto = z.infer<
     typeof AnalyticAnomalyDeviceProliferationSummaryResponseSchema
 >;

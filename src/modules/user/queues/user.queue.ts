@@ -15,9 +15,6 @@ import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
-/**
- * Enqueues the S3 delete of a replaced profile photo under a fresh job id, and the lockout of a user that spent its attempt budget without a job id, so every lockout runs.
- */
 @Injectable()
 export class UserQueue extends QueueBase {
     private readonly deletePhotoJobIdPattern: string;

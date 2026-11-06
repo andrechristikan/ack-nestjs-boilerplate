@@ -58,7 +58,7 @@ export class UserPasswordDomain {
         return { password, passwordString };
     }
 
-    /** Counts one password attempt before the password is compared; false when the attempt budget is spent. */
+    /** Counts one password attempt before the password is compared; false when the attempt budget is spent, true without counting when attempt tracking is off. */
     async incrementPasswordAttempt(userId: string): Promise<boolean> {
         if (!this.passwordAttemptEnabled) {
             return true;
@@ -92,7 +92,7 @@ export class UserPasswordDomain {
         }
     }
 
-    /** Resolves the active user of an email whose last request is out of its resend window, with a fresh reset payload; null when no active user holds the email. */
+    /** Resolves the active user of an email with a reset payload; null when no active user holds the email, and a request inside the resend window throws. */
     async prepareForgotPassword(
         email: string
     ): Promise<IUserForgotPasswordPrepared | null> {

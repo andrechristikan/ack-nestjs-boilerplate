@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Validates the body for previewing a workspace invite.
- * @public
- */
+/** @public */
 export const WorkspaceInvitePreviewRequestSchema = z.strictObject({
     inviteToken: z
         .string()
@@ -18,10 +15,7 @@ export const WorkspaceInvitePreviewRequestSchema = z.strictObject({
         }),
 });
 
-/**
- * Body for previewing a workspace invite.
- * @public
- */
+/** @public */
 export type WorkspaceInvitePreviewRequestDto = z.infer<
     typeof WorkspaceInvitePreviewRequestSchema
 >;

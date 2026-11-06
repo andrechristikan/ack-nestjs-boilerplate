@@ -6,10 +6,7 @@ import {
     FeatureFlagDefaultAvailableSearch,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
 
-/**
- * Feature Flag System List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const FeatureFlagSystemListRequestSchema =
     PaginationCursorQuerySchema.extend({
         search: PaginationCursorQuerySchema.shape.search.meta({
@@ -32,10 +29,7 @@ export const FeatureFlagSystemListRequestSchema =
             }),
     });
 
-/**
- * Inferred DTO for FeatureFlagSystemListRequestSchema.
- * @public
- */
+/** @public */
 export type FeatureFlagSystemListRequestDto = z.infer<
     typeof FeatureFlagSystemListRequestSchema
 >;

@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 
-/**
- * Validates the body for changing a workspace member role.
- * @public
- */
+/** @public */
 export const WorkspaceMemberUpdateRoleRequestSchema = z.strictObject({
     role: z
         .enum([EnumWorkspaceMemberRole.admin, EnumWorkspaceMemberRole.member])
@@ -15,10 +12,7 @@ export const WorkspaceMemberUpdateRoleRequestSchema = z.strictObject({
         }),
 });
 
-/**
- * Body for changing a workspace member role.
- * @public
- */
+/** @public */
 export type WorkspaceMemberUpdateRoleRequestDto = z.infer<
     typeof WorkspaceMemberUpdateRoleRequestSchema
 >;

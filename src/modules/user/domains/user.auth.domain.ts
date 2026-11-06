@@ -39,7 +39,7 @@ export class UserAuthDomain {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    /** Resolves the active credential user of an email and counts one password attempt against its budget; an unknown, inactive, or passwordless account answers the one credential error. */
+    /** Resolves the active credential user of an email and counts one password attempt; isAttemptCounted is false when the budget is spent, and an unknown, inactive, or passwordless account throws the credential error. */
     async incrementCredentialAttempt(
         email: string
     ): Promise<IUserCredentialAttempt> {
@@ -54,7 +54,7 @@ export class UserAuthDomain {
         return { user, hashedPassword: user.password, isAttemptCounted };
     }
 
-    /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch, so the caller records the failure before asserting it. */
+    /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch, so the caller records the failure before asserting it, and an expired password throws after a match. */
     async verifyCredential(
         { user, hashedPassword }: IUserCredentialAttempt,
         password: string
@@ -90,7 +90,7 @@ export class UserAuthDomain {
         }
     }
 
-    /** Reads the live user of an email, trimmed and lowercased first; null when none. */
+    /** Trims and lowercases the email; null when no undeleted user holds it. */
     async getOneByEmail(email: string): Promise<IUser | null> {
         return this.userRepository.findOneWithRoleByEmail(
             email.trim().toLowerCase()
@@ -110,7 +110,6 @@ export class UserAuthDomain {
         return user;
     }
 
-    /** A social provider vouches for the email: marks the user verified. */
     async verifyEmailBySocial(user: IUser): Promise<IUser> {
         await this.userVerificationDomain.markVerified(user.id);
 

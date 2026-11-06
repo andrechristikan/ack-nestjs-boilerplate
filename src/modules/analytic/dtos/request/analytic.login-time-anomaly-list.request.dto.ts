@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { AnalyticLoginTimeAnomalyAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
 
-/**
- * Analytic Login Time Anomaly List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticLoginTimeAnomalyListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
@@ -28,10 +25,7 @@ export const AnalyticLoginTimeAnomalyListRequestSchema =
         })
         .extend(AnalyticOptionalDateRangeRequestSchema.shape);
 
-/**
- * Inferred DTO for AnalyticLoginTimeAnomalyListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticLoginTimeAnomalyListRequestDto = z.infer<
     typeof AnalyticLoginTimeAnomalyListRequestSchema
 >;

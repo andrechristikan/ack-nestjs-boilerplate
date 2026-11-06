@@ -8,9 +8,6 @@ import {
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/**
- * Reads the workspace header into the request store, for later guards to consume.
- */
 @Injectable()
 export class RequestWorkspaceMiddleware implements NestMiddleware {
     constructor(private readonly requestStoreService: RequestStoreService) {}

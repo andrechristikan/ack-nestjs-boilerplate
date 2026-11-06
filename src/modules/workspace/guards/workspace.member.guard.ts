@@ -12,10 +12,6 @@ import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/wo
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
-/**
- * Confirms the already-authenticated user (loaded by `UserGuard`, which must run before this guard)
- * is a member of the workspace resolved by `WorkspaceGuard`. Never re-fetches or re-authenticates.
- */
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {
     constructor(

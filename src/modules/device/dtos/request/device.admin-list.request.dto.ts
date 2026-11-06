@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
 import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 
-/**
- * Offset list query for admin device listing.
- * @public
- */
+/** @public */
 export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
     search: true,
 }).extend({
@@ -31,10 +28,7 @@ export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
     }),
 });
 
-/**
- * Inferred DTO for DeviceAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type DeviceAdminListRequestDto = z.infer<
     typeof DeviceAdminListRequestSchema
 >;

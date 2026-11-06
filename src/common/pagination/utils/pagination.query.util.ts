@@ -26,9 +26,6 @@ import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { Prisma } from '@generated/prisma-client/client';
 
-/**
- * Pure pagination query parse — no `RequestStoreService`. HTTP services merge `storePatch`.
- */
 @Injectable()
 export class PaginationQueryUtil {
     constructor(

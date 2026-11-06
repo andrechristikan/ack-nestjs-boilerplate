@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
-/**
- * Raised when a request body reaches a handler with no schema attached.
- * @public
- */
+/** @public */
 export class RequestSchemaMissingException extends AppBaseException {
     readonly module = 'request';
     readonly statusCode = EnumRequestStatusCodeError.schemaMissing;

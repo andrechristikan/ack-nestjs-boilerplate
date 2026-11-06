@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validates the activity-log metadata of an API key action.
- * @public
- */
+/** @public */
 export const ActivityLogApiKeyMetadataSchema = z.strictObject({
     apiKeyId: z.string().exactOptional(),
     apiKeyName: z.string().exactOptional(),
@@ -11,10 +8,7 @@ export const ActivityLogApiKeyMetadataSchema = z.strictObject({
     timestamp: z.union([z.string(), z.date()]).exactOptional(),
 });
 
-/**
- * Activity-log metadata of an API key action.
- * @public
- */
+/** @public */
 export type ActivityLogApiKeyMetadataDto = z.infer<
     typeof ActivityLogApiKeyMetadataSchema
 >;

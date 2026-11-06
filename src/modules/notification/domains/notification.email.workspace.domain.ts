@@ -18,7 +18,6 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-/** Renders and sends the workspace invite and join-request emails. */
 @Injectable()
 export class NotificationEmailWorkspaceDomain {
     private readonly noreplyEmail: string;

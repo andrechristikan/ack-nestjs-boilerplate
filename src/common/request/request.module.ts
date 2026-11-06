@@ -13,10 +13,6 @@ import { RequestThrottleService } from '@common/request/services/request.throttl
 import { RequestUtil } from '@common/request/utils/request.util';
 import { ClsModule } from 'nestjs-cls';
 
-/**
- * Global module wiring the validation pipe, timeout interceptor,
- * `RequestStoreService`, and middleware.
- */
 @Module({})
 export class RequestModule {
     static forRoot(): DynamicModule {

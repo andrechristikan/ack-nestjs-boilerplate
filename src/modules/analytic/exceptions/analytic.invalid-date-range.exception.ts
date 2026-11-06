@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumAnalyticStatusCodeError } from '@modules/analytic/enums/analytic.status-code.enum';
 
-/**
- * Raised when an analytics date range starts after it ends or a range or window exceeds `analytic.maxWindowInMs`.
- * @public
- */
+/** @public */
 export class AnalyticInvalidDateRangeException extends AppBaseException {
     readonly module = 'analytic';
     readonly statusCode = EnumAnalyticStatusCodeError.invalidDateRange;

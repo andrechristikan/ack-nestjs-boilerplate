@@ -9,9 +9,6 @@ import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/**
- * Blocks the route unless the current user has accepted the required term policies.
- */
 @Injectable()
 export class TermPolicyGuard implements CanActivate {
     constructor(

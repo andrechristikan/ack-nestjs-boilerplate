@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-summary.response.dto';
 
-/**
- * Shapes the impossible travel result: the count, its window, and the thresholds used.
- * @public
- */
+/** @public */
 export const AnalyticAnomalyImpossibleTravelSummaryResponseSchema =
     AnalyticAnomalySummaryResponseSchema.extend({
         meta: z
@@ -26,10 +23,7 @@ export const AnalyticAnomalyImpossibleTravelSummaryResponseSchema =
             }),
     });
 
-/**
- * Impossible travel result with the thresholds it applied.
- * @public
- */
+/** @public */
 export type AnalyticAnomalyImpossibleTravelSummaryResponseDto = z.infer<
     typeof AnalyticAnomalyImpossibleTravelSummaryResponseSchema
 >;

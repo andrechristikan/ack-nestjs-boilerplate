@@ -4,28 +4,16 @@ import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
-/**
- * Route metadata key holding whether `@UserProtected` requires a verified user.
- * @public
- */
+/** @public */
 export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 
-/**
- * Request-store key holding the loaded current user.
- * @public
- */
+/** @public */
 export const UserStoreKey = 'UserStoreKey';
 
-/**
- * Characters a valid username holds: letters, digits, dash, and underscore.
- * @public
- */
+/** @public */
 export const UserUsernameRegex = /^[a-zA-Z0-9-_]+$/;
 
-/**
- * Prisma select of the embedded user reference other records carry.
- * @public
- */
+/** @public */
 export const UserRefSelect = {
     id: true,
     name: true,
@@ -39,34 +27,22 @@ export const UserRefSelect = {
     deletedBy: true,
 } satisfies Prisma.UserSelect;
 
-/**
- * Prisma where matching a user that is not deleted, whatever its status.
- * @public
- */
+/** @public */
 export const UserNotDeletedWhere = {
     deletedAt: null,
 } satisfies Prisma.UserWhereInput;
 
-/**
- * Columns a notification recipient snapshot reads from a user.
- * @public
- */
+/** @public */
 export const UserRecipientSelect = {
     id: true,
     email: true,
     username: true,
 } satisfies Prisma.UserSelect;
 
-/**
- * Cursor scope of the internal active-recipient read.
- * @public
- */
+/** @public */
 export const UserActiveRecipientCursorScope = 'UserActiveRecipientCursorScope';
 
-/**
- * Columns a mobile number summary read returns.
- * @public
- */
+/** @public */
 export const UserMobileNumberSummarySelect = {
     id: true,
     number: true,
@@ -74,10 +50,7 @@ export const UserMobileNumberSummarySelect = {
     isVerified: true,
 } satisfies Prisma.UserMobileNumberSelect;
 
-/**
- * Columns an admin user list read returns; the password hash is never among them.
- * @public
- */
+/** @public */
 export const UserAdminListSelect = {
     id: true,
     name: true,
@@ -116,10 +89,7 @@ export const UserAdminListSelect = {
     twoFactor: true,
 } satisfies Prisma.UserSelect;
 
-/**
- * Columns the admin near-lockout analytic list reads from a user row.
- * @public
- */
+/** @public */
 export const UserAdminNearLockoutSelect = {
     id: true,
     email: true,
@@ -128,20 +98,14 @@ export const UserAdminNearLockoutSelect = {
     createdAt: true,
 } satisfies Prisma.UserSelect;
 
-/**
- * Activity log actions counted as a successful login by the user login analytics.
- * @public
- */
+/** @public */
 export const UserLoginAnalyticActions: EnumActivityLogAction[] = [
     EnumActivityLogAction.userLoginCredential,
     EnumActivityLogAction.userLoginGoogle,
     EnumActivityLogAction.userLoginApple,
 ];
 
-/**
- * Error entries `@UserProtected` documents: the missing account, the blocked, inactive, password-expired, and unverified user, and the missing JWT payload.
- * @public
- */
+/** @public */
 export const UserProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,

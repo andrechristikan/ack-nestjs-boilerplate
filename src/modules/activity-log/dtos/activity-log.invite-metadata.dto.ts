@@ -2,19 +2,13 @@ import { ActivityLogInviteAccountMetadataSchema } from '@modules/activity-log/dt
 import { ActivityLogInviteEmailMetadataSchema } from '@modules/activity-log/dtos/activity-log.invite-email-metadata.dto';
 import { z } from 'zod';
 
-/**
- * Validates the metadata of a workspace invite actor row, with or without an existing account.
- * @public
- */
+/** @public */
 export const ActivityLogInviteMetadataSchema = z.union([
     ActivityLogInviteAccountMetadataSchema,
     ActivityLogInviteEmailMetadataSchema,
 ]);
 
-/**
- * Metadata of a workspace invite actor row.
- * @public
- */
+/** @public */
 export type ActivityLogInviteMetadataDto = z.infer<
     typeof ActivityLogInviteMetadataSchema
 >;

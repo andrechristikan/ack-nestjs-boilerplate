@@ -61,7 +61,6 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         return count;
     }
 
-    /** Flips truly-expired `pending` invites to `expired`, each row's `nonce` becoming the digest of its id; returns the count updated. */
     async expireStalePending(): Promise<number> {
         const today = this.helperDateService.create();
 

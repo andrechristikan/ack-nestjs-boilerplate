@@ -1,7 +1,4 @@
-/**
- * Anomaly signals the analytic cache keys an anomaly summary by.
- * @public
- */
+/** @public */
 export enum EnumAnalyticAnomalySignal {
     impossibleTravel = 'impossible-travel',
     loginSpikeIp = 'login-spike-ip',
@@ -10,10 +7,7 @@ export enum EnumAnalyticAnomalySignal {
     loginTime = 'login-time',
 }
 
-/**
- * Fraud signals the analytic cache keys a fraud summary by.
- * @public
- */
+/** @public */
 export enum EnumAnalyticFraudSignal {
     credentialStuffing = 'credential-stuffing',
     accountTakeover = 'account-takeover',
@@ -27,10 +21,7 @@ export enum EnumAnalyticFraudSignal {
     apiKeyBurst = 'api-key-burst',
 }
 
-/**
- * Risk bands a fraud score falls into, lowest to highest.
- * @public
- */
+/** @public */
 export enum EnumAnalyticFraudBand {
     monitor = 'monitor',
     review = 'review',
@@ -38,10 +29,7 @@ export enum EnumAnalyticFraudBand {
     critical = 'critical',
 }
 
-/**
- * Signals that add to a user's fraud risk score.
- * @public
- */
+/** @public */
 export enum EnumAnalyticFraudContributingSignal {
     sessionAfterAdmin = 'sessionAfterAdmin',
     impossibleTravel = 'impossibleTravel',
@@ -53,10 +41,7 @@ export enum EnumAnalyticFraudContributingSignal {
     forgotPasswordAbuse = 'forgotPasswordAbuse',
 }
 
-/**
- * Dashboard metrics the analytic cache keys a metric entry by.
- * @public
- */
+/** @public */
 export enum EnumAnalyticDashboardMetric {
     usersRegistrations = 'users.registrations',
     usersChurn = 'users.churn',

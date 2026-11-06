@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { ApiKeyCreateBaseRequestSchema } from '@modules/api-key/dtos/request/api-key.create-base.request.dto';
 
-/**
- * Validates the body for creating an API key; `startAt` and `endAt` are both set or both absent.
- * @public
- */
+/** @public */
 export const ApiKeyCreateRequestSchema =
     ApiKeyCreateBaseRequestSchema.superRefine(({ startAt, endAt }, ctx) => {
         if (startAt === undefined && endAt !== undefined) {
@@ -32,8 +29,5 @@ export const ApiKeyCreateRequestSchema =
         }
     });
 
-/**
- * Body for creating an API key.
- * @public
- */
+/** @public */
 export type ApiKeyCreateRequestDto = z.infer<typeof ApiKeyCreateRequestSchema>;

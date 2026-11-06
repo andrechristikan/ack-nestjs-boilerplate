@@ -15,7 +15,6 @@ import { WorkspaceInviteAnalyticDomain } from '@modules/workspace/domains/worksp
 import { WorkspaceJoinRequestAnalyticDomain } from '@modules/workspace/domains/workspace.join-request.analytic.domain';
 import { WorkspaceMemberAnalyticDomain } from '@modules/workspace/domains/workspace.member.analytic.domain';
 
-/** Workspace domain services backing `@Workspace*Protected` guards and the workspace HTTP layer. */
 @Module({
     controllers: [],
     providers: [

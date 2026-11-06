@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `device` module.
- * @public
- */
+/** @public */
 export enum EnumDeviceStatusCodeError {
     notFound = 51300,
 }

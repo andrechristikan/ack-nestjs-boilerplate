@@ -6,35 +6,23 @@ import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
-/**
- * Route metadata key holding the term-policy types `@TermPolicyAcceptanceProtected` requires.
- * @public
- */
+/** @public */
 export const TermPolicyRequiredGuardMetaKey = 'TermPolicyRequiredGuardMetaKey';
 
-/**
- * Term policy types a `@TermPolicyAcceptanceProtected()` route requires when it names none, that sign-up accepts, and that the seed publishes.
- * @public
- */
+/** @public */
 export const TermPolicyDefaultRequiredTypes: EnumTermPolicyType[] = [
     EnumTermPolicyType.termsOfService,
     EnumTermPolicyType.privacy,
 ];
 
-/**
- * Select for the policy reference the acceptance checks compare: id, type, and version.
- * @public
- */
+/** @public */
 export const TermPolicyRefSelect = {
     id: true,
     type: true,
     version: true,
 } as const;
 
-/**
- * Select for the acceptance analytic read: the acceptance and the publish time of its policy.
- * @public
- */
+/** @public */
 export const TermPolicyAcceptanceAnalyticSelect = {
     id: true,
     userId: true,
@@ -43,19 +31,13 @@ export const TermPolicyAcceptanceAnalyticSelect = {
     termPolicy: { select: { publishedAt: true } },
 } as const;
 
-/**
- * Include for a user's acceptance rows: the accepted policy and the accepting user reference.
- * @public
- */
+/** @public */
 export const TermPolicyAcceptanceInclude = {
     termPolicy: true,
     user: { select: UserRefSelect },
 } satisfies Prisma.TermPolicyUserAcceptanceInclude;
 
-/**
- * Error entries `@TermPolicyAcceptanceProtected` documents: the missing acceptance and the missing user store.
- * @public
- */
+/** @public */
 export const TermPolicyAcceptanceProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.FORBIDDEN,

@@ -11,10 +11,6 @@ import {
 import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 
-/**
- * Shapes pino log records: request, response and error serialization, message cleanup,
- * URL masking, and sensitive-key redaction.
- */
 @Injectable()
 export class LoggerUtil {
     private readonly sensitiveFields = new Set(
@@ -142,11 +138,7 @@ export class LoggerUtil {
         return message;
     }
 
-    /**
-     * Replaces every `LoggerSensitiveFields` key at any depth with `LoggerRedactedValue`. A value
-     * nested `LoggerRedactMaxDepth` levels deep is replaced whole, so nothing past the cap is
-     * written without redaction.
-     */
+    /** Replaces every `LoggerSensitiveFields` key at any depth with `LoggerRedactedValue`; an object nested `LoggerRedactMaxDepth` levels deep is replaced whole, and an array is cut at `LoggerRedactMaxArrayLength` items. */
     redactValue(value: unknown): unknown {
         return this.redactNested(value, 0);
     }

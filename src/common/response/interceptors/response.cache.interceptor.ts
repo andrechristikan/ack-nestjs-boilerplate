@@ -6,9 +6,6 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Cache } from 'cache-manager';
 
-/**
- * Cache interceptor that namespaces response cache keys with a configured key pattern.
- */
 @Injectable()
 export class ResponseCacheInterceptor extends CacheBaseInterceptor {
     private readonly keyPattern: string;

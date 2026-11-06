@@ -1,10 +1,7 @@
 import { Prisma } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 
-/**
- * Columns an analytic session read returns: identity, origin, time, geo-location, and user agent.
- * @public
- */
+/** @public */
 export const SessionAnalyticSelect = {
     id: true,
     userId: true,
@@ -14,10 +11,7 @@ export const SessionAnalyticSelect = {
     userAgent: true,
 } satisfies Prisma.SessionSelect;
 
-/**
- * Columns a session list read returns; the token identifier is never among them.
- * @public
- */
+/** @public */
 export const SessionListSelect = {
     id: true,
     userId: true,

@@ -3,9 +3,6 @@ import type { PipeTransform, Type } from '@nestjs/common';
 import { FileRequiredException } from '@common/file/exceptions/file.required.exception';
 import type { IFileInput } from '@common/file/interfaces/file.interface';
 
-/**
- * Rejects an absent or empty upload. First pipe on a required @UploadedFile chain.
- */
 export function FileRequiredPipe(): Type<PipeTransform> {
     @Injectable()
     class MixinFileRequiredPipe implements PipeTransform {

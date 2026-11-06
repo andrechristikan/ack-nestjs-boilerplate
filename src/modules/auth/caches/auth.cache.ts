@@ -12,7 +12,6 @@ import { ConfigService } from '@nestjs/config';
 import type KeyvRedis from '@keyv/redis';
 import type Keyv from 'keyv';
 
-/** Auth cache: two-factor challenge tokens. */
 @Injectable()
 export class AuthCache {
     private readonly logger = new Logger(AuthCache.name);
@@ -44,7 +43,7 @@ export class AuthCache {
         );
     }
 
-    /** Stores the challenge payload under a random token with a TTL; the write is the authority and throws. */
+    /** Stores the challenge under a random token with a TTL; the write is the authority, so a failure throws. */
     async setTwoFactorChallenge(
         cachePayload: IAuthTwoFactorChallengeCache
     ): Promise<IAuthTwoFactorChallenge> {
@@ -69,7 +68,7 @@ export class AuthCache {
         return cached ?? null;
     }
 
-    /** Claims the challenge with one GETDEL on the store client, so one caller alone receives it; a store failure throws RedisUnavailableException. */
+    /** Claims the challenge with one GETDEL on the store client, so one caller alone receives it; null when none is stored, and a store failure throws RedisUnavailableException. */
     async consumeTwoFactorChallenge(
         token: string
     ): Promise<IAuthTwoFactorChallengeCache | null> {

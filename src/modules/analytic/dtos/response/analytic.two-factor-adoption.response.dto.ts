@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes how many users have two-factor authentication enabled.
- * @public
- */
+/** @public */
 export const AnalyticTwoFactorAdoptionResponseSchema = z.object({
     enabled: z.number().meta({
         description: 'Users with two-factor authentication enabled',
@@ -20,10 +17,7 @@ export const AnalyticTwoFactorAdoptionResponseSchema = z.object({
     }),
 });
 
-/**
- * How many users have two-factor authentication enabled.
- * @public
- */
+/** @public */
 export type AnalyticTwoFactorAdoptionResponseDto = z.infer<
     typeof AnalyticTwoFactorAdoptionResponseSchema
 >;

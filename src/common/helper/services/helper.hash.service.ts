@@ -23,7 +23,6 @@ export class HelperHashService {
         return createHash('sha256').update(value, 'utf8').digest('hex');
     }
 
-    /** Constant-time comparison; strings of different byte length are never equal. */
     sha256Compare(hashOne: string, hashTwo: string): boolean {
         const one = Buffer.from(hashOne, 'utf8');
         const two = Buffer.from(hashTwo, 'utf8');

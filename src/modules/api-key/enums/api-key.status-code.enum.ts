@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `api-key` module.
- * @public
- */
+/** @public */
 export enum EnumApiKeyStatusCodeError {
     xApiKeyRequired = 50700,
     xApiKeyInvalid = 50701,

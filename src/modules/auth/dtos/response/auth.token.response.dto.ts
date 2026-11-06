@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumRoleType } from '@generated/prisma-client/client';
 
-/**
- * Token pair issued to a client after a successful authentication.
- * @public
- */
+/** @public */
 export const AuthTokenResponseSchema = z.object({
     tokenType: z.string().meta({
         description: 'Token type prefix sent with the access token',
@@ -29,8 +26,5 @@ export const AuthTokenResponseSchema = z.object({
     }),
 });
 
-/**
- * Token pair issued after a successful authentication.
- * @public
- */
+/** @public */
 export type AuthTokenResponseDto = z.infer<typeof AuthTokenResponseSchema>;

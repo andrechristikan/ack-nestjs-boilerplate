@@ -6,10 +6,6 @@ import type { EnumRequestThrottleName } from '@common/request/enums/request.enum
 import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
 
-/**
- * Counts a hit for a named limiter, fails open on storage trouble, and either blocks with
- * `Retry-After` or sets the rate-limit headers.
- */
 @Injectable()
 export class RequestThrottleService {
     constructor(

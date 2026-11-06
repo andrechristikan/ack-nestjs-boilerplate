@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 
-/**
- * Raised when `HelperStringService.fillPattern` meets a `{token}` the caller supplied no value for.
- * @public
- */
+/** @public */
 export class HelperPatternTokenMissingException extends AppBaseException {
     readonly module = 'helper';
     readonly statusCode = EnumHelperStatusCodeError.patternTokenMissing;

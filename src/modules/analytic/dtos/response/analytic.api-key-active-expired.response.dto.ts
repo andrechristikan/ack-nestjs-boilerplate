@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes how many API keys are active, expired, and switched off.
- * @public
- */
+/** @public */
 export const AnalyticApiKeyActiveExpiredResponseSchema = z.object({
     active: z.number().meta({
         description: 'API keys still usable',
@@ -20,10 +17,7 @@ export const AnalyticApiKeyActiveExpiredResponseSchema = z.object({
     }),
 });
 
-/**
- * How many API keys are active, expired, and switched off.
- * @public
- */
+/** @public */
 export type AnalyticApiKeyActiveExpiredResponseDto = z.infer<
     typeof AnalyticApiKeyActiveExpiredResponseSchema
 >;

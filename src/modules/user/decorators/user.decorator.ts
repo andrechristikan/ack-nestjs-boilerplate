@@ -20,11 +20,7 @@ import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 
-/**
- * Applies the user guard; pass `false` to skip the email-verified requirement.
- * Documents the user status errors without `auth.error.accessTokenUnauthorized`, and the missing JWT payload.
- * @public
- */
+/** @public */
 export function UserProtected(isVerified: boolean = true): MethodDecorator {
     return applyDecorators(
         UseGuards(UserGuard),
@@ -33,10 +29,7 @@ export function UserProtected(isVerified: boolean = true): MethodDecorator {
     );
 }
 
-/**
- * Reads the current user, or one of its fields, that `UserGuard` stored. Throws `UserGuardMissingException` when the user is absent and `RequestContextMissingException` when the requested field is null.
- * @public
- */
+/** @public */
 export const UserCurrent = createParamDecorator<
     IUserField | undefined,
     IUser | IUserFieldValue

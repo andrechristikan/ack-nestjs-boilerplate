@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes how many users have accepted the latest published required term policies.
- * @public
- */
+/** @public */
 export const AnalyticTermPolicyAcceptanceRateResponseSchema = z.object({
     acceptances: z.number().meta({
         description:
@@ -26,10 +23,7 @@ export const AnalyticTermPolicyAcceptanceRateResponseSchema = z.object({
     }),
 });
 
-/**
- * How many users have accepted the latest published required term policies.
- * @public
- */
+/** @public */
 export type AnalyticTermPolicyAcceptanceRateResponseDto = z.infer<
     typeof AnalyticTermPolicyAcceptanceRateResponseSchema
 >;

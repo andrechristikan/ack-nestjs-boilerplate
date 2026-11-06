@@ -4,10 +4,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { AnalyticKeyCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 
-/**
- * Analytic Password Reset Enumeration List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticPasswordResetEnumerationListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
@@ -28,10 +25,7 @@ export const AnalyticPasswordResetEnumerationListRequestSchema =
         })
         .extend(AnalyticWindowRequestSchema.shape);
 
-/**
- * Inferred DTO for AnalyticPasswordResetEnumerationListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticPasswordResetEnumerationListRequestDto = z.infer<
     typeof AnalyticPasswordResetEnumerationListRequestSchema
 >;

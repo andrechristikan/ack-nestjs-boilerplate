@@ -1,13 +1,7 @@
-/**
- * Default context tag for log entries with no explicit context.
- * @public
- */
+/** @public */
 export const LoggerAutoContext = 'LoggerAutoContext';
 
-/**
- * Request and response object paths whose `LoggerSensitiveFields` are redacted from logs.
- * @public
- */
+/** @public */
 export const LoggerSensitivePaths = [
     'req.body',
     'req.headers',
@@ -23,10 +17,7 @@ export const LoggerSensitivePaths = [
     'response.headers',
 ];
 
-/**
- * Field names redacted from logs (credentials, tokens, PII).
- * @public
- */
+/** @public */
 export const LoggerSensitiveFields: string[] = [
     'password',
     'newPassword',
@@ -67,23 +58,14 @@ export const LoggerSensitiveFields: string[] = [
     'link',
 ];
 
-/**
- * Replacement written in place of a redacted value or a masked URL path segment.
- * @public
- */
+/** @public */
 export const LoggerRedactedValue = '[REDACTED]';
 
-/**
- * URL path segment kept verbatim when a URL is masked: a route parameter name, a version segment, or a static kebab-case word. Every other segment is replaced with `LoggerRedactedValue`.
- * @public
- */
+/** @public */
 export const LoggerUrlStaticSegmentRegex =
     /^(?::[A-Za-z]+|v\d+|\d*[a-z][a-z-]*)$/;
 
-/**
- * Sentry span attributes and breadcrumb data keys holding a URL, masked before an event leaves the process.
- * @public
- */
+/** @public */
 export const LoggerSentryUrlKeys: string[] = [
     'url',
     'to',
@@ -96,55 +78,31 @@ export const LoggerSentryUrlKeys: string[] = [
     'http.request.header.referer',
 ];
 
-/**
- * Sentry span attributes holding a captured request body, redacted with `LoggerSensitiveFields` before an event leaves the process.
- * @public
- */
+/** @public */
 export const LoggerSentryBodyKeys: string[] = ['http.request.body.data'];
 
-/**
- * Sentry span attribute prefixes naming an HTTP header; the header name follows the prefix with `-` written as `_`.
- * @public
- */
+/** @public */
 export const LoggerSentryHeaderKeyPrefixes: string[] = [
     'http.request.header.',
     'http.response.header.',
 ];
 
-/**
- * Nesting depth at which a Sentry request body stops being walked; anything deeper is replaced with `LoggerRedactedValue`.
- * @public
- */
+/** @public */
 export const LoggerSentryRedactMaxDepth = 10;
 
-/**
- * Nesting depth at which a log record value stops being walked; anything deeper is replaced with `LoggerRedactedValue`.
- * @public
- */
+/** @public */
 export const LoggerRedactMaxDepth = 5;
 
-/**
- * Array length kept when a log record value is walked; the remaining items are replaced with one truncation marker.
- * @public
- */
+/** @public */
 export const LoggerRedactMaxArrayLength = 10;
 
-/**
- * One `key=value` pair of an `application/x-www-form-urlencoded` body, with no whitespace, quotes, or braces.
- * @public
- */
+/** @public */
 export const LoggerUrlEncodedPairRegex = /^[^&=\s"{}]+=[^&\s"{}]*$/;
 
-/**
- * Leading HTTP method of a span name such as `GET /api/v1/user`.
- * @public
- */
+/** @public */
 export const LoggerHttpMethodPrefixRegex = /^[A-Z]+ (?=\/|https?:\/\/)/;
 
-/**
- * Sentry span attributes and breadcrumb data keys holding a URL query string or fragment, dropped before an event leaves the process.
- * @public
- */
+/** @public */
 export const LoggerSentryQueryKeys: string[] = [
     'url.query',
     'url.fragment',

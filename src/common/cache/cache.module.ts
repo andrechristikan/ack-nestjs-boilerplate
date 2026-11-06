@@ -10,9 +10,6 @@ import { RedisClientCachedProvider } from '@common/redis/constants/redis.constan
 import KeyvRedis from '@keyv/redis';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 
-/**
- * Global cache module backed by Redis, exposing the cache manager app-wide with TTL from config.
- */
 @Module({})
 export class CacheMainModule {
     static forRoot(): DynamicModule {

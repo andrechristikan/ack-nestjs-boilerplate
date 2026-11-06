@@ -55,7 +55,6 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         return count;
     }
 
-    /** Flips truly-expired `pending` join requests to `expired`, each row's `nonce` becoming the digest of its id; returns the count updated. */
     async expireStalePending(): Promise<number> {
         const today = this.helperDateService.create();
 

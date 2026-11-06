@@ -6,12 +6,10 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import { Injectable } from '@nestjs/common';
 
-/** 2FA domain service: the login challenge a token stands for. */
 @Injectable()
 export class AuthTwoFactorDomain {
     constructor(private readonly authCache: AuthCache) {}
 
-    /** Stores the login challenge under a random token. */
     async createChallenge(
         payload: IAuthTwoFactorChallengeCache
     ): Promise<IAuthTwoFactorChallenge> {
@@ -27,7 +25,7 @@ export class AuthTwoFactorDomain {
         return challenge;
     }
 
-    /** Claims the challenge of a token; one caller receives it, any later caller finds none and fails. */
+    /** Claims the challenge of a token once; an unknown or already claimed token throws the invalid-challenge exception, a store failure throws RedisUnavailableException. */
     async consumeChallenge(
         token: string
     ): Promise<IAuthTwoFactorChallengeCache> {

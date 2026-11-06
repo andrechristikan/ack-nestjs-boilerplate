@@ -20,11 +20,6 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
 
-/**
- * Wraps handler results into the standard `{ statusCode, message, metadata, data }` envelope,
- * serializing the payload against the route's declared schema, localizing the message and
- * setting custom headers.
- */
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor {
     constructor(
@@ -33,9 +28,6 @@ export class ResponseInterceptor<T> implements NestInterceptor {
         private readonly responseMetadataService: ResponseMetadataService
     ) {}
 
-    /**
-     * A payload without a declared schema is a route that promised no data, so it fails closed.
-     */
     private async serialize(
         schema: StandardSchemaV1 | null,
         payload: unknown

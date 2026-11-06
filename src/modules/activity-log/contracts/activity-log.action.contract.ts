@@ -24,10 +24,7 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IActivityLogActionContracts } from '@modules/activity-log/interfaces/activity-log.interface';
 
-/**
- * Per-action contract of an activity log: how its user and workspace resolve and the schema its metadata must match.
- * @public
- */
+/** @public */
 export const ActivityLogActionContract: IActivityLogActionContracts = {
     // Pre-auth / subject-id without JWT / dual-feed subject rows
     [EnumActivityLogAction.userCreated]: {

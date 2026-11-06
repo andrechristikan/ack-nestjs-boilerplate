@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { AnalyticNearLockoutAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 
-/**
- * Analytic Near Lockout List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticNearLockoutListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
         orderBy: z
@@ -25,10 +22,7 @@ export const AnalyticNearLockoutListRequestSchema =
             }),
     });
 
-/**
- * Inferred DTO for AnalyticNearLockoutListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticNearLockoutListRequestDto = z.infer<
     typeof AnalyticNearLockoutListRequestSchema
 >;

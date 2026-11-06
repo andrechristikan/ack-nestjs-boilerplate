@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `workspace` module.
- * @public
- */
+/** @public */
 export enum EnumWorkspaceStatusCodeError {
     notFound = 51600,
     memberForbidden = 51601,

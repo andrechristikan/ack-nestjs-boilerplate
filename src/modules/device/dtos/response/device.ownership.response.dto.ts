@@ -9,10 +9,7 @@ import {
 import { DeviceResponseSchema } from '@modules/device/dtos/response/device.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Base device-ownership shape: the row binding a device to the user who owns it.
- * @public
- */
+/** @public */
 export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -91,10 +88,7 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Device ownership of a user with its device.
- * @public
- */
+/** @public */
 export type DeviceOwnershipResponseDto = z.infer<
     typeof DeviceOwnershipResponseSchema
 >;

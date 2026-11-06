@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
-/**
- * Raised when a verification email is resent too soon.
- * @public
- */
+/** @public */
 export class UserVerificationEmailResendLimitExceededException extends AppBaseException {
     readonly module = 'user';
     readonly statusCode =

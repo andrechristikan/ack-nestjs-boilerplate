@@ -10,9 +10,6 @@ import { WorkspacePublicController } from '@modules/workspace/controllers/worksp
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
 
-/**
- * Mounts unauthenticated public controllers: country, hello, user, term policy, and workspace.
- */
 @Module({
     controllers: [
         CountryPublicController,

@@ -7,9 +7,6 @@ import { MessageService } from '@common/message/services/message.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { RequestCustomLangHeaderName } from '@common/request/constants/request.constant';
 
-/**
- * Global i18n module: JSON loader plus custom-language header resolver, exposing `MessageService`.
- */
 @Module({})
 export class MessageModule {
     static forRoot(): DynamicModule {

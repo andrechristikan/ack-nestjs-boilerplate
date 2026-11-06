@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 
-/**
- * Session Shared List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const SessionSharedListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
@@ -26,10 +23,7 @@ export const SessionSharedListRequestSchema = PaginationCursorQuerySchema.omit({
         }),
 });
 
-/**
- * Inferred DTO for SessionSharedListRequestSchema.
- * @public
- */
+/** @public */
 export type SessionSharedListRequestDto = z.infer<
     typeof SessionSharedListRequestSchema
 >;

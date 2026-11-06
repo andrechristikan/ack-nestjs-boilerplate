@@ -12,7 +12,6 @@ import {
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 
-/** Passport strategy validating access tokens via JWKS, default algorithm ES256. */
 @Injectable()
 export class AuthJwtAccessStrategy extends PassportStrategy(
     Strategy,
@@ -53,7 +52,6 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         });
     }
 
-    /** Runs after signature verification; checks the payload, reads the login through SessionDomain, then checks the session. */
     async validate(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {

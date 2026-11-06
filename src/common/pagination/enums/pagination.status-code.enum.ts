@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `pagination` kit.
- * @public
- */
+/** @public */
 export enum EnumPaginationStatusCodeError {
     filterInvalidValue = 50200,
     invalidPerPage = 50201,

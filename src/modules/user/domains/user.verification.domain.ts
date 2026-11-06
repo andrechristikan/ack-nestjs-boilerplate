@@ -35,7 +35,7 @@ export class UserVerificationDomain {
         private readonly userVerificationUtil: UserVerificationUtil
     ) {}
 
-    /** Resolves the active email verification of a raw token with its user, whatever the user status. */
+    /** Resolves the unused, unexpired email verification of a raw token for an active user, with that user; throws when none matches or the user is already verified. */
     async getOneActiveByEmailToken(
         token: string
     ): Promise<IUserVerificationEmailTarget> {
@@ -93,7 +93,7 @@ export class UserVerificationDomain {
         }
     }
 
-    /** Resolves the active, unverified user of an email whose last verification email is out of its resend window; null when the email holds no active, unverified user. */
+    /** Resolves the active, unverified user of an email; null when none, and a verification email still inside its resend window throws. */
     async getOneForResendByEmail(email: string): Promise<User | null> {
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user || user.isVerified) {

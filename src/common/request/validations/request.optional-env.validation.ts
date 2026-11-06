@@ -5,56 +5,35 @@ import { RequestSesIdentityArnSchema } from '@common/request/validations/request
 import { RequestTrustedProxySchema } from '@common/request/validations/request.trusted-proxy.validation';
 import { RequestUrlNoTrailingSlashSchema } from '@common/request/validations/request.url-no-trailing-slash.validation';
 
-/**
- * Optional env value: an absent value and an empty string (a blank `.env` line) both parse to `null`.
- * @public
- */
+/** @public */
 export const RequestOptionalEnvSchema = z.preprocess(
     value => (value === '' ? null : (value ?? null)),
     z.string().nullable()
 );
 
-/**
- * Optional env string: blank or absent parses to `null`, a set value must be non-empty.
- * @public
- */
+/** @public */
 export const RequestOptionalEnvStringSchema = RequestOptionalEnvSchema.pipe(
     RequestRequiredStringSchema.nullable()
 );
 
-/**
- * Optional env email: blank or absent parses to `null`, a set value must be a valid email.
- * @public
- */
+/** @public */
 export const RequestOptionalEnvEmailSchema = RequestOptionalEnvSchema.pipe(
     RequestEmailSchema.nullable()
 );
 
-/**
- * Optional env SES identity ARN: blank or absent parses to `null`, a set value must be an ARN.
- * @public
- */
+/** @public */
 export const RequestOptionalEnvSesIdentityArnSchema =
     RequestOptionalEnvSchema.pipe(RequestSesIdentityArnSchema.nullable());
 
-/**
- * Optional env URL without a trailing slash: blank or absent parses to `null`.
- * @public
- */
+/** @public */
 export const RequestOptionalEnvUrlNoTrailingSlashSchema =
     RequestOptionalEnvSchema.pipe(RequestUrlNoTrailingSlashSchema.nullable());
 
-/**
- * Optional env URL: blank or absent parses to `null`, a set value must be an absolute URL.
- * @public
- */
+/** @public */
 export const RequestOptionalEnvUrlSchema = RequestOptionalEnvSchema.pipe(
     z.url().nullable()
 );
 
-/**
- * Optional env trusted proxy list: blank or absent parses to `null`, a set value must be presets, IPs, or CIDRs.
- * @public
- */
+/** @public */
 export const RequestOptionalEnvTrustedProxySchema =
     RequestOptionalEnvSchema.pipe(RequestTrustedProxySchema.nullable());

@@ -6,9 +6,6 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { RequestEnvMetaKey } from '@common/request/constants/request.constant';
 import { RequestEnvNotAllowedException } from '@common/request/exceptions/request.env-not-allowed.exception';
 
-/**
- * Allows a route only when the current app environment is in its allowed list; else 404.
- */
 @Injectable()
 export class RequestEnvGuard implements CanActivate {
     private readonly env: EnumAppEnvironment;

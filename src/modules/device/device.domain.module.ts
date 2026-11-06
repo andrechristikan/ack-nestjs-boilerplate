@@ -4,7 +4,6 @@ import { DeviceUtil } from '@modules/device/utils/device.util';
 import { Module } from '@nestjs/common';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 
-/** Device ownership tracking and notification-token lifecycle. */
 @Module({
     controllers: [],
     providers: [DeviceDomain, DeviceUtil, DeviceAnalyticDomain],

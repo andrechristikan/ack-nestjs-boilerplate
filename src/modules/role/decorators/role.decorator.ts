@@ -23,10 +23,7 @@ import type {
 } from '@modules/role/interfaces/role.interface';
 import { RoleProtectedEmptyException } from '@modules/role/exceptions/role.protected-empty.exception';
 
-/**
- * Restricts a route to the given role types via RoleGuard and documents the role error and the missing user store.
- * @public
- */
+/** @public */
 export function RoleProtected(
     ...requiredRoles: EnumRoleType[]
 ): MethodDecorator {
@@ -41,10 +38,7 @@ export function RoleProtected(
     );
 }
 
-/**
- * Reads the current user's role with its policies, or one of its fields, that `UserGuard` stored; throws `UserGuardMissingException` when the user is absent and `RequestContextMissingException` when the requested field is null.
- * @public
- */
+/** @public */
 export const RoleCurrent = createParamDecorator<
     IRoleWithPoliciesField | undefined,
     IRoleWithPolicies | IRoleWithPoliciesFieldValue

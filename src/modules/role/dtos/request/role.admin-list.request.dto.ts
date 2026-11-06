@@ -6,10 +6,7 @@ import {
     RoleDefaultAvailableSearch,
 } from '@modules/role/constants/role.list.constant';
 
-/**
- * Role Admin List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const RoleAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
     search: PaginationOffsetQuerySchema.shape.search.meta({
         description: `Search query, available fields: ${RoleDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
@@ -35,10 +32,7 @@ export const RoleAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
     }),
 });
 
-/**
- * Inferred DTO for RoleAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type RoleAdminListRequestDto = z.infer<
     typeof RoleAdminListRequestSchema
 >;

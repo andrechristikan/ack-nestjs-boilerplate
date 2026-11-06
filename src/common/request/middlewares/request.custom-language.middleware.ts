@@ -10,9 +10,6 @@ import {
     RequestLanguageStoreKey,
 } from '@common/request/constants/request.constant';
 
-/**
- * Resolves the request language from the custom language header, validated against supported languages.
- */
 @Injectable()
 export class RequestCustomLanguageMiddleware implements NestMiddleware {
     private readonly availableLanguage: string[];
@@ -30,9 +27,6 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
             this.configService.get<string>('message.language')!;
     }
 
-    /**
-     * Reduces a header value to the lowercased primary subtag of its first listed language.
-     */
     private normalizeLanguage(language: string): string {
         return language
             .split(/[,;]/)[0]!

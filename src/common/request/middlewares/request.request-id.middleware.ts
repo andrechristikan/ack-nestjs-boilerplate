@@ -12,7 +12,6 @@ import {
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/** The one source of the request id and the correlation id; runs first in the request chain, after nestjs-pino. */
 @Injectable()
 export class RequestRequestIdMiddleware implements NestMiddleware {
     constructor(private readonly requestStoreService: RequestStoreService) {}

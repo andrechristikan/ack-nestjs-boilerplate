@@ -2,11 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 
-/**
- * Safe, minimal invite preview for an unauthenticated accept-page — never the token or an
- * internal id.
- * @public
- */
+/** @public */
 export const WorkspaceInvitePreviewResponseSchema = z.object({
     workspaceName: z.string().meta({
         description: 'Name of the workspace the invite is for',
@@ -26,10 +22,7 @@ export const WorkspaceInvitePreviewResponseSchema = z.object({
     }),
 });
 
-/**
- * Minimal workspace invite preview for the accept page.
- * @public
- */
+/** @public */
 export type WorkspaceInvitePreviewResponseDto = z.infer<
     typeof WorkspaceInvitePreviewResponseSchema
 >;

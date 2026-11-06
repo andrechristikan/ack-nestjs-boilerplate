@@ -7,9 +7,6 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 
-/**
- * Global module exposing the helper kit (array, encryption, hashing, number, string, date) app-wide.
- */
 @Module({})
 export class HelperModule {
     static forRoot(): DynamicModule {

@@ -5,9 +5,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
-/**
- * Reports AWS S3 bucket reachability as a Terminus health indicator.
- */
 @Injectable()
 export class HealthAwsS3BucketIndicator {
     private readonly logger = new Logger(HealthAwsS3BucketIndicator.name);
@@ -17,10 +14,6 @@ export class HealthAwsS3BucketIndicator {
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
-    /**
-     * Down when S3 is not configured, or when the bucket check for the given accessibility
-     * fails or throws.
-     */
     async isHealthy(
         key: EnumHealthIndicatorKey,
         access: EnumAwsS3Accessibility

@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `activity-log` module.
- * @public
- */
+/** @public */
 export enum EnumActivityLogStatusCodeError {
     contractInvalid = 52000,
 }

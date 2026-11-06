@@ -56,7 +56,6 @@ export class UserProcessorService {
         };
     }
 
-    /** Deactivates the user that spent its attempt budget and revokes its sessions and devices on one transaction, then purges the revoked sessions; an already inactive user revokes nothing. */
     async lockout(userId: string): Promise<IQueueResponse> {
         const now = this.helperDateService.create();
         const revoked = await this.databaseService.withTransaction(async tx => {

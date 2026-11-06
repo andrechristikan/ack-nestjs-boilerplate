@@ -8,10 +8,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogMetadataResponseSchema } from '@modules/activity-log/dtos/response/activity-log.metadata.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Base activity-log shape: one recorded action with the user who owns the entry embedded.
- * @public
- */
+/** @public */
 export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     updatedAt: true,
     updatedBy: true,
@@ -113,8 +110,5 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * One recorded activity-log action with the user who owns the entry.
- * @public
- */
+/** @public */
 export type ActivityLogResponseDto = z.infer<typeof ActivityLogResponseSchema>;

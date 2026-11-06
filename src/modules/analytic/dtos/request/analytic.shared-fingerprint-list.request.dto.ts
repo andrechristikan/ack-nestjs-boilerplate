@@ -3,10 +3,7 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { AnalyticSharedFingerprintAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 
-/**
- * Analytic Shared Fingerprint List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const AnalyticSharedFingerprintListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
         orderBy: z
@@ -25,10 +22,7 @@ export const AnalyticSharedFingerprintListRequestSchema =
             }),
     });
 
-/**
- * Inferred DTO for AnalyticSharedFingerprintListRequestSchema.
- * @public
- */
+/** @public */
 export type AnalyticSharedFingerprintListRequestDto = z.infer<
     typeof AnalyticSharedFingerprintListRequestSchema
 >;

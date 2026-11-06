@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `app` module.
- * @public
- */
+/** @public */
 export enum EnumAppStatusCodeError {
     unknown = 50000,
 }

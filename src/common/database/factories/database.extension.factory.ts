@@ -32,10 +32,6 @@ export class DatabaseExtensionFactory {
         );
     }
 
-    /**
-     * Whether the model owns the audit field, per its `Prisma.<Model>ScalarFieldEnum`. False when no
-     * model is given.
-     */
     private modelHasField(
         model: Prisma.ModelName | null,
         field: EnumDatabaseAuditField
@@ -49,10 +45,6 @@ export class DatabaseExtensionFactory {
         return fields?.has(field) ?? false;
     }
 
-    /**
-     * Whether the value is a plain writable payload object. Arrays and Dates are excluded because
-     * neither can carry audit fields.
-     */
     private isWritePayload(value: unknown): value is IDatabaseData {
         return (
             typeof value === 'object' &&
@@ -62,10 +54,6 @@ export class DatabaseExtensionFactory {
         );
     }
 
-    /**
-     * Normalizes a write argument to a payload list, so single and createMany writes take one code
-     * path.
-     */
     private toWritePayloads(value: unknown): IDatabaseData[] {
         if (Array.isArray(value)) {
             return value.filter(item => this.isWritePayload(item));
@@ -76,10 +64,6 @@ export class DatabaseExtensionFactory {
         return isPayload ? [value] : [];
     }
 
-    /**
-     * Fills `createdBy` and `updatedBy` on every payload of a create write, then recurses into nested
-     * writes. A field the caller already set is left alone.
-     */
     private stampCreate(
         model: Prisma.ModelName | null,
         data: unknown,
@@ -107,10 +91,6 @@ export class DatabaseExtensionFactory {
         }
     }
 
-    /**
-     * Fills `updatedBy` on every payload of an update write, then recurses into nested writes. A field
-     * the caller already set is left alone.
-     */
     private stampUpdate(
         model: Prisma.ModelName | null,
         data: unknown,
@@ -131,10 +111,6 @@ export class DatabaseExtensionFactory {
         }
     }
 
-    /**
-     * Walks the payload relation fields and stamps each nested write against the RELATED model,
-     * resolved from `DatabaseModelRelations`.
-     */
     private stampRelations(
         model: Prisma.ModelName | null,
         payload: IDatabaseData,
@@ -157,10 +133,6 @@ export class DatabaseExtensionFactory {
         }
     }
 
-    /**
-     * Stamps every write verb a relation container can hold: create, createMany, connectOrCreate,
-     * upsert, update, updateMany.
-     */
     private stampNestedWrite(
         model: Prisma.ModelName,
         container: IDatabaseData,
@@ -202,10 +174,6 @@ export class DatabaseExtensionFactory {
         }
     }
 
-    /**
-     * Stamps one nested update entry. A nested to-many update is `{ where, data }`; a to-one update
-     * is the payload itself.
-     */
     private stampNestedUpdateEntry(
         model: Prisma.ModelName,
         entry: IDatabaseData,
@@ -221,9 +189,6 @@ export class DatabaseExtensionFactory {
         this.stampUpdate(model, entry, actor);
     }
 
-    /**
-     * Builds the audit extension, closing over this instance's actor getter, clock, and stampers.
-     */
     build(): IDatabaseExtension {
         const getActor = (): string | null =>
             this.requestStoreService.get<string>(RequestActorStoreKey);

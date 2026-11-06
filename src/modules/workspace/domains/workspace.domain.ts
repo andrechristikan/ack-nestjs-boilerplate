@@ -242,7 +242,6 @@ export class WorkspaceDomain {
         }
     }
 
-    /** Soft-deletes every live workspace the user owns and answers their ids. */
     async softDeleteOwnedByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -275,7 +274,7 @@ export class WorkspaceDomain {
         return workspace;
     }
 
-    /** Resolves a public workspace by slug. A workspace that exists but is not public reports the same `notFound` as one that does not exist, so a slug cannot be probed. */
+    /** Resolves a live public workspace by slug; a private or deleted one throws the same not-found as an unknown slug. */
     async previewWorkspace(slug: string): Promise<Workspace> {
         const workspace =
             await this.workspaceRepository.findActivePublicBySlug(slug);

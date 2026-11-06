@@ -14,9 +14,6 @@ import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
-/**
- * Enqueues the session cache purge that follows a committed revoke, each job under a fresh job id.
- */
 @Injectable()
 export class SessionQueue extends QueueBase {
     private readonly purgeLoginsJobIdPattern: string;

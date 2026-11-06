@@ -3,10 +3,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
-/**
- * Raised when a param decorator finds no value its guard or middleware should have written.
- * @public
- */
+/** @public */
 export class RequestContextMissingException extends AppBaseException {
     readonly module = 'request';
     readonly statusCode = EnumRequestStatusCodeError.contextMissing;

@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
 
-/**
- * Flattened user row for CSV export: the role and the photo become scalar columns.
- * @public
- */
+/** @public */
 export const UserExportResponseSchema = UserListResponseSchema.omit({
     role: true,
     photo: true,
@@ -19,8 +16,5 @@ export const UserExportResponseSchema = UserListResponseSchema.omit({
     }),
 });
 
-/**
- * Flattened user row for CSV export.
- * @public
- */
+/** @public */
 export type UserExportResponseDto = z.infer<typeof UserExportResponseSchema>;

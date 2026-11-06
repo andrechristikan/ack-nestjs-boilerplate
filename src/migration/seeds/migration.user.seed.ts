@@ -33,9 +33,6 @@ import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds default users with password, verification, acceptances, and activity logs. Requires roles, countries, and term policies to already be seeded, and aborts otherwise.
- */
 @Command({
     name: 'user',
     description: 'Seed/Remove Users',

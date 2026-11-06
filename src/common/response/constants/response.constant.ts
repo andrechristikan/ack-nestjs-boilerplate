@@ -6,57 +6,31 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 import { EnumResponseStatusCodeError } from '@common/response/enums/response.status-code.enum';
 import type { IResponseFileMediaTypes } from '@common/response/interfaces/response.interface';
 
-/**
- * Metadata key carrying the i18n message path from the `@Response`/`@ResponsePagination`
- * decorators to their interceptors.
- * @public
- */
+/** @public */
 export const ResponseMessagePathMetaKey = 'ResponseMessagePathMetaKey';
 
-/**
- * Metadata key carrying the response payload schema from the `@Response`/`@ResponsePagination`
- * decorators to their interceptors.
- * @public
- */
+/** @public */
 export const ResponseSchemaMetaKey = 'ResponseSchemaMetaKey';
 
-/**
- * Media type a `@ResponseFile` download publishes for each document extension.
- * @public
- */
+/** @public */
 export const ResponseFileMediaTypes: IResponseFileMediaTypes = {
     [EnumFileExtensionDocument.csv]: 'text/csv',
     [EnumFileExtensionDocument.pdf]: 'application/pdf',
 };
 
-/**
- * Response header carrying the response timestamp.
- * @public
- */
+/** @public */
 export const ResponseTimestampHeaderName = 'x-timestamp';
 
-/**
- * Response header carrying the response timezone.
- * @public
- */
+/** @public */
 export const ResponseTimezoneHeaderName = 'x-timezone';
 
-/**
- * Response header carrying the API version.
- * @public
- */
+/** @public */
 export const ResponseVersionHeaderName = 'x-version';
 
-/**
- * Response header carrying the repository version.
- * @public
- */
+/** @public */
 export const ResponseRepoVersionHeaderName = 'x-repo-version';
 
-/**
- * Error entries `@Response` documents: the response serialization failure.
- * @public
- */
+/** @public */
 export const ResponseDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -65,11 +39,7 @@ export const ResponseDocErrors: IDocResponseEntry[] = [
     },
 ];
 
-/**
- * Error entries `@ResponsePagination` documents: the offset and cursor pagination errors, then
- * the serialization and pagination shape failures.
- * @public
- */
+/** @public */
 export const ResponsePaginationDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -148,10 +118,7 @@ export const ResponsePaginationDocErrors: IDocResponseEntry[] = [
     },
 ];
 
-/**
- * Error entries `@ResponseFile` documents: the export row and size caps.
- * @public
- */
+/** @public */
 export const ResponseFileDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,

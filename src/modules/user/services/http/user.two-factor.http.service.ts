@@ -71,7 +71,6 @@ export class UserTwoFactorHttpService {
         return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
-    /** Counts one two-factor attempt, locks the account out when the budget is spent, and answers the attempt limit. */
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
         const isAttemptCounted =
             await this.userTwoFactorDomain.countAttempt(user);
@@ -96,7 +95,6 @@ export class UserTwoFactorHttpService {
         this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
     }
 
-    /** Counts one password attempt, locks the account out when the budget is spent, and checks the current password of a user that has one. */
     private async assertPasswordMatched(
         user: IUser,
         password: string

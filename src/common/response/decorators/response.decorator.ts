@@ -30,13 +30,7 @@ import type {
     IResponseOptions,
 } from '@common/response/interfaces/response.interface';
 
-/**
- * Standardizes a route's response via `ResponseInterceptor` and documents the JSON success
- * envelope plus serialization errors. Success HTTP status and body `statusCode` both follow
- * `@HttpCode` or Nest method defaults (POST → 201, else 200). Override either at runtime via
- * `metadata` on the handler return. The handler must return `IResponseReturn<T>`.
- * @public
- */
+/** @public */
 export function Response(
     messagePath: string,
     options?: IResponseOptions
@@ -100,12 +94,7 @@ export function Response(
     };
 }
 
-/**
- * Standardizes a paginated route via `ResponsePaginationInterceptor` and documents the page
- * envelope plus both offset and cursor pagination error kits. Options carry schema only — no
- * `type`, no ApiQuery. The handler must return `IResponsePaginationReturn<T>`.
- * @public
- */
+/** @public */
 export function ResponsePagination(
     messagePath: string,
     options: {
@@ -152,13 +141,7 @@ export function ResponsePagination(
     return applyDecorators(...decorators);
 }
 
-/**
- * Streams a file download via `ResponseFileInterceptor`, declares the file media type on the
- * success response only (errors stay `application/json`), and documents the export size/data
- * errors. Success HTTP status follows `@HttpCode` or Nest method defaults.
- * The handler must return `IResponseFileReturn`.
- * @public
- */
+/** @public */
 export function ResponseFile(
     options?: IResponseFileInterceptorOptions & {
         extension?: EnumFileExtensionDocument;

@@ -4,9 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
-/**
- * Reports Google OAuth client id presence as a Terminus health indicator.
- */
 @Injectable()
 export class HealthGoogleIndicator {
     private readonly clientId: string | null;
@@ -22,9 +19,6 @@ export class HealthGoogleIndicator {
         this.clientId = clientId ?? null;
     }
 
-    /**
-     * Down when the Google client id is missing or empty.
-     */
     async isHealthy(
         key: EnumHealthIndicatorKey
     ): Promise<HealthIndicatorResult> {

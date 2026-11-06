@@ -13,7 +13,6 @@ import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 import ms from 'ms';
 
-/** Generates verification references, codes, tokens, and expiry, and shapes the email and mobile number verification payloads. */
 @Injectable()
 export class UserVerificationUtil {
     private readonly homeUrl: string;
@@ -86,7 +85,6 @@ export class UserVerificationUtil {
         );
     }
 
-    /** Builds the OTP verification of a mobile number. */
     createMobile(): IUserVerificationMobileNumberCreate {
         const token = this.createOtp();
         const hashedToken = this.helperHashService.sha256Hash(token);
@@ -104,7 +102,6 @@ export class UserVerificationUtil {
         };
     }
 
-    /** Builds the tokenized link verification of an email. */
     createEmail(): IUserVerificationEmailCreate {
         const token = this.createToken();
         const hashedToken = this.helperHashService.sha256Hash(token);
@@ -127,7 +124,6 @@ export class UserVerificationUtil {
         };
     }
 
-    /** Builds the used-and-verified email verification an admin-created or seeded account is verified by. */
     createVerified(email: string): IUserCreateVerification {
         const token = this.createToken();
         const reference = this.createReference();
