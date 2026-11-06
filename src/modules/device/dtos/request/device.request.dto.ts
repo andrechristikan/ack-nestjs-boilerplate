@@ -12,7 +12,7 @@ export const DeviceRequestSchema = z.strictObject({
         description: 'Device name',
         example: "John's iPhone 12",
     }),
-    platform: z.enum(EnumDevicePlatform).optional().meta({
+    platform: z.enum(EnumDevicePlatform).meta({
         description: 'Device platform',
         example: EnumDevicePlatform.ios,
     }),

@@ -291,15 +291,10 @@ export class UserAuthHttpService {
         );
         const { isNewDevice, revoked, deviceOwnershipId } =
             await this.databaseService.withTransaction(async tx => {
-                const notificationProvider =
-                    this.deviceUtil.resolveNotificationProvider(
-                        device.platform
-                    );
                 const upserted = await this.deviceDomain.upsertForLoginInTx(
                     tx,
                     user.id,
                     device,
-                    notificationProvider,
                     now
                 );
                 let revokedSessions: ISessionRef[] = [];

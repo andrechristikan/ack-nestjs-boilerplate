@@ -15,17 +15,30 @@ describe('DeviceRequestSchema', () => {
         expect(result).toEqual(payload);
     });
 
-    it('parses with only the required fingerprint', () => {
+    it('parses with only the required fingerprint and platform', () => {
         const result = DeviceRequestSchema.parse({
             fingerprint: payload.fingerprint,
+            platform: payload.platform,
         });
 
-        expect(result).toEqual({ fingerprint: payload.fingerprint });
+        expect(result).toEqual({
+            fingerprint: payload.fingerprint,
+            platform: payload.platform,
+        });
+    });
+
+    it('rejects a missing platform', () => {
+        expect(() =>
+            DeviceRequestSchema.parse({ fingerprint: payload.fingerprint })
+        ).toThrow();
     });
 
     it('rejects a missing fingerprint', () => {
         expect(() =>
-            DeviceRequestSchema.parse({ name: payload.name })
+            DeviceRequestSchema.parse({
+                name: payload.name,
+                platform: payload.platform,
+            })
         ).toThrow();
     });
 

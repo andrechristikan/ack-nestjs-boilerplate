@@ -215,12 +215,28 @@ describe('DeviceDomain', () => {
                 'b',
             ]);
 
+            helperDateService.create.mockReturnValue(now);
+
             const result = await domain.getNotificationTokens('user-1');
 
             expect(result).toEqual(['a', 'b']);
             expect(
                 deviceOwnershipRepository.findTokensByUserId
-            ).toHaveBeenCalledWith('user-1');
+            ).toHaveBeenCalledWith('user-1', now);
+        });
+    });
+
+    describe('clearNotificationsWithoutLiveSession', () => {
+        it('clears the tokens of the user devices left without a live session', async () => {
+            deviceOwnershipRepository.clearTokensWithoutLiveSession.mockResolvedValue(
+                { count: 1 }
+            );
+
+            await domain.clearNotificationsWithoutLiveSession('user-1', now);
+
+            expect(
+                deviceOwnershipRepository.clearTokensWithoutLiveSession
+            ).toHaveBeenCalledWith('user-1', now);
         });
     });
 
@@ -261,11 +277,14 @@ describe('DeviceDomain', () => {
         const identity: IDeviceIdentity = {
             fingerprint: 'abc123def456ghi789jkl012mno345pq',
             name: null,
-            platform: null,
+            platform: EnumDevicePlatform.ios,
             notificationToken: 'token-1',
         };
 
         it('creates or updates the device by fingerprint without token fields then the ownership with the token and reports newness', async () => {
+            deviceUtil.resolveNotificationProvider.mockReturnValue(
+                EnumDeviceNotificationProvider.apns
+            );
             deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
             deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
                 deviceOwnership,
@@ -276,7 +295,6 @@ describe('DeviceDomain', () => {
                 tx,
                 'user-1',
                 identity,
-                EnumDeviceNotificationProvider.apns,
                 now
             );
 
@@ -285,6 +303,10 @@ describe('DeviceDomain', () => {
                 deviceOwnership,
                 isNewDevice: true,
             });
+            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
+                EnumDevicePlatform.ios,
+                'token-1'
+            );
             expect(
                 deviceRepository.upsertByFingerprintInTx
             ).toHaveBeenCalledWith(tx, 'user-1', identity, now);
@@ -307,13 +329,7 @@ describe('DeviceDomain', () => {
                 isNewOwnership: false,
             });
 
-            await domain.upsertForLoginInTx(
-                tx,
-                'user-1',
-                identity,
-                EnumDeviceNotificationProvider.apns,
-                now
-            );
+            await domain.upsertForLoginInTx(tx, 'user-1', identity, now);
 
             expect(
                 deviceOwnershipRepository.clearTokenFromOtherUsersInTx
@@ -323,6 +339,30 @@ describe('DeviceDomain', () => {
             ).toHaveBeenCalledBefore(
                 deviceOwnershipRepository.clearTokenFromOtherUsersInTx
             );
+        });
+
+        it('passes a null token and a null provider to the ownership upsert when the login carries no token', async () => {
+            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
+            deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
+            deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
+                deviceOwnership,
+                isNewOwnership: false,
+            });
+
+            await domain.upsertForLoginInTx(
+                tx,
+                'user-1',
+                { ...identity, notificationToken: null },
+                now
+            );
+
+            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
+                EnumDevicePlatform.ios,
+                null
+            );
+            expect(
+                deviceOwnershipRepository.upsertActiveInTx
+            ).toHaveBeenCalledWith(tx, device.id, 'user-1', null, null, now);
         });
 
         it('clears no other row when the login carries no token', async () => {
@@ -336,7 +376,6 @@ describe('DeviceDomain', () => {
                 tx,
                 'user-1',
                 { ...identity, notificationToken: null },
-                null,
                 now
             );
 
@@ -356,7 +395,6 @@ describe('DeviceDomain', () => {
                 tx,
                 'user-1',
                 identity,
-                EnumDeviceNotificationProvider.apns,
                 now
             );
 
@@ -373,6 +411,9 @@ describe('DeviceDomain', () => {
                 ...identity,
                 notificationToken: 'token-2',
             };
+            deviceUtil.resolveNotificationProvider
+                .mockReturnValueOnce(EnumDeviceNotificationProvider.apns)
+                .mockReturnValueOnce(EnumDeviceNotificationProvider.fcm);
             deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
             deviceOwnershipRepository.upsertActiveInTx
                 .mockResolvedValueOnce({
@@ -388,14 +429,12 @@ describe('DeviceDomain', () => {
                 tx,
                 'user-1',
                 identity,
-                EnumDeviceNotificationProvider.apns,
                 now
             );
             const second = await domain.upsertForLoginInTx(
                 tx,
                 'user-2',
                 otherIdentity,
-                EnumDeviceNotificationProvider.fcm,
                 now
             );
 
@@ -576,7 +615,7 @@ describe('DeviceDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('resolves the notification provider from a null platform when none is given', async () => {
+        it('resolves the notification provider from the platform and the token', async () => {
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
@@ -585,22 +624,17 @@ describe('DeviceDomain', () => {
             );
 
             await domain.refresh('user-1', 'device-ownership-1', {
-                name: null,
-                platform: null,
-                notificationToken: null,
+                ...data,
+                notificationToken: 'token-9',
             });
 
             expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
-                null
+                EnumDevicePlatform.android,
+                'token-9'
             );
         });
 
-        it('refreshes the device with a null platform and a null notification provider when no platform is given', async () => {
-            const omittedPlatform: IDeviceRefresh = {
-                name: null,
-                platform: null,
-                notificationToken: null,
-            };
+        it('writes a null name, a null token, and a null provider as given when the refresh clears them', async () => {
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
@@ -608,24 +642,32 @@ describe('DeviceDomain', () => {
                 async fn => fn(tx) as never
             );
 
-            await domain.refresh(
-                'user-1',
-                'device-ownership-1',
-                omittedPlatform
-            );
+            await domain.refresh('user-1', 'device-ownership-1', data);
 
+            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
+                EnumDevicePlatform.android,
+                null
+            );
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'device-ownership-1',
-                { name: null, platform: null, notificationToken: null },
+                {
+                    name: null,
+                    platform: EnumDevicePlatform.android,
+                    notificationToken: null,
+                },
                 null,
                 now
             );
             expect(deviceRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
                 'device-1',
-                { name: null, platform: null, notificationToken: null },
+                {
+                    name: null,
+                    platform: EnumDevicePlatform.android,
+                    notificationToken: null,
+                },
                 now
             );
         });

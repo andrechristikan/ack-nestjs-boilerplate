@@ -1,5 +1,4 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import type { Device } from '@generated/prisma-client/client';
 import type {
     IDeviceIdentity,
@@ -16,20 +15,18 @@ export class DeviceRepository implements IDeviceRepository {
         { fingerprint, name, platform }: IDeviceIdentity,
         now: Date
     ): Promise<Device> {
-        const devicePlatform = platform ?? EnumDevicePlatform.web;
-
         return tx.device.upsert({
             where: { fingerprint },
             update: {
                 ...(name !== null && { name }),
-                platform: devicePlatform,
+                platform,
                 lastActiveAt: now,
                 updatedBy: userId,
             },
             create: {
                 fingerprint,
                 name,
-                platform: devicePlatform,
+                platform,
                 lastActiveAt: now,
                 createdBy: userId,
             },
@@ -45,8 +42,8 @@ export class DeviceRepository implements IDeviceRepository {
         await tx.device.update({
             where: { id: deviceId },
             data: {
-                ...(name !== null && { name }),
-                ...(platform !== null && { platform }),
+                name,
+                platform,
                 lastActiveAt: now,
             },
         });

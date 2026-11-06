@@ -178,11 +178,7 @@ export class DeviceHttpService {
             }),
         ];
 
-        await this.deviceDomain.refresh(userId, deviceOwnershipId, {
-            name: body.name ?? null,
-            platform: body.platform ?? null,
-            notificationToken: body.notificationToken ?? null,
-        });
+        await this.deviceDomain.refresh(userId, deviceOwnershipId, body);
 
         this.activityLogDomain.stagePrepared(activityLogs);
 

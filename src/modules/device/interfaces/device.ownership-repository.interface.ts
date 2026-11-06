@@ -61,12 +61,12 @@ export interface IDeviceOwnershipRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>>;
-    findTokensByUserId(userId: string): Promise<string[]>;
+    findTokensByUserId(userId: string, now: Date): Promise<string[]>;
     refreshInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         deviceOwnershipId: string,
-        { notificationToken, platform }: IDeviceRefresh,
+        { notificationToken }: IDeviceRefresh,
         notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
     ): Promise<string | null>;
@@ -76,5 +76,9 @@ export interface IDeviceOwnershipRepository {
         userId: string
     ): Promise<void>;
     clearTokens(userId: string, tokens: string[]): Promise<Prisma.BatchPayload>;
+    clearTokensWithoutLiveSession(
+        userId: string,
+        now: Date
+    ): Promise<Prisma.BatchPayload>;
     clearStaleTokens(thresholdInMs: number): Promise<Prisma.BatchPayload>;
 }

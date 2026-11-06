@@ -78,9 +78,11 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             where,
             update: {
                 lastActiveAt: now,
-                notificationProvider,
                 updatedBy: userId,
-                ...(notificationToken !== null && { notificationToken }),
+                ...(notificationToken !== null && {
+                    notificationToken,
+                    notificationProvider,
+                }),
                 ...(existing?.isRevoked === true && {
                     isRevoked: false,
                     revokedAt: null,
@@ -243,13 +245,16 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         );
     }
 
-    async findTokensByUserId(userId: string): Promise<string[]> {
+    async findTokensByUserId(userId: string, now: Date): Promise<string[]> {
         const rows = await this.databaseService.client.deviceOwnership.findMany(
             {
                 where: {
                     userId,
                     isRevoked: false,
                     notificationToken: { not: null },
+                    sessions: {
+                        some: { isRevoked: false, expiredAt: { gt: now } },
+                    },
                 },
                 select: DeviceOwnershipNotificationTokenSelect,
             }
@@ -264,7 +269,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         deviceOwnershipId: string,
-        { notificationToken, platform }: IDeviceRefresh,
+        { notificationToken }: IDeviceRefresh,
         notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
     ): Promise<string | null> {
@@ -276,8 +281,8 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             },
             data: {
                 lastActiveAt: now,
-                ...(platform !== null && { notificationProvider }),
-                ...(notificationToken !== null && { notificationToken }),
+                notificationToken,
+                notificationProvider,
             },
         });
         if (count === 0) {
@@ -318,6 +323,27 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             where: {
                 userId,
                 notificationToken: { in: tokens },
+            },
+            data: {
+                notificationToken: null,
+                notificationProvider: null,
+                updatedBy: userId,
+            },
+        });
+    }
+
+    async clearTokensWithoutLiveSession(
+        userId: string,
+        now: Date
+    ): Promise<Prisma.BatchPayload> {
+        return this.databaseService.client.deviceOwnership.updateMany({
+            where: {
+                userId,
+                isRevoked: false,
+                notificationToken: { not: null },
+                sessions: {
+                    none: { isRevoked: false, expiredAt: { gt: now } },
+                },
             },
             data: {
                 notificationToken: null,

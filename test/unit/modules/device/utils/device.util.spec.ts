@@ -69,24 +69,37 @@ describe('DeviceUtil', () => {
     describe('resolveNotificationProvider', () => {
         it('maps android to fcm', () => {
             expect(
-                util.resolveNotificationProvider(EnumDevicePlatform.android)
+                util.resolveNotificationProvider(
+                    EnumDevicePlatform.android,
+                    'token-1'
+                )
             ).toBe(EnumDeviceNotificationProvider.fcm);
         });
 
         it('maps ios to apns', () => {
             expect(
-                util.resolveNotificationProvider(EnumDevicePlatform.ios)
+                util.resolveNotificationProvider(
+                    EnumDevicePlatform.ios,
+                    'token-1'
+                )
             ).toBe(EnumDeviceNotificationProvider.apns);
         });
 
         it('maps web to null', () => {
             expect(
-                util.resolveNotificationProvider(EnumDevicePlatform.web)
+                util.resolveNotificationProvider(
+                    EnumDevicePlatform.web,
+                    'token-1'
+                )
             ).toBeNull();
         });
 
-        it('maps a null platform to null', () => {
-            expect(util.resolveNotificationProvider(null)).toBeNull();
+        it.each([
+            EnumDevicePlatform.android,
+            EnumDevicePlatform.ios,
+            EnumDevicePlatform.web,
+        ])('maps a null token on platform %s to null', platform => {
+            expect(util.resolveNotificationProvider(platform, null)).toBeNull();
         });
     });
 
@@ -95,11 +108,12 @@ describe('DeviceUtil', () => {
             expect(
                 util.toIdentity({
                     fingerprint: 'abc123def456ghi789jkl012mno345pq',
+                    platform: EnumDevicePlatform.web,
                 })
             ).toEqual({
                 fingerprint: 'abc123def456ghi789jkl012mno345pq',
                 name: null,
-                platform: null,
+                platform: EnumDevicePlatform.web,
                 notificationToken: null,
             });
         });

@@ -12,6 +12,7 @@ import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
+    EnumDevicePlatform,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
@@ -35,7 +36,7 @@ describe('AuthCache', () => {
     const device: IDeviceIdentity = {
         fingerprint: 'device-fingerprint-1',
         name: null,
-        platform: null,
+        platform: EnumDevicePlatform.web,
         notificationToken: null,
     };
 

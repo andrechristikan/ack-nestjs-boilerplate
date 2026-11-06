@@ -359,7 +359,11 @@ describe('DeviceHttpService', () => {
         };
 
         it('forwards the refresh body to the domain, stages the refresh activity after it, and returns an empty response', async () => {
-            const body: DeviceRefreshRequestDto = { name: 'iPhone 13' };
+            const body: DeviceRefreshRequestDto = {
+                name: 'iPhone 13',
+                platform: EnumDevicePlatform.ios,
+                notificationToken: null,
+            };
             const calls: string[] = [];
             activityLogDomain.prepare.mockReturnValue(refreshActivityLog);
             deviceDomain.refresh.mockImplementation(async () => {
@@ -379,7 +383,7 @@ describe('DeviceHttpService', () => {
             expect(deviceDomain.refresh).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1',
-                { name: 'iPhone 13', platform: null, notificationToken: null }
+                body
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userDeviceRefresh,
@@ -390,34 +394,17 @@ describe('DeviceHttpService', () => {
             expect(calls).toEqual(['refresh', 'stage']);
         });
 
-        it('passes null for the name when the body omits it', async () => {
-            const body: DeviceRefreshRequestDto = {
-                platform: EnumDevicePlatform.ios,
-                notificationToken: 'token-1',
-            };
-            activityLogDomain.prepare.mockReturnValue(refreshActivityLog);
-            deviceDomain.refresh.mockResolvedValue(undefined);
-
-            await service.refresh('user-1', 'device-ownership-1', body);
-
-            expect(deviceDomain.refresh).toHaveBeenCalledWith(
-                'user-1',
-                'device-ownership-1',
-                {
-                    name: null,
-                    platform: EnumDevicePlatform.ios,
-                    notificationToken: 'token-1',
-                }
-            );
-        });
-
         it('stages nothing when the domain refresh throws', async () => {
             const notFound = new DeviceNotFoundException();
             activityLogDomain.prepare.mockReturnValue(refreshActivityLog);
             deviceDomain.refresh.mockRejectedValue(notFound);
 
             await expect(
-                service.refresh('user-1', 'device-ownership-1', {})
+                service.refresh('user-1', 'device-ownership-1', {
+                    name: null,
+                    platform: EnumDevicePlatform.ios,
+                    notificationToken: null,
+                })
             ).rejects.toBe(notFound);
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });

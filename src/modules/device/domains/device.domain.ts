@@ -11,10 +11,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumDeviceNotificationProvider,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
@@ -66,7 +63,19 @@ export class DeviceDomain {
     }
 
     async getNotificationTokens(userId: string): Promise<string[]> {
-        return this.deviceOwnershipRepository.findTokensByUserId(userId);
+        const now = this.helperDateService.create();
+
+        return this.deviceOwnershipRepository.findTokensByUserId(userId, now);
+    }
+
+    async clearNotificationsWithoutLiveSession(
+        userId: string,
+        now: Date
+    ): Promise<void> {
+        await this.deviceOwnershipRepository.clearTokensWithoutLiveSession(
+            userId,
+            now
+        );
     }
 
     async cleanupNotificationTokens(
@@ -96,9 +105,13 @@ export class DeviceDomain {
         tx: IDatabaseTransactionClient,
         userId: string,
         device: IDeviceIdentity,
-        notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
     ): Promise<IDeviceLoginUpsert> {
+        const notificationProvider =
+            this.deviceUtil.resolveNotificationProvider(
+                device.platform,
+                device.notificationToken
+            );
         const upserted = await this.deviceRepository.upsertByFingerprintInTx(
             tx,
             userId,
@@ -194,7 +207,10 @@ export class DeviceDomain {
         data: IDeviceRefresh
     ): Promise<void> {
         const notificationProvider =
-            this.deviceUtil.resolveNotificationProvider(data.platform);
+            this.deviceUtil.resolveNotificationProvider(
+                data.platform,
+                data.notificationToken
+            );
         const now = this.helperDateService.create();
 
         try {

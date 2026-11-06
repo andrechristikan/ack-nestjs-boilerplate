@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumDevicePlatform,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
@@ -35,7 +36,7 @@ describe('AuthTwoFactorDomain', () => {
                 device: {
                     fingerprint: 'device-1',
                     name: null,
-                    platform: null,
+                    platform: EnumDevicePlatform.web,
                     notificationToken: null,
                 },
                 loginFrom: EnumUserLoginFrom.website,
@@ -63,7 +64,7 @@ describe('AuthTwoFactorDomain', () => {
                 device: {
                     fingerprint: 'device-1',
                     name: null,
-                    platform: null,
+                    platform: EnumDevicePlatform.web,
                     notificationToken: null,
                 },
                 loginFrom: EnumUserLoginFrom.website,
@@ -96,7 +97,7 @@ describe('AuthTwoFactorDomain', () => {
                 device: {
                     fingerprint: 'device-1',
                     name: null,
-                    platform: null,
+                    platform: EnumDevicePlatform.web,
                     notificationToken: null,
                 },
                 loginFrom: EnumUserLoginFrom.website,

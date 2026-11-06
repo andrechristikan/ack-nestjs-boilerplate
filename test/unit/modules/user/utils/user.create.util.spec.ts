@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
+    EnumDevicePlatform,
     EnumPasswordHistoryType,
     EnumProjectMemberRole,
     EnumRoleType,
@@ -310,7 +311,7 @@ describe('UserCreateUtil', () => {
             device: {
                 fingerprint: 'device-harbor',
                 name: null,
-                platform: null,
+                platform: EnumDevicePlatform.web,
                 notificationToken: null,
             },
         };

@@ -14,10 +14,15 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceUtil {
-    /** Android maps to fcm and ios to apns; web and a null platform have no provider, so null. */
+    /** Null when the token is null or the platform is web; android maps to fcm and ios to apns. */
     resolveNotificationProvider(
-        platform: EnumDevicePlatform | null
+        platform: EnumDevicePlatform,
+        notificationToken: string | null
     ): EnumDeviceNotificationProvider | null {
+        if (notificationToken === null) {
+            return null;
+        }
+
         switch (platform) {
             case EnumDevicePlatform.android:
                 return EnumDeviceNotificationProvider.fcm;
@@ -33,7 +38,7 @@ export class DeviceUtil {
         return {
             fingerprint: device.fingerprint,
             name: device.name ?? null,
-            platform: device.platform ?? null,
+            platform: device.platform,
             notificationToken: device.notificationToken ?? null,
         };
     }

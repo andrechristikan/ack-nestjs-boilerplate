@@ -2,16 +2,22 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { EnumSessionProcess } from '@modules/session/enums/session.enum';
 import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
 import { SessionProcessorService } from '@modules/session/services/processor/session.processor.service';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('SessionProcessorService', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const now: Date = new Date('2026-01-01T00:00:00.000Z');
     const payload: ISessionPurgeLoginsPayload = {
         userId: 'user-1',
         sessions: [{ id: 'session-1' }, { id: 'session-2' }],
@@ -21,12 +27,15 @@ describe('SessionProcessorService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
+        helperDateService.create.mockReturnValue(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 { provide: MessageService, useValue: messageService },
                 SessionProcessorService,
                 { provide: SessionDomain, useValue: sessionDomain },
+                { provide: DeviceDomain, useValue: deviceDomain },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
@@ -47,6 +56,9 @@ describe('SessionProcessorService', () => {
                 { id: 'session-1' },
                 { id: 'session-2' },
             ]);
+            expect(
+                deviceDomain.clearNotificationsWithoutLiveSession
+            ).toHaveBeenCalledWith('user-1', now);
             expect(result).toEqual({
                 message: 'session.queue.purgeLogins',
                 countSessions: 2,

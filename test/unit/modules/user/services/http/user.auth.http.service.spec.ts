@@ -211,11 +211,14 @@ describe('UserAuthHttpService', () => {
         lastWorkspaceChangedAt: null,
         tokens,
     };
-    const device = { fingerprint: 'device-bramble' };
+    const device = {
+        fingerprint: 'device-bramble',
+        platform: EnumDevicePlatform.web,
+    };
     const deviceIdentity: IDeviceIdentity = {
         fingerprint: 'device-bramble',
         name: null,
-        platform: null,
+        platform: EnumDevicePlatform.web,
         notificationToken: null,
     };
     const activityLog: IActivityLogStaged = {
@@ -480,7 +483,6 @@ describe('UserAuthHttpService', () => {
         deviceDomain.getNotificationTokens.mockResolvedValue(['token-bramble']);
         notificationDomain.getListUserSetting.mockResolvedValue([]);
         deviceDomain.upsertForLoginInTx.mockResolvedValue(upsert);
-        deviceUtil.resolveNotificationProvider.mockReturnValue(null);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
         authUtil.createLoginIdentifiers.mockReturnValue({
             sessionId: 'session-bramble',
@@ -1043,7 +1045,6 @@ describe('UserAuthHttpService', () => {
                 tx,
                 'user-bramble',
                 deviceIdentity,
-                null,
                 now
             );
             expect(
@@ -1105,11 +1106,7 @@ describe('UserAuthHttpService', () => {
                 tx,
                 'user-bramble',
                 fullDevice,
-                null,
                 now
-            );
-            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
-                EnumDevicePlatform.ios
             );
         });
 
@@ -1540,7 +1537,6 @@ describe('UserAuthHttpService', () => {
                 tx,
                 'user-bramble',
                 deviceIdentity,
-                null,
                 now
             );
             expect(sessionDomain.createInTx).toHaveBeenCalledTimes(1);
@@ -2840,20 +2836,6 @@ describe('UserAuthHttpService', () => {
             );
 
             expect(sessionDomain.revokeIfActive).not.toHaveBeenCalled();
-        });
-
-        it('resolves the notification provider from a null platform when the device carries none', async () => {
-            await service['createTokenAndSession'](
-                baseUser,
-                { ...deviceIdentity, platform: null },
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
-                null
-            );
         });
 
         it('fails the login before the transaction when the recipient read rejects', async () => {
