@@ -100,7 +100,7 @@ Install and configure the project.
 5. [Database][ref-doc-database]: Prisma + MongoDB replica set, transactions, and the Database Module
 6. [Authentication][ref-doc-authentication]: JWT (ES256/ES512), session lifecycle, API key auth
 7. [Authorization][ref-doc-authorization]: `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
-8. [Device][ref-doc-device]: Device fingerprinting, `DeviceOwnership`, max 1 session per device
+8. [Device][ref-doc-device]: Device fingerprinting, `DeviceOwnership`, one signed-in user per device
 9. [Response][ref-doc-response]: Standardized response decorators, pagination response, file download
 10. [Request Validation][ref-doc-request-validation]: `RequestSchemaValidationPipe`, zod request schemas, body and path validation
 11. [Handling Error][ref-doc-handling-error]: Exception filters, standardized HTTP error responses, i18n errors

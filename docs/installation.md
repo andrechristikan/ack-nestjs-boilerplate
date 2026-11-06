@@ -48,17 +48,17 @@ Use [MongoDB Atlas][ref-mongodb] and your own Redis only when you cannot run Doc
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| [Node.js](https://nodejs.org) | >= 24.15.0 | Always required |
-| [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@12.5.1`) | Always required |
-| [Git](https://git-scm.com) | v2.39.x+ | Always required |
-| [Docker](https://docs.docker.com) | v28.5.x+ | **Recommended** for local MongoDB, Redis, JWKS, BullBoard |
-| [Docker Compose](https://docs.docker.com/compose/) | v2.40.x+ | With Docker |
+| [Node.js](https://nodejs.org) | 26.13.x+ | Always required |
+| [PNPM](http://pnpm.io) | 10.25.x+ (pin pnpm 12.5.x+) | Always required |
+| [Git](https://git-scm.com) | 2.39.x+ | Always required |
+| [Docker](https://docs.docker.com) | 28.5.x+ | **Recommended** for local MongoDB, Redis, JWKS, BullBoard |
+| [Docker Compose](https://docs.docker.com/compose/) | 2.40.x+ | With Docker |
 
 Without Docker you also need:
 
-- A [MongoDB Atlas][ref-mongodb] cluster, or any MongoDB 8.0+ **replica set** (Prisma transactions need one).
-- The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`, and the local Compose file uses `mongo:latest`.
-- A Redis 6.2+ instance for cache (`db:0`) and queues (`db:1`). BullMQ refuses to connect to a server older than 5.0 and logs a warning below 6.2, its recommended minimum.
+- A [MongoDB Atlas][ref-mongodb] cluster, or any MongoDB 8.0.x+ **replica set** (Prisma transactions need one).
+- The project runs MongoDB 9: the production Compose file pins `mongo` 9.0.x+, and the local Compose file uses `mongo:latest`.
+- A Redis 6.2.x+ instance for cache (`db:0`) and queues (`db:1`). BullMQ requires Redis 5.0.x+ and recommends 6.2.x+, logging a warning below it.
 
 > [!IMPORTANT] Prefer [Installation with Docker](#installation-with-docker-recommended). Local single-node MongoDB without a replica set will break Prisma transactions.
 
@@ -253,7 +253,7 @@ That brings up:
 - Redis on `6379`
 - JWKS server on `3011`
 - BullBoard on `3010`
-- With `--profile apis`, the API on `3000`
+- With `--profile apis`, the API on `3000` (`DOCKER_APIS_PORT` changes the host port)
 
 The API container reads different `.env` values from the host app: see [API container](#api-container-apis-profile).
 
@@ -304,7 +304,8 @@ Steps:
 
 ### Troubleshooting
 
-- **Port conflicts**: Compose publishes ports `27017`, `6379`, `3010`, and `3011` on the host, so a process already on one of them blocks the start.
+- **Port conflicts**: Compose publishes ports `27017`, `6379`, `3010`, and `3011` on the host, plus `3000` with the `apis` profile, so a process already on one of them blocks the start.
+    - Set `DOCKER_APIS_PORT` to move the API host port.
     - Set `DOCKER_MONGO_PORT` to move the MongoDB host port, and change the port in `DATABASE_URL` to match.
     - The published MongoDB host port is also the port in the replica set member host `host.docker.internal:<port>`, so the host machine and the containers reach the same member.
 - **Host resolution**: Add `127.0.0.1 host.docker.internal` to the host machine's `/etc/hosts` when the name does not resolve there. The containers need no entry.
@@ -325,7 +326,7 @@ Use this only when Docker is not an option:
 ### Hosted MongoDB and Redis
 
 1. **MongoDB**: Create a [MongoDB Atlas][ref-mongodb] cluster, or use any MongoDB deployment that is a **replica set**. Copy the connection string into `DATABASE_URL`.
-2. **Redis**: Use a hosted Redis 6.2+ service such as [Amazon ElastiCache][ref-elasticache]. Point cache and queues at different logical DBs when you can:
+2. **Redis**: Use a hosted Redis 6.2.x+ service such as [Amazon ElastiCache][ref-elasticache]. Point cache and queues at different logical DBs when you can:
     ```bash
     CACHE_REDIS_URL=redis://<host>:6379/0
     QUEUE_REDIS_URL=redis://<host>:6379/1
@@ -407,7 +408,8 @@ pnpm generate
 ```
 
 - Run this after `pnpm install`, and again after changes to `prisma/schema.prisma` or those `package.json` fields.
-- The CI workflows and both dockerfiles (`dockerfile` for local work, `ci/dockerfile.production`) run it before building.
+- The CI workflows and `ci/dockerfile.production` run it before building.
+- The `apis` service bind-mounts `src/`, so the output generated on the host reaches the container.
 
 ## Database Migration & Seeding
 
@@ -462,11 +464,12 @@ pnpm migration templateEmailNotification --type seed
 
 **Seed term policies (HTML on S3):**
 
-- With S3 unconfigured, the seed logs a warning and skips.
+- The seed named `termPolicy` is part of the full seed run.
+- With S3 configured, it uploads the policy content files. Without S3, it seeds the rows and uploads nothing.
 - See [Term Policy Documentation][ref-doc-term-policy].
 
 ```bash
-pnpm migration templateTermPolicy --type seed
+pnpm migration termPolicy --type seed
 ```
 
 **S3 bucket policy / CORS:**

@@ -33,6 +33,7 @@ import type {
     IUserSignUp,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
@@ -62,6 +63,7 @@ export class UserRegistrationHttpService {
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
+        private readonly userVerificationUtil: UserVerificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
@@ -316,15 +318,9 @@ export class UserRegistrationHttpService {
             [],
             []
         );
-        const expiredAt = this.helperDateService.formatToIso(
-            emailVerification.expiredAt
-        );
-        await this.notificationQueue.sendWelcome(recipient, {
-            expiredAt,
-            reference: emailVerification.reference,
-            link: emailVerification.link,
-            expiredInMinutes: emailVerification.expiredInMinutes,
-        });
+        const payload =
+            this.userVerificationUtil.mapEmailPayload(emailVerification);
+        await this.notificationQueue.sendWelcome(recipient, payload);
 
         return {};
     }

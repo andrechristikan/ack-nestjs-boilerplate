@@ -66,6 +66,7 @@
     "userRevokeSessionByAdmin": "Your session has been revoked by admin",
     "userRevokeAllSessions": "All your sessions have been revoked",
     "userRevokeAllSessionsByAdmin": "All your sessions have been revoked by admin",
+    "userRevokeSessionByDeviceLogin": "Signed out: another user signed in on this device",
     "userRemoveDevice": "Your device has been removed",
     "userRemoveDeviceByAdmin": "Your device has been removed by admin",
     "userAcceptTermPolicy": "You have accepted the terms and policy",

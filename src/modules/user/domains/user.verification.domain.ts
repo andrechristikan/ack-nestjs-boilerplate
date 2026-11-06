@@ -11,7 +11,7 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
-    IUserVerificationCreate,
+    IUserVerificationEmailCreate,
     IUserVerificationEmailTarget,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
@@ -92,29 +92,38 @@ export class UserVerificationDomain {
         }
     }
 
-    /** Resolves the active, unverified user of an email; null when none, or when the last verification email is inside its resend window. */
-    async getOneForResendByEmail(email: string): Promise<User | null> {
-        const user = await this.userRepository.findOneActiveByEmail(email);
-        if (!user || user.isVerified) {
-            return null;
+    /** False when the user is verified or the last verification email is inside the resend window. */
+    async isEmailResendable(user: User): Promise<boolean> {
+        if (user.isVerified) {
+            return false;
         }
 
-        // Sequential by design: gate before the work it guards
         const lastVerification =
             await this.userVerificationRepository.findOneLatestByVerificationEmail(
                 user.id
             );
-        if (lastVerification) {
-            const isInsideResendWindow = this.userUtil.isInsideResendWindow(
-                lastVerification.createdAt,
-                this.userVerificationUtil.verificationResendInMinutes
-            );
-            if (isInsideResendWindow) {
-                return null;
-            }
+        if (!lastVerification) {
+            return true;
         }
 
-        return user;
+        const isInsideResendWindow = this.userUtil.isInsideResendWindow(
+            lastVerification.createdAt,
+            this.userVerificationUtil.verificationResendInMinutes
+        );
+
+        return !isInsideResendWindow;
+    }
+
+    /** Resolves the active user of an email when isEmailResendable holds for it; null otherwise. */
+    async getOneForResendByEmail(email: string): Promise<User | null> {
+        const user = await this.userRepository.findOneActiveByEmail(email);
+        if (!user) {
+            return null;
+        }
+
+        const isResendable = await this.isEmailResendable(user);
+
+        return isResendable ? user : null;
     }
 
     /** Marks the user verified and clears its password, password dates, and password attempt counter in the same write. */
@@ -124,11 +133,12 @@ export class UserVerificationDomain {
         return this.userRepository.markVerifiedBySocial(userId, verifiedAt);
     }
 
-    async persistVerificationEmail(
+    /** Creates an email verification for the user, replacing its active one, and returns it with the raw token and link. */
+    async createEmail(
         userId: string,
-        email: string,
-        verification: IUserVerificationCreate
-    ): Promise<void> {
+        email: string
+    ): Promise<IUserVerificationEmailCreate> {
+        const verification = this.userVerificationUtil.createEmail();
         const today = this.helperDateService.create();
 
         await this.userVerificationRepository.createReplacingActive(
@@ -137,6 +147,8 @@ export class UserVerificationDomain {
             verification,
             today
         );
+
+        return verification;
     }
 
     async createInTx(

@@ -142,6 +142,18 @@ export class DeviceDomain {
         };
     }
 
+    async getOtherOwnershipIdsByDeviceInTx(
+        tx: IDatabaseTransactionClient,
+        deviceId: string,
+        userId: string
+    ): Promise<string[]> {
+        return this.deviceOwnershipRepository.findOtherIdsByDeviceInTx(
+            tx,
+            deviceId,
+            userId
+        );
+    }
+
     async clearNotificationInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

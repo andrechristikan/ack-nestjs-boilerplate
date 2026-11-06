@@ -10,16 +10,22 @@ import type {
     Notification,
     NotificationUserSetting,
 } from '@generated/prisma-client/client';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
-import type { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationRecipient,
+    INotificationUserSettingUpdate,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -27,7 +33,8 @@ export class NotificationDomain {
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
-        private readonly notificationUtil: NotificationUtil
+        private readonly notificationUtil: NotificationUtil,
+        private readonly deviceDomain: DeviceDomain
     ) {}
 
     private async findMutedInAppTypes(
@@ -63,6 +70,18 @@ export class NotificationDomain {
             );
 
         return this.notificationUtil.listConfigurableSettings(settings);
+    }
+
+    async getRecipient(
+        user: IUserRecipient,
+        kind: EnumNotificationKind
+    ): Promise<INotificationRecipient> {
+        const [tokens, settings] = await Promise.all([
+            this.deviceDomain.getNotificationTokens(user.id),
+            this.getListUserSetting(user.id),
+        ]);
+
+        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
     async markAsRead(userId: string, notificationId: string): Promise<void> {

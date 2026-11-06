@@ -27,8 +27,8 @@ AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema
 - A disabled or unconfigured capability answers 404 (`FeatureFlagDisabledException`, `AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`). The exception filters report only 5xx to Sentry, so these stay out of it.
 - A seed that needs an integration logs a warning and skips without it:
     - `templateEmailNotification` needs SES
-    - `templateTermPolicy` needs S3
     - `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`
+- The `termPolicy` seed logs a warning without S3 and still writes every row, without uploading the content.
 - The health indicators report an unconfigured integration as `down` with the message `<name> is not configured`. The health endpoints still answer HTTP 200.
 
 ## Related Documents

@@ -4,7 +4,10 @@ import type {
     Session,
     UserAgent,
 } from '@generated/prisma-client/client';
-import type { SessionListSelect } from '@modules/session/constants/session.constant';
+import type {
+    SessionListSelect,
+    SessionUserRefSelect,
+} from '@modules/session/constants/session.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface ISession extends Session {
@@ -17,6 +20,10 @@ export type ISessionList = Prisma.SessionGetPayload<{
 }>;
 
 export type ISessionRef = Pick<Session, 'id'>;
+
+export type ISessionUserRef = Prisma.SessionGetPayload<{
+    select: typeof SessionUserRefSelect;
+}>;
 
 export interface ISessionPurgeLoginsPayload {
     userId: string;

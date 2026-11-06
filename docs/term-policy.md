@@ -21,12 +21,14 @@ Term Policy stores versioned legal documents (terms of service, privacy policy, 
 - [Policy Status](#policy-status)
     - [Draft Status](#draft-status)
     - [Published Status](#published-status)
+    - [Archived Status](#archived-status)
 - [Flow](#flow)
     - [Admin Flow Diagram](#admin-flow-diagram)
     - [User Flow Diagram](#user-flow-diagram)
 - [User Endpoints](#user-endpoints)
     - [List Published Policies](#list-published-policies)
     - [Accept Policy](#accept-policy)
+    - [List Pending Policies](#list-pending-policies)
     - [View Acceptance History](#view-acceptance-history)
 - [Admin Endpoints](#admin-endpoints)
     - [Generate Presign URL](#generate-presign-url)
@@ -57,11 +59,14 @@ Four policy types are available via `EnumTermPolicyType`:
 | `cookies`        | Cookie Policy              |
 
 - Each type can have multiple versions.
-- A user reaches protected endpoints only after accepting the latest published version.
+- A user reaches protected endpoints only after accepting the latest published version of each required type (`termsOfService` and `privacy` by default).
+- Acceptance is one `TermPolicyUserAcceptance` record per user and policy version. The user row holds no acceptance flag.
+- Sign-up (credential and social), admin create, and admin import record an acceptance of the latest published `termsOfService` and `privacy` for each new user, in the creation transaction.
+- Those paths throw `TermPolicyRequiredNotPublishedException` (`500`, `requiredNotPublished`, `51510`) when a required type has no published version.
 
 ## Policy Status
 
-Term policies follow a two-stage status:
+Term policies follow three statuses: `draft`, `published`, and `archived`.
 
 ### Draft Status
 
@@ -74,18 +79,23 @@ Term policies follow a two-stage status:
 ### Published Status
 
 - Policy published by admin
-- Content files exist in both buckets: the private originals the draft was uploaded to, and a copy in the **public S3 bucket**
+- The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names
+- The `copyContent` job copies the files from the private bucket to the **public S3 bucket** after the publish commits, so the private originals stay in place
 - Cannot be edited or deleted
 - Visible to all users
-- **Invalidates all existing user acceptances** for that policy type
-- Every non-deleted user re-accepts the new version before reaching protected endpoints again
+- Becomes the latest published version of its type, so every user without an acceptance record for it is pending for that type
+- Archives the published lower versions of the same type
 - Key: `term-policies/{type}/v{version}/{language}.hbs` (from `termPolicy.contentPublicPath`)
 
 - Both paths resolve to the same key, so the two copies differ by bucket alone.
-- The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names.
-- Publishing a new version writes `termPolicy: { update: { [type]: false } }` for every non-deleted user, whatever the user's status.
-- The nested `update` changes only the flag of that type, so the other flags of the user stay as they are.
-- Each user accepts the new version before reaching protected endpoints again.
+- Publishing writes no user field. The guard and the pending list compare each user's acceptance records with the latest published version, so a new version needs a new acceptance.
+
+### Archived Status
+
+- A `published` version of a type that a newer version of the same type replaced
+- Left out of the public list, the pending list, and the guard, which read only `published` records
+- Cannot be edited, deleted, resent, or given a new presign
+- Listed by the admin list with `status=archived`
 
 ## Flow
 
@@ -122,15 +132,15 @@ sequenceDiagram
 
     Admin->>API: Publish policy
     API->>Database: Read the policy (404 when missing)
-    alt Already published
+    alt Not a draft
         API->>Admin: Reject (400 statusInvalid)
     else Draft
-        API->>Database: Reject a policy with no content (400)
+        API->>API: Reject a policy with no content (400)
         API->>API: Reject when S3 is not configured (404)
-        API->>S3 Public: Copy all content files from the private bucket
-        API->>API: Reject a copy set that misses a language (500)
-        API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>non-deleted users termPolicy[type] = false
+        API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>lower published versions of the type archived
+        API->>API: Reject (400) and roll back when a newer version is already published
         API->>API: Stage the adminTermPolicyPublish activity log
+        API->>S3 Public: Queue the copyContent job after the commit
         API->>Users: Queue the publishTermPolicy job after the commit
         alt Enqueue fails
             API->>API: Log the failure and report it to Sentry
@@ -138,13 +148,13 @@ sequenceDiagram
         API->>Admin: Policy published
     end
 
-    Note over Users: Users re-accept before the next protected call
+    Note over Users: Users accept the new version before the next protected call
 
     Note over Admin,Users: Resending the Email
 
     Admin->>API: Resend email
     API->>Database: Read the policy (404 when missing)
-    alt Draft
+    alt Not published
         API->>Admin: Reject (400 statusInvalid)
     else Published
         API->>Users: Queue the resendPublishTermPolicy job
@@ -160,41 +170,39 @@ Publishing and resending are the admin actions that fan out to the users. Each r
 
 Publish:
 
-- A `draft` policy publishes, then the request queues one `publishTermPolicy` job. The response is `{}`.
+- A `draft` policy publishes, then the request queues one `copyContent` job on the `termPolicy` queue and one `publishTermPolicy` job on the notification queue. The response is `{}`.
 - The order inside the request is:
-    1. checks and the copy to the public bucket
+    1. checks: the policy exists and is a `draft`, its stored contents are valid and not empty, and S3 is configured
     2. one transaction:
         1. the guarded update that sets `status` to `published`, stamps `publishedAt`, and rewrites `contents` to the public items
-        2. the reset of every non-deleted user's acceptance
-        3. the preparation of the `adminTermPolicyPublish` activity log
+        2. the archiving of the published lower versions of the same type
+        3. a check that no newer version of the type is already published
     3. the commit
-    4. the staging of the prepared activity log
-    5. the enqueue of the `publishTermPolicy` job
-- Preparing an activity log validates its metadata against the action contract and builds the row in memory. It writes nothing, so a rolled-back transaction leaves no row.
-- Staging after the commit hands the prepared row to the request. `ActivityLogInterceptor` flushes every staged row when the handler settles, on success and on failure.
-- A policy already `published` answers `400` (`statusInvalid`, `TermPolicyStatusInvalidException`) from the initial read, before the copy and before any write. Publish runs once per version.
-- No per-type gate exists: a version never waits for, and is never blocked by, another version of the same type.
+    4. the preparation and staging of the `adminTermPolicyPublish` activity log
+    5. the enqueue of the `copyContent` and `publishTermPolicy` jobs
+- Preparing an activity log validates its metadata against the action contract and builds the row in memory. `ActivityLogInterceptor` flushes every staged row when the handler settles, on success and on failure.
+- A policy that is not a `draft` answers `400` (`statusInvalid`, `TermPolicyStatusInvalidException`) from the initial read, before any write. Publish runs once per version.
+- A version lower than an already published version of its type answers `400` (`statusInvalid`) and rolls back, so the older version stays `draft`.
 - The status update matches the policy only while it is `draft`, so one of two concurrent publishes commits.
-    - The losing publish queues nothing. Its initial read still saw a `draft`, so it has already copied the content to the public bucket when the guarded update runs inside the transaction.
+    - The losing publish queues nothing.
     - It answers `400` (`statusInvalid`) from that update when the update runs after the winner commits.
     - It answers `400` (`statusInvalid`) as well when the two transactions overlap: MongoDB raises a write conflict (`P2034`), nothing retries it, and `publishByAdmin` maps `DatabaseWriteConflictException` to `TermPolicyStatusInvalidException`, never `409`.
-- A write conflict inside the publish transaction can also come from a concurrent write to a user, because the acceptance reset updates every non-deleted user.
-    - The transaction rolls back, the policy stays `draft`, and nothing is staged or queued.
-    - The request answers `400` (`statusInvalid`), and the admin publishes again.
+- A write conflict rolls the transaction back, the policy stays `draft`, and nothing is staged or queued. The admin publishes again.
     - Any other database error keeps its mapping: an unavailable database answers `503` through `AppUnknownException` and the general filter.
-- The copy to the public bucket must return a file for every language of the draft.
-    - A copy that matches no content, or a language with no copy, throws before the transaction and the request answers `500`.
-    - The policy stays `draft`, so a partial copy set never publishes.
-- The job id is `publishTermPolicy-{termPolicyId}`.
+- The `copyContent` job copies each content item to the public path with public access.
+    - The job id is `copyContent-{termPolicyId}` (`termPolicy.jobId.copyContentPattern`).
+    - A copy that returns fewer files than the policy has contents fails the job with a `QueueException`, the queue retries it up to the configured attempts, and Sentry receives the error after the last one.
+    - The policy stays `published` while the copy runs or fails, because the transaction has already committed.
+- The `publishTermPolicy` job id is `publishTermPolicy-{termPolicyId}`.
     - BullMQ ignores a second add with the same id while the job is kept: a completed job for 7 days, a failed job for 14 days.
-- A queue failure after the commit answers `200`: `NotificationQueue.sendPublishTermPolicy` enqueues through `QueueBase.addSideEffect`, which logs the failure and reports it to Sentry.
-    - The policy stays `published` and the acceptances stay reset.
+- A queue failure after the commit answers `200`: `TermPolicyQueue.copyContent` and `NotificationQueue.sendPublishTermPolicy` enqueue through `QueueBase.addSideEffect`, which logs the failure and reports it to Sentry.
+    - The policy stays `published`.
     - The `adminTermPolicyPublish` row is written, because it is staged before the enqueue.
-    - The admin recovers with the resend endpoint, which re-runs the fan-out of a published policy (see [Resend Email](#resend-email)).
+    - The admin recovers a failed publication email with the resend endpoint, which re-runs the fan-out of a published policy (see [Resend Email](#resend-email)).
 
 Resend:
 
-- A `published` policy queues one `resendPublishTermPolicy` job. A `draft` policy answers `400` (`statusInvalid`).
+- A `published` policy queues one `resendPublishTermPolicy` job. A policy in any other status answers `400` (`statusInvalid`).
 - The job id is `resendPublishTermPolicy-{termPolicyId}-{resendNonce}`, and `resendNonce` is a fresh id per request, so every request queues its own job.
 - The job carries the policy's stored `publishedAt` as `recipientCutoffAt`, the value the publish job carried, even when the publish job never queued. It runs the same fan-out and changes no acceptance and no policy field.
 - It creates rows for the active users that have none and re-queues the recipient rows still unsent and unclaimed. A row already sent or claimed is left alone.
@@ -243,13 +251,17 @@ sequenceDiagram
     Database->>API: Return policies
     API->>User: Display available policies
 
+    Note over User,Database: Listing Pending Policies
+
+    User->>API: List pending policies
+    API->>Database: Latest published termsOfService and privacy<br/>without an acceptance record of the user
+    API->>User: id, type, version of each
+
     Note over User,Database: Accepting Policy
 
     User->>API: Accept policy (type)
-    API->>Database: Check latest published exists (404 otherwise)
-    API->>Database: Check that version not already accepted (409 otherwise)
     API->>Database: Read the recipient snapshot: address, channels from<br/>the user's notification settings, device tokens
-    API->>Database: One transaction: create acceptance record,<br/>set only user.termPolicy[type] = true
+    API->>Database: One transaction: find the latest published of the type (404 otherwise),<br/>create the acceptance record (409 when it exists)
     API->>API: Stage activity log (IP, userAgent)
     API->>User: Queue userAcceptTermPolicy notification with the snapshot
     API->>User: Acceptance recorded
@@ -258,18 +270,18 @@ sequenceDiagram
 
     User->>API: Request protected endpoint
     API->>Guard: Check term policy requirement
-    Guard->>Guard: Check user.termPolicy[type] = true on the stored user
-    alt Policy Accepted
+    Guard->>Database: Latest published of each required type<br/>without an acceptance record of the user
+    alt Nothing pending
         Guard->>API: Allow access
         API->>User: Return response
-    else Policy Not Accepted
-        Guard->>User: 403 Forbidden
+    else Something pending
+        Guard->>User: 403 Forbidden (requiredInvalid)
     end
 ```
 
 ## User Endpoints
 
-Users interact with term policies through acceptance and viewing their acceptance history.
+Users list the published policies, accept a policy, list the required policies they have not accepted, and view their acceptance history.
 
 ### List Published Policies
 
@@ -300,13 +312,29 @@ POST /shared/user/term-policy/accept
 - The request names only the type. The server resolves it to the **latest published version** of that type and records the acceptance against that record.
 - The duplicate check is per policy record, not per type, so a user who accepted version 1 accepts version 2 again once it is published.
 - Accepting the same version twice returns `409` (`alreadyAccepted`).
-- The acceptance writes `termPolicy: { update: { [type]: true } }` on the user, so only that one flag changes.
+- The acceptance inserts one record for the user and that policy version, inside one transaction that also resolves the latest published version.
 - When no published policy exists for the type, it returns `404` (`notFound`).
-- `userAccept` reads the recipient snapshot before the write, through `NotificationRecipientDomain.getRecipient`: the address, the channels the user's notification settings leave enabled, and the device tokens.
+- `userAccept` reads the recipient snapshot before the write, through `NotificationDomain.getRecipient`: the address, the channels the user's notification settings leave enabled, and the device tokens.
 - The job queued after the commit carries that snapshot, and its processor does not read the user again.
 - A failed enqueue is logged and reported, and the acceptance still answers success.
 - The job payload (`INotificationAcceptTermPolicyPayload`) holds `termPolicyId`, `type`, and `version`. The publish payload extends it with `recipientCutoffAt` and `resendNonce` (`null` on a publish, the request nonce on a resend).
 - A user whose settings leave no channel enabled gets no notification row.
+
+### List Pending Policies
+
+Users can list the required policies they have not accepted:
+
+```http
+GET /shared/user/term-policy/pending/list
+```
+
+- The route stack, from the top of the controller method: `@Response('termPolicy.listPending')`, `@UserProtected()`, `@RequestThrottle({ user: true })`, `@AuthJwtAccessProtected()`, `@ApiKeyProtected()`, `@Get('/pending/list')`.
+- The route carries no `@TermPolicyAcceptanceProtected()`, so a user with pending policies reaches it. It is throttled per user and needs an API key of the default type.
+- The response data is `{ termPolicies: [{ id, type, version }] }`.
+- The route always checks the types in `TermPolicyDefaultRequiredTypes` (`termsOfService` and `privacy`), the same types `@TermPolicyAcceptanceProtected()` checks when it takes no arguments.
+- `termPolicies` holds the latest published version of each of those types that the user has no acceptance record for, and is empty when nothing is pending.
+- A type with no published version never appears in `termPolicies`.
+- The route is not paginated, and the success message is `termPolicy.listPending`.
 
 ### View Acceptance History
 
@@ -362,7 +390,7 @@ Response:
 - the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredInSeconds`)
 - against the **private** bucket
 
-Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
+Requesting a presign for a type and version that exists and is not a `draft` returns `400` (`statusInvalid`).
 
 ### Create Policy
 
@@ -420,7 +448,7 @@ GET /admin/term-policy/content/:termPolicyId/:language/get
 
 ### Publish Policy
 
-Publish policy and invalidate all user acceptances:
+Publish a draft policy so users must accept it:
 
 ```typescript
 PATCH /admin/term-policy/publish/:termPolicyId
@@ -432,20 +460,21 @@ PATCH /admin/term-policy/publish/:termPolicyId
 
 Publishing a draft:
 
-- sets `termPolicy[type]` to `false` for every non-deleted user, whatever the status, so each one accepts again
-- queues the publication job described under [Admin Flow Diagram](#admin-flow-diagram)
+- makes it the latest published version of its type, so each user without an acceptance record for it is pending again
+- archives the published lower versions of the same type
+- queues the copy and publication jobs described under [Admin Flow Diagram](#admin-flow-diagram)
 - a policy with no content returns `400` (`contentEmpty`)
 - a stored content with an unknown language or access returns `500` (`contentInvalid`)
-- a copy set that misses a language returns `500` and leaves the policy `draft`
+- a version lower than an already published version of its type returns `400` (`statusInvalid`) and stays `draft`
 - a write conflict in the publish transaction returns `400` (`statusInvalid`), leaves the policy `draft`, and queues nothing: publish again
-- a failed enqueue is logged and reported, and the request still returns `200`: the policy stays `published`, the acceptances stay reset, and the `adminTermPolicyPublish` row is written. [Resend Email](#resend-email) recovers it
+- a failed enqueue is logged and reported, and the request still returns `200`: the policy stays `published` and the `adminTermPolicyPublish` row is written. [Resend Email](#resend-email) recovers a missed publication email
 
-Publishing a policy that is already published returns `400` (`statusInvalid`) and changes nothing.
+Publishing a policy that is already `published` or `archived` returns `400` (`statusInvalid`) and changes nothing.
 
 Once published:
 
 - A policy cannot be edited or deleted.
-- Its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
+- Its content files exist in both buckets once the `copyContent` job completes: the public copy the record points at, and the private original the draft was uploaded to.
 
 ### Resend Email
 
@@ -459,12 +488,12 @@ POST /admin/term-policy/resend/:termPolicyId/email
 - The success message is `termPolicy.resendEmail`, the status is `200`, and the response data is `{}`.
 - The activity log action is `adminTermPolicyResendEmail`, staged after the enqueue succeeds.
 - A missing policy returns `404` (`notFound`).
-- A `draft` policy returns `400` (`statusInvalid`).
+- A policy that is not `published` returns `400` (`statusInvalid`).
 - A published policy queues one `resendPublishTermPolicy` job under a fresh nonce, described under [Admin Flow Diagram](#admin-flow-diagram).
 - The job emails only the recipient rows that are unsent and unclaimed, and creates rows for the active users that have none.
 - A recipient whose delivery outcome was unknown stays claimed, and a resend does not reach it.
 - A failed enqueue returns `500` and writes no activity log row, because the row is staged after the enqueue.
-- It is the recovery for a publish whose enqueue failed: the policy is already `published`, so the resend creates rows for the active users that have none and re-queues the rows still unsent and unclaimed.
+- It is the recovery for a publication email whose enqueue failed: the policy is already `published`, so the resend creates rows for the active users that have none and re-queues the rows still unsent and unclaimed.
 
 ### List Policies
 
@@ -476,7 +505,7 @@ GET /admin/term-policy/list?type=termsOfService&status=draft
 
 Offset pagination, unlike the public list.
 
-- `type` and `status` each accept a comma-delimited set of values.
+- `type` and `status` (`draft`, `published`, `archived`) each accept a comma-delimited set of values.
 - `orderBy` accepts `publishedAt` and `version`, and a field outside that list answers `422` with status code `50300`.
 
 ### Delete Policy
@@ -497,7 +526,7 @@ DELETE /admin/term-policy/delete/:termPolicyId
 
 The `@TermPolicyAcceptanceProtected()` decorator protects endpoints by requiring users to accept specific policies before accessing them.
 
-The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `UserGuardMissingException` (`401 Unauthorized`, `51027`, `guardMissing`).
+The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `UserGuardMissingException` (`401 Unauthorized`, `51023`, `guardMissing`).
 
 **Decorator order** (from top to bottom):
 
@@ -521,9 +550,9 @@ export class TermPolicySharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/acceptance/list')
     async listAccepted(
         @Query({ schema: TermPolicyAcceptedListRequestSchema })
@@ -539,9 +568,9 @@ export class TermPolicySharedController {
     @Doc({ summary: 'user accepts term or policy' })
     @Response('termPolicy.accept')
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/accept')
     async accept(
@@ -555,8 +584,9 @@ export class TermPolicySharedController {
 ```
 
 - The decorator takes optional `EnumTermPolicyType` arguments.
-- With none, it requires `termsOfService` and `privacy`.
-- Shared and admin routes pass no arguments.
+- With none, the guard checks `termsOfService` and `privacy` (`TermPolicyDefaultRequiredTypes`). With arguments, it checks exactly those types.
+- Every route that carries the decorator passes no arguments, so each checks the two default types. The pending list route checks the same two types.
+- A required type with no published version has nothing to accept, so the guard treats it as satisfied. When no required type has a published version, the guard allows the request.
 
 ### How It Works
 
@@ -572,10 +602,10 @@ flowchart TD
     CheckRequired -->|No| SetDefault[Use Default:<br/>termsOfService + privacy]
     CheckRequired -->|Yes| UseSpecified[Use Specified Policies]
 
-    SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
+    SetDefault --> GetTermPolicy[Read the latest published version<br/>of each required type]
     UseSpecified --> GetTermPolicy
 
-    GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
+    GetTermPolicy --> CheckAcceptance{User has an acceptance record<br/>for each of those versions?}
 
     CheckAcceptance -->|No| ErrorRequired[Throw 403: Policy Required<br/>requiredInvalid]
     CheckAcceptance -->|Yes| GrantAccess[Grant Access]
@@ -596,35 +626,30 @@ flowchart TD
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - For more details about `@UserProtected()`, see [Authorization Documentation][ref-doc-authorization]
-- Without the required decorators, the guard finds no user and throws `UserGuardMissingException` (`401 Unauthorized`, `51027`)
-- If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
-- Access is granted only when the user has accepted every specified term policy
-- A user missing any required acceptance gets `403 Forbidden` (`requiredInvalid`)
+- Without the required decorators, the guard finds no user and throws `UserGuardMissingException` (`401 Unauthorized`, `51023`)
+- If no term policies are specified, it checks `termsOfService` and `privacy` acceptance
+- Access is granted only when the user has an acceptance record for the latest published version of every required type that has a published version
+- A user missing any required acceptance gets `403 Forbidden` (`requiredInvalid`, `51504`, message "Accept the latest terms or policies to continue.")
+- `GET /shared/user/term-policy/pending/list` names the versions the user still has to accept
 - Incorrect decorator ordering fails the same way as a missing decorator: the guard runs before the user is in the store, so the request is rejected with `401`
 
 ## Migration & Seeding
 
-Two seeds cover term policies:
+One seed covers term policies:
 
 ```
-src/migration/seeds/migration.term-policy.seed.ts           # command: termPolicy
-src/migration/seeds/migration.template-term-policy.seed.ts  # command: templateTermPolicy
+src/migration/seeds/migration.term-policy.seed.ts  # command: termPolicy
 ```
 
-- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`.
-    - It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`.
-    - Details of that seed (actor, order, remove): [Database Documentation][ref-doc-database].
-- `templateTermPolicy` is run on its own. For each type it:
-    1. uploads the bundled `.hbs` document to the private bucket
-    2. copies it to the public content path
-    3. upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one
-
-    When S3 is not configured it logs a warning and skips, and its `remove()` is a no-op.
-
-```bash
-pnpm migration templateTermPolicy --type seed
-pnpm migration templateTermPolicy --type remove
-```
+- `termPolicy` is wired into the seed-all and remove-all migration scripts.
+- It seeds the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`.
+- A row that already exists is left as it is.
+- For each missing row it builds one `en` content entry from the bundled `.hbs` template of the type.
+    - With S3 configured it uploads the template to the private bucket and copies it to the public content path. The entry is the public item, so a seeded policy sits in both buckets like any published one.
+    - Without S3 it logs a warning and stores an entry that carries the public key and size but uploads nothing.
+- After the upsert it fails with `AppUnknownException` when `termsOfService` or `privacy` has no published record.
+- `remove` deletes every acceptance, recipient, and term policy record in one transaction.
+- Details of that seed (actor, order, remove): [Database Documentation][ref-doc-database].
 
 A failing seed wraps its cause in `AppUnknownException`. The command logs one `fatal` line, reports the error to Sentry, and exits with code `1`.
 

@@ -1,16 +1,11 @@
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
-import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
@@ -20,25 +15,10 @@ export class UserVerificationHttpService {
     constructor(
         private readonly userVerificationDomain: UserVerificationDomain,
         private readonly userVerificationUtil: UserVerificationUtil,
-        private readonly deviceDomain: DeviceDomain,
         private readonly notificationDomain: NotificationDomain,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationUtil: NotificationUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly notificationQueue: NotificationQueue
     ) {}
-
-    private async getRecipient(
-        user: IUserRecipient,
-        kind: EnumNotificationKind
-    ): Promise<INotificationRecipient> {
-        const [tokens, settings] = await Promise.all([
-            this.deviceDomain.getNotificationTokens(user.id),
-            this.notificationDomain.getListUserSetting(user.id),
-        ]);
-
-        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
-    }
 
     async verifyEmail({
         token,
@@ -54,7 +34,7 @@ export class UserVerificationHttpService {
             }),
         ];
         // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.getRecipient(
+        const recipient = await this.notificationDomain.getRecipient(
             user,
             EnumNotificationKind.verifiedEmail
         );
@@ -78,7 +58,6 @@ export class UserVerificationHttpService {
             return {};
         }
 
-        const emailVerification = this.userVerificationUtil.createEmail();
         const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userSendVerificationEmail,
@@ -87,27 +66,20 @@ export class UserVerificationHttpService {
             }),
         ];
         // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.getRecipient(
+        const recipient = await this.notificationDomain.getRecipient(
             user,
             EnumNotificationKind.verificationEmail
         );
-        await this.userVerificationDomain.persistVerificationEmail(
+        const emailVerification = await this.userVerificationDomain.createEmail(
             user.id,
-            user.email,
-            emailVerification
+            user.email
         );
 
         this.activityLogDomain.stagePrepared(activityLogs);
 
-        const expiredAt = this.helperDateService.formatToIso(
-            emailVerification.expiredAt
-        );
-        await this.notificationQueue.sendVerificationEmail(recipient, {
-            expiredAt,
-            reference: emailVerification.reference,
-            link: emailVerification.link,
-            expiredInMinutes: emailVerification.expiredInMinutes,
-        });
+        const payload =
+            this.userVerificationUtil.mapEmailPayload(emailVerification);
+        await this.notificationQueue.sendVerificationEmail(recipient, payload);
 
         return {};
     }

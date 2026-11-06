@@ -21,7 +21,7 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
-    IUserVerificationCreate,
+    IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -305,32 +305,41 @@ describe('UserVerificationDomain', () => {
         });
     });
 
-    describe('getOneForResendByEmail', () => {
-        it('returns the user when there is no previous verification', async () => {
-            const user: IUser = { ...baseUser, isVerified: false };
-            userRepository.findOneActiveByEmail.mockResolvedValue(user);
+    describe('isEmailResendable', () => {
+        it('returns false for a verified user', async () => {
+            await expect(
+                domain.isEmailResendable({ ...baseUser, isVerified: true })
+            ).resolves.toBe(false);
+
+            expect(
+                userVerificationRepository.findOneLatestByVerificationEmail
+            ).not.toHaveBeenCalled();
+        });
+
+        it('returns true when no verification email exists', async () => {
             userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
                 null
             );
 
-            await expect(
-                domain.getOneForResendByEmail('flint@example.com')
-            ).resolves.toBe(user);
+            await expect(domain.isEmailResendable(baseUser)).resolves.toBe(
+                true
+            );
 
+            expect(
+                userVerificationRepository.findOneLatestByVerificationEmail
+            ).toHaveBeenCalledWith('user-flint');
             expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
         });
 
-        it('returns the user when the previous verification is past its resend window', async () => {
-            const user: IUser = { ...baseUser, isVerified: false };
-            userRepository.findOneActiveByEmail.mockResolvedValue(user);
+        it('returns false inside the resend window', async () => {
             userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
                 verification
             );
-            userUtil.isInsideResendWindow.mockReturnValue(false);
+            userUtil.isInsideResendWindow.mockReturnValue(true);
 
-            await expect(
-                domain.getOneForResendByEmail('flint@example.com')
-            ).resolves.toBe(user);
+            await expect(domain.isEmailResendable(baseUser)).resolves.toBe(
+                false
+            );
 
             expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
                 verification.createdAt,
@@ -338,6 +347,24 @@ describe('UserVerificationDomain', () => {
             );
         });
 
+        it('returns true outside the resend window', async () => {
+            userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
+                verification
+            );
+            userUtil.isInsideResendWindow.mockReturnValue(false);
+
+            await expect(domain.isEmailResendable(baseUser)).resolves.toBe(
+                true
+            );
+
+            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
+                verification.createdAt,
+                7
+            );
+        });
+    });
+
+    describe('getOneForResendByEmail', () => {
         it('returns null when no active user holds the email', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(null);
 
@@ -350,26 +377,26 @@ describe('UserVerificationDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('returns null when the user is already verified', async () => {
-            userRepository.findOneActiveByEmail.mockResolvedValue({
-                ...baseUser,
-                isVerified: true,
-            });
+        it('returns the user when the resend gate holds', async () => {
+            userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
+            userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
+                null
+            );
 
             await expect(
                 domain.getOneForResendByEmail('flint@example.com')
-            ).resolves.toBeNull();
+            ).resolves.toBe(baseUser);
 
+            expect(userRepository.findOneActiveByEmail).toHaveBeenCalledWith(
+                'flint@example.com'
+            );
             expect(
                 userVerificationRepository.findOneLatestByVerificationEmail
-            ).not.toHaveBeenCalled();
+            ).toHaveBeenCalledWith('user-flint');
         });
 
-        it('returns null inside the resend window', async () => {
-            userRepository.findOneActiveByEmail.mockResolvedValue({
-                ...baseUser,
-                isVerified: false,
-            });
+        it('returns null when the resend gate does not hold', async () => {
+            userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
                 verification
             );
@@ -379,10 +406,9 @@ describe('UserVerificationDomain', () => {
                 domain.getOneForResendByEmail('flint@example.com')
             ).resolves.toBeNull();
 
-            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
-                verification.createdAt,
-                7
-            );
+            expect(
+                userVerificationRepository.findOneLatestByVerificationEmail
+            ).toHaveBeenCalledWith('user-flint');
         });
     });
 
@@ -409,9 +435,9 @@ describe('UserVerificationDomain', () => {
         });
     });
 
-    describe('persistVerificationEmail', () => {
-        it('persists the verification replacing the active one', async () => {
-            const emailVerification: IUserVerificationCreate = {
+    describe('createEmail', () => {
+        it('creates the verification replacing the active one and returns it', async () => {
+            const emailVerification: IUserVerificationEmailCreate = {
                 reference: 'VRF-random-token',
                 expiredAt: new Date('2026-03-05T00:00:00.000Z'),
                 type: EnumVerificationType.email,
@@ -421,13 +447,13 @@ describe('UserVerificationDomain', () => {
                 link: 'https://example.com/verify?token=random-token',
                 resendInMinutes: 5,
             };
+            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
 
-            await domain.persistVerificationEmail(
-                'user-flint',
-                'flint@example.com',
-                emailVerification
-            );
+            await expect(
+                domain.createEmail('user-flint', 'flint@example.com')
+            ).resolves.toBe(emailVerification);
 
+            expect(userVerificationUtil.createEmail).toHaveBeenCalledWith();
             expect(
                 userVerificationRepository.createReplacingActive
             ).toHaveBeenCalledWith(

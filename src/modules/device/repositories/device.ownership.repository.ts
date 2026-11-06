@@ -315,6 +315,23 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         });
     }
 
+    async findOtherIdsByDeviceInTx(
+        tx: IDatabaseTransactionClient,
+        deviceId: string,
+        userId: string
+    ): Promise<string[]> {
+        const ownerships = await tx.deviceOwnership.findMany({
+            where: {
+                deviceId,
+                userId: { not: userId },
+                isRevoked: false,
+            },
+            select: { id: true },
+        });
+
+        return ownerships.map(ownership => ownership.id);
+    }
+
     async clearTokens(
         userId: string,
         tokens: string[]

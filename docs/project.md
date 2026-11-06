@@ -16,7 +16,7 @@ Projects carry their own membership with three roles, independent of the caller'
 - `member`
 - `viewer`
 
-One exception: a workspace `owner` reaches every project in the workspace without holding a `ProjectMember` row.
+One exception: a workspace `owner` or `admin` reaches every project in the workspace without holding a `ProjectMember` row. This page calls that the workspace bypass.
 
 ## Related Documents
 
@@ -105,23 +105,23 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
-| `GET` | `/user/project/list` | Any workspace member. The workspace owner sees every project; everyone else sees only projects they belong to |
+| `GET` | `/user/project/list` | Any workspace member. A workspace `owner` or `admin` sees every project; everyone else sees only projects they belong to |
 | `POST` | `/user/project/create` | Workspace `admin` (and `owner`) |
-| `GET` | `/user/project/get/:projectId` | Project `admin`, `member`, or `viewer` (or workspace `owner`) |
-| `PUT` | `/user/project/update/:projectId` | Project `admin` (or workspace `owner`) |
-| `PATCH` | `/user/project/update/:projectId/slug` | Project `admin` (or workspace `owner`) |
+| `GET` | `/user/project/get/:projectId` | Project `admin`, `member`, or `viewer` (or the workspace bypass) |
+| `PUT` | `/user/project/update/:projectId` | Project `admin` (or the workspace bypass) |
+| `PATCH` | `/user/project/update/:projectId/slug` | Project `admin` (or the workspace bypass) |
 | `DELETE` | `/user/project/delete/:projectId` | Workspace `admin` (and `owner`). Project membership is **not** required |
-| `GET` | `/user/project/member/:projectId/list` | Project `admin`, `member`, or `viewer` (or workspace `owner`) |
-| `POST` | `/user/project/member/:projectId/assign` | Project `admin` (or workspace `owner`) |
-| `PATCH` | `/user/project/member/:projectId/:projectMemberId/role/update` | Project `admin` (or workspace `owner`) |
-| `DELETE` | `/user/project/member/:projectId/:projectMemberId/remove` | Project `admin` (or workspace `owner`) |
-| `POST` | `/user/project/member/:projectId/leave` | Any project member. A real `ProjectMember` row is required, so the workspace-owner bypass does not apply |
+| `GET` | `/user/project/member/:projectId/list` | Project `admin`, `member`, or `viewer` (or the workspace bypass) |
+| `POST` | `/user/project/member/:projectId/assign` | Project `admin` (or the workspace bypass) |
+| `PATCH` | `/user/project/member/:projectId/:projectMemberId/role/update` | Project `admin` (or the workspace bypass) |
+| `DELETE` | `/user/project/member/:projectId/:projectMemberId/remove` | Project `admin` (or the workspace bypass) |
+| `POST` | `/user/project/member/:projectId/leave` | Any project member. A real `ProjectMember` row is required, so the workspace bypass does not apply |
 
 - On the member routes, `:projectId` leads the target segment, because the target is an attribute of that project.
 - `PUT /user/project/update/:projectId` replaces the project. The body carries both fields:
     - `name` is required, 1 to 150 characters.
     - `description` is required and nullable, up to 500 characters. `null` clears it.
-- The list routes take `search` and `orderBy` query params. `orderBy` is `field:direction`, repeatable, and each route's request schema validates it against that route's allow-list, so an unlisted field answers a validation error (422, `50300`). The allow-list also rides in the response metadata as `availableOrderBy`.
+- The list routes take `search` and `orderBy` query params. `orderBy` is a single `field:direction` value, and each route's request schema validates it against that route's allow-list, so an unlisted field answers a validation error (422, `50300`). The allow-list also rides in the response metadata as `availableOrderBy`.
 
 ### Admin Scope
 
@@ -161,7 +161,7 @@ Each guard reads what the guards that run earlier stored and never re-fetches. W
 
 | Empty store      | Exception                              | Status       |
 | ---------------- | -------------------------------------- | ------------ |
-| user             | `UserGuardMissingException`            | 401, `51027` |
+| user             | `UserGuardMissingException`            | 401, `51023` |
 | workspace        | `WorkspaceGuardMissingException`       | 403, `51622` |
 | workspace member | `WorkspaceMemberGuardMissingException` | 403, `51623` |
 | project          | `ProjectGuardMissingException`         | 403, `51708` |
@@ -177,13 +177,14 @@ The guards:
     - A malformed id, a soft-deleted project, and a project belonging to a different workspace all collapse into the same `ProjectNotFoundException` (404, `51700`).
     - Cross-workspace probing therefore cannot distinguish "not yours" from "does not exist".
     - A route with no `:projectId` path param answers `RequestContextMissingException` (500, `50304`).
-- **`@ProjectMemberProtected()`** with no arguments demands a real `ProjectMember` row and has no owner bypass.
-- **`@ProjectMemberProtected(...roles)`** enforces the roles and **lets a workspace `owner` through without a `ProjectMember` row**. That bypass is recorded under `ProjectWorkspaceOwnerStoreKey`, which the peer rules below read.
+- **`@ProjectMemberProtected()`** with no arguments demands a real `ProjectMember` row and has no workspace bypass.
+- **`@ProjectMemberProtected(...roles)`** enforces the roles and **lets a workspace `owner` or `admin` through without a `ProjectMember` row**. The peer rules below read the same bypass from the caller's workspace member role.
 
 Workspace roles and project access:
 
-- A workspace `admin` does **not** inherit project access. Only `owner` bypasses.
-- Workspace `admin` does gate project `create` and `delete`, which are workspace-level operations rather than project-level ones.
+- A workspace `owner` or `admin` bypasses the project role check (`ProjectBypassRoles`).
+- A workspace `member` or `viewer` needs a `ProjectMember` row with an allowed role.
+- Workspace `admin` also gates project `create` and `delete`, which are workspace-level operations rather than project-level ones.
 
 ### Guards and Decorators
 
@@ -207,7 +208,7 @@ Workspace roles and project access:
 **Method decorator**. Stack it above `@ProjectProtected()`. The two argument forms bind **different** guards, and the difference is the point:
 
 - **No arguments** applies `ProjectMemberGuard` alone, storing the row under `ProjectMemberStoreKey`.
-    - An empty user store throws `UserGuardMissingException` (401, `51027`).
+    - An empty user store throws `UserGuardMissingException` (401, `51023`).
     - An empty project store throws `ProjectGuardMissingException` (403, `51708`).
     - No row throws `ProjectMemberForbiddenException` (403, `51701`).
     - This is the form used by `member leave`, which has nothing to remove without a row.
@@ -220,7 +221,7 @@ Workspace roles and project access:
 Because the role form does not bind `ProjectMemberGuard`:
 
 - Nothing is stored under `ProjectMemberStoreKey` on a role-gated route.
-- `@ProjectMemberCurrent()` throws there for every caller, the workspace owner included.
+- `@ProjectMemberCurrent()` throws there for every caller, a workspace `owner` or `admin` included.
 - That decorator belongs only on a route using the role-less form.
 
 #### `ProjectCurrent()` / `ProjectMemberCurrent()`
@@ -250,16 +251,15 @@ The store readers: [Security and Middleware][ref-doc-security-and-middleware].
 
 - **Creation always generates the slug.**
     - `ProjectCreateRequestDto` carries no slug field.
-    - `ProjectDomain.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength`, and passes them to `ProjectRepository.create`, which walks them.
-    - Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
-- `ProjectDomain.assertSlugAllowed` validates a slug sent to `update/:projectId/slug`.
-    - A slug over `project.slugMaxLength`, or failing `project.slugRegex`, throws `ProjectSlugInvalidException` (400, `51707`).
-    - A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
+    - `ProjectDomain.createProject` takes `project.slugMaxAttempts` (5) candidates from `ProjectUtil.drawSlugCandidates`, each `project.slugPrefix` plus random characters up to `slugMaxLength`, and passes them to `ProjectRepository.create`, which walks them.
+    - Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path validates a client-sent slug.
+- `ProjectDomain.updateProjectSlug` validates a slug sent to `update/:projectId/slug`.
+    - A slug over `project.slugMaxLength`, or failing `project.slugRegex` (`ProjectUtil.isSlugAllowed`), throws `ProjectSlugInvalidException` (400, `51707`).
+    - A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
+    - Any other error is wrapped in `AppUnknownException`.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
-- `existsBySlugInWorkspace`, the check behind slug update, counts holders other than the project itself across **all** rows in the workspace, soft-deleted ones included.
     - The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug.
-    - The check therefore agrees with the index.
-- `createProject` prepares `projectCreated`, then calls `ProjectRepository.create(workspaceId, dto, slugCandidates)`.
+- `ProjectHttpService.createProject` prepares `projectCreated`, then `ProjectDomain.createProject` calls `ProjectRepository.create(workspaceId, create, slugCandidates)`.
     - The repository runs one `client.project.create` per candidate with no transaction.
     - A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate.
     - The activity log is staged once, after the create resolves, so a collision stages nothing.
@@ -272,7 +272,7 @@ The store readers: [Security and Middleware][ref-doc-security-and-middleware].
 Every project member is already a workspace member.
 
 - `ProjectMemberHttpService.assignMember` resolves the target's `WorkspaceMember` row through `WorkspaceMemberDomain.getOneByWorkspaceAndUser`.
-- `ProjectMemberDomain.assignMember` applies the peer rule, then throws `WorkspaceMemberNotFoundException` (404, `51606`) when there is no row in the project's workspace.
+- `ProjectMemberDomain.assignMember` applies the peer rule, then throws `WorkspaceMemberNotFoundException` (404, `51606`) when there is no row, or the row belongs to another workspace.
 - That check runs at assign time only.
 
 | Operation | Rules |
@@ -282,17 +282,17 @@ Every project member is already a workspace member.
 | Remove | Peer rule on the target's role. Removing yourself throws `ProjectMemberPeerForbiddenException` (403, `51703`); use leave instead. The row is hard-deleted |
 | Leave | No peer or role check. The caller's own row is hard-deleted |
 
-**Peer rule.** `assertProjectMemberPeerAllowed` throws `ProjectMemberPeerForbiddenException` (403, `51703`) when the actor is not the workspace owner and any role involved in the operation is `admin`.
+**Peer rule.** `ProjectMemberDomain.assertPeerAllowed` throws `ProjectMemberPeerForbiddenException` (403, `51703`) when the actor has no workspace bypass and any role involved in the operation is `admin`.
 
 - A project `admin` can therefore manage `member` and `viewer` rows.
 - A project `admin` can neither create another `admin` nor act on an existing one.
-- Only the workspace owner can.
+- Only a workspace `owner` or `admin` can.
 
 **There is no last-admin protection on leave.**
 
 - Nothing counts remaining admins, so the last project `admin` can leave.
 - The project can be left with no members at all.
-- The workspace owner still reaches it through the bypass.
+- A workspace `owner` or `admin` still reaches it through the bypass.
 
 Each membership change is a single write on `ProjectMemberRepository` (`create`, `updateRole`, `removeMember`) with no transaction.
 
@@ -315,15 +315,16 @@ Its activity rows are prepared before the write and staged after it.
 
 ## Soft Delete
 
-`ProjectDomain.softDeleteProject`:
+`ProjectHttpService.softDeleteProject`:
 
 1. Prepares `projectDeleted`.
-2. Calls `ProjectRepository.softDelete`, which runs `client.project.softDelete` with no transaction.
-    - It sets `deletedAt`.
-    - It stamps `deletedBy` and `updatedBy` from the caller.
-3. Stages the activity log.
+2. Opens one transaction that:
+    - calls `ProjectDomain.softDeleteProjectInTx`, which sets `deletedAt` and stamps `deletedBy` and `updatedBy` from the caller on a still-active project
+    - calls `WorkspaceInviteDomain.clearProjectInTx`, which clears the project and role from the workspace's pending invites
+3. Stages the activity log after the commit.
 
-**It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
+- A project that is already deleted, or a write conflict on the transaction, answers `ProjectNotFoundException` (404, `51700`).
+- **`ProjectMember` rows are left as they are**, and the slug stays occupied.
 
 After deletion:
 
@@ -331,7 +332,7 @@ After deletion:
 - The admin routes still return it because they apply no active filter.
 - There is no restore and no hard delete.
 
-Deleting the **workspace** soft-deletes its still-active projects in the same transaction:
+Deleting the **workspace** soft-deletes its still-active projects in the same transaction (`ProjectDomain.softDeleteByWorkspaceInTx`):
 
 - Each project gets the workspace's `deletedAt`.
 - Each project's `deletedBy` is set to the caller.
@@ -362,7 +363,7 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 | `notFound` | `51700` | 404 | Unknown, soft-deleted, or out-of-workspace project |
 | `memberForbidden` | `51701` | 403 | Caller holds no `ProjectMember` row |
 | `roleForbidden` | `51702` | 403 | Caller's project role is not allowed here |
-| `memberPeerForbidden` | `51703` | 403 | Operation involves an `admin` and the actor is not the workspace owner, or self-removal |
+| `memberPeerForbidden` | `51703` | 403 | Operation involves an `admin` and the actor has no workspace bypass, or self-removal |
 | `memberNotFound` | `51704` | 404 | Target member row does not exist in this project |
 | `memberAlreadyAssigned` | `51705` | 400 | User already belongs to the project |
 | `slugAlreadyExists` | `51706` | 400 | Slug already taken in this workspace |

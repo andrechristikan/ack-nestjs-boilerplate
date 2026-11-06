@@ -467,6 +467,26 @@ describe('DeviceDomain', () => {
         });
     });
 
+    describe('getOtherOwnershipIdsByDeviceInTx', () => {
+        it("reads the other users' ownership ids of the device on the caller transaction", async () => {
+            const ids = ['device-ownership-2', 'device-ownership-3'];
+            deviceOwnershipRepository.findOtherIdsByDeviceInTx.mockResolvedValue(
+                ids
+            );
+
+            const result = await domain.getOtherOwnershipIdsByDeviceInTx(
+                tx,
+                'device-1',
+                'user-1'
+            );
+
+            expect(
+                deviceOwnershipRepository.findOtherIdsByDeviceInTx
+            ).toHaveBeenCalledWith(tx, 'device-1', 'user-1');
+            expect(result).toEqual(ids);
+        });
+    });
+
     describe('clearNotificationInTx', () => {
         it('clears the notification token on the live ownership', async () => {
             deviceOwnershipRepository.clearNotificationInTx.mockResolvedValue(

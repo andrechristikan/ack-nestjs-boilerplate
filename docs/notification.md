@@ -60,19 +60,19 @@ Defined in `EnumNotificationType`:
 
 | Type | Description |
 | --- | --- |
-| `userActivity` | General activity events (welcome, email verified, etc.) |
-| `securityAlert` | Security-sensitive events (new device login, password change, 2FA reset) |
-| `marketing` | Promotional and marketing messages |
-| `transactional` | System-driven transactional events (e.g., term policy published) |
+| `userActivity` | General activity events (welcome, verification, workspace invite and join request) |
+| `securityAlert` | Security-sensitive events (new device login, password change, password reset, temporary password, 2FA reset) |
+| `marketing` | Promotional messages. A user setting can address the type, and no notification kind uses it |
+| `transactional` | System-driven transactional events (term policy published, term policy accepted) |
 
 Defined in `EnumNotificationPriority`:
 
-| Priority   | Description                                 |
-| ---------- | ------------------------------------------- |
-| `low`      | Low-priority, non-urgent notifications      |
-| `normal`   | Standard informational notifications        |
-| `high`     | Important events requiring prompt attention |
-| `critical` | Security or time-sensitive events           |
+| Priority | Description |
+| --- | --- |
+| `low` | Non-urgent notifications; no kind uses it |
+| `normal` | Standard informational notifications (welcome, term policy, workspace) |
+| `high` | Important events requiring prompt attention (`verificationEmail`) |
+| `critical` | Security events (password, 2FA, new device login) |
 
 ## Notification Channels
 
@@ -112,15 +112,17 @@ NotificationPushQueue   → EnumQueue.notificationPush   → NotificationPushPro
 
 ### Recipient Snapshot
 
-The producer takes the delivery decision once, at enqueue, and the job carries it. `NotificationRecipientDomain.getRecipient(user, kind)` builds the snapshot (`INotificationRecipient`):
+The producer takes the delivery decision once, at enqueue, and the job carries it. The HTTP service that raises the event builds the snapshot (`INotificationRecipient`) of an existing user with `NotificationDomain.getRecipient(user, kind)`, which shapes it with `NotificationUtil.mapRecipient(user, kind, tokens, settings)`:
 
 - `userId`, `email`, and `username` of the recipient
-- `notificationTokens`: the distinct device tokens of the user's ownerships that are not revoked and whose device holds a token, read through `DeviceDomain.getOwnershipsWithNotificationToken()`
+- `notificationTokens`: the distinct device tokens of the user's ownerships that are not revoked, hold a token, and have at least one live session (not revoked, `expiredAt` after now), read through `DeviceDomain.getNotificationTokens(userId)`
 - `channels`: the channels left for the kind after the user's settings, from `NotificationUtil.resolveChannels`
 
-The domain reads the user's settings and the device tokens concurrently.
+`getRecipient` reads the device tokens and the user's settings (`NotificationDomain.getListUserSetting(userId)`) concurrently in one `Promise.all`. `NotificationDomainModule` imports `DeviceDomainModule` for the tokens, so the user, workspace, and term-policy HTTP modules import no device module for it.
 
-A user the write has just created has no device token and no settings row. `NotificationRecipientDomain.buildNewUserRecipient(user, kind)` builds the snapshot from the values the write stored, with no read:
+The callers are the user auth, password, two-factor, and verification HTTP services, the workspace invite and join-request HTTP services, and the term-policy acceptance HTTP service.
+
+A user the write has just created has no device token and no settings row. The service skips `getRecipient` and calls `mapRecipient(created, kind, [], [])` with the values the write stored and no read:
 
 - `userId`, `email`, and `username` come from the written user.
 - `notificationTokens` is empty.
@@ -153,7 +155,7 @@ The email and push jobs that a snapshot job enqueues carry a `send` object with 
 
 #### How the snapshot travels
 
-1. The domain that raises the event reads the snapshot before the transaction, so a failed read writes nothing and no read sits between the commit and the enqueue. A welcome snapshot for a user the transaction creates is built from the written values instead (`buildNewUserRecipient`). The domain passes the snapshot to the queue class.
+1. The HTTP service that raises the event reads the snapshot before the transaction, so a failed read writes nothing and no read sits between the commit and the enqueue. A welcome snapshot for a user the transaction creates is built from the written values instead. The service passes the snapshot to the queue class.
 2. `NotificationQueue` seals the email address and every device token (see [Payload Encryption](#payload-encryption)) and sets the result as `recipient` in the job data.
 3. The orchestration domain reads `recipient.channels`, `username`, and the sealed fields from the job. It reads no user, setting, or device.
 
@@ -254,7 +256,7 @@ A request adds these jobs after its transaction commits, through `QueueBase.addS
 | `changePassword` | User changed their password |
 | `verifiedEmail` | Email address verified |
 | `verifiedMobileNumber` | Mobile number verified |
-| `verificationEmail` | Standalone email verification |
+| `verificationEmail` | Standalone email verification, queued by the resend-verification route and by a credential login on an unverified account with a matching password |
 | `forgotPassword` | Forgot password request |
 | `resetPassword` | Password was reset |
 | `newDeviceLogin` | Login detected from a new/unknown device |
@@ -363,7 +365,7 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 
 - `NotificationPushSecurityDomain` for the forgot-password, password, two-factor and new-device messages
 - `NotificationPushWorkspaceDomain` for the invite and join-request messages
-- `NotificationPushMaintenanceDomain` for the two token-cleanup jobs
+- `NotificationPushProcessorService` itself, through `DeviceDomain`, for the two token-cleanup jobs
 
 The push channel domain opens the sealed device tokens just before the FCM call (see [Payload Encryption](#payload-encryption)).
 
@@ -423,14 +425,14 @@ Who opens:
 
 - An email channel domain opens the address and the sealed link or password right before `AwsSESService.send()` or `sendBulk()`. The value goes into the send call and the template data only.
 - A push channel domain opens the tokens right before `FirebaseService.sendMulticast()`. It keeps the failure and pending tokens sealed in the job data, and opens the failure tokens again to store them on the delivery record.
-- `NotificationPushMaintenanceDomain` opens the failure tokens of a `cleanupTokens` job before it clears them on the devices.
+- `NotificationPushProcessorService.processCleanupTokens` opens the failure tokens of a `cleanupTokens` job before it clears them on the devices.
 
 A payload that fails to open (a rotated key, a tampered value, the wrong recipient) raises `HelperDecryptFailedException` (`52200`):
 
 - Inside `handle`, `NotificationEmailProcessor` and `NotificationPushProcessor` map that to a BullMQ `UnrecoverableError`, so the job fails at once without retries.
 - `NotificationEmailProcessor` maps `NotificationEmailDeliveryUnknownException` the same way, keeping the exception as the `cause`.
 - `QueueProcessorBase.onFailed` counts an `UnrecoverableError` as the last attempt and reports it to Sentry.
-- Every other failure fails the job and is retried. A `QueueException`, an `AppBaseException`, or an `UnrecoverableError` passes through, and anything else is wrapped in `AppUnknownException`.
+- Every other failure fails the job and is retried. A `QueueException`, an `AppBaseException`, or an `UnrecoverableError` passes through, and anything else is wrapped in a fatal `QueueException` (`queue.error.unknown`) by `throwUnknownException`.
 
 ### Job Payloads
 
@@ -520,11 +522,20 @@ sequenceDiagram
 
 **Publish:**
 
-1. `TermPolicyDomain` reads the policy. A `published` policy answers `400` (`statusInvalid`) and enqueues nothing.
-2. A `draft` policy publishes: the contents are copied to the public bucket, then one transaction runs an `updateMany` that matches the policy only while its status is `draft`, rewrites the contents, and resets the acceptances of the policy type.
-3. Publish enqueues the job through `NotificationQueue.sendPublishTermPolicy`, with the `jobId` `publishTermPolicy-{termPolicyId}` (`notification.jobId.termPolicyPublishPattern`).
+1. `TermPolicyDomain.publishByAdmin` reads the policy. A missing policy answers `404`. A policy that is not `draft` answers `400` (`statusInvalid`) and enqueues nothing.
+2. It checks the stored contents before it writes:
+    - Contents that do not parse answer `500` (`contentInvalid`).
+    - An empty list answers `400` (`contentEmpty`).
+    - An unconfigured S3 answers `404` (`AwsS3NotConfiguredException`).
+3. One transaction runs:
+    - An `updateMany` that matches the policy only while its status is `draft` sets `published`, stamps `publishedAt`, and stores the public content entries.
+    - Every published policy of the same type with a lower version becomes `archived`.
+    - A published policy of the same type with a higher version rolls the transaction back with `statusInvalid`.
+4. After the commit, `TermPolicyHttpService` enqueues the copy of the content files to the public bucket (`TermPolicyQueue.copyContent`) and the publication email job through `NotificationQueue.sendPublishTermPolicy`, with the `jobId` `publishTermPolicy-{termPolicyId}` (`notification.jobId.termPolicyPublishPattern`).
 
-The enqueue is a plain `add`:
+Publishing resets no acceptance. A user's acceptance is one `TermPolicyUserAcceptance` record per policy version, and the latest published version of a type is pending for a user until that record exists.
+
+The enqueue of the email job is a side-effect `add`:
 
 - BullMQ ignores an `add` while a job holds the `jobId`. A completed job keeps its id for `queue.job.removeOnCompleteAgeInSeconds` (7 days) and a failed job for `queue.job.removeOnFailAgeInSeconds` (14 days).
 - `NotificationQueue` reads no job state, retries nothing, removes nothing, and returns no result.
@@ -535,9 +546,7 @@ What the publish guarantees:
 - The losing publish answers `400` (`statusInvalid`) in both cases:
     - when its `updateMany` runs after the winner commits.
     - when the two transactions overlap. MongoDB raises a write conflict (`P2034`), nothing retries it, and `TermPolicyDomain` maps `DatabaseWriteConflictException` to `TermPolicyStatusInvalidException` (see [Database][ref-doc-database]).
-- A write conflict from a concurrent user write during the acceptance reset gets the same answer: the policy stays `draft`, nothing is queued, and the admin publishes again.
-- A copy set that misses a language of the draft throws before the transaction. The request answers `500` and the policy stays `draft`, so a partial copy set never publishes.
-- A failed queue call after the commit is logged and reported, and the request answers success. The resend endpoint recovers it.
+- A failed queue call after the commit is logged and reported, and the request answers success. The resend endpoint recovers the email job.
 - The marker unique on `termPolicyId` and `userId` stops a duplicate `Notification` row and a second batch for one user.
 - A recipient is sent to at most once: an email job claims a marker before it sends (see the email job below).
 
@@ -610,7 +619,7 @@ When the job exhausts its attempts:
     - A missing status: unknown.
     - Any other status: failed.
 6. Sets `sentAt` on the sent markers, and clears `claimedAt` and `claimNonce` on the failed markers. Both writes match on the claim nonce and run together.
-    - When either write fails, the job throws `AppUnknownException` and BullMQ retries it. A marker not written stays claimed.
+    - When either write fails, the job throws `NotificationEmailDeliveryUnknownException` with the write error as its cause. A marker not written stays claimed.
 7. Throws a fatal `QueueException` when any recipient failed. BullMQ retries the job, and the retry claims the released markers.
 8. Throws `NotificationEmailDeliveryUnknownException` when any recipient is unknown and none failed.
 
@@ -642,11 +651,12 @@ On a failed or retried job:
 
 Push tokens (FCM device tokens) are part of the **Device module** (`src/modules/device`), not stored in the notification module directly.
 
-- `NotificationRecipientDomain` reads them through `DeviceDomain.getOwnershipsWithNotificationToken()`, which calls `DeviceOwnershipRepository.findTokensByUserId()`, when the producer builds the [Recipient Snapshot](#recipient-snapshot).
+- `NotificationDomain.getRecipient` reads them through `DeviceDomain.getNotificationTokens(userId)`, which calls `DeviceOwnershipRepository.findTokensByUserId()`, when the producer builds the [Recipient Snapshot](#recipient-snapshot).
 - The snapshot keeps the distinct tokens, and `NotificationQueue` seals them as `encryptedNotificationTokens`.
 - The orchestration domain places them on the push job as `send.encryptedNotificationTokens`.
 - The push channel domain opens them and sends to the tokens it receives on the job.
-- The lookup returns only device ownerships that are not revoked and whose device holds a token, so a revoked ownership never receives a push.
+- The lookup returns only device ownerships that are not revoked, hold a token, and have at least one live session (not revoked, `expiredAt` after now), so a revoked ownership or one with no live session never receives a push.
+- The `purgeLogins` job clears the token of each ownership left with no live session through `DeviceDomain.clearNotificationsWithoutLiveSession()`.
 
 For push token registration, revocation, and session-linking details, see the [Device documentation][ref-doc-device].
 
@@ -667,16 +677,16 @@ The invalid tokens go through three steps:
     - The job id is `{notificationId}-cleanupTokens`.
     - The payload is `{ userId, encryptedFailureTokens }`.
     - A send with no invalid token enqueues nothing.
-    - `NotificationPushMaintenanceDomain.processCleanupTokens()` handles it.
-    - It opens the sealed tokens and calls `DeviceDomain.cleanupNotificationTokens()`, which resolves the user's devices holding those tokens through `DeviceOwnershipRepository.findDeviceIdsByUserAndTokens()`.
-    - It clears `notificationToken` and `notificationProvider` on them through `DeviceRepository.clearTokens()`.
+    - `NotificationPushProcessorService.processCleanupTokens()` handles it.
+    - It opens the sealed tokens and calls `DeviceDomain.cleanupNotificationTokens()`.
+    - That clears `notificationToken` and `notificationProvider` on the user's device ownerships holding those tokens through `DeviceOwnershipRepository.clearTokens()`.
 3. Once no token is pending, opened and stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field), as plain tokens.
 
-Stale tokens are those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days). The recurring `cleanupStaleTokens` job registered at startup prunes them daily:
+Stale tokens are those whose device ownership has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days). The recurring `cleanupStaleTokens` job registered at startup prunes them daily:
 
-1. `NotificationPushMaintenanceDomain` reads that config value.
+1. `NotificationPushProcessorService.processCleanupStaleTokens` reads that config value.
 2. It passes the value to `DeviceDomain.cleanupStaleNotificationTokens(thresholdInMs)`.
-3. That calls `DeviceRepository.clearStaleTokens(thresholdInMs)`, which clears `notificationToken` and `notificationProvider` on every device past the threshold.
+3. That calls `DeviceOwnershipRepository.clearStaleTokens(thresholdInMs)`, which clears `notificationToken` and `notificationProvider` on every ownership past the threshold.
 
 ```mermaid
 graph TD
@@ -688,7 +698,7 @@ graph TD
     B -->|Yes| C[Use the merged failureTokens]
     C --> D[Enqueue cleanupTokens job]
     C --> E[Store failureTokens <br/> on delivery record]
-    D --> J[DeviceRepository clears <br/> invalid tokens]
+    D --> J[DeviceOwnershipRepository clears <br/> invalid tokens]
     B -->|No| F[Record sentAt only]
 
     G[Module Init] --> H[Register daily <br/> cleanupStaleTokens job]
@@ -830,7 +840,7 @@ The skip returns a message rather than throwing, so a push job on a deployment w
 The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.send()` or `sendBulk()`, done.
 
 - With SES unconfigured, both calls log a warning and return an empty output, so the job completes and no email leaves.
-- A send failure of a per-recipient email job is logged and fails the job, so it retries under the queue's own retry policy. The processor wraps an untyped error in `AppUnknownException`.
+- A send failure of a per-recipient email job is logged and fails the job, so it retries under the queue's own retry policy. `QueueProcessorBase.throwUnknownException` wraps an untyped error in a fatal `QueueException`.
 - A term-policy bulk batch is the exception: a throwing `sendBulk()` is an unknown outcome and is not retried (see [Term-Policy Publication Email](#term-policy-publication-email)).
 - A field that fails to open ends the job without retries (see [Payload Encryption](#payload-encryption)).
 
@@ -871,11 +881,26 @@ Under router prefix `/shared` and controller path `/notification` (plus global `
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/shared/notification/list` | List the caller's notifications |
-| `GET` | `/shared/notification/setting/list` | List the caller's notification settings |
+| `GET` | `/shared/notification/list` | List the caller's in-app notifications |
+| `GET` | `/shared/notification/setting/list` | List the caller's editable notification settings |
 | `PATCH` | `/shared/notification/update/:notificationId/read` | Mark one notification read |
-| `POST` | `/shared/notification/update/read` | Mark all notifications read |
+| `PATCH` | `/shared/notification/read-all` | Mark all visible unread notifications read |
 | `PUT` | `/shared/notification/setting/update` | Update a type+channel setting |
+
+The list and the mark-all-read route share one visibility filter:
+
+- A notification is visible when it has an `inApp` delivery row.
+- A notification whose type the user muted for `inApp` (an inactive `inApp` setting for that type) is hidden from the list and left unread by mark-all-read.
+- `PATCH /shared/notification/read-all` answers the number of rows it marked as the `count` message property.
+
+`PATCH /shared/notification/update/:notificationId/read` reads the row first:
+
+- A row that does not exist or belongs to another user answers `NotificationNotFoundException` (404, `51200`).
+- A row already read, or one a concurrent request marked first, answers `NotificationAlreadyReadException` (400, `51201`).
+
+The setting list returns only the rows whose type and channel `NotificationSettingContract` allows.
+
+`PUT /shared/notification/setting/update` answers `NotificationSettingInvalidException` (400, `51204`) when the user has no row for the type and channel.
 
 The notification list is cursor-paginated:
 

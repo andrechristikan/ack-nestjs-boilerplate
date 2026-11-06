@@ -15,7 +15,7 @@ Transactional email through AWS SES: Handlebars templates, the sync command, and
 - [Third Party Integration][ref-doc-third-party]: SES credentials and the unconfigured state
 - [Environment Documentation][ref-doc-environment]: `AWS_SES_*` and `HOME_*` / support email vars
 - [Configuration Documentation][ref-doc-configuration]: Email and home config keys
-- [Term Policy Documentation][ref-doc-term-policy]: Policy HTML on S3 (`templateTermPolicy`), not SES
+- [Term Policy Documentation][ref-doc-term-policy]: Policy HTML on S3 (seeded by `termPolicy`), not SES
 
 ## Table of Contents
 
@@ -70,10 +70,10 @@ pnpm migration templateEmailNotification --type seed
 pnpm migration templateEmailNotification --type remove
 ```
 
-- On `seed`, the command reads every template from SES through the owning domain's `emailGet*`.
-    - It runs `emailImport*` only for the ones missing (for example `NotificationTemplateAccountDomain.emailImportWelcome()`).
+- On `seed`, the command reads every template from SES through the owning domain's `emailGet(process)`.
+    - It runs `emailImport(process)` only for the ones missing (for example `NotificationTemplateAccountDomain.emailImport(EnumNotificationProcess.welcome)`).
     - A template already in SES stays as it is.
-- On `remove`, the matching `emailDelete*` runs for all of them.
+- On `remove`, the matching `emailDelete(process)` runs for all of them.
 - When SES is unconfigured, `seed` logs a warning and skips.
 - A failed SES call throws, and the command exits with code `1` (see [Logger Documentation][ref-doc-logger]).
 

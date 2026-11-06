@@ -7,7 +7,7 @@ Analytic lives at `src/modules/analytic`.
 Analytic exposes read-only HTTP metrics:
 
 - Platform admins get dashboard numbers, anomaly summaries, and fraud reports across the whole platform.
-- Authenticated workspace members get metrics for the workspace named in `x-workspace-id`.
+- Workspace admins get metrics for the workspace named in `x-workspace-id`.
 
 Each request aggregates from owner-module data, then Redis `AnalyticCache` stores the result under keys and TTLs from `src/configs/analytic.config.ts`.
 
@@ -30,7 +30,7 @@ Status codes for this module live in the `52100` block ([Status Codes](status-co
 - [Authorization][ref-doc-authorization]: `EnumPolicySubject.analytic` on admin routes
 - [Cache][ref-doc-cache]: `CacheMainProvider` and feature cache classes
 - [Configuration][ref-doc-configuration]: `analytic.config.ts`
-- [Activity Log][ref-doc-activity-log]: actions Analytic counts, including `userLoginFailed` and `userReachMaxPasswordAttempt`
+- [Activity Log][ref-doc-activity-log]: actions Analytic counts, including `userLoginFailed` and the max-attempt actions
 - [Workspace][ref-doc-workspace]: `x-workspace-id` and workspace member roles
 - [Pagination][ref-doc-pagination]: offset list envelopes
 - [Response][ref-doc-response]: response envelope and schema stripping
@@ -92,7 +92,7 @@ Admin scope carries no workspace header.
 - `@FeatureFlagProtected('workspace')`
 - `@UserProtected`
 - `@WorkspaceProtected`
-- `@WorkspaceMemberProtected` (with role where noted)
+- `@WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)`
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
@@ -247,7 +247,7 @@ Workspace and project counts cover live rows only:
 
 | Method | Path | Who | Returns |
 | --- | --- | --- | --- |
-| `GET` | `/user/analytic/workspace/summary` | Any workspace member | Workspace summary (optional date range) |
+| `GET` | `/user/analytic/workspace/summary` | Workspace `admin` (owner satisfies every role check) | Workspace summary (optional date range) |
 | `GET` | `/user/analytic/workspace/invite-funnel` | Workspace `admin` (owner satisfies every role check) | Invite status counts for a required date range (`{ statuses: [...] }`) |
 | `GET` | `/user/analytic/workspace/join-outcomes` | Workspace `admin` (owner satisfies every role check) | Join-request status counts for a required date range (`{ statuses: [...] }`) |
 | `GET` | `/user/analytic/workspace/member-roles` | Workspace `admin` (owner satisfies every role check) | Member role counts (`{ roles: [...] }`) |
@@ -281,7 +281,7 @@ A signal that the database cannot group and page in one query:
 
 1. Computes its rows.
 2. Slices `[skip, skip + limit)`.
-3. Builds the envelope with `PaginationService.offsetPage`.
+3. Builds the envelope with `PaginationOffsetUtil.page`.
 
 `page` is 1-based and `totalPage` counts the whole computed set.
 
@@ -318,10 +318,10 @@ Default TTLs in `analytic.config.ts`:
 
 | Concern          | TTL |
 | ---------------- | --- |
-| Dashboard metric | 1h  |
-| Anomaly summary  | 5m  |
-| Fraud summary    | 5m  |
-| Fraud risk score | 10m |
+| Dashboard metric | 30m |
+| Anomaly summary  | 15m |
+| Fraud summary    | 15m |
+| Fraud risk score | 15m |
 
 The same config file holds anomaly and fraud detection thresholds:
 
@@ -332,8 +332,11 @@ The same config file holds anomaly and fraud detection thresholds:
 Concurrency:
 
 - `analytic.fraud.concurrency` (10) is the chunk size for the fraud detectors that look up one row per flagged user. Each chunk runs concurrently and the chunks run one after another.
-- `GET /fraud/risk-scores` reads the shared fingerprints once, takes the first 100 users near lockout, and scores them in chunks of that size.
-    - It scores each listed user from the near-lockout row it already read and does not read the user again, so a user deleted mid-request is still scored.
+- `GET /fraud/risk-scores` scores a bounded candidate set:
+    1. It collects the user ids the fraud and anomaly signals flag, plus the users near lockout.
+    2. It keeps the first `analytic.fraud.riskScore.candidateLimit` (100) ids and loads those users.
+    3. It scores them in chunks of `analytic.fraud.concurrency`.
+    4. It drops scores below the optional `minScore` query value and sorts the rest by score, highest first.
 - A score already cached for a user is reused.
 - `GET /fraud/risk-score/:userId` reads the user first and answers `UserNotFoundException` for a missing one.
 
@@ -341,7 +344,8 @@ Each required-range route binds `AnalyticDateRangeRequestDto` on `@Query({ schem
 
 Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRange`):
 
-- A required range with a missing bound or `startDate >= endDate` raises `AnalyticInvalidDateRangeException`.
+- A required range with `startDate >= endDate`, or a span above `analytic.maxWindowInMs` (90 days), raises `AnalyticInvalidDateRangeException`.
+- A `windowMs` above `analytic.maxWindowInMs` raises the same exception.
 - An optional range accepts both bounds together or neither.
 
 ## Authorization
@@ -368,24 +372,25 @@ Several dashboard, anomaly, and fraud metrics count or list `ActivityLog` rows b
 
 Credential-failure rows:
 
-- `UserAuthDomain` calls both writers.
+- `UserAuthHttpService` stages them.
 - The rows are written although the request answers an error, because the error path flushes every staged activity log.
 
 By cause:
 
-- Wrong password: `userLoginFailed` through `UserLoginDomain.recordLoginFailed`
-- Password-attempt limit: `userRevokeAllSessions` and `userReachMaxPasswordAttempt` through `UserPasswordDomain.reachMaxPasswordAttempt`
+- Wrong password: `userLoginFailed`, staged by `UserAuthHttpService.loginCredential`.
+- Spent password-attempt budget: `userRevokeAllSessions` and `userReachMaxPasswordAttempt` (`UserUtil.buildPasswordLockoutStages`).
+- Spent two-factor-attempt budget: `userRevokeAllSessions` and `userReachMaxTwoFactorAttempt` (`UserUtil.buildTwoFactorLockoutStages`).
 
 How Analytic reads them:
 
-- `UserLoginAnalyticDomain.getLockoutMetrics` (`GET /admin/analytic/auth/lockout`) counts `userLoginFailed` and `userReachMaxPasswordAttempt`
-- `UserLoginAnalyticDomain.getFailedLoginActivityLogs` lists those two for the credential-stuffing signal
+- `AnalyticDashboardDomain` counts `userLoginFailed` as `failed` and the two max-attempt actions as `maxAttempt` for `GET /admin/analytic/auth/lockout`.
+- `AnalyticFraudDomain` groups `userLoginFailed` and the two max-attempt actions by IP for the credential-stuffing signal.
 
 An action one user takes on another writes an actor row and a target row ([Activity Log](activity-log.md#actor-and-target-rows)). The metrics that read those actions count one side of each pair:
 
 | Metric | Actions counted | Route |
 | --- | --- | --- |
-| `authSessionRevoke` | `userRevokeSession`, `userRevokeAllSessions`, `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/auth/session-revoke` |
+| `authSessionRevoke` | `userRevokeSession`, `userRevokeAllSessions`, `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin`, `userRevokeSessionByDeviceLogin` | `GET /admin/analytic/auth/session-revoke` |
 | Session after admin revoke (`computeSessionAfterAdmin`) | `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/fraud/session-after-admin` and `/list` |
 | Workspace activity volume | Every action in the workspace except the ones listed in `ActivityLogWorkspaceVolumeContract` | `GET /admin/analytic/workspaces/activity-volume`, `GET /user/analytic/workspace/summary`, `GET /user/analytic/workspace/activity` |
 
@@ -395,6 +400,7 @@ An action one user takes on another writes an actor row and a target row ([Activ
 - Every account self-deletion writes `userRevokeAllSessions`, including one that revoked no session. Each self-deletion adds one to this metric and one to the `userDeleteSelf` count.
 - Every credential lockout writes `userRevokeAllSessions` the same way, so each lockout also adds one to this metric.
 - An admin revoking a session of their own account writes only `adminSessionRevoke`, which this metric does not count.
+- A sign-in on a device that revokes the sessions another user holds there writes one `userRevokeSessionByDeviceLogin` target row for each affected user, and each adds one to this metric.
 
 Session after admin revoke:
 
@@ -404,7 +410,7 @@ Session after admin revoke:
 
 Workspace activity volume:
 
-- `ActivityLogWorkspaceVolumeContract` (owned by the activity-log module) lists the eleven workspace and project target actions.
+- `ActivityLogWorkspaceVolumeContract` (owned by the activity-log module) lists the twelve workspace and project target actions.
 - `workspaceCreatedByAdmin` stays counted, because the admin's row for that action carries no workspace.
 
 <!-- REFERENCES -->

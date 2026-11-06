@@ -13,7 +13,7 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
 - [Status Codes Documentation][ref-doc-status-codes]: Application `statusCode` catalog by module
 - [Language Message Documentation][ref-doc-message]: Error message i18n
 - [Logger Documentation][ref-doc-logger]: Error logging and Sentry
-- [Doc Documentation][ref-doc-doc]: OpenAPI error kits. `@Doc`, the `*Protected` and auth decorators, `@ResponsePagination`, `FileUpload*`, and `@ResponseFile` each publish their own kit. A module-flow domain exception appears only when an endpoint opts in with `@DocErrors`
+- [Doc Documentation][ref-doc-doc]: OpenAPI error kits. `@Doc`, the `*Protected` and auth decorators, `@ResponsePagination`, `FileUpload*`, and `@ResponseFile` each publish their own kit. A module-flow domain exception appears only through `@Doc({ errors })`, which no controller passes
 
 ## Table of Contents
 
@@ -110,7 +110,7 @@ All errors are formatted into `ResponseErrorDto`:
 | `module` | `string` | Yes | Owning module. Domain errors: module name (e.g. `'user'`). Framework HTTP errors: `'http'`. General/unknown: `'app'` |
 | `message` | `string` | Yes | Localized message from [Message System][ref-doc-message] |
 | `metadata` | `ResponseMetadataDto` | Yes | Request/response metadata |
-| `data` | `unknown` | No | Additional error context |
+| `data` | `unknown` | No | Additional error context. `AppHttpFilter` copies it from the `HttpException` response object; the other filters omit it |
 | `errors` | `array` | No | Validation error details (validation exceptions only) |
 
 ## Response Metadata
@@ -159,7 +159,7 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 
 A rate-limited 429 also carries `Retry-After`, in seconds.
 
-- Whichever limiter blocks the request sets it (`RequestThrottleDefaultGuard`, `RequestThrottleRouteGuard`, or `RequestThrottleUserInterceptor`), before the exception reaches any filter.
+- Whichever limiter blocks the request sets it (`RequestThrottleDefaultGuard`, `RequestThrottleRouteGuard`, or `RequestThrottleUserGuard`), before the exception reaches any filter.
 - The filter preserves it.
 
 See [Security and Middleware][ref-doc-security-and-middleware].
@@ -189,12 +189,12 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 | Prisma `P2034` write conflict | `DatabaseWriteConflictException` | `51801` | 409 |
 | Keyv Redis not-connected error | `RedisUnavailableException` | `52400` | 503 |
 
-- A JWT guard reads the session from Redis. A store error there reaches the filter wrapped in `AppUnknownException`. A not-connected error renders as `RedisUnavailableException` (503), and any other store error stays a 500.
+- `AuthJwtAccessStrategy` reads the login entry of the session from Redis; the refresh strategy reads no store. A store error there reaches the filter wrapped in `AppUnknownException`. A not-connected error renders as `RedisUnavailableException` (503), and any other store error stays a 500.
 - An unreachable JWKS endpoint, Google certificate fetch, or Apple key fetch during JWT or social-token verification throws `AuthProviderUnavailableException` (`50819`, 503) directly. A bad token answers 401.
 
 **Behavior**:
 
-- Reads `statusCode`, `httpStatus`, `messagePath`, `messageProperties`, `metadata`, and `data` from the resolved exception.
+- Reads `statusCode`, `statusCodeKey`, `module`, `httpStatus`, `messagePath`, `messageProperties`, and `metadata` from the resolved exception.
 - `messageProperties` and `metadata` are `null` when the exception carries none.
 - Resolves the localized message via the [Message System][ref-doc-message].
 - Merges `exception.metadata` into the response metadata.
@@ -417,7 +417,7 @@ try {
 **Classes an `instanceof` check names**:
 
 1. Domains check `AppBaseException`, which covers `AppUnknownException` and its subclasses.
-2. `QueueProcessorBase.process` logs the failure once at error level, then checks `QueueException`, `AppBaseException`, and BullMQ's `UnrecoverableError`, and wraps every other error in `AppUnknownException`. A processor that catches inside `handle` follows the same split.
+2. `QueueProcessorBase.process` logs the failure once at error level, then checks `QueueException`, `AppBaseException`, and BullMQ's `UnrecoverableError`, and passes every other error to `throwUnknownException`, which throws a fatal `QueueException` (`queue.error.unknown`) carrying the error as `rawError`. A processor that catches inside `handle` follows the same split.
 3. `ActivityLogInterceptor` checks `AppBaseException` and the framework `HttpException`, so a framework error keeps its own filter. It wraps every other error in `AppUnknownException`.
 4. A seed's own `catch` checks nothing. It wraps every caught error, an `AppBaseException` included, in `AppUnknownException` with a `description` naming the step (`Seeding roles failed`). The migration runner's `serviceErrorHandler` is a separate layer, described under [Runtime errors outside a request](#runtime-errors-outside-a-request).
 

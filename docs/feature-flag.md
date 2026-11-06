@@ -26,6 +26,7 @@ Feature Flag lives in `src/modules/feature-flag`.
 - [Targeting](#targeting)
 - [Rollout Percentage](#rollout-percentage)
 - [Caching](#caching)
+- [Routes](#routes)
 - [Restrictions](#restrictions)
 
 ## Features
@@ -156,20 +157,18 @@ See [Authorization Documentation][ref-doc-authorization] for the full stack.
 
 ### With FeatureFlagCache
 
-`FeatureFlagCache` is the cache-through reader, exported by `FeatureFlagDomainModule`. `UserAuthDomain` reads social sign-up metadata through it:
+`FeatureFlagDomain` is the read-through reader. `FeatureFlagCache` is the Redis store behind it, and both are exported by `FeatureFlagDomainModule`. `UserAuthHttpService` reads social sign-up metadata through the domain:
 
 ```typescript
-const featureFlag = await this.featureFlagCache.getMetadataByKeyAndCache<{
-    signUpAllowed: boolean;
-}>(
-    loginWith === EnumUserLoginWith.socialGoogle
-        ? 'loginWithGoogle'
-        : 'loginWithApple'
-);
+const featureFlag = await this.featureFlagDomain.getMetadataByKey<{
+    [EnumFeatureFlagMetadataKey.signUpAllowed]: boolean;
+}>(featureFlagKey);
 ```
 
-- `FeatureFlagDomain` reads through the same cache: `getByKeyAndCache` on evaluation, `deleteCacheByKey` after an admin update.
-- `FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain applies on update.
+- `FeatureFlagDomain.getByKey` returns the cached flag, else reads the database row and caches it (see [Caching](#caching)).
+- `FeatureFlagDomain.getMetadataByKey` returns the metadata of that flag, or `null` when the flag or its metadata is absent.
+- `FeatureFlagDomain` calls `FeatureFlagCache.deleteFeatureFlag` after an admin update.
+- `FeatureFlagUtil` sits beside it and holds `isMetadataValid`, the shape check the domain applies on a metadata update, and `isInRollout`.
 
 ## Metadata
 
@@ -193,9 +192,12 @@ Metadata on a single flag:
 - Arrays are homogeneous. A mixed array (`[1, 'a']`), a nested array, and `boolean[]` are rejected
 - An array value is data only, never a gate value. A nested-key gate (below) resolves to a boolean
 - Metadata keys are camelCase, matching `/^[a-z][a-zA-Z0-9]*$/`
-- Metadata keys cannot be added/removed (schema consistency)
-- A value is never empty: an empty string and an empty array are rejected, by the request schema and again by `FeatureFlagUtil.checkMetadataKey`
+- Metadata keys cannot be added or removed: an update must carry the same keys and value types as the stored metadata
+- A value is never empty: an empty string and an empty array are rejected
+    - On the update route the request schema rejects them first and answers a validation error (422, `50300`).
+    - `FeatureFlagUtil.isMetadataValid` also returns `false` for them, which the domain maps to 50602 (below). The route never reaches that check with an empty value.
 - Only values can be modified. On update, an array value cannot change element type (`string[]` to `number[]` is rejected)
+- A metadata update that passes the schema but breaks the key or type match, or targets a flag with no stored metadata, throws `FeatureFlagInvalidMetadataException` (400, `invalidMetadata`, 50602, `featureFlag.error.invalidMetadata`)
 
 **Metadata sub-key gating:**
 
@@ -282,6 +284,8 @@ Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 {
   keyPattern: 'FeatureFlag:{key}',
   cacheTtlInMs: ms('1h'),
+  leaseKeyPattern: 'FeatureFlag:Lease:{key}',
+  leaseTtlInMs: ms('10s'),
   anonymous: {
     idMaxLength: 100,
     idRegex: /^[a-zA-Z0-9-_]+$/
@@ -291,15 +295,31 @@ Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 
 **Cache operations:**
 
-- Cache on first read
-- Cache invalidation on updates
-- Key format: `FeatureFlag:{key}`
-- Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation.
+- Key format: `FeatureFlag:{key}`.
+- On a miss, `FeatureFlagDomain.getByKey` takes a read lease (`FeatureFlag:Lease:{key}`, `SET NX PX`, 10 seconds) before it reads the database row.
+- Only the reader that holds the lease writes the entry. The write and the lease release run in one script that checks the lease token, so a stale reader never overwrites a newer entry.
+- A reader that fails to take the lease still returns the database row and skips the cache write.
+- An admin update deletes the entry and its lease.
+- A cache read, lease, or write failure is logged and falls through to the database, so a cache outage never breaks evaluation.
+- A cache delete failure throws, so the admin update answers an error rather than leave a stale entry behind a committed write.
 - There is no fail-open:
     - a flag key with no row still returns 500 (`notConfigured`)
     - a disabled flag still returns 404 (`disabled`)
 
 See [Cache Documentation][ref-doc-cache] for cache system details.
+
+## Routes
+
+| Method | Path | Scope |
+| --- | --- | --- |
+| `GET` | `/system/feature-flag/list` | System API key lists the flags (cursor) |
+| `GET` | `/admin/feature-flag/list` | Admin lists the flags (offset), `search` on `key`, `orderBy` on `createdAt` or `key` |
+| `PATCH` | `/admin/feature-flag/update/:featureFlagId/status` | Admin updates `isEnable`, `rolloutPercent`, and `targetUserIds` |
+| `PUT` | `/admin/feature-flag/update/:featureFlagId/metadata` | Admin replaces the metadata values |
+
+- The system list route carries `ApiKeySystemProtected()` only: an `x-api-key` of type `system`. It needs no JWT, role, or policy ability.
+- The admin routes carry `@RoleProtected(EnumRoleType.admin)`, so the signed-in user must hold the admin role. They also need the `featureFlag` policy: `read` for the list, `read` and `update` for both updates.
+- Every path starts with the global prefix `/api`. With `URL_VERSIONING_ENABLE=true` the version segment `/v1` follows it, so the system list is `/api/v1/system/feature-flag/list`. See [Environment][ref-doc-environment] for the flag.
 
 ## Restrictions
 
@@ -312,3 +332,4 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 
 [ref-doc-cache]: cache.md
 [ref-doc-authorization]: authorization.md
+[ref-doc-environment]: environment.md

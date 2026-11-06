@@ -11,7 +11,6 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import {
     EnumFeatureFlagKey,
@@ -19,9 +18,7 @@ import {
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
@@ -37,7 +34,6 @@ import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/us
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
     IUser,
-    IUserRecipient,
     IUserTwoFactorVerifyInput,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
@@ -53,7 +49,6 @@ export class UserPasswordHttpService {
         private readonly userTwoFactorDomain: UserTwoFactorDomain,
         private readonly passwordHistoryDomain: PasswordHistoryDomain,
         private readonly sessionDomain: SessionDomain,
-        private readonly deviceDomain: DeviceDomain,
         private readonly notificationDomain: NotificationDomain,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly roleDomain: RoleDomain,
@@ -61,24 +56,11 @@ export class UserPasswordHttpService {
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
-        private readonly notificationUtil: NotificationUtil,
         private readonly userUtil: UserUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
-
-    private async getRecipient(
-        user: IUserRecipient,
-        kind: EnumNotificationKind
-    ): Promise<INotificationRecipient> {
-        const [tokens, settings] = await Promise.all([
-            this.deviceDomain.getNotificationTokens(user.id),
-            this.notificationDomain.getListUserSetting(user.id),
-        ]);
-
-        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
-    }
 
     private async verifyTwoFactorIfRequired(
         user: IUser,
@@ -92,20 +74,13 @@ export class UserPasswordHttpService {
 
         const method = this.userTwoFactorDomain.getProvidedMethod(input.method);
 
-        const isAttemptCounted =
-            await this.userTwoFactorDomain.countAttempt(user);
-        if (!isAttemptCounted) {
-            const lockoutStages = this.userUtil.buildTwoFactorLockoutStages(
-                user.id
-            );
-            const lockoutLogs = lockoutStages.map(stage =>
-                this.activityLogDomain.prepare(stage)
-            );
+        const attempt = await this.userTwoFactorDomain.countAttempt(user);
+        const lockoutLogs = attempt.lockoutStages.map(stage =>
+            this.activityLogDomain.prepare(stage)
+        );
+        this.activityLogDomain.stagePrepared(lockoutLogs);
 
-            this.activityLogDomain.stagePrepared(lockoutLogs);
-        }
-
-        this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
+        this.userTwoFactorDomain.assertAttemptCounted(attempt.isAttemptCounted);
 
         return this.userTwoFactorDomain.verify(user, { ...input, method });
     }
@@ -123,7 +98,7 @@ export class UserPasswordHttpService {
 
         const [{ password, passwordString }, recipient] = await Promise.all([
             this.userPasswordDomain.createTemporaryPassword(),
-            this.getRecipient(
+            this.notificationDomain.getRecipient(
                 target,
                 EnumNotificationKind.temporaryPasswordByAdmin
             ),
@@ -223,16 +198,10 @@ export class UserPasswordHttpService {
         const attempt =
             await this.userPasswordDomain.countPasswordAttempt(user);
         if (attempt !== null) {
-            if (!attempt.isAttemptCounted) {
-                const lockoutStages = this.userUtil.buildPasswordLockoutStages(
-                    user.id
-                );
-                const lockoutLogs = lockoutStages.map(stage =>
-                    this.activityLogDomain.prepare(stage)
-                );
-
-                this.activityLogDomain.stagePrepared(lockoutLogs);
-            }
+            const lockoutLogs = attempt.lockoutStages.map(stage =>
+                this.activityLogDomain.prepare(stage)
+            );
+            this.activityLogDomain.stagePrepared(lockoutLogs);
 
             await this.userAuthDomain.assertPasswordAttempt(
                 attempt,
@@ -250,7 +219,10 @@ export class UserPasswordHttpService {
         });
         const [password, recipient] = await Promise.all([
             this.authPasswordUtil.createPassword(newPassword),
-            this.getRecipient(user, EnumNotificationKind.changePassword),
+            this.notificationDomain.getRecipient(
+                user,
+                EnumNotificationKind.changePassword
+            ),
         ]);
         if (twoFactorVerified) {
             const verifyTwoFactorActivityLog = this.activityLogDomain.prepare({
@@ -338,7 +310,7 @@ export class UserPasswordHttpService {
         ];
 
         // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.getRecipient(
+        const recipient = await this.notificationDomain.getRecipient(
             user,
             EnumNotificationKind.forgotPassword
         );
@@ -390,7 +362,10 @@ export class UserPasswordHttpService {
         );
         const [password, recipient] = await Promise.all([
             this.authPasswordUtil.createPassword(newPassword),
-            this.getRecipient(reset.user, EnumNotificationKind.resetPassword),
+            this.notificationDomain.getRecipient(
+                reset.user,
+                EnumNotificationKind.resetPassword
+            ),
         ]);
         const activityLogs = [
             this.activityLogDomain.prepare({

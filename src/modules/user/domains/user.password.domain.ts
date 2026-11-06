@@ -73,7 +73,7 @@ export class UserPasswordDomain {
         return attempt !== null;
     }
 
-    /** Counts one password attempt for a user holding a password and enqueues the lockout job when the budget is spent; null for a passwordless user, isAttemptCounted false on a spent budget. */
+    /** Counts one password attempt for a user holding a password and enqueues the lockout job when the budget is spent; null for a passwordless user, isAttemptCounted false with the lockout activity stages on a spent budget, lockoutStages empty otherwise. */
     async countPasswordAttempt(
         user: IUser
     ): Promise<IUserCredentialAttempt | null> {
@@ -85,9 +85,24 @@ export class UserPasswordDomain {
         const isAttemptCounted = await this.incrementPasswordAttempt(user.id);
         if (!isAttemptCounted) {
             await this.userQueue.lockout(user.id);
+            const lockoutStages = this.userUtil.buildPasswordLockoutStages(
+                user.id
+            );
+
+            return {
+                user,
+                hashedPassword: user.password,
+                isAttemptCounted,
+                lockoutStages,
+            };
         }
 
-        return { user, hashedPassword: user.password, isAttemptCounted };
+        return {
+            user,
+            hashedPassword: user.password,
+            isAttemptCounted,
+            lockoutStages: [],
+        };
     }
 
     assertAttemptCounted(isAttemptCounted: boolean): void {

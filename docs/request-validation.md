@@ -101,10 +101,7 @@ export class UserAdminController {
 **Schema example** (`src/modules/user/dtos/request/user.claim-username.request.dto.ts`):
 
 ```typescript
-/**
- * Validates the body for claiming a username, lower-cased.
- * @public
- */
+/** @public */
 export const UserClaimUsernameRequestSchema = z.strictObject({
     username: z
         .string()
@@ -112,7 +109,7 @@ export const UserClaimUsernameRequestSchema = z.strictObject({
         .toLowerCase()
         .min(3)
         .max(50)
-        .regex(/^[a-zA-Z0-9]+$/)
+        .regex(UserUsernameRegex)
         .meta({
             description: 'username to claim',
             example: 'john_doe123',
@@ -120,6 +117,7 @@ export const UserClaimUsernameRequestSchema = z.strictObject({
         .transform(value => value as Lowercase<string>),
 });
 
+/** @public */
 export type UserClaimUsernameRequestDto = z.infer<
     typeof UserClaimUsernameRequestSchema
 >;
@@ -128,7 +126,7 @@ export type UserClaimUsernameRequestDto = z.infer<
 Each request schema lives in its own file under `<module>/dtos/request/`.
 
 - The file exports the `<Module><Action>RequestSchema` constant next to the `<Module><Action>RequestDto` type inferred from it, so the type and the runtime check cannot drift apart.
-- Both carry a one-line JSDoc summary and `@public`.
+- Both carry the bare `/** @public */` JSDoc and no description line.
 
 ### Path Parameters Validation
 
@@ -156,7 +154,7 @@ userId?: string
 
 - Pagination, search, and filtering arrive through list request schemas on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service (see [Pagination][ref-doc-pagination]).
 - A list schema extends a kit base schema (`PaginationOffsetQuerySchema` or `PaginationCursorQuerySchema`), which carries `page` or `cursor`, `perPage`, and a trimmed `search` of at most 100 characters.
-- A list schema declares its own `orderBy` as a `z.templateLiteral` of `z.enum(<allow-list>)`, `':'`, and `z.enum(EnumPaginationOrderDirectionType)`, as a union with an array of the same template and `''`. A sort outside the allow-list fails validation and answers 422.
+- A list schema declares its own `orderBy` as a `z.templateLiteral` of `z.enum(<allow-list>)`, `':'`, and `z.enum(EnumPaginationOrderDirectionType)`, as a union with `''`, with no array member. A sort outside the allow-list fails validation and answers 422.
 - A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
 
 ## Schema Shape
@@ -255,14 +253,16 @@ Shared schemas:
 - `RequestEmailSchema` (`request.email.validation.ts`): an email address that reports the first failed check
 - `RequestSesIdentityArnSchema` (`request.ses-identity-arn.validation.ts`): an AWS SES identity ARN, `arn:aws[-partition]:ses:<region>:<12-digit account>:identity/<domain or address>`
 - `RequestUrlNoTrailingSlashSchema` (`request.url-no-trailing-slash.validation.ts`): an absolute URL that does not end with `/`
+- `RequestTrustedProxySchema` (`request.trusted-proxy.validation.ts`): a comma-separated list of `loopback`, `linklocal`, `uniquelocal`, IP addresses, or CIDRs
 - `RequestOptionalEnvSchema` (`request.optional-env.validation.ts`): a single `z.preprocess` const that parses an absent value or an empty string to `null`
     - Any other value passes through as a string.
-    - The same file exports five named instances, each piping `RequestOptionalEnvSchema` into a nullable value schema:
+    - The same file exports six named instances, each piping `RequestOptionalEnvSchema` into a nullable value schema:
         - `RequestOptionalEnvStringSchema` over `RequestRequiredStringSchema`
         - `RequestOptionalEnvEmailSchema` over `RequestEmailSchema`
         - `RequestOptionalEnvSesIdentityArnSchema` over `RequestSesIdentityArnSchema`
         - `RequestOptionalEnvUrlNoTrailingSlashSchema` over `RequestUrlNoTrailingSlashSchema`
         - `RequestOptionalEnvUrlSchema` over `z.url()`
+        - `RequestOptionalEnvTrustedProxySchema` over `RequestTrustedProxySchema`
 - `RequestMessageLanguageSchema`: a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
 ## File Validation Pipes

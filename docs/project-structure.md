@@ -2,7 +2,7 @@
 
 ## Overview
 
-- A feature module that persists data holds a repository layer. `analytic`, `auth`, `health`, `hello`, and `onboarding` have none (see [Modules](#modules)).
+- A feature module that persists data holds a repository layer. `analytic`, `auth`, `health`, and `hello` have none (see [Modules](#modules)).
 - Layout is one folder per feature under `src/modules/`.
 
 ## Table of Contents
@@ -125,10 +125,9 @@ Seed commands:
     - term policies
     - users
     - workspaces
-- Three on-demand commands sit outside `pnpm migration:seed`:
+- Two on-demand commands sit outside `pnpm migration:seed`:
     - `awsS3Config`: S3 bucket setup (see [Third Party Integration](third-party-integration.md#bucket-setup))
     - `templateEmailNotification`: see [Email](email.md)
-    - `templateTermPolicy`: see [Term Policy](term-policy.md#migration--seeding)
 
 ## Queues
 
@@ -239,7 +238,6 @@ modules
   ├── health
   ├── hello
   ├── notification
-  ├── onboarding
   ├── password-history
   ├── policy
   ├── project
@@ -256,13 +254,6 @@ modules
 - It has no repository module of its own.
 - See [Analytic](analytic.md).
 
-`onboarding`:
-
-- It holds `OnboardingDomain`, the cross-module sequences that create a user together with its workspace.
-- Its methods are `signUp`, `loginWithSocial`, `createByAdmin`, and `importByAdmin`.
-- Each one prepares the input through the user domains, commits through `WorkspaceDomain.commitOnboarding`, and notifies the created users.
-- It has a domain module only, `OnboardingDomainModule`, which `UserHttpModule` imports. It owns no repository, HTTP, or processor layer.
-
 **Per-layer Nest modules:**
 
 Each layer of a feature gets its own Nest module file at the root of the feature folder. Only the files with something to provide exist:
@@ -277,9 +268,9 @@ modules/<feature>
 ```
 
 - `<feature>.domain.module.ts` is present for every feature.
-- `<feature>.processor.module.ts` exists only in `notification` and `workspace`, the two features with background jobs.
-- `analytic`, `auth`, `health`, `hello`, and `onboarding` have no repository module.
-- `auth` and `onboarding` have no HTTP module either.
+- `<feature>.processor.module.ts` exists only in `activity-log`, `notification`, `session`, `term-policy`, `user`, and `workspace`, the features with background jobs.
+- `analytic`, `auth`, `health`, and `hello` have no repository module.
+- `auth` has no HTTP module either.
 - A `<feature>.http.module.ts` exports its HTTP services only, never a domain module.
 
 **Folders:**

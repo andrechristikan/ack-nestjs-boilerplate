@@ -1,4 +1,3 @@
-import { DeviceDomainModule } from '@modules/device/device.domain.module';
 import { ProjectDomainModule } from '@modules/project/project.domain.module';
 import { UserDomainModule } from '@modules/user/user.domain.module';
 import { WorkspaceHttpService } from '@modules/workspace/services/http/workspace.http.service';
@@ -22,11 +21,6 @@ import { Module } from '@nestjs/common';
         WorkspaceInviteHttpService,
         WorkspaceJoinRequestHttpService,
     ],
-    imports: [
-        DeviceDomainModule,
-        ProjectDomainModule,
-        UserDomainModule,
-        WorkspaceDomainModule,
-    ],
+    imports: [ProjectDomainModule, UserDomainModule, WorkspaceDomainModule],
 })
 export class WorkspaceHttpModule {}

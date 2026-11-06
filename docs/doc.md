@@ -11,7 +11,7 @@ OpenAPI is co-located on the same runtime decorators that own the HTTP contract.
 Controller-facing surface:
 
 - `@Doc` stamps operation metadata, shared headers, and the global kit error responses
-- `@DocErrors` is the public escape hatch for endpoint-specific flow errors an endpoint opts into the OpenAPI document
+- `@DocErrors` takes `IDocResponseEntry[]` entries; the kit decorators call it for their own error sets
 - Success envelopes and response-kind error kits come from `@Response` / `@ResponsePagination` / `@ResponseFile`
 - Auth and guard error kits come from the matching `*Protected` / auth decorators
 - Multipart upload OpenAPI comes from `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`
@@ -19,9 +19,10 @@ Controller-facing surface:
 
 Internal kit plumbing:
 
-- `DocResponseError` merges response entries under `DocResponseEntryMetaKey` and re-emits `ApiResponse` for that status
-- Kit constants (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, …) live in `src/common/doc/constants/doc.constant.ts`
-- Module kits live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts`
+- `DocResponseError` is file-private in `src/common/doc/decorators/doc.decorator.ts`. It merges response entries under `DocResponseEntryMetaKey` and re-emits `ApiResponse` for that status.
+- Every error set is an `IDocResponseEntry[]` constant named `<Decorator>DocErrors` (`DocGlobalErrors` for `@Doc`).
+- The kit's sets live in `constants/` under `src/common/doc/`, `src/common/response/`, `src/common/file/`, and `src/common/request/`.
+- Each `*Protected` decorator's set lives in its module's `constants/<module>.constant.ts`.
 
 Coverage:
 
@@ -80,7 +81,7 @@ Coverage:
     - `x-custom-lang`: Custom language header (default: EN)
     - `x-request-id`: Request identifier; a valid value is kept, otherwise the server generates one
     - `x-correlation-id`: Correlation identifier for tracking requests across services
-- Global kit error responses from `DocGlobalErrorResponses` in `src/common/doc/constants/doc.constant.ts`:
+- Global kit error responses from `DocGlobalErrors` in `src/common/doc/constants/doc.constant.ts`:
     - Internal server error (500)
     - Request timeout (408)
     - Validation error (422)
@@ -109,36 +110,30 @@ async profile(
 
 ### DocErrors
 
-Public escape hatch for endpoint-specific flow errors an endpoint opts into the OpenAPI document, whether the exception lives in a module or in `src/common/`.
-
-- Controllers do not call `DocResponseError` directly.
-- They use `@DocErrors`.
+Emits the error responses of the entries it receives.
 
 **Parameters:**
 
-- `httpStatus: HttpStatus`: HTTP status for the documented responses
-- `...entries: IDocResponseErrorOptions[]`: Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema` / `baseSchema`)
+- `...entries: IDocResponseEntry[]`: Each entry is an `httpStatus`, a `statusCode`, and its i18n `messagePath`, with optional `schema` and `baseSchema`.
 
 **Usage:**
 
+- A kit decorator spreads its own constant, as `AuthJwtAccessProtected` does with `DocErrors(...AuthJwtAccessProtectedDocErrors)`.
+- A controller method calls neither `DocErrors` nor `DocResponseError`.
+- A custom error a flow adds goes through `@Doc({ errors })`, which takes the same entries. No controller passes it.
+
 ```typescript
-@Doc({ summary: '…' })
-@DocErrors(HttpStatus.UNPROCESSABLE_ENTITY, {
-    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-    messagePath: 'analytic.error.invalidDateRange',
-})
-@Response('…', { schema: SomeResponseSchema })
-@Get('/…')
-async handler(): Promise<IResponseReturn<SomeResponseDto>> {
-    // …
+export function UserProtected(isVerified: boolean = true): MethodDecorator {
+    return applyDecorators(
+        // …
+        DocErrors(...UserProtectedDocErrors)
+    );
 }
 ```
 
-It applies to a flow exception, from a module or from `src/common/`, that no kit already covers and that the endpoint documents in OpenAPI.
-
 ### DocResponseError
 
-Internal kit emitter for responses of one HTTP status:
+File-private emitter that `DocErrors` calls for each entry, for responses of one HTTP status:
 
 - Each entry is a `statusCode` plus its i18n `messagePath`.
 - An entry may add `schema` for `data`.
@@ -157,22 +152,19 @@ Output shape:
 - Two or more emit one shared response-envelope schema plus named OpenAPI `examples` keyed by `messagePath`, each value the full envelope (`statusCode`, `message`, `metadata`).
 - A `oneOf` of full envelopes is not used.
 
-Common kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts`:
+Kit constants:
 
-- `DocGlobalErrorResponses`
-- `DocPaginationErrorResponses`
-- `DocPaginationOffsetErrorResponses`
-- `DocPaginationCursorErrorResponses`
-- `DocFileErrorResponses`
-- `DocSerializationErrorResponses`
-- and related groups
+- `DocGlobalErrors` in `src/common/doc/constants/doc.constant.ts`
+- `ResponseDocErrors`, `ResponsePaginationDocErrors`, and `ResponseFileDocErrors` in `src/common/response/constants/response.constant.ts`
+- `FileUploadDocErrors` in `src/common/file/constants/file.constant.ts`
+- `RequestEnvProtectedDocErrors` in `src/common/request/constants/request.constant.ts`
 
 Module `*Protected` / auth kits:
 
-- They live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts`.
-- They are spread into the decorator's `applyDecorators(...)`.
-- Each entry is a bare `DocResponseError(...)` MethodDecorator.
-- Kit constants are never pre-composed `applyDecorators` blobs.
+- They live as `<Decorator>DocErrors` in that module's `constants/<module>.constant.ts`.
+- The decorator spreads the constant into `DocErrors(...)` inside `applyDecorators(...)`.
+- A decorator that mounts a different guard per branch takes one constant per branch, named after that guard (`WorkspaceMemberProtectedDocErrors`, `WorkspaceRoleProtectedDocErrors`).
+- Each constant is data, never a pre-composed `applyDecorators` blob.
 
 ## Who documents what
 
@@ -193,10 +185,10 @@ Module `*Protected` / auth kits:
 
 | Runtime decorator | Success OpenAPI | Error kits it publishes |
 | --- | --- | --- |
-| `@Response(messagePath, { schema?, cache? })` | Success envelope; HTTP status and body `statusCode` from `@HttpCode` or Nest method defaults (`POST` → 201, else 200) | `DocSerializationErrorResponses.serialization` |
-| `@ResponsePagination(messagePath, { schema, cache? })` | 200 page envelope with `baseSchema: ResponsePaginationSchema`; item schema is the row | Shared pagination errors plus both offset and cursor kits, plus serialization / pagination-shape / pagination-type failures |
-| `@ResponseFile({ extension?, maxDataExportConfigKey? })` | Success response under the extension's media type (`text/csv` or `application/pdf`, from `ResponseFileMediaTypes`) with a binary string schema; error responses stay `application/json` | Export row cap (`50104`) and size cap (`50105`) from `DocFileErrorResponses` |
-| `FileUpload*` | Multipart consumes + binary body | Upload errors from `DocFileErrorResponses` |
+| `@Response(messagePath, { schema?, cache? })` | Success envelope; HTTP status and body `statusCode` from `@HttpCode` or Nest method defaults (`POST` → 201, else 200) | `ResponseDocErrors` (serialization, 500) |
+| `@ResponsePagination(messagePath, { schema, cache? })` | 200 page envelope with `baseSchema: ResponsePaginationSchema`; item schema is the row | `ResponsePaginationDocErrors`: the pagination errors (filter, `perPage`, page, and cursor failures) plus serialization, pagination-shape, and pagination-type failures |
+| `@ResponseFile({ extension?, maxDataExportConfigKey? })` | Success response under the extension's media type (`text/csv` or `application/pdf`, from `ResponseFileMediaTypes`) with a binary string schema; error responses stay `application/json` | Export row cap (`50104`) and size cap (`50105`) from `ResponseFileDocErrors` |
+| `FileUpload*` | Multipart consumes + binary body | Upload errors from `FileUploadDocErrors` |
 
 - `IResponseOptions` carries only `schema` and `cache`. It does not carry `httpStatus` or `statusCode`.
 - A handler overrides either status at runtime via `metadata` on its return.
@@ -262,8 +254,8 @@ OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `
 
 Two kits carry a 404, and the feature flag kit a 500 as well:
 
-- `FeatureFlagProtected` publishes `DocFeatureFlagErrorResponses.disabled` (404, `featureFlag.error.disabled`) and `DocFeatureFlagErrorResponses.notConfigured` (500, `featureFlag.error.notConfigured`, a flag key with no stored row)
-- `AuthSocialGoogleProtected` and `AuthSocialAppleProtected` publish `DocAuthSocialGoogleErrorResponses` / `DocAuthSocialAppleErrorResponses`: the `unauthorized` group (401) and `notConfigured` (404, `auth.error.socialGoogleNotConfigured` / `auth.error.socialAppleNotConfigured`)
+- `FeatureFlagProtected` publishes `FeatureFlagProtectedDocErrors`: `disabled` (404, `featureFlag.error.disabled`) and `notConfigured` (500, `featureFlag.error.notConfigured`, a flag key with no stored row)
+- `AuthSocialGoogleProtected` and `AuthSocialAppleProtected` publish `AuthSocialGoogleProtectedDocErrors` / `AuthSocialAppleProtectedDocErrors`: invalid and required (401), `notConfigured` (404, `auth.error.socialGoogleNotConfigured` / `auth.error.socialAppleNotConfigured`), and provider unavailable (503)
 
 - `auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`, and `UserProtected` does not publish it.
 
@@ -335,9 +327,9 @@ A DTO here is a zod schema plus the type inferred from it.
 
 - [zod-openapi][ref-zod-openapi] produces the OpenAPI schema object from that same schema.
 - There is no separate annotation layer.
-- The response and file decorators call `createSchema(schema)` (or equivalent) and hand the result to `@nestjs/swagger`.
+- `DocResponseError` calls `createSchema(schema)` from `zod-openapi` and hands the result to `@nestjs/swagger`.
 - Each `*.dto.ts` file declares one schema and its inferred type.
-- The schema and its inferred type each carry a one-line JSDoc summary followed by `@public`.
+- The schema and its inferred type each carry the bare `/** @public */` JSDoc, with no description line.
 - The same convention covers decorators, enums, exceptions, and constants.
 
 ### .meta()
@@ -362,10 +354,7 @@ Everything else the OpenAPI schema carries comes from the zod type itself:
 **Usage:**
 
 ```typescript
-/**
- * Validates the body for changing the signed-in user password.
- * @public
- */
+/** @public */
 export const UserChangePasswordRequestSchema =
     UserLoginVerifyTwoFactorRequestSchema.omit({ challengeToken: true })
         .partial()
@@ -380,18 +369,23 @@ export const UserChangePasswordRequestSchema =
                 .meta({
                     description:
                         "new string password, newPassword can't same with oldPassword",
-                    example: 'aBcDe@Fgh!123',
+                    example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
+                        .alphanumeric(5)
+                        .toUpperCase()}@@!123`,
                 }),
-            oldPassword: z.string().min(1).meta({
-                description: 'old string password',
-                example: 'xYzAb@Cde!456',
-            }),
+            oldPassword: z
+                .string()
+                .min(1)
+                .meta({
+                    description: 'old string password',
+                    example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
+                        .alphanumeric(5)
+                        .toUpperCase()}@@!123`,
+                })
+                .optional(),
         });
 
-/**
- * Body for changing the signed-in user password.
- * @public
- */
+/** @public */
 export type UserChangePasswordRequestDto = z.infer<
     typeof UserChangePasswordRequestSchema
 >;
@@ -402,6 +396,7 @@ export type UserChangePasswordRequestDto = z.infer<
 A derived schema inherits the `.meta()` of every field it keeps, so only the new field carries its own:
 
 ```typescript
+/** @public */
 export const UserForgotPasswordResetRequestSchema =
     UserChangePasswordRequestSchema.pick({ newPassword: true }).extend({
         method: UserLoginVerifyTwoFactorRequestSchema.shape.method.optional(),
@@ -416,6 +411,7 @@ export const UserForgotPasswordResetRequestSchema =
             }),
     });
 
+/** @public */
 export type UserForgotPasswordResetRequestDto = z.infer<
     typeof UserForgotPasswordResetRequestSchema
 >;
@@ -438,9 +434,9 @@ export type UserForgotPasswordResetRequestDto = z.infer<
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
+@RequestThrottle({ user: true })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true })
 @Get('/get/:userId')
 async get(
     @Param('userId', { schema: RequestMongoIdSchema }) userId: string
@@ -454,16 +450,14 @@ async get(
 ```typescript
 @Doc({ summary: 'user sign up' })
 @Response('user.signUp')
-@FeatureFlagProtected('signUp')
-@ApiKeyProtected()
+@FeatureFlagProtected(EnumFeatureFlagKey.signUp)
 @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+@ApiKeyProtected()
 @Post('/sign-up')
 async signUp(
     @Body({ schema: UserSignUpRequestSchema }) body: UserSignUpRequestDto
 ): Promise<IResponseReturn<void>> {
-    await this.userAuthHttpService.signUp(body);
-
-    return {};
+    return this.userRegistrationHttpService.signUp(body);
 }
 ```
 
@@ -486,9 +480,9 @@ async signUp(
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
+@RequestThrottle({ user: true })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true })
 @Get('/list')
 async list(
     @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
@@ -509,11 +503,11 @@ async list(
 @Response('user.uploadPhotoProfile')
 @TermPolicyAcceptanceProtected()
 @UserProtected()
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
 @FileUploadSingle()
 @RequestTimeout('1m')
-@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
 @HttpCode(HttpStatus.OK)
 @Post('/profile/photo/upload')
 async uploadPhotoProfile(
@@ -528,9 +522,7 @@ async uploadPhotoProfile(
     )
     file: IFile
 ): Promise<IResponseReturn<void>> {
-    await this.userProfileHttpService.uploadPhotoProfile(userId, file);
-
-    return {};
+    return this.userProfileHttpService.uploadPhotoProfile(userId, file);
 }
 ```
 

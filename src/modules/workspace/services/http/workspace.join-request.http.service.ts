@@ -18,14 +18,11 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
-import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceJoinRequestDefaultStatus,
@@ -45,12 +42,10 @@ export class WorkspaceJoinRequestHttpService {
         private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly userDomain: UserDomain,
-        private readonly deviceDomain: DeviceDomain,
         private readonly notificationDomain: NotificationDomain,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly notificationQueue: NotificationQueue,
-        private readonly notificationUtil: NotificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
@@ -73,7 +68,7 @@ export class WorkspaceJoinRequestHttpService {
 
         return Promise.all(
             reviewers.map(reviewer =>
-                this.mapRecipientOfUser(
+                this.notificationDomain.getRecipient(
                     reviewer,
                     EnumNotificationKind.workspaceJoinRequest
                 )
@@ -81,32 +76,16 @@ export class WorkspaceJoinRequestHttpService {
         );
     }
 
-    private async mapRecipientOfUser(
-        user: IUserRecipient,
-        kind: EnumNotificationKind
-    ): Promise<INotificationRecipient> {
-        const [tokens, settings] = await Promise.all([
-            this.deviceDomain.getNotificationTokens(user.id),
-            this.notificationDomain.getListUserSetting(user.id),
-        ]);
-
-        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
-    }
-
     private async getRequesterRecipient(
         requesterId: string,
         kind: EnumNotificationKind
     ): Promise<INotificationRecipient | null> {
-        const [user, tokens, settings] = await Promise.all([
-            this.userDomain.getOneActive(requesterId),
-            this.deviceDomain.getNotificationTokens(requesterId),
-            this.notificationDomain.getListUserSetting(requesterId),
-        ]);
+        const user = await this.userDomain.getOneActive(requesterId);
         if (user === null) {
             return null;
         }
 
-        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
+        return this.notificationDomain.getRecipient(user, kind);
     }
 
     private prepareReviewActivityLogs(

@@ -56,12 +56,12 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 
 | Tool | Version |
 | --- | --- |
-| Node.js | >= 26.13.0 |
-| pnpm | >= 10.25.0 (pin `pnpm@12.5.1`) |
-| Docker | v28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
-| Docker Compose | v2.40.x+ |
-| MongoDB | v8.0+ replica set (Compose locally, or Atlas without Docker) |
-| Redis | v6.0+ (Compose locally, or a hosted Redis without Docker) |
+| Node.js | 26.13.x+ |
+| pnpm | 10.25.x+ (pin pnpm 12.5.x+) |
+| Docker | 28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
+| Docker Compose | 2.40.x+ |
+| MongoDB | 8.0.x+ replica set (Compose locally, or Atlas without Docker) |
+| Redis | 6.2.x+ (Compose locally, or a hosted Redis without Docker) |
 
 ### Steps
 

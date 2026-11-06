@@ -9,12 +9,9 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -30,7 +27,6 @@ import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response
 import type { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import type {
     IUser,
-    IUserRecipient,
     IUserTwoFactorSetup,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
@@ -47,45 +43,24 @@ export class UserTwoFactorHttpService {
         private readonly userAuthDomain: UserAuthDomain,
         private readonly roleDomain: RoleDomain,
         private readonly sessionDomain: SessionDomain,
-        private readonly deviceDomain: DeviceDomain,
         private readonly notificationDomain: NotificationDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
-        private readonly notificationUtil: NotificationUtil,
         private readonly userUtil: UserUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private async getRecipient(
-        user: IUserRecipient,
-        kind: EnumNotificationKind
-    ): Promise<INotificationRecipient> {
-        const [tokens, settings] = await Promise.all([
-            this.deviceDomain.getNotificationTokens(user.id),
-            this.notificationDomain.getListUserSetting(user.id),
-        ]);
-
-        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
-    }
-
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
-        const isAttemptCounted =
-            await this.userTwoFactorDomain.countAttempt(user);
-        if (!isAttemptCounted) {
-            const lockoutStages = this.userUtil.buildTwoFactorLockoutStages(
-                user.id
-            );
-            const lockoutLogs = lockoutStages.map(stage =>
-                this.activityLogDomain.prepare(stage)
-            );
+        const attempt = await this.userTwoFactorDomain.countAttempt(user);
+        const lockoutLogs = attempt.lockoutStages.map(stage =>
+            this.activityLogDomain.prepare(stage)
+        );
+        this.activityLogDomain.stagePrepared(lockoutLogs);
 
-            this.activityLogDomain.stagePrepared(lockoutLogs);
-        }
-
-        this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
+        this.userTwoFactorDomain.assertAttemptCounted(attempt.isAttemptCounted);
     }
 
     private async assertPasswordMatched(
@@ -98,16 +73,10 @@ export class UserTwoFactorHttpService {
             return;
         }
 
-        if (!attempt.isAttemptCounted) {
-            const lockoutStages = this.userUtil.buildPasswordLockoutStages(
-                user.id
-            );
-            const lockoutLogs = lockoutStages.map(stage =>
-                this.activityLogDomain.prepare(stage)
-            );
-
-            this.activityLogDomain.stagePrepared(lockoutLogs);
-        }
+        const lockoutLogs = attempt.lockoutStages.map(stage =>
+            this.activityLogDomain.prepare(stage)
+        );
+        this.activityLogDomain.stagePrepared(lockoutLogs);
 
         await this.userAuthDomain.assertPasswordAttempt(attempt, password);
     }
@@ -314,7 +283,7 @@ export class UserTwoFactorHttpService {
         ];
 
         // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.getRecipient(
+        const recipient = await this.notificationDomain.getRecipient(
             target,
             EnumNotificationKind.resetTwoFactorByAdmin
         );

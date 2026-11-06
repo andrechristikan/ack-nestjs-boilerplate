@@ -21,13 +21,11 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -63,12 +61,10 @@ export class WorkspaceInviteHttpService {
         private readonly projectDomain: ProjectDomain,
         private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly userDomain: UserDomain,
-        private readonly deviceDomain: DeviceDomain,
         private readonly notificationDomain: NotificationDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationEmailQueue: NotificationEmailQueue,
-        private readonly notificationUtil: NotificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
@@ -94,16 +90,9 @@ export class WorkspaceInviteHttpService {
             return null;
         }
 
-        const [tokens, settings] = await Promise.all([
-            this.deviceDomain.getNotificationTokens(existingUser.id),
-            this.notificationDomain.getListUserSetting(existingUser.id),
-        ]);
-
-        return this.notificationUtil.mapRecipient(
+        return this.notificationDomain.getRecipient(
             existingUser,
-            EnumNotificationKind.workspaceInvite,
-            tokens,
-            settings
+            EnumNotificationKind.workspaceInvite
         );
     }
 

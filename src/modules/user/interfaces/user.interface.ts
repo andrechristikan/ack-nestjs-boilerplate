@@ -12,6 +12,7 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     Country,
     ForgotPassword,
@@ -257,6 +258,12 @@ export interface IUserCredentialAttempt {
     user: IUser;
     hashedPassword: string;
     isAttemptCounted: boolean;
+    lockoutStages: IActivityLogStageInput<EnumActivityLogAction>[];
+}
+
+export interface IUserTwoFactorAttempt {
+    isAttemptCounted: boolean;
+    lockoutStages: IActivityLogStageInput<EnumActivityLogAction>[];
 }
 
 export interface IUserLoginSocial {

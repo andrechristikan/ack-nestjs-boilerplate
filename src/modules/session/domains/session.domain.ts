@@ -20,10 +20,12 @@ import type {
     ISession,
     ISessionCache,
     ISessionList,
+    ISessionPurgeLoginsPayload,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
+import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
 
@@ -32,6 +34,7 @@ export class SessionDomain {
     constructor(
         private readonly sessionRepository: SessionRepository,
         private readonly sessionCache: SessionCache,
+        private readonly sessionUtil: SessionUtil,
         private readonly helperDateService: HelperDateService,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -213,6 +216,23 @@ export class SessionDomain {
             revokedBy,
             revokedAt
         );
+    }
+
+    async revokeByDeviceOwnershipIdsInTx(
+        tx: IDatabaseTransactionClient,
+        deviceOwnershipIds: string[],
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionPurgeLoginsPayload[]> {
+        const sessions =
+            await this.sessionRepository.revokeByDeviceOwnershipIdsInTx(
+                tx,
+                deviceOwnershipIds,
+                revokedBy,
+                revokedAt
+            );
+
+        return this.sessionUtil.groupRefsByUser(sessions);
     }
 
     async revoke(userId: string, sessionId: string): Promise<void> {

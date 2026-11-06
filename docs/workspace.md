@@ -22,8 +22,8 @@ The module covers four things:
 - [Authorization][ref-doc-authorization]: Where the workspace guards sit in the full protection stack
 - [Security and Middleware][ref-doc-security-and-middleware]: How `x-workspace-id` reaches the guards
 - [Feature Flag][ref-doc-feature-flag]: The `workspace` flag and its `invitationAllowed` / `joinRequestAllowed` metadata
-- [Queue][ref-doc-queue]: The workspace queue that expires stale invites
-- [Status Codes][ref-doc-status-codes]: The full `51600`-`51623` block
+- [Queue][ref-doc-queue]: The workspace queue that expires stale invites and join requests
+- [Status Codes][ref-doc-status-codes]: The full `51600`-`51625` block
 
 ## Table of Contents
 
@@ -106,34 +106,43 @@ Fields:
 
 - `workspaceId`, `email`, `workspaceRole`
 - optional `projectId` + `projectRole`
-- `token`, `reference`, `expiredAt`, `status`
+- `token`, `reference`, `expiredAt`, `status`, `nonce`
 - `invitedByUserId`, `acceptedAt`, `acceptedByUserId`
 
 Constraints:
 
 - `@@unique([token])`
 - `@@unique([reference])`
+- `@@unique([nonce])`
 - Indexes:
     - `[workspaceId, status, createdAt desc, id desc]` serves the invite list filtered by `status` in the default order, and the bulk expiry of a workspace's pending invites.
     - `[workspaceId, createdAt desc, id desc]` serves the invite list of one workspace in the default order.
     - `[email, status]` serves the pending-invite check by invitee `email` and `status`.
     - `[status, expiredAt]` serves the expiry sweep that flips pending invites past `expiredAt` to `expired`.
-    - `[projectId]` backs the `projectId` foreign key; no current query filters on it.
+    - `[projectId]` serves the clearing of `projectId` and `projectRole` on the pending invites of a deleted project.
 
 **`token` stores the SHA-256 hash, never the plain token.**
 
 - The plain token exists only in the invite link that is emailed.
 - A lookup hashes the incoming token and matches on that.
 
+**`nonce` keeps one pending invite per address in a workspace.**
+
+- A pending invite carries the SHA-256 hash of `{workspaceId}:{email}`, so a second pending invite for that pair collides on the unique index.
+- An invite that leaves `pending` (accepted, revoked, or expired) takes the SHA-256 hash of its own id, which frees the pair for a new invite.
+
 ### `WorkspaceJoinRequest` (`WorkspaceJoinRequests`)
 
-`workspaceId`, `userId`, `status`, optional `message`, `rejectReasonCode`, `reviewedByUserId`, `reviewedAt`.
+`workspaceId`, `userId`, `status`, optional `message`, `rejectReasonCode`, `reviewedByUserId`, `reviewedAt`, `expiredAt`, `nonce`.
+
+`nonce` works as on an invite: a pending request carries the SHA-256 hash of `{workspaceId}:{userId}`, which makes a second pending request from the same user a duplicate, and a request that leaves `pending` takes the hash of its own id. `@@unique([nonce])` enforces it.
 
 Indexes:
 
 - `[workspaceId, status, createdAt desc, id desc]` serves the join-request list filtered by `status` in the default order, and the bulk cancel of a workspace's pending requests.
 - `[workspaceId, createdAt desc, id desc]` serves the join-request list of one workspace in the default order.
 - `[userId, status]` serves the pending-request check by `userId` and `status`.
+- `[status, expiredAt]` serves the expiry sweep that flips pending requests past `expiredAt` to `expired`.
 
 ### Enums
 
@@ -141,7 +150,7 @@ Indexes:
 | --- | --- |
 | `EnumWorkspaceMemberRole` | `owner`, `admin`, `member` |
 | `EnumWorkspaceInviteStatus` | `pending`, `accepted`, `revoked`, `expired` |
-| `EnumWorkspaceJoinRequestStatus` | `pending`, `accepted`, `rejected`, `cancelled` |
+| `EnumWorkspaceJoinRequestStatus` | `pending`, `accepted`, `rejected`, `cancelled`, `expired` |
 | `EnumWorkspaceJoinRejectReason` | `notAFit`, `incompleteProfile`, `spam`, `unknownRequester`, `wrongWorkspace`, `memberLimitReached`, `other` |
 | `EnumWorkspaceInviteExpiry` | `threeDays` (3), `sevenDays` (7), `twoWeeks` (14), `oneMonth` (30) |
 
@@ -202,7 +211,7 @@ Five user-scope routes carry no workspace header, because they act across worksp
 The two guards:
 
 - `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it under `WorkspaceMemberStoreKey`.
-    - An empty user store throws `UserGuardMissingException` (401, `51027`).
+    - An empty user store throws `UserGuardMissingException` (401, `51023`).
     - An empty workspace store throws `WorkspaceGuardMissingException` (403, `51622`).
     - No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
 - `WorkspaceRoleGuard` enforces the declared roles against that stored membership.
@@ -230,41 +239,28 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Personal Workspace
 
-`UserOnboardingDomain.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug.
+`UserCreateUtil.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug.
 
-`WorkspaceDomain.commitOnboarding` opens `withTransaction`. Inside it:
+Each creating HTTP service opens `withTransaction`: `UserRegistrationHttpService` (self sign-up, admin create, admin CSV import) and `UserAuthHttpService` (social sign-up). Inside it:
 
-1. `UserOnboardingDomain.createManyInTx` writes the User rows
-2. for each user it writes:
-    - the password history row (when a password is set)
-    - the default notification settings
-    - the email verification row (when one is issued)
-    - a disabled `TwoFactor` row
-3. `WorkspaceDomain.createOwnedForUsersInTx` / `createPersonalInTx` write each personal workspace plus its owner membership
-4. `WorkspaceInviteDomain.acceptOnSignUpInTx` joins an invite-token sign-up
-5. `TermPolicyAcceptanceDomain.acceptPublishedInTx` writes the accepted policies
+1. `TermPolicyAcceptanceDomain.assertRequiredPublishedInTx` checks that the required policies are published (sign-up paths only)
+2. `UserDomain.createManyInTx` writes the User rows, with `lastWorkspaceId` and `lastWorkspaceChangedAt` set to the resolved workspace
+3. `PasswordHistoryDomain.createManyInTx` writes the password history rows
+4. `NotificationDomain.createDefaultsManyInTx` writes the default notification settings
+5. `WorkspaceDomain.createOwnedForUsersInTx` writes each personal workspace plus its owner membership
+6. `WorkspaceInviteDomain.acceptOnSignUpInTx` joins an invite-token sign-up, and a project membership follows when the invite carried one
+7. `TermPolicyAcceptanceDomain.acceptPublishedManyInTx` writes the accepted policies
 
-- The transaction callback prepares the onboarding activity logs from the rows it wrote and returns them.
-- After the commit, `commitOnboarding` stages them with `ActivityLogDomain.stagePrepared`.
+- After the commit, the service prepares the activity logs of the user-creation contract and stages them with `ActivityLogDomain.stagePrepared`.
 - `ActivityLogInterceptor` writes them once the handler returns.
 - The rows are listed under [Activity Log](#activity-log).
-
-Callers:
-
-- `OnboardingDomain` (`src/modules/onboarding/`) calls `commitOnboarding` for every user-creation path:
-    - `signUp` and `loginWithSocial` call `WorkspaceInviteDomain.resolveForSignUp` first, then forward to `commitOnboarding`.
-    - `createByAdmin` and `importByAdmin` forward the inputs the user domains prepared to the same composer.
-- `UserAuthHttpService`, `UserHttpService`, and `UserImportHttpService` each delegate to the matching `OnboardingDomain` method.
-- `UserHttpModule` imports `OnboardingDomainModule`.
-- `OnboardingDomainModule` imports `UserDomainModule` and `WorkspaceDomainModule`.
-- `UserDomainModule` does not import `WorkspaceDomainModule`.
 
 `buildPersonalWorkspaceContexts` draws `workspace.slugMaxAttempts` (5) slug candidates per row and carries them on the context as `slugCandidates`.
 
 - The `withTransaction` runs with the first candidate.
 - A unique collision on `slug` rolls the transaction back, and the next candidate is tried.
 - Running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (409, `51800`), so the caller never sees a leaked Prisma error.
-- Admin CSV import writes all its rows in one `withTransaction` through `WorkspaceDomain.commitOnboarding`. That call substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
+- Admin CSV import writes all its rows in one `withTransaction`. It substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
 
 | User-creation path | Personal workspace                     |
 | ------------------ | -------------------------------------- |
@@ -275,6 +271,7 @@ Callers:
 
 - **A sign-up that carries a valid invite token joins the inviting workspace instead and gets no personal workspace.** The new user lands where they were invited.
 - All paths set `user.lastWorkspaceId` and `lastWorkspaceChangedAt` to the resolved workspace.
+- Every path records an acceptance of the required policies for the new user (see [Term Policy][ref-doc-term-policy]).
 
 ## Endpoints
 
@@ -327,14 +324,14 @@ Callers:
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/public/workspace/invite/:inviteToken/preview` | Shows workspace name, inviter name, offered role, and expiry for a pending invite. Nothing else |
+| `POST` | `/public/workspace/invite/preview` | Takes `inviteToken` in the body and shows workspace name, inviter name, offered role, and expiry for a pending invite. Nothing else |
 | `GET` | `/public/workspace/preview/:slug` | Shows a **public** workspace: `id`, `name`, `slug`, `description`, and the `createdAt` / `updatedAt` / `deletedAt` timestamps |
 
 The slug preview excludes the `createdBy` / `updatedBy` / `deletedBy` audit columns, so it never names who runs the workspace.
 
 Neither preview answers `forbidden` for a resource that exists but is not eligible, so nothing can be probed:
 
-- The slug preview collapses "private" and "unknown" into `notFound` (404, `51600`).
+- The slug preview collapses "private", "deleted", and "unknown" into `notFound` (404, `51600`).
 - The invite preview collapses an unknown, expired, non-pending, or dead-workspace token into `inviteInvalid` (400, `51603`).
 
 ### Admin Scope
@@ -352,9 +349,9 @@ These routes are:
 | --- | --- | --- |
 | `GET` | `/admin/workspace/list` | All workspaces including soft-deleted. Optional `isPublic` filter |
 | `GET` | `/admin/workspace/get/:workspaceId` | Any workspace by id, with no active filter |
-| `GET` | `/admin/workspace/get/:workspaceId/members` | Members of any workspace |
+| `GET` | `/admin/workspace/member/:workspaceId/list` | Members of any workspace |
 
-- Both admin list routes (`/admin/workspace/list` and `/admin/workspace/get/:workspaceId/members`) take `orderBy` and validate it in zod, the same way the user lists do.
+- Both admin list routes (`/admin/workspace/list` and `/admin/workspace/member/:workspaceId/list`) take `orderBy` and validate it in zod, the same way the user lists do.
 - `WorkspaceAdminListRequestSchema` checks it against `WorkspaceDefaultAvailableOrderBy`, and `WorkspaceAdminMemberListRequestSchema` against `WorkspaceMemberDefaultAvailableOrderBy`.
 - An unlisted field answers a validation error (422, `50300`).
 
@@ -380,18 +377,25 @@ These routes are:
 
 **Transfer ownership**:
 
-- It demotes the actor to `admin` and promotes the target to `owner` in one transaction, which `WorkspaceMemberRepository.transferOwnership` opens itself.
+- It promotes the target to `owner` and demotes the actor to `admin` in one transaction, which `WorkspaceMemberDomain` opens through `withTransaction`.
 - Transferring to yourself throws `WorkspaceSelfTransferException` (400, `51619`).
 - A non-member target throws `WorkspaceMemberNotFoundException` (404, `51606`).
+- A target who already owns `workspace.maxWorkspacesPerUser` workspaces throws `WorkspaceCapReachedException` (400, `51604`).
+- A role change that loses a race with another write to either member row throws `WorkspaceMemberPeerForbiddenException`.
 
-**Leave** hard-deletes the caller's membership.
+**Leave** hard-deletes the caller's membership in one transaction.
 
-- The last remaining `owner` cannot leave: `WorkspaceLastOwnerException` (400, `51607`).
+- The `owner` cannot leave: `WorkspaceLastOwnerException` (400, `51607`).
 - Transfer ownership first.
+- The same transaction removes the caller's project memberships in the workspace, cancels the caller's pending join request to it, and clears `lastWorkspaceId` when it points at the workspace.
+
+**Remove member** runs the same cleanup for the removed member, and also revokes the pending invite addressed to the removed member's email in that workspace.
+
+**Account deletion** soft-deletes the workspaces the user owns when they have no other members. An owned workspace with other members throws `WorkspaceOwnerTransferRequiredException` (400, `51625`), so the owner transfers ownership first.
 
 **Workspace cap.** `workspace.maxWorkspacesPerUser` (10) counts memberships with role `owner` on non-deleted workspaces.
 
-- It is enforced **only in `POST /user/workspace/create`**, throwing `WorkspaceCapReachedException` (400, `51604`).
+- It is enforced in `POST /user/workspace/create` and for the target of an ownership transfer, throwing `WorkspaceCapReachedException` (400, `51604`).
 - Personal workspaces created during user creation, invite claims, and join-request acceptance do not consult the cap.
 
 ## Invites
@@ -403,24 +407,27 @@ An invite is addressed to an email, not to a user, so it works whether or not th
 1. Generates a random token and stores only its SHA-256 hash
 2. Mints a `WIN-` prefixed reference
 3. Draws the invite id with `DatabaseUtil.createId()` before the write, so the activity rows that carry `workspaceInviteId` are prepared before the invite exists
+4. Retries the token and reference up to `workspace.invite.referenceMaxAttempts` (5) times on a collision, then throws `DatabaseUniqueValueGenerationFailedException` (409, `51800`)
 
 Constraints:
 
 - `projectId` and `projectRole` are supplied together or not at all (`WorkspaceInviteRoleRequiredException`, 400, `51611`)
 - the project belongs to this workspace (`WorkspaceInviteProjectMismatchException`, 400, `51610`)
+- an address that already belongs to a member of the workspace throws `WorkspaceMemberAlreadyExistsException` (400, `51624`)
 - a second pending invite to the same address in the same workspace throws `WorkspaceInviteDuplicateException` (400, `51609`)
+- a pending invite for that address that is already past `expiredAt` is flipped to `expired` and does not block the new invite
 
 **Expiry** comes from the request's `expiryDuration` (`EnumWorkspaceInviteExpiry`), defaulting to `workspace.invite.expiredInDays` (7).
 
 **Delivery.** `createInviteTokenData` mints two links from the one plain token:
 
-- claim link from `workspace.invite.linkPattern` (`{homeUrl}/workspace/invites/{token}`)
+- claim link from `workspace.invite.linkPattern` (`{homeUrl}/workspace/invites?inviteToken={token}`)
 - sign-up link from `workspace.invite.signUpLinkPattern` (`{homeUrl}/sign-up?inviteToken={token}`)
 
 Create and resend look the invited address up among active users. `sendInviteNotification` picks one of two deliveries from that result:
 
 - an address that already has an active account is sent the claim link through the `workspaceInvite` notification process
-    - `NotificationRecipientDomain.getRecipient` reads the invitee's recipient snapshot: address, username, the channels the user's notification settings leave enabled, and device tokens.
+    - `WorkspaceInviteHttpService` reads the invitee's recipient snapshot through `NotificationDomain.getRecipient`: address, username, the channels the user's notification settings leave enabled, and device tokens.
     - `NotificationQueue` seals the address, the tokens, and the link with that user's `userId` as authenticated data.
 - an address with no account is sent the sign-up link through `workspaceInviteUnregistered`
     - `NotificationEmailQueue` seals the address (`encryptedEmail` in the job's `send` block) and the link (`encryptedInviteAcceptLink`) with the invite `reference` as authenticated data.
@@ -445,6 +452,8 @@ See [Notification][ref-doc-notification] for the payload encryption.
 - Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestSchema`, a `.pick()` of the create schema).
 - Omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with.
 - Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
+- A pending invite already past `expiredAt` cannot be resent: it throws `WorkspaceInviteInvalidException` (400, `51603`).
+- An invite id that does not belong to the workspace throws `WorkspaceInviteNotFoundException` (404, `51612`).
 - The rotation matches the invite only while it is `pending`, so a resend never revives an accepted, revoked, or expired invite. A resend that loses a race with another write to the same invite, including a MongoDB write conflict, answers the same `400` `inviteAlreadyProcessed`, never `409`.
 - **Revoke** flips the invite to `revoked` only while it is `pending`. An invite that is not pending when read, or that stops being pending before the write, answers the same `400` `inviteAlreadyProcessed`.
 
@@ -457,12 +466,12 @@ See [Notification][ref-doc-notification] for the payload encryption.
 
 **Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user.
 
-Preconditions (anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51603`)):
+Preconditions (anything else collapses into `WorkspaceInviteInvalidException` (400, `51603`)):
 
 - the token hashes to a `pending`, unexpired invite on an active workspace
 - the invite email matches the caller's email (case-insensitive)
 
-A race that consumes the invite after those checks pass answers `WorkspaceInviteAlreadyProcessedException` (400, `51613`) and writes nothing.
+A race that consumes the invite after those checks pass answers `WorkspaceInviteAlreadyProcessedException` (400, `51613`) and writes nothing. A caller who is already a member of the workspace gets the same answer, because the membership insert collides on the unique index and the transaction rolls back.
 
 On success one transaction:
 
@@ -476,12 +485,13 @@ The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepa
 - A user who has no account yet redeems the invite through sign-up instead, by passing `inviteToken`. The accept inside the sign-up transaction is guarded on `pending` too: an invite consumed between the token check and the commit fails the sign-up with `400` `inviteAlreadyProcessed` and creates no user.
 - See [Personal Workspace](#personal-workspace).
 
-**Expiry sweep.** `WorkspaceProcessorService.onModuleInit` calls `WorkspaceQueue.scheduleInviteExpirySweep`:
+**Expiry sweep.** `WorkspaceProcessorService.onModuleInit` calls `WorkspaceQueue.scheduleInviteExpirySweep` and `WorkspaceQueue.scheduleJoinRequestExpirySweep`:
 
-- It registers the recurring BullMQ job through `upsertJobScheduler` on the `workspace` queue.
-- The cron is `workspace.invite.expirySweepCron` (`0 0 * * *`), in the app timezone, at `low` priority.
-- The scheduler is registered with `immediately: true`, so a sweep also runs at boot rather than waiting for the first cron tick.
-- The job flips every `pending` invite past its `expiredAt` to `expired`.
+- Each registers a recurring BullMQ job through `upsertJobScheduler` on the `workspace` queue: `expireStaleInvites` and `expireStaleJoinRequests`.
+- Both use the cron `workspace.invite.expirySweepCron` (`0 * * * *`), in the app timezone, at `low` priority.
+- Each scheduler is registered with `immediately: true`, so a sweep also runs at boot rather than waiting for the first cron tick.
+- `expireStaleInvites` flips every `pending` invite past its `expiredAt` to `expired`, in chunks of `workspace.invite.expireChunkSize` (100).
+- `expireStaleJoinRequests` flips every `pending` join request past its `expiredAt` to `expired`, in chunks of `workspace.joinRequest.expireChunkSize` (100).
 
 ## Join Requests
 
@@ -490,9 +500,10 @@ The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepa
 - Only a workspace with `isPublic: true` accepts requests. A private one throws `WorkspaceNotPublicException` (400, `51614`).
 - Already being a member throws `WorkspaceJoinRequestAlreadyMemberException` (400, `51615`).
 - A second pending request throws `WorkspaceJoinRequestDuplicateException` (400, `51616`).
+- A request expires `workspace.joinRequest.expiresInMs` (7 days) after it is created. Accept and reject match a request only while it is `pending` and unexpired, so a request past `expiredAt` answers `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`) until the sweep flips it to `expired`.
 - On create, every active reviewer (`owner` and `admin`) is notified.
     - The reviewer ids come from `WorkspaceMemberRepository.findReviewersByWorkspace`, and `UserDomain.getManyActiveByIds` keeps the active users among them.
-    - Each reviewer gets a recipient snapshot (address, username, channels, device tokens), read before the request row is written.
+    - Each reviewer gets a recipient snapshot from `NotificationDomain.getRecipient` (address, username, channels, device tokens), read before the request row is written.
     - Each reviewer's review link is sealed (AES-256-GCM) with **that reviewer's** user id as authenticated data.
     - A link sealed for one reviewer therefore does not open in another reviewer's job.
     - `NotificationQueue.sendWorkspaceJoinRequestBulk` adds the jobs of every reviewer in one `addBulk`, each under the job id `workspaceJoinRequest-{joinRequestId}-{userId}`.
@@ -500,18 +511,24 @@ The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepa
 - **Accept always creates a `member` membership.** The role is not configurable on this path.
     - The membership creation and the status flip to `accepted` with `reviewedByUserId` / `reviewedAt` run in one transaction.
     - The activity pair is prepared before the transaction and staged after it commits.
-- Reject is a single update with no transaction.
+- Reject is a single guarded update with no transaction.
 - Accept does **not** point the requester's `lastWorkspaceId` at the workspace they just joined, unlike an invite claim.
 - The requester switches to the workspace themselves.
 - Reject requires a `rejectReasonCode` from `EnumWorkspaceJoinRejectReason`.
 - Both outcomes notify the requester once the write commits: `workspaceJoinAccepted` on accept, `workspaceJoinRejected` (carrying the reason code) on reject.
-    - The requester's recipient snapshot is read before the write, from `UserDomain.getOneActive`.
+    - The requester is read with `UserDomain.getOneActive`, then `NotificationDomain.getRecipient` builds the recipient snapshot, both before the write.
     - A requester who is not an active user gets no notification, and the write still completes.
     - The job id is `{process}-{joinRequestId}-{userId}`, and a failed enqueue is logged and reported without changing the outcome.
 - Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`).
 - An id that does not belong to the resolved workspace is `WorkspaceJoinRequestNotFoundException` (404, `51617`).
 
-The `cancelled` status is written only by workspace soft-delete.
+The `cancelled` status is written by these paths:
+
+- workspace soft-delete cancels every pending request to the workspace
+- leaving or being removed from the workspace cancels the member's pending request to it
+- account deletion cancels the user's pending requests
+
+A pending request already past `expiredAt` becomes `expired` instead of `cancelled` on those paths.
 
 A requester has no endpoint to withdraw their own request.
 
@@ -521,12 +538,10 @@ A requester has no endpoint to withdraw their own request.
     - `WorkspaceCreateRequestDto` carries no slug field.
     - `WorkspaceDomain.createWorkspace` draws `workspace.slugMaxAttempts` (5) candidates of `workspace.slugPrefix` plus random characters up to `slugMaxLength`, and walks them itself.
     - Choosing a slug is what `PATCH /user/workspace/update/slug` is for.
-- `WorkspaceDomain.assertSlugAllowed` validates a slug sent to `update/slug` against `workspace.slugRegex` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`).
-    - It then checks the slug against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
+- `WorkspaceDomain.updateWorkspaceSlug` validates a slug sent to `update/slug` through `WorkspaceUtil.isSlugAllowed` against `workspace.slugRegex` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`).
+    - It then writes the slug. A unique collision on `slug` answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
 - Uniqueness is **global**, matching `@@unique([slug])`.
-- `existsBySlug` counts holders other than the workspace itself across **all** rows, soft-deleted ones included.
     - The unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug.
-    - The check therefore agrees with the index.
 - `createWorkspace` walks its candidates and, for each one:
     1. draws the workspace id
     2. prepares `workspaceCreated`
@@ -540,14 +555,15 @@ A requester has no endpoint to withdraw their own request.
 
 ## Soft Delete
 
-`DELETE /user/workspace/delete` requires `owner`. `WorkspaceDomain.softDeleteWorkspace` prepares `workspaceDeleted`, then opens one `withTransaction`:
+`DELETE /user/workspace/delete` requires `owner`. `WorkspaceHttpService.softDeleteWorkspace` prepares `workspaceDeleted`, then opens one `withTransaction` with the timeout `workspace.delete.timeoutInMs` (10 seconds):
 
-1. `WorkspaceRepository.softDeleteInTx` calls `tx.workspace.softDelete`, which sets `deletedAt` and stamps `deletedBy` and `updatedBy` from the caller.
+1. `WorkspaceDomain.softDeleteInTx` sets `deletedAt` and stamps `deletedBy` and `updatedBy` from the caller.
 2. `ProjectDomain.softDeleteByWorkspaceInTx` soft-deletes every still-active project in it with the same `deletedAt` and `deletedBy` set to the caller.
-3. `WorkspaceInviteRepository.expirePendingByWorkspaceInTx` flips every `pending` invite to `expired`.
-4. `WorkspaceJoinRequestRepository.cancelPendingByWorkspaceInTx` flips every `pending` join request to `cancelled`.
+3. `WorkspaceInviteDomain.revokePendingByWorkspaceInTx` flips every `pending` invite to `revoked`, or to `expired` when it is already past `expiredAt`.
+4. `WorkspaceJoinRequestDomain.cancelPendingByWorkspaceInTx` flips every `pending` join request to `cancelled`, or to `expired` when it is already past `expiredAt`.
 
-After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writes it after the handler returns.
+- A workspace that is already deleted, or a write conflict in the transaction, throws `WorkspaceNotFoundException` (404, `51600`).
+- After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writes it after the handler returns.
 
 **Not cascaded:**
 
@@ -589,7 +605,7 @@ After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writ
 - A social sign-up writes `userCreated`.
 - Both write `workspaceCreated` for a personal workspace, with `createdBy` set to the new user.
 - A sign-up through `inviteToken` writes the invite-accept pair above in place of `workspaceCreated`, and the new user is the `createdBy` of both rows.
-- Admin create and admin CSV import write `userCreatedByAdmin`, `userSendVerificationEmail`, and `workspaceCreatedByAdmin` for each new user with `createdBy` set to the admin.
+- Admin create and admin CSV import write `userCreatedByAdmin` and `workspaceCreatedByAdmin` for each new user with `createdBy` set to the admin.
 - Admin create and admin CSV import also write one `adminUserCreate` or `adminUserImport` row for the admin.
 
 **Single rows**
@@ -635,17 +651,24 @@ Two layers, and they are not the same check.
   slugRegex: /^[0-9a-zA-Z-]+$/,
   slugMaxLength: 30,
   slugMaxAttempts: 5,
+  delete: {
+    timeoutInMs: ms('10s')
+  },
   invite: {
     expiredInDays: 7,
     tokenLength: 100,
     referencePrefix: 'WIN',
     referenceRandomLength: 25,
-    linkPattern: '{homeUrl}/workspace/invites/{token}',
+    referenceMaxAttempts: 5,
+    expireChunkSize: 100,
+    linkPattern: '{homeUrl}/workspace/invites?inviteToken={token}',
     signUpLinkPattern: '{homeUrl}/sign-up?inviteToken={token}',
-    expirySweepCron: '0 0 * * *'
+    expirySweepCron: '0 * * * *'
   },
   joinRequest: {
-    reviewLinkPattern: '{homeUrl}/workspace/join-requests/{joinRequestId}'
+    reviewLinkPattern: '{homeUrl}/workspace/join-requests/{joinRequestId}',
+    expiresInMs: ms('7d'),
+    expireChunkSize: 100
   }
 }
 ```
@@ -681,6 +704,8 @@ Two layers, and they are not the same check.
 | `headerMissing`               | `51621`    | 400        |
 | `guardMissing`                | `51622`    | 403        |
 | `memberGuardMissing`          | `51623`    | 403        |
+| `memberAlreadyExists`         | `51624`    | 400        |
+| `ownerTransferRequired`       | `51625`    | 400        |
 
 Full catalog: [Status Codes][ref-doc-status-codes].
 
@@ -695,4 +720,5 @@ Full catalog: [Status Codes][ref-doc-status-codes].
 [ref-doc-database-generated-unique-values]: database.md#generated-unique-values
 [ref-doc-notification]: notification.md
 [ref-doc-activity-log]: activity-log.md
+[ref-doc-term-policy]: term-policy.md
 [ref-doc-analytic]: analytic.md

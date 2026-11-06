@@ -68,11 +68,12 @@ ConfigModule.forRoot({
     - An absent value and a blank `.env` line (`KEY=`) both parse to `null`.
     - Any other value satisfies the inner schema.
     - The named instances:
-        - `RequestOptionalEnvStringSchema`: a non-empty string (social client IDs, AWS credentials, regions, buckets, CDNs, `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`, `HTTP_TRUSTED_PROXY`)
+        - `RequestOptionalEnvStringSchema`: a non-empty string (social client IDs, AWS credentials, regions, buckets, CDNs, `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`)
         - `RequestOptionalEnvEmailSchema`: an email checked by `RequestEmailSchema` (`EMAIL_NO_REPLY`, `EMAIL_SUPPORT`, `FIREBASE_CLIENT_EMAIL`)
         - `RequestOptionalEnvSesIdentityArnSchema`: an SES identity ARN (`AWS_SES_IDENTITY_ARN`)
         - `RequestOptionalEnvUrlNoTrailingSlashSchema`: an absolute URL without a trailing slash (`AWS_S3_ENDPOINT`, `AWS_SES_ENDPOINT`)
         - `RequestOptionalEnvUrlSchema`: an absolute URL (`SENTRY_DSN`)
+        - `RequestOptionalEnvTrustedProxySchema`: a comma-separated list of preset names, IP addresses, and CIDRs (`HTTP_TRUSTED_PROXY`)
 
 The config files under `src/configs/` read each optional key as `process.env.KEY === '' ? null : (process.env.KEY ?? null)`:
 
@@ -98,8 +99,8 @@ An integration left unset boots fine:
 - `GET /api/system/health/aws` (S3 and SES) and `GET /api/system/health/third-party` (Sentry, Firebase, Google, Apple) still answer 200.
 - A seed that needs it logs a warning and skips:
     - `templateEmailNotification` needs SES
-    - `templateTermPolicy` needs S3
     - `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`
+- The `termPolicy` seed uploads its content files to S3 only when S3 is configured, and seeds the rows either way.
 
 If validation fails:
 
@@ -223,6 +224,7 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 SENTRY_DSN=
 
 # Docker Compose (Optional; read by Compose, not by the application)
+DOCKER_APIS_PORT=
 DOCKER_MONGO_ROOT_USERNAME=
 DOCKER_MONGO_ROOT_PASSWORD=
 DOCKER_MONGO_PORT=
@@ -311,6 +313,9 @@ HOME_NAME=ACKNestJs
 **`HOME_URL`** _(required)_  
 URL for your home/landing page.
 
+- It is an absolute URL without a trailing slash.
+- The verification, password reset, and invitation links start from it.
+
 ```bash
 HOME_URL=https://example.com
 ```
@@ -337,7 +342,8 @@ HTTP_PORT=3000
 **`HTTP_TRUSTED_PROXY`** _(optional)_  
 Comma-separated list of proxy NETWORKS whose forwarding headers Express may trust, passed straight to `trust proxy`.
 
-- It accepts the `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) and explicit CIDRs.
+- It accepts the `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`), IP addresses, and CIDRs.
+- A value with any other entry fails startup validation.
 - It is never a hop count and never `true`.
 
 Effects:
@@ -469,7 +475,7 @@ URL_VERSIONING_ENABLE=true
 ```
 
 **`URL_VERSION`** _(required)_  
-Default API version number.
+Default API version number. It is an integer of 1 or more.
 
 ```bash
 URL_VERSION=1
@@ -482,8 +488,8 @@ MongoDB connection string.
 
 - It targets a **replica set** (Prisma transactions need one).
 - Docker Compose is the recommended local path.
-- Without Docker, use [MongoDB Atlas][ref-mongodb-atlas] or any MongoDB 8.0+ replica set.
-- The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`, and the local Compose file uses `mongo:latest`.
+- Without Docker, use [MongoDB Atlas][ref-mongodb-atlas] or any MongoDB 8.0.x+ replica set.
+- The project runs MongoDB 9: the production Compose file pins `mongo` 9.0.x+, and the local Compose file uses `mongo:latest`.
 - The local Compose port is `DOCKER_MONGO_PORT` (default `27017`).
 - Changing `DOCKER_MONGO_PORT` does not change `DATABASE_URL`. Set the port in `DATABASE_URL` to the same value by hand.
 - With `DOCKER_MONGO_ROOT_PASSWORD` set, the URL needs `<user>:<password>@` before the host and `authSource=admin` in the query.
@@ -559,7 +565,7 @@ AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY=<your_jwt_access_token_public_key>
 ```
 
 **`AUTH_JWT_ACCESS_TOKEN_EXPIRED`** _(required)_  
-Access token expiration time. Format: `1h`, `30m`, `2d`
+Access token expiration time. Format: a whole number and one unit letter `s`, `m`, `h`, or `d`, such as `1h`, `30m`, `2d`
 
 ```bash
 AUTH_JWT_ACCESS_TOKEN_EXPIRED=1h
@@ -599,7 +605,7 @@ AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY=<your_jwt_refresh_token_public_key>
 ```
 
 **`AUTH_JWT_REFRESH_TOKEN_EXPIRED`** _(required)_  
-Refresh token expiration time. Format: `7d`, `30d`, `90d`
+Refresh token expiration time. Format: a whole number and one unit letter `s`, `m`, `h`, or `d`, such as `7d`, `30d`, `90d`
 
 ```bash
 AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
@@ -839,7 +845,7 @@ Redis URL for cache (`db:0`).
 
 - Locally, Compose Redis is the default choice.
 - Without Docker, use a hosted Redis such as [Amazon ElastiCache][ref-elasticache].
-- Redis 6.2 or later is required. BullMQ refuses to connect to a server older than 5.0 and logs a warning below 6.2, its recommended minimum.
+- Redis 6.2.x+ is recommended. BullMQ requires 5.0.x+ and logs a warning below 6.2.x+.
 - Setup: [Installation][ref-doc-installation].
 
 ```bash
@@ -881,9 +887,9 @@ SENTRY_DSN=
 
 > [!NOTE] Every `DOCKER_*` variable is optional and empty in `.env.example`.
 >
-> - Docker Compose reads them to configure the `mongo`, `redis`, and `redis-bullboard` services.
+> - Docker Compose reads them to configure the `apis`, `mongo`, `redis`, and `redis-bullboard` services.
 > - The application never reads them, and `AppEnvSchema` does not validate them.
-> - Each is read as `${VAR:-default}` in `docker-compose.yml`, and all but `DOCKER_MONGO_PORT` also in `ci/docker-compose.production.yml`, so an unset variable and an empty one both take the default.
+> - Each is read as `${VAR:-default}` in `docker-compose.yml`, and all but `DOCKER_APIS_PORT` and `DOCKER_MONGO_PORT` also in `ci/docker-compose.production.yml`, so an unset variable and an empty one both take the default.
 > - The two passwords default to empty, which means no authentication.
 > - The production file takes its values only when started with `--env-file .env` (see [Release][ref-doc-release]).
 
@@ -894,6 +900,17 @@ Both Compose files bind-mount `keys/mongo-keyfile` into the `mongo` service whet
 - The mount sets `create_host_path: false`, so Compose does not create the file and fails the start when it is missing.
 - The file is required even when MongoDB runs plain.
 - `pnpm generate:secret` and `pnpm generate:secret:mongo` create it.
+
+**`DOCKER_APIS_PORT`** _(optional)_  
+Host port the `apis` service publishes.
+
+- It falls back to `3000`.
+- The container listens on `3000` whatever the value.
+- Only `docker-compose.yml` reads it, and the service runs only under the `apis` profile.
+
+```bash
+DOCKER_APIS_PORT=
+```
 
 **`DOCKER_MONGO_ROOT_USERNAME`** _(optional)_  
 Name of the MongoDB root user.

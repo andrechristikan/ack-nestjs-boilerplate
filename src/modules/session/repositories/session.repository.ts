@@ -10,11 +10,15 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { SessionListSelect } from '@modules/session/constants/session.constant';
+import {
+    SessionListSelect,
+    SessionUserRefSelect,
+} from '@modules/session/constants/session.constant';
 import type {
     ISession,
     ISessionList,
     ISessionRef,
+    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import type { ISessionRepository } from '@modules/session/interfaces/session.repository.interface';
@@ -280,6 +284,35 @@ export class SessionRepository implements ISessionRepository {
             where: {
                 id: { in: sessions.map(session => session.id) },
                 userId,
+                isRevoked: false,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt,
+                revokedById: revokedBy,
+                updatedBy: revokedBy,
+            },
+        });
+
+        return sessions;
+    }
+
+    async revokeByDeviceOwnershipIdsInTx(
+        tx: IDatabaseTransactionClient,
+        deviceOwnershipIds: string[],
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionUserRef[]> {
+        const sessions = await tx.session.findMany({
+            where: {
+                deviceOwnershipId: { in: deviceOwnershipIds },
+                isRevoked: false,
+            },
+            select: SessionUserRefSelect,
+        });
+        await tx.session.updateMany({
+            where: {
+                id: { in: sessions.map(session => session.id) },
                 isRevoked: false,
             },
             data: {

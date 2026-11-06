@@ -1,4 +1,5 @@
 import { AwsModule } from '@common/aws/aws.module';
+import { DeviceDomainModule } from '@modules/device/device.domain.module';
 import { NotificationRepositoryModule } from '@modules/notification/notification.repository.module';
 import { NotificationEmailQueueFactory } from '@modules/notification/factories/notification.email.queue.factory';
 import { NotificationPushQueueFactory } from '@modules/notification/factories/notification.push.queue.factory';
@@ -28,7 +29,7 @@ import { Global, Module } from '@nestjs/common';
 import { QueueConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
 
-/** Shared module: NotificationDomain, NotificationQueue, and NotificationUtil for the user, workspace, and term-policy HTTP services; NotificationEmailQueue for the workspace invite HTTP service; the template domains for the notification template seed. */
+/** Shared module: NotificationDomain and NotificationQueue for the user, workspace, and term-policy HTTP services; NotificationUtil for the user HTTP services; NotificationEmailQueue for the workspace invite HTTP service; the template domains for the notification template seed. */
 @Global()
 @Module({
     controllers: [],
@@ -95,6 +96,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
             }
         ),
         NotificationRepositoryModule,
+        DeviceDomainModule,
         AwsModule,
     ],
 })

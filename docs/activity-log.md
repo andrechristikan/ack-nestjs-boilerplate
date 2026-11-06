@@ -12,7 +12,7 @@ Activity Log records audited user actions:
 - `ActivityLogProcessor` runs the job: `ActivityLogProcessorService.processCreateMany` calls `ActivityLogDomain.createMany`, which calls `ActivityLogRepository.createMany`.
 - `ActivityLogRepository.createMany` reads which row ids already exist and inserts only the absent ones in one transaction, so a retried job writes no row twice.
 - The activity log is HTTP-only: a job stages no entry, and the interceptor passes any other context through.
-- An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
+- An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows). The exception is a sign-in that signs other users out of its device: it writes target rows only (see Device sign-in under that section).
 
 **Failed credential logins**
 
@@ -27,20 +27,20 @@ Both paths answer an error and still write their rows, because the error path fl
 
 Password mismatch:
 
-1. `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`.
-2. It prepares `EnumActivityLogAction.userLoginFailed` with `userId` and `createdBy` set to the target user.
-3. It increments the password-attempt counter.
-4. It stages the activity log.
+1. `UserAuthHttpService.loginCredential` calls `UserAuthDomain.countCredentialAttempt`, which counts one password attempt before the password is compared.
+2. `UserAuthDomain.verifyCredential` compares the password.
+3. On a mismatch the service prepares `EnumActivityLogAction.userLoginFailed` with `userId` and `createdBy` set to the target user, and stages it.
+4. The service then throws the not-match exception.
 
 The i18n key is `activityLog.userLoginFailed` ("Login failed with invalid credentials").
 
 Attempt limit already reached:
 
-1. `UserAuthDomain` calls `UserPasswordDomain.reachMaxPasswordAttempt` instead.
-2. It prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` the same way.
-3. It runs the lockout transaction (user `inactive`, sessions and device ownerships revoked).
-4. It enqueues the purge of the session logins the transaction revoked (see [Cache][ref-doc-cache]).
-5. It stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`.
+1. `UserPasswordDomain.countPasswordAttempt` finds the budget spent, enqueues a `lockout` job on the user queue, and returns the stages from `UserUtil.buildPasswordLockoutStages` (`userRevokeAllSessions`, then `userReachMaxPasswordAttempt`).
+2. `UserAuthHttpService.loginCredential` prepares those stages and stages them before it asserts the counted attempt.
+3. The service throws `UserPasswordAttemptMaxException`.
+4. `UserProcessorService.lockout` runs the lockout transaction (user `inactive`, sessions and device ownerships revoked).
+5. It enqueues the purge of the session logins the transaction revoked (see [Cache][ref-doc-cache]).
 
 The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached").
 
@@ -199,16 +199,15 @@ this.activityLogDomain.stagePrepared(activityLogs);
 `userLoginFailed` is prepared with an explicit target `userId`, the same user as `createdBy`, and empty metadata:
 
 ```typescript
-const activityLogs = [
+const failedLogs = [
     this.activityLogDomain.prepare({
         action: EnumActivityLogAction.userLoginFailed,
-        userId,
-        createdBy: userId,
+        userId: attempt.user.id,
+        createdBy: attempt.user.id,
     }),
 ];
-await this.userRepository.increasePasswordAttempt(userId);
 
-this.activityLogDomain.stagePrepared(activityLogs);
+this.activityLogDomain.stagePrepared(failedLogs);
 ```
 
 Activity logs prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit.
@@ -246,6 +245,8 @@ When one user acts on another user, the domain prepares two rows:
 
 - **Actor row.** Uses the action the actor performed and belongs to the actor.
 - **Target row.** Uses the paired `…ByAdmin`, `…ByOwner`, or `…ByInvitee` action (or `userBlocked` / `userUpdateStatus` for a status change), has contract `user = target`, and belongs to the affected user, with `createdBy` set to the actor.
+
+A sign-in on a device other users hold is the one action that writes a target row with no actor row (see Device sign-in below).
 
 When the actor and the affected user are the same person:
 
@@ -293,7 +294,7 @@ flowchart TD
 
 **Admin onboarding**
 
-- Admin create and admin import also write `userSendVerificationEmail` and `workspaceCreatedByAdmin` (the personal workspace) for each new user.
+- Admin create and admin import also write `workspaceCreatedByAdmin` (the personal workspace) for each new user.
 - Every per-user row belongs to the new user and has `createdBy` set to the admin.
 - Only `adminUserCreate` / `adminUserImport` belongs to the admin.
 - Sign-up writes `userSignedUp` and `userSendVerificationEmail`.
@@ -315,13 +316,29 @@ An action whose actor is the affected user writes one row under its plain name:
 - `workspaceJoinRequested`, `workspaceMemberLeft`
 - `projectCreated`, `projectUpdated`, `projectDeleted`, `projectMemberLeft`
 
+A credential login with the right password on an unverified account writes `userSendVerificationEmail` for that user, only when the email is sent. The row is written although the login answers `UserEmailNotVerifiedException` (403).
+
 **Revoke rows first**
 
 - An admin status change to `blocked` or `inactive` stages the revoke-all pair (`adminSessionRevokeAll` / `userRevokeAllSessionsByAdmin`, only when at least one session was revoked) before the status pair.
 - Account self-deletion stages `userRevokeAllSessions`, then `userDeleteSelf`.
 - The credential lockout stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`.
-- Self-deletion and the lockout write both rows every time, including when no session was revoked.
+- The two-factor lockout stages `userRevokeAllSessions`, then `userReachMaxTwoFactorAttempt`.
+- Self-deletion and each lockout write both rows every time, including when no session was revoked.
 - The password and two-factor paths that revoke every session write no revoke-all row.
+
+**Device sign-in**
+
+- A sign-in on a device revokes the live sessions of every other user whose ownership of that device is not revoked. The device can have several such users.
+- The sign-in writes target rows only. It has no actor row for the revocation, so `userRevokeSessionByDeviceLogin` has no entry in the actor and target table. The signing-in user keeps the login row of the sign-in itself (credential or social login, or the row staged after two-factor verification), which does not mention the revocation.
+- Each affected user gets one `userRevokeSessionByDeviceLogin` row, and only when the sign-in revoked at least one live session of that user. An owner with no live session gets no row and no purge job.
+- The row fields:
+    - `userId`: the affected user
+    - `createdBy`: the signing-in user
+    - `metadata.actorUserId`: the signing-in user's id
+    - `metadata.sessionCount`: the number of that user's sessions this sign-in revoked
+    - workspace: none (`workspaceId` is `null`), because the contract sets `user = target` and `workspace = none`
+- The rows are staged after the purge jobs are enqueued, and the interceptor flushes them with the request.
 
 **Counting**
 
@@ -370,7 +387,7 @@ type IActivityLogMetadata = Record<string, string | number | boolean | Date>;
 | `adminSessionRevoke` | `targetUserId`, `targetUsername`, `timestamp`, `sessionId` |
 | `userRevokeSessionByAdmin` | `actorUserId`, `timestamp`, `sessionId` |
 | `adminSessionRevokeAll` | `targetUserId`, `sessionCount` |
-| `userRevokeAllSessionsByAdmin` | `actorUserId`, `sessionCount` |
+| `userRevokeAllSessionsByAdmin`, `userRevokeSessionByDeviceLogin` | `actorUserId`, `sessionCount` |
 | `adminDeviceRemove` | `targetUserId`, `targetUsername`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | `userRemoveDeviceByAdmin` | `actorUserId`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | `userRemoveDevice` | `deviceOwnershipId`, `deviceId`, `sessionCount` |
@@ -403,3 +420,4 @@ The response returns `metadata` through `ActivityLogMetadataResponseSchema` (`dt
 [ref-doc-pagination]: pagination.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-analytic]: analytic.md
+[ref-doc-cache]: cache.md

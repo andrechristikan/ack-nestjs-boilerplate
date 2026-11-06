@@ -33,12 +33,10 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
@@ -63,11 +61,8 @@ describe('WorkspaceJoinRequestHttpService', () => {
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
         mock<WorkspaceMemberDomain>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const notificationDomain: MockProxy<NotificationDomain> =
         mock<NotificationDomain>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -154,8 +149,6 @@ describe('WorkspaceJoinRequestHttpService', () => {
         email: 'jane@example.com',
     };
 
-    const notificationTokens = ['token-1'];
-
     const recipient: INotificationRecipient = {
         ...TestRecipient,
         userId: 'user-2',
@@ -185,10 +178,6 @@ describe('WorkspaceJoinRequestHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
-        deviceDomain.getNotificationTokens.mockResolvedValue(
-            notificationTokens
-        );
-        notificationDomain.getListUserSetting.mockResolvedValue([]);
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -206,9 +195,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
                     useValue: workspaceMemberDomain,
                 },
                 { provide: UserDomain, useValue: userDomain },
-                { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: NotificationDomain, useValue: notificationDomain },
-                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: NotificationQueue, useValue: notificationQueue },
@@ -250,7 +237,9 @@ describe('WorkspaceJoinRequestHttpService', () => {
                 'reviewer-1',
             ]);
             userDomain.getManyActiveByIds.mockResolvedValue([reviewer]);
-            notificationUtil.mapRecipient.mockReturnValue(reviewerRecipient);
+            notificationDomain.getRecipient.mockResolvedValue(
+                reviewerRecipient
+            );
             workspaceUtil.buildJoinRequestReviewLink.mockReturnValue(
                 'https://app.example.com/review/join-request-1'
             );
@@ -275,7 +264,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
 
                 return { name: 'Jane Doe', username: 'jane' };
             });
-            notificationUtil.mapRecipient.mockImplementation(() => {
+            notificationDomain.getRecipient.mockImplementation(async () => {
                 callOrder.push('reviewerRecipient');
 
                 return reviewerRecipient;
@@ -331,17 +320,9 @@ describe('WorkspaceJoinRequestHttpService', () => {
             expect(userDomain.getManyActiveByIds).toHaveBeenCalledWith([
                 'reviewer-1',
             ]);
-            expect(deviceDomain.getNotificationTokens).toHaveBeenCalledWith(
-                'reviewer-1'
-            );
-            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
-                'reviewer-1'
-            );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 reviewer,
-                EnumNotificationKind.workspaceJoinRequest,
-                ['token-1'],
-                []
+                EnumNotificationKind.workspaceJoinRequest
             );
             expect(
                 notificationQueue.sendWorkspaceJoinRequestBulk
@@ -416,7 +397,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
 
         it('creates nothing and stages nothing when a reviewer recipient read rejects', async () => {
             const failure = new Error('read-failed');
-            deviceDomain.getNotificationTokens.mockRejectedValue(failure);
+            notificationDomain.getRecipient.mockRejectedValue(failure);
 
             await expect(
                 service.createJoinRequest('user-2', body)
@@ -534,7 +515,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
                 joinRequest
             );
             userDomain.getOneActive.mockResolvedValue(requester);
-            notificationUtil.mapRecipient.mockReturnValue(recipient);
+            notificationDomain.getRecipient.mockResolvedValue(recipient);
         });
 
         it('gates, reads the pending request and recipient, accepts, stages the rows, and notifies in order', async () => {
@@ -551,7 +532,12 @@ describe('WorkspaceJoinRequestHttpService', () => {
                     return joinRequest;
                 }
             );
-            notificationUtil.mapRecipient.mockImplementation(() => {
+            userDomain.getOneActive.mockImplementation(async () => {
+                callOrder.push('requester');
+
+                return requester;
+            });
+            notificationDomain.getRecipient.mockImplementation(async () => {
                 callOrder.push('recipient');
 
                 return recipient;
@@ -580,6 +566,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
             expect(callOrder).toEqual([
                 'gate',
                 'pending',
+                'requester',
                 'recipient',
                 'accept',
                 'stage',
@@ -595,17 +582,9 @@ describe('WorkspaceJoinRequestHttpService', () => {
                 workspaceJoinRequestDomain.getPendingById
             ).toHaveBeenCalledWith('join-request-1', 'workspace-1');
             expect(userDomain.getOneActive).toHaveBeenCalledWith('user-2');
-            expect(deviceDomain.getNotificationTokens).toHaveBeenCalledWith(
-                'user-2'
-            );
-            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
-                'user-2'
-            );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 requester,
-                EnumNotificationKind.workspaceJoinAccepted,
-                ['token-1'],
-                []
+                EnumNotificationKind.workspaceJoinAccepted
             );
             expect(
                 workspaceJoinRequestDomain.acceptJoinRequest
@@ -664,6 +643,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
             expect(
                 workspaceJoinRequestDomain.acceptJoinRequest
             ).toHaveBeenCalled();
+            expect(notificationDomain.getRecipient).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendWorkspaceJoinAccepted
             ).not.toHaveBeenCalled();
@@ -703,7 +683,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
 
         it('accepts nothing when the recipient read rejects', async () => {
             const failure = new Error('read-failed');
-            deviceDomain.getNotificationTokens.mockRejectedValue(failure);
+            notificationDomain.getRecipient.mockRejectedValue(failure);
 
             await expect(
                 service.acceptJoinRequest(
@@ -749,7 +729,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
                 joinRequest
             );
             userDomain.getOneActive.mockResolvedValue(requester);
-            notificationUtil.mapRecipient.mockReturnValue(recipient);
+            notificationDomain.getRecipient.mockResolvedValue(recipient);
         });
 
         it('gates, reads the pending request and recipient, rejects, stages the rows, and notifies in order', async () => {
@@ -766,7 +746,12 @@ describe('WorkspaceJoinRequestHttpService', () => {
                     return joinRequest;
                 }
             );
-            notificationUtil.mapRecipient.mockImplementation(() => {
+            userDomain.getOneActive.mockImplementation(async () => {
+                callOrder.push('requester');
+
+                return requester;
+            });
+            notificationDomain.getRecipient.mockImplementation(async () => {
                 callOrder.push('recipient');
 
                 return recipient;
@@ -796,23 +781,16 @@ describe('WorkspaceJoinRequestHttpService', () => {
             expect(callOrder).toEqual([
                 'gate',
                 'pending',
+                'requester',
                 'recipient',
                 'reject',
                 'stage',
                 'notify',
             ]);
             expect(userDomain.getOneActive).toHaveBeenCalledWith('user-2');
-            expect(deviceDomain.getNotificationTokens).toHaveBeenCalledWith(
-                'user-2'
-            );
-            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
-                'user-2'
-            );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 requester,
-                EnumNotificationKind.workspaceJoinRejected,
-                ['token-1'],
-                []
+                EnumNotificationKind.workspaceJoinRejected
             );
             expect(
                 workspaceJoinRequestDomain.rejectJoinRequest
@@ -878,6 +856,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
             expect(
                 workspaceJoinRequestDomain.rejectJoinRequest
             ).toHaveBeenCalled();
+            expect(notificationDomain.getRecipient).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendWorkspaceJoinRejected
             ).not.toHaveBeenCalled();
@@ -903,7 +882,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
 
         it('rejects nothing when the recipient read rejects', async () => {
             const failure = new Error('read-failed');
-            deviceDomain.getNotificationTokens.mockRejectedValue(failure);
+            notificationDomain.getRecipient.mockRejectedValue(failure);
 
             await expect(
                 service.rejectJoinRequest(

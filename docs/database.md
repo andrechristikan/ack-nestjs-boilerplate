@@ -12,7 +12,7 @@ Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
 - [Environment Documentation][ref-doc-environment]: Database connection and other env vars
 - [Configuration Documentation][ref-doc-configuration]: Config module structure
 - [Email Documentation][ref-doc-email]: SES templates and `templateEmailNotification`
-- [Term Policy Documentation][ref-doc-term-policy]: Term policy rows and `templateTermPolicy`
+- [Term Policy Documentation][ref-doc-term-policy]: Term policy rows and the `termPolicy` seed
 - [Third Party Integration][ref-doc-third-party-s3]: S3 bucket setup (`awsS3Config`)
 
 ## Table of Contents
@@ -50,9 +50,9 @@ Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
 
 **Docker is the recommended way to run MongoDB locally.** Compose starts a replica set for you. Step-by-step: [Installation Documentation][ref-doc-installation].
 
-Without Docker, use a [MongoDB Atlas][ref-mongodb-atlas] cluster or any MongoDB 8.0+ **replica set**.
+Without Docker, use a [MongoDB Atlas][ref-mongodb-atlas] cluster or any MongoDB 8.0.x+ **replica set**.
 
-The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`.
+The project runs MongoDB 9: the production Compose file pins `mongo` 9.0.x+.
 
 Prisma transactions need a replica set, so a standalone local MongoDB will not work.
 
@@ -97,7 +97,6 @@ Seeds run through nest-commander (`src/migration/seeds/*`, data in `src/migratio
 Commands that are **not** database seeds run separately and are not part of `migration:seed`:
 
 - SES email templates: [Email][ref-doc-email] (`templateEmailNotification`)
-- Term policy HTML on S3: [Term Policy][ref-doc-term-policy] (`templateTermPolicy`)
 - S3 bucket policy/CORS: [Third Party Integration][ref-doc-third-party-s3] (`awsS3Config`)
 
 ### Database Seeds
@@ -134,7 +133,7 @@ What each `remove()` deletes:
 2. `featureFlag`: every `FeatureFlag` row, seeded or not.
 3. `country`: every `Country` row, seeded or not.
 4. `role`: every `Role` row, seeded or not.
-5. `termPolicy`: every `TermPolicy` row, seeded or not.
+5. `termPolicy`: every `TermPolicyUserAcceptance`, `TermPolicyRecipient`, and `TermPolicy` row, seeded or not.
 6. `policy`: every `Policy` row of the roles the policy data names (`superadmin`, `admin`, `user`), seeded or not. Policy rows of any other role stay.
 7. `user`: see [Users](#users). It empties the models listed there entirely.
 8. `workspace`: only the seeded workspaces and their dependents (see the `workspace` entry under Database modules).
@@ -277,12 +276,13 @@ Each created user also gets its activity rows in the same transaction:
 
 A user whose email already exists is left as it is apart from `updatedBy`, and gets no new nested or activity row.
 
-> [!WARNING] The `user` seed checks the superadmin email before writing.
->
-> - When that email already exists under an id other than `MigrationUserSuperAdminId`, the seed logs an error naming the email, the id found, and the id expected, and returns without writing anything.
-> - The bundled `migration:seed` script carries on with the next command.
-> - Realigning such a database means running `pnpm migration:remove`, then `pnpm migration:seed` (or `pnpm migration:fresh`).
-> - **Both paths are destructive:** the `user` seed's `remove()` deletes every user and every user-linked row in the database, seeded or not, so neither belongs on an environment holding real data.
+The `user` seed writes nothing and logs an error when a prerequisite is missing:
+
+- A seeded role is not in the database.
+- A seeded country is not in the database.
+- A required term policy (`termsOfService`, `privacy`) has no published version.
+
+> [!WARNING] **Destructive:** the `user` seed's `remove()` deletes every user and every user-linked row in the database, seeded or not, so it does not belong on an environment holding real data.
 
 The `user` seed's `remove()` runs one transaction and empties these models in order:
 
@@ -339,9 +339,11 @@ Four term policy documents are created:
 | `privacy`        | 1       | EN       | Privacy policy document   |
 | `termsOfService` | 1       | EN       | Terms of Service document |
 
-- The `termPolicy` seed creates each record with an empty `contents` array and `status: published`.
+- The `termPolicy` seed creates each missing record with `status: published`, a `publishedAt` stamp, and one `en` entry in `contents`.
 - The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type.
-- `templateTermPolicy` links them onto S3: [Term Policy][ref-doc-term-policy].
+- With S3 configured, the seed uploads each body to the private bucket, copies it to the public path, and stores the item in `contents`. Without S3, it stores the mapped presign data and uploads nothing.
+- The seed fails when a required term policy type is not published afterwards.
+- [Term Policy][ref-doc-term-policy] covers the rest.
 
 ## Models
 
@@ -407,6 +409,7 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 - `[signUpAt desc]`
 - `[deletedAt, signUpAt desc]`
 - `[deletedAt, passwordAttempt]`
+- `[deletedAt, lastLoginAt desc]`
 
 `[status, deletedAt, createdAt desc, id desc]` covers the filter of the term-policy recipient cursor, which reads active, non-deleted users created at or before the publication cutoff.
 
@@ -632,7 +635,7 @@ type TermPolicyContent {
 
 A Prisma Client Extension named `audit-actor` stamps audit fields automatically:
 
-- `DatabaseExtensionUtil.build()` (`src/common/database/utils/database.extension.util.ts`) defines it with `Prisma.defineExtension`, closing over the actor getter, the clock, and the stampers.
+- `DatabaseExtensionFactory.build()` (`src/common/database/factories/database.extension.factory.ts`) defines it with `Prisma.defineExtension`, closing over the actor getter, the clock, and the stampers.
 - `DatabaseClientFactory.create()` applies it with `$extends`.
 - A repository write reached only from an authenticated HTTP request leaves `createdBy` / `updatedBy` to the extension, which fills them from the request actor.
 - A write that also runs with no actor (a queue processor, a seed, a public route) passes the audit value explicitly.
@@ -646,7 +649,7 @@ Three roles, wired together in `src/common/database/database.module.ts`:
     - holds the connection options (event-emitting `log` levels and `errorFormat`)
     - returns the extended client from `create()`, typed `IDatabaseClient`
     - `IDatabaseClientOptions` (`interfaces/database.client.interface.ts`) is `Prisma.PrismaClientOptions` with a required `log: Prisma.LogDefinition[]`
-- **`DatabaseExtensionUtil`** (`utils/database.extension.util.ts`):
+- **`DatabaseExtensionFactory`** (`factories/database.extension.factory.ts`):
     - holds the per-model audit field set (built from `Prisma.ModelName` and `Prisma.<Model>ScalarFieldEnum`)
     - holds the stamping methods
     - builds the extension in `build()`, typed `IDatabaseExtension`
@@ -668,7 +671,7 @@ The extension carries these hooks and methods, all registered against `$allModel
 `IDatabaseClient` (`interfaces/database.client.interface.ts`) is a declared type, Prisma's `DynamicClientExtensionThis` over `Prisma.TypeMap` merged with the extension's `softDelete` and `restore` model methods.
 
 - `DatabaseClientFactory.create()` returns `IDatabaseClient`.
-- `DatabaseExtensionUtil.build()` returns `IDatabaseExtension`, the extension's own declared type (`interfaces/database.client.interface.ts`).
+- `DatabaseExtensionFactory.build()` returns `IDatabaseExtension`, the extension's own declared type (`interfaces/database.client.interface.ts`).
 
 Leaf types the extension needs live in `interfaces/database.extension.interface.ts`:
 
@@ -685,19 +688,21 @@ The token and the factory stay unexported. `DatabaseModule` exports:
 
 - `DatabaseService`
 - `DatabaseUtil`
-- `DatabaseExtensionUtil`
+- `DatabaseExtensionFactory`
 
 The same interface file exports `IDatabaseTransactionClient`, the `tx` type for the callback form of `$transaction`.
 
 `Prisma.TransactionClient` does not match the extended client, so derive from this instead.
 
-The module also owns three typed errors (`enums/database.status-code.enum.ts`):
+The module also owns five typed errors (`enums/database.status-code.enum.ts`):
 
-- `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 409, message `database.error.uniqueValueGenerationFailed`) is thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
+- `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 409, message `database.error.uniqueValueGenerationFailed`) is thrown by whoever owns the retry (a repository, a domain, an HTTP service, or a seed) when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
 - `DatabaseWriteConflictException` (`51801`, HTTP 409, message `database.error.writeConflict`) is the mapped form of a Prisma `P2034` write conflict. A write conflict is not retried.
     - A guarded state transition inside a transaction can lose to a concurrent winner as a write conflict, so the loser answers the guard's own 4xx or this 409, unless the domain maps the conflict to its own exception.
     - A term policy publish is the example: `TermPolicyDomain.publishByAdmin` maps the conflict to `TermPolicyStatusInvalidException`, so the loser answers `400` (`statusInvalid`), never `409`. Every other write conflict answers `409`.
 - `DatabaseUnavailableException` (`51802`, HTTP 503, message `database.error.unavailable`) is the mapped form of a Prisma initialization error or a connection-failure code.
+- `DatabaseIdInvalidException` (`51803`, HTTP 400, message `database.error.idInvalid`) is the mapped form of Prisma `P2023`, inconsistent column data such as a malformed ObjectId.
+- `DatabaseTransactionExpiredException` (`51804`, HTTP 503, message `database.error.transactionExpired`) is the mapped form of Prisma `P2028`, a transaction API failure such as an expired transaction.
 
 `DatabaseUtil.toException(error)` returns the mapped exception or `null`, and `AppGeneralFilter` renders it, also when a layer has wrapped the Prisma error in `AppUnknownException`. See [Handling Error](handling-error.md).
 
@@ -711,7 +716,7 @@ What that means for callers:
     - Every statement in the callback uses the `tx` client.
     - A call back to `databaseService.client` escapes the transaction.
 - A repository issues statements only against the model it owns, plus satellite models that have no repository of their own.
-    - `NotificationRepository` writes `NotificationDelivery` rows through a nested `createMany`.
+    - `NotificationRepository` writes `NotificationDelivery` and `TermPolicyRecipient` rows.
     - `DeviceRepository` owns `Device`.
     - `DeviceOwnershipRepository` owns `DeviceOwnership`.
     - `DeviceDomain` composes the two.
@@ -725,15 +730,16 @@ What that means for callers:
     - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`.
         - `SessionRepository.revokeActiveByUser`, `NotificationRepository.createMany`, and `ActivityLogRepository.createMany` are examples.
         - `ActivityLogRepository.createMany` reads which row ids exist and inserts only the absent ones in one transaction.
-    - A write that spans more than one repository: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`.
+    - A write that spans more than one repository of one module: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`.
         - A method that does not join a caller-owned transaction takes no `tx`.
-        - `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.touchInTx` and `DeviceRepository.refreshInTx`.
-        - `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction`.
+        - `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.refreshInTx` and `DeviceRepository.refreshInTx`.
+    - A write that spans more than one module: the HTTP or processor service calls `withTransaction` and each feature domain joins through its `*InTx(tx, ...)` method.
+        - `UserHttpService.deleteSelf`, `WorkspaceHttpService.softDeleteWorkspace`, and `UserRegistrationHttpService` are examples.
         - `UserHttpModule` imports `WorkspaceDomainModule`, and `UserDomainModule` does not.
 - `withTransaction(fn, options?)` takes `IDatabaseTransactionOptions` (`interfaces/database.client.interface.ts`), Prisma's `transactionOptions` shape.
     - Omitted options keep Prisma's defaults (`maxWait` 2 s, `timeout` 5 s).
     - A caller passes options only from its own `*TimeoutInMs` config key.
-    - `WorkspaceDomain.commitOnboarding` receives `user.onboarding.createTimeoutInMs` or `createBulkTimeoutInMs`.
+    - `UserRegistrationHttpService` passes `user.create.timeoutInMs` or `user.create.bulkTimeoutInMs`.
     - The seeds read `database.seedTransactionTimeoutInMs`.
 - The MongoDB ping lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$runCommandRaw({ ping: 1 })`. `DatabaseService` carries no health method.
 
@@ -747,7 +753,7 @@ What that means for callers:
 
 **Stamping recurses into nested writes.**
 
-- `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields.
+- `DatabaseExtensionFactory.stampRelations` walks the payload's relation fields.
 - `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`.
 - Each nested write is stamped against the **related** model, resolved through `DatabaseModelRelations`.
 - The recursion continues to any deeper level.
@@ -761,13 +767,13 @@ For a caller this means a nested write on an authenticated request needs no hand
 
 Callers:
 
-- `ProjectRepository.softDelete` calls `client.project.softDelete` with no transaction.
-- `WorkspaceDomain.softDeleteWorkspace` prepares `workspaceDeleted`, then opens `withTransaction`:
-    1. `WorkspaceRepository.softDeleteInTx` calls `tx.workspace.softDelete` with the shared `deletedAt`.
+- `UserRepository.deleteSelfInTx` calls `tx.user.softDelete`.
+- `WorkspaceHttpService.softDeleteWorkspace` prepares `workspaceDeleted`, then opens `withTransaction`:
+    1. `WorkspaceDomain.softDeleteInTx` soft-deletes the workspace with the shared `deletedAt`.
     2. `ProjectDomain.softDeleteByWorkspaceInTx` soft-deletes the still-active projects through `updateMany` with the same `deletedAt` and an explicit `deletedBy` (the `updateMany` hook stamps no `deletedBy`).
-    3. Pending invites are expired.
-    4. Pending join requests are cancelled.
-    5. After the commit, the domain stages the prepared activity log.
+    3. `WorkspaceInviteDomain.revokePendingByWorkspaceInTx` revokes pending invites.
+    4. `WorkspaceJoinRequestDomain.cancelPendingByWorkspaceInTx` cancels pending join requests.
+    5. After the commit, the service stages the prepared activity log.
 
 Methods:
 
@@ -783,32 +789,34 @@ Methods:
     - lets an explicit `updatedBy` in `data` win
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
-`UserDomain.deleteSelf` uses `softDelete`:
+`UserHttpService.deleteSelf` soft-deletes the user:
 
-1. It prepares `userRevokeAllSessions` (a `user = target` row, with the user passed as `userId` and `createdBy`) and `userDeleteSelf`.
+1. It prepares `userRevokeAllSessions` (a `user = target` row, with the user passed as `userId` and `createdBy`) and `userDeleteSelf`, then checks the password.
 2. It opens one `withTransaction` that:
-    - calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`)
-    - revokes every live session of the user
-    - revokes every live device ownership of the user with its device's push token cleared
-3. After the commit, it enqueues the purge of the session cache entries of the sessions it revoked.
-4. It stages `userRevokeAllSessions`, then `userDeleteSelf`.
+    - asserts the user's owned workspaces have no other members, then soft-deletes them with their projects, pending invites, and pending join requests
+    - cancels the user's pending join requests and revokes pending invites addressed to the user's email
+    - removes the user's workspace, project, mobile number, and two-factor rows
+    - revokes every live session and every live device ownership of the user
+    - calls `UserDomain.deleteSelfInTx` (soft-delete plus `status: inactive`)
+3. After the commit, it enqueues the purge of the session cache entries of the revoked sessions and deletes the user's own profile photo.
+4. It stages `userRevokeAllSessions`, `userDeleteSelf`, and one `workspaceDeleted` row per deleted workspace.
 
 **Reads are not filtered.** The extension only writes audit fields and never rewrites a `where`. Excluding soft-deleted rows stays explicit:
 
 - An active-only read on `Workspace` or `Project` carries `OR: WorkspaceActiveFilter` or `OR: ProjectActiveFilter`, each `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`. The MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present.
 - A `User` read carries `deletedAt: null`.
-- `PaginationService` counts through `repository.count()` with the same explicit `where`, so a page and its total agree.
+- `PaginationService` takes the Prisma delegate and counts through `delegate.count({ where })` with the same explicit `where`, so a page and its total agree.
 
 ## Generated Unique Values
 
-Some columns carry a server-generated value that is unique: workspace and project slugs.
+Some columns carry a server-generated value that is unique: workspace and project slugs, and the reference and token of a workspace invite.
 
 - A random draw can collide with a row that already holds it.
-- Each consumer below works from a **bounded candidate list that ends in a thrown exception**, never an unbounded loop and never a leaked Prisma error.
+- Each consumer below works from a **bounded attempt list that ends in a thrown exception**, never an unbounded loop and never a leaked Prisma error.
 
-The shape is the same in all three places:
+The shape is the same for slugs:
 
-1. The caller draws the whole candidate list up front, `slugMaxAttempts` entries of `HelperStringService.generateSlug(prefix, maxLength)` (`5` for both `workspace` and `project`), and passes the list down.
+1. The caller draws the whole candidate list up front, `slugMaxAttempts` entries of `HelperStringService.generateSlugCandidates(prefix, maxLength, maxAttempts)` (`5` for both `workspace` and `project`), and passes the list down.
 2. The consumer writes with one candidate at a time.
     - A unique collision on that column fails that write (rolling back its transaction where there is one).
     - The next candidate is then tried.
@@ -816,30 +824,31 @@ The shape is the same in all three places:
 
 The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: true for a `Prisma.PrismaClientKnownRequestError` with code `P2002` whose `meta.target` names `field`, case-insensitively.
 
-| Candidate source | Consumer | Retry unit |
+| Candidate source | Retry owner | Retry unit |
 | --- | --- | --- |
-| `WorkspaceDomain.drawSlugCandidates()` | `WorkspaceDomain.createWorkspace` | the `withTransaction`: `createInTx` (workspace plus owner membership) |
-| `ProjectDomain.drawSlugCandidates()` | `ProjectRepository.create` | one `client.project.create` per candidate, with no transaction |
-| `UserOnboardingDomain.buildPersonalWorkspaceContexts()` | `WorkspaceDomain.commitOnboarding` | the whole onboarding `withTransaction` |
+| `WorkspaceUtil.drawSlugCandidates()` | `WorkspaceDomain.createWorkspace` | the `withTransaction`: `createInTx` (workspace plus owner membership) |
+| `ProjectUtil.drawSlugCandidates()` | `ProjectRepository.create`, fed by `ProjectDomain.createProject` | one `client.project.create` per candidate, with no transaction |
+| `UserCreateUtil.buildPersonalWorkspaceContexts()` | `UserRegistrationHttpService` (sign-up, admin create, admin import) and `UserAuthHttpService` (social sign-up) | the whole `withTransaction` that creates the users and their personal workspaces |
+| `workspace.invite.referenceMaxAttempts` draws of the invite reference and token | `WorkspaceInviteDomain` | one attempt per draw |
 
 Three rules hold across all of them:
 
-- **A `P2002` on a value the repository did not draw never counts as a collision of the generated value.**
+- **A `P2002` on a value the retry owner did not draw never counts as a collision of the generated value.**
     - `isUniqueCollision` is asked about the generated column by name, so a violation on a client-supplied field stays the caller's error.
-    - Onboarding translates the two it owns through `UserOnboardingUtil.mapCreateCollision`: a `username` collision becomes `UserUsernameExistException` and an `email` collision becomes `UserEmailExistException`.
+    - User creation translates the two it owns through `UserCreateUtil.mapCreateCollision`: a `username` collision becomes `UserUsernameExistException` and an `email` collision becomes `UserEmailExistException`.
 - **The candidate list is an argument, never a client field.**
     - `WorkspaceCreateRequestDto` and `ProjectCreateRequestDto` carry no slug.
-    - The personal-workspace sign-up context carries `slugCandidates: string[]`, which the onboarding repository indexes by attempt number.
+    - The personal-workspace sign-up context carries `slugCandidates: string[]`, which `WorkspaceUtil` indexes by attempt number.
 - **A batch retries as a batch.**
-    - `WorkspaceDomain.commitOnboarding` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole `withTransaction`.
-    - Its attempt budget is the smallest candidate list in the batch.
+    - `UserRegistrationHttpService.createAdminUsers` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole `withTransaction`.
+    - Its attempt budget is the smallest candidate list in the batch (`WorkspaceUtil.countSlugAttempts`).
     - Admin CSV import is the caller that uses it.
 
 ## Database Tools
 
 ### Prisma ORM
 
-The database client is **[Prisma][ref-prisma] v6.19.x**.
+The database client is **[Prisma][ref-prisma] 6.19.x+**.
 
 - Repositories talk to Prisma only: generated types, `PrismaClient` as the boundary, shared query API and transactions.
 - Schema sync is `pnpm db:migrate` (`prisma db push`).

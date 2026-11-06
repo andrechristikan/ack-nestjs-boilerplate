@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumTermPolicyType,
     EnumUserLoginFrom,
@@ -137,6 +138,7 @@ describe('UserAuthDomain', () => {
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: true,
+                lockoutStages: [],
             };
             userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
             userPasswordDomain.countPasswordAttempt.mockResolvedValue(counted);
@@ -152,11 +154,23 @@ describe('UserAuthDomain', () => {
             ).toHaveBeenCalledWith(baseUser);
         });
 
-        it('returns the attempt with a spent budget', async () => {
+        it('returns the attempt with a spent budget and its lockout stages', async () => {
             const spent = {
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: false,
+                lockoutStages: [
+                    {
+                        action: EnumActivityLogAction.userRevokeAllSessions,
+                        userId: baseUser.id,
+                        createdBy: baseUser.id,
+                    },
+                    {
+                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                        userId: baseUser.id,
+                        createdBy: baseUser.id,
+                    },
+                ],
             };
             userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
             userPasswordDomain.countPasswordAttempt.mockResolvedValue(spent);
@@ -228,6 +242,7 @@ describe('UserAuthDomain', () => {
             user: baseUser,
             hashedPassword: 'hashed-password',
             isAttemptCounted: true,
+            lockoutStages: [],
         };
 
         it('returns true and resets the attempt counter when the credentials are valid', async () => {
@@ -267,21 +282,16 @@ describe('UserAuthDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordExpiredException when the password has expired', async () => {
+        it('returns true and resets the attempt counter when the matched password has expired', async () => {
             authPasswordUtil.validatePassword.mockResolvedValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
-            const call = domain.verifyCredential(counted, 'plain-password');
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordExpired,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordExpired
-                    ],
-                messagePath: 'user.error.passwordExpired',
-            });
+            await expect(
+                domain.verifyCredential(counted, 'plain-password')
+            ).resolves.toBe(true);
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).toHaveBeenCalledWith(baseUser.id);
         });
     });
 
@@ -290,6 +300,7 @@ describe('UserAuthDomain', () => {
             user: baseUser,
             hashedPassword: 'hashed-password',
             isAttemptCounted: true,
+            lockoutStages: [],
         };
 
         it('resolves and resets the attempt counter when the password matches', async () => {
@@ -353,6 +364,9 @@ describe('UserAuthDomain', () => {
             expect(
                 userPasswordDomain.resetPasswordAttempt
             ).not.toHaveBeenCalled();
+            expect(
+                authPasswordUtil.checkPasswordExpired
+            ).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordNotMatchException for a null password without comparing', async () => {
@@ -375,8 +389,50 @@ describe('UserAuthDomain', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordExpired,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.passwordExpired
+                    ],
                 messagePath: 'user.error.passwordExpired',
             });
+            expect(
+                userPasswordDomain.resetPasswordAttempt
+            ).toHaveBeenCalledWith(baseUser.id);
+            expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
+                baseUser.passwordExpired
+            );
+        });
+    });
+
+    describe('assertPasswordNotExpired', () => {
+        it('returns when the password has not expired', () => {
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+
+            expect(() =>
+                domain.assertPasswordNotExpired(baseUser)
+            ).not.toThrow();
+            expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
+                baseUser.passwordExpired
+            );
+        });
+
+        it('throws UserPasswordExpiredException when the password has expired', () => {
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
+
+            expect(() => domain.assertPasswordNotExpired(baseUser)).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.passwordExpired,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.passwordExpired
+                        ],
+                    messagePath: 'user.error.passwordExpired',
+                })
+            );
+            expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
+                baseUser.passwordExpired
+            );
         });
     });
 

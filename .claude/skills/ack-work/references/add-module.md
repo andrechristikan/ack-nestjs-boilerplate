@@ -33,7 +33,7 @@ A queue, a processor, and a processor service follow `.claude/skills/ack-work/re
 Copy the shape, not the names:
 
 - `<module>.repository.module.ts`: repositories in `providers` and `exports`, `imports: []` (`src/modules/device/device.repository.module.ts:7-22`).
-- `<module>.domain.module.ts`: domains, utils, caches, queue classes in `providers`; export what another module's HTTP service, processor service, domain (a util), or the aggregation domain (an analytic domain or util) injects; import the repository module plus each non-`@Global()` feature domain module whose util a domain uses (`src/modules/device/device.domain.module.ts:8-13`; a queue's registration and `BullModule` export, `src/modules/workspace/workspace.domain.module.ts:34,47-51`).
+- `<module>.domain.module.ts`: domains, utils, caches, queue classes in `providers`; export what another module's HTTP service, processor service, domain (a util), or the aggregation domain (an analytic domain or util) injects; import the repository module plus each non-`@Global()` feature domain module whose util a domain uses (`src/modules/device/device.domain.module.ts:8-13`; a queue's registration and `BullModule` export, `src/modules/workspace/workspace.domain.module.ts:33,46-50`).
 - `<module>.http.module.ts`: HTTP services in `providers` and `exports`, imports its own domain module plus each other domain module its services inject (`src/modules/project/project.http.module.ts:7-12`).
 - `<module>.processor.module.ts` only with a processor (`src/modules/workspace/workspace.processor.module.ts:6-11`).
 
@@ -41,9 +41,9 @@ Copy the shape, not the names:
 
 ## 5. Register
 
-- Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module (`src/router/http/router.http.shared.module.ts:24-47`). A missing import fails the boot.
-- Processor module: `src/router/processor/router.processor.module.ts:16-23`.
-- A `@Global()` domain module: `src/common/common.module.ts:64-72` `imports`. Read the `@Global()` decision from a sibling that needs to be reachable everywhere (`src/modules/notification/notification.domain.module.ts:32`); the default is not global.
+- Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module (`src/router/http/router.http.shared.module.ts:20-44`). A missing import fails the boot.
+- Processor module: `src/router/processor/router.processor.module.ts:9-21`.
+- A `@Global()` domain module: `src/common/common.module.ts:56-64` `imports`. Read the `@Global()` decision from a sibling that needs to be reachable everywhere (`src/modules/notification/notification.domain.module.ts:32-33`); the default is not global.
 
 ## 6. Messages
 

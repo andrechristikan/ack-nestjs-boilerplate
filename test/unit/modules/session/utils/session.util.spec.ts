@@ -1,7 +1,10 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import type { ISession } from '@modules/session/interfaces/session.interface';
+import type {
+    ISession,
+    ISessionUserRef,
+} from '@modules/session/interfaces/session.interface';
 
 describe('SessionUtil', () => {
     let util: SessionUtil;
@@ -104,6 +107,32 @@ describe('SessionUtil', () => {
             );
 
             expect(result).toEqual({ actorUserId: 'actor-1', sessionCount: 3 });
+        });
+    });
+
+    describe('groupRefsByUser', () => {
+        it('groups the refs per user in first-seen order, keeping only the id in each ref', () => {
+            const sessions: ISessionUserRef[] = [
+                { id: 'session-1', userId: 'user-2' },
+                { id: 'session-2', userId: 'user-3' },
+                { id: 'session-3', userId: 'user-2' },
+            ];
+
+            const result = util.groupRefsByUser(sessions);
+
+            expect(result).toEqual([
+                {
+                    userId: 'user-2',
+                    sessions: [{ id: 'session-1' }, { id: 'session-3' }],
+                },
+                { userId: 'user-3', sessions: [{ id: 'session-2' }] },
+            ]);
+        });
+
+        it('returns an empty list for no refs', () => {
+            const result = util.groupRefsByUser([]);
+
+            expect(result).toEqual([]);
         });
     });
 });

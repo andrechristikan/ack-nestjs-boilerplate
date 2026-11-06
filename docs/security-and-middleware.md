@@ -191,8 +191,8 @@ Only `req.ip` is consulted.
 
 `req.ips` is not read anywhere in the codebase.
 
-> - `RequestUtil.buildRequestLog(req)` resolves the request log (`ipAddress` under `RequestLogStoreKey`) separately, through `@supercharge/request-ip`.
-> - That library reads forwarding headers directly and is not governed by `trust proxy`, so the two values can differ.
+> - `RequestUtil.getClientIp(req)` returns `req.ip`, falling back to the socket peer address.
+> - The rate limiters and `RequestUtil.buildRequestLog(req)` (`ipAddress` under `RequestLogStoreKey`) both use it, so they see the same address.
 >
 > See [Request Store](#request-store).
 
@@ -232,12 +232,12 @@ Route tiers are the members of `EnumRequestThrottleRoute`:
 - It applies to every route with no opt-in
 - The library's `@SkipThrottle()` appears nowhere in this codebase, so the global limiter is the floor every endpoint sits on
 
-**Opt-in (`user` and `route`):** enforcement is split across two phases:
+**Opt-in (`user` and `route`):** enforcement is split across two guards:
 
 - `route` is enforced by `RequestThrottleRouteGuard`, the second `APP_GUARD` in the same module
-- `user` is enforced by `RequestThrottleUserInterceptor`, mounted by `@RequestThrottle`
+- `user` is enforced by `RequestThrottleUserGuard`, mounted on the handler by `@RequestThrottle` through `UseGuards`
 - Both read the decorator's metadata off the handler
-- The `route` limiter is evaluated first because every global guard runs before every interceptor, so a request rejected by the endpoint limit never touches the personal counter
+- The `route` limiter is evaluated first because global guards run before handler-level guards, so a request rejected by the endpoint limit never touches the personal counter
 
 Being a global guard also puts the `route` limiter ahead of controller-level and route-level guards, which run later.
 
@@ -258,17 +258,17 @@ Their responses are therefore identical in shape.
 
 Every handler carrying `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` also carries `@RequestThrottle({ user: true })`:
 
-- `user: true` on a request with no authenticated user is a silent no-op
+- `user: true` on a request with no authenticated user throws `RequestContextMissingException` (500, `50304`), so the throttle decorator sits above the JWT decorator in the source
 - the `public` and `system` scopes, which never populate `req.user`, omit the switch
 - a JWT-protected handler that omits it keeps only the global per-IP limit, and nothing fails or logs to say so
 
 ```typescript
 @TermPolicyAcceptanceProtected()
 @UserProtected()
-@FeatureFlagProtected('changePassword')
+@FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
 @Patch('/password/change')
 async changePassword(
     @UserCurrent() user: IUser,
@@ -279,16 +279,16 @@ async changePassword(
 }
 ```
 
-Decorator order is irrelevant:
+Decorator position matters for the `user` limiter only:
 
-- `@RequestThrottle` writes metadata and mounts an interceptor.
-- A global guard reads the metadata for the `route` tier.
-- The interceptor runs after every guard for the `user` switch, so the `user` limiter always sees the verified `req.user` wherever the decorator sits in the stack.
+- `@RequestThrottle` writes metadata and mounts `RequestThrottleUserGuard`.
+- A global guard reads the metadata for the `route` tier, wherever the decorator sits.
+- Decorators apply bottom-up, so the `user` guard runs after every guard written below it.
+- The decorator therefore sits above `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()`, so `req.user` is set when the guard reads it.
 
 **Tracker resolution:**
 
-- Both guards take `req.ip`, validate it with `net.isIP()`, and fall back to `req.socket.remoteAddress` when it is not an address (`RequestUtil.resolveThrottleTrackerIp`).
-- A non-address `X-Forwarded-For` token therefore cannot become a Redis key segment. See [Trusted Proxy and Client IP](#trusted-proxy-and-client-ip).
+- The default and `route` guards take the client address from `RequestUtil.getClientIp`: `req.ip`, then the socket peer address. See [Trusted Proxy and Client IP](#trusted-proxy-and-client-ip).
 - The `user` limiter never reads the client address.
 - The `route` tracker is a composite rather than a bare IP: `{tier}:{ControllerClass}.{handlerName}:{ip}`.
 - The `user` tracker is the bare `userId`.
@@ -342,7 +342,7 @@ Request:Throttle:Seq:{name}:{tracker}     # sequence counter, makes log members 
 
 - The `default` limiter emits the unsuffixed trio.
 - The `route` guard emits the `-route` suffixed trio.
-- The `user` interceptor emits the `-user` trio.
+- The `user` guard emits the `-user` trio.
 - `Retry-After` is unsuffixed on every path and is expressed in **seconds**.
 
 | Header | Written when |
@@ -633,7 +633,6 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 | `RequestIdStoreKey` | `RequestRequestIdMiddleware` | the request id also set on `req.id` |
 | `RequestCorrelationIdStoreKey` | `RequestRequestIdMiddleware` | the correlation id also set on `req.correlationId` |
 | `RequestActorStoreKey` | `RequestActorInterceptor` | `req.user.userId`, set only when the request is authenticated |
-| `RequestThrottleHandledStoreKey` | `RequestThrottleUserInterceptor` | `true` once the per-user limiter has run for this request; NestJS mounts the interceptor once per `@RequestThrottle` on the handler, and the flag keeps a second mount from counting a second hit |
 | `RequestWorkspaceIdStoreKey` | `RequestWorkspaceMiddleware` | the raw `x-workspace-id` header, or `null` |
 
 Feature modules own the rest of the keys, each declared in its own `constants/` file:
@@ -648,7 +647,6 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` | the caller's `WorkspaceMember` row |
 | `ProjectStoreKey` | `ProjectGuard` | the resolved `Project` |
 | `ProjectMemberStoreKey` | `ProjectMemberGuard` | the caller's `ProjectMember` row |
-| `ProjectWorkspaceOwnerStoreKey` | `ProjectRoleGuard` | `true` when the caller passed as workspace owner rather than as a project member |
 | `ActivityLogStageStoreKey` | `ActivityLogDomain.stagePrepared` | the staged activity events of the request |
 | `PaginationStoreKey` | HTTP services via `PaginationQueryUtil` `storePatch` | the response-metadata block `ResponsePaginationInterceptor` emits |
 
@@ -658,7 +656,7 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 
 - `RequestRequestLogMiddleware` calls the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), which resolves `userAgent`, `ipAddress`, and `geoLocation` once per request.
 - `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it builds the rows it enqueues. It throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs and reports it, and the response is unchanged).
-- `UserLoginDomain.createTokenAndSession` reads the same key, throws `RequestContextMissingException` when it is absent, and threads the `IRequestLog` to the session and device writes.
+- `UserAuthHttpService.createTokenAndSession` reads the same key through `SessionDomain.getRequestLog`, which throws `RequestContextMissingException` when it is absent, and threads the `IRequestLog` to the session write.
 - Nothing recomputes ua/ip/geo.
 - `IRequestLog` declares all three fields as present: `ipAddress` and `geoLocation` are `null` when unresolved, never absent.
 - The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators each read one fixed field of that entry and take no argument. See [Store Parameter Decorators](#store-parameter-decorators).
@@ -727,9 +725,9 @@ interface IRequestThrottleOptions {
 ```typescript
 @TermPolicyAcceptanceProtected()
 @UserProtected()
+@RequestThrottle({ user: true })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true })
 @Get('/profile/get')
 async profile(
     @AuthJwtPayload('userId') userId: string
@@ -744,7 +742,7 @@ async profile(
 - **One call per handler.**
     - A route needing both switches writes them in the same call: `@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })`.
     - Two separate calls on one handler make the second `SetMetadata` overwrite the first and silently drop a switch.
-- **Position is free.** A global guard reads the `route` tier and an interceptor that runs after every guard reads the `user` switch, so neither depends on where the decorator sits.
+- **Position matters for `user`.** The `route` tier is read by a global guard and does not depend on where the decorator sits. The `user` limiter is a handler-level guard that reads `req.user`, so the decorator sits above the JWT decorator.
 
 See [Rate Limiting](#rate-limiting).
 
@@ -799,7 +797,7 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 | --- | --- | --- | --- |
 | JWT payload on `request.user` | `AuthJwtGuardMissingException` | 401 | `50820` |
 | `ApiKeyStoreKey` | `ApiKeyGuardMissingException` | 401 | `50707` |
-| `UserStoreKey` | `UserGuardMissingException` | 401 | `51027` |
+| `UserStoreKey` | `UserGuardMissingException` | 401 | `51023` |
 | `PolicyStoreKey` | `PolicyGuardMissingException` | 403 | `51103` |
 | `WorkspaceStoreKey` | `WorkspaceGuardMissingException` | 403 | `51622` |
 | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuardMissingException` | 403 | `51623` |

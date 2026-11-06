@@ -12,6 +12,7 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
 import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
 import type {
@@ -27,7 +28,6 @@ import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.do
 import { EnumFeatureFlagMetadataKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
@@ -36,8 +36,12 @@ import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
+import type {
+    ISessionPurgeLoginsPayload,
+    ISessionRef,
+} from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
+import { SessionUtil } from '@modules/session/utils/session.util';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -45,6 +49,7 @@ import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
+import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
 import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
@@ -57,10 +62,10 @@ import type {
     IUser,
     IUserLoginOutcome,
     IUserLoginSocial,
-    IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
@@ -79,6 +84,7 @@ export class UserAuthHttpService {
         private readonly userDomain: UserDomain,
         private readonly userPasswordDomain: UserPasswordDomain,
         private readonly userTwoFactorDomain: UserTwoFactorDomain,
+        private readonly userVerificationDomain: UserVerificationDomain,
         private readonly passwordHistoryDomain: PasswordHistoryDomain,
         private readonly notificationDomain: NotificationDomain,
         private readonly termPolicyAcceptanceDomain: TermPolicyAcceptanceDomain,
@@ -96,10 +102,12 @@ export class UserAuthHttpService {
         private readonly authUtil: AuthUtil,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
+        private readonly sessionUtil: SessionUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userUtil: UserUtil,
+        private readonly userVerificationUtil: UserVerificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly deviceUtil: DeviceUtil,
         private readonly databaseService: DatabaseService,
@@ -112,18 +120,6 @@ export class UserAuthHttpService {
         this.createTimeoutInMs = this.configService.get<number>(
             'user.create.timeoutInMs'
         )!;
-    }
-
-    private async getRecipient(
-        user: IUserRecipient,
-        kind: EnumNotificationKind
-    ): Promise<INotificationRecipient> {
-        const [tokens, settings] = await Promise.all([
-            this.deviceDomain.getNotificationTokens(user.id),
-            this.notificationDomain.getListUserSetting(user.id),
-        ]);
-
-        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
     private async signUpWithSocial(
@@ -285,11 +281,11 @@ export class UserAuthHttpService {
         );
         const now = this.helperDateService.create();
         // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.getRecipient(
+        const recipient = await this.notificationDomain.getRecipient(
             user,
             EnumNotificationKind.newDeviceLogin
         );
-        const { isNewDevice, revoked, deviceOwnershipId } =
+        const { isNewDevice, revoked, affected, deviceOwnershipId } =
             await this.databaseService.withTransaction(async tx => {
                 const upserted = await this.deviceDomain.upsertForLoginInTx(
                     tx,
@@ -304,6 +300,22 @@ export class UserAuthHttpService {
                             tx,
                             user.id,
                             upserted.deviceOwnership.id,
+                            user.id,
+                            now
+                        );
+                }
+                const otherOwnershipIds =
+                    await this.deviceDomain.getOtherOwnershipIdsByDeviceInTx(
+                        tx,
+                        upserted.device.id,
+                        user.id
+                    );
+                let affectedSessions: ISessionPurgeLoginsPayload[] = [];
+                if (otherOwnershipIds.length > 0) {
+                    affectedSessions =
+                        await this.sessionDomain.revokeByDeviceOwnershipIdsInTx(
+                            tx,
+                            otherOwnershipIds,
                             user.id,
                             now
                         );
@@ -329,6 +341,7 @@ export class UserAuthHttpService {
                 return {
                     isNewDevice: upserted.isNewDevice,
                     revoked: revokedSessions,
+                    affected: affectedSessions,
                     deviceOwnershipId: upserted.deviceOwnership.id,
                 };
             });
@@ -342,6 +355,9 @@ export class UserAuthHttpService {
         const promises = [
             this.setLoginOrRevoke(user.id, sessionId, jti),
             this.sessionQueue.purgeLogins(user.id, revoked),
+            ...affected.map(({ userId, sessions }) =>
+                this.sessionQueue.purgeLogins(userId, sessions)
+            ),
         ];
         if (isNewDevice) {
             const loginAtIso = this.helperDateService.formatToIso(loginAt);
@@ -360,6 +376,29 @@ export class UserAuthHttpService {
         }
 
         await Promise.all(promises);
+
+        if (affected.length > 0) {
+            const prepareRevokeLog = ({
+                userId,
+                sessions,
+            }: ISessionPurgeLoginsPayload): IActivityLogStaged => {
+                const metadata =
+                    this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
+                        user.id,
+                        sessions.length
+                    );
+
+                return this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
+                    userId,
+                    createdBy: user.id,
+                    metadata,
+                });
+            };
+            this.activityLogDomain.stagePrepared(
+                affected.map(prepareRevokeLog)
+            );
+        }
 
         return tokens;
     }
@@ -387,20 +426,13 @@ export class UserAuthHttpService {
     }
 
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
-        const isAttemptCounted =
-            await this.userTwoFactorDomain.countAttempt(user);
-        if (!isAttemptCounted) {
-            const lockoutStages = this.userUtil.buildTwoFactorLockoutStages(
-                user.id
-            );
-            const lockoutLogs = lockoutStages.map(stage =>
-                this.activityLogDomain.prepare(stage)
-            );
+        const attempt = await this.userTwoFactorDomain.countAttempt(user);
+        const lockoutLogs = attempt.lockoutStages.map(stage =>
+            this.activityLogDomain.prepare(stage)
+        );
+        this.activityLogDomain.stagePrepared(lockoutLogs);
 
-            this.activityLogDomain.stagePrepared(lockoutLogs);
-        }
-
-        this.userTwoFactorDomain.assertAttemptCounted(isAttemptCounted);
+        this.userTwoFactorDomain.assertAttemptCounted(attempt.isAttemptCounted);
     }
 
     private async resolveLoginOutcome(
@@ -488,8 +520,6 @@ export class UserAuthHttpService {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
     ): Promise<IUserLoginOutcome> {
-        this.userAuthDomain.assertVerified(user);
-
         const loginAt = this.helperDateService.create();
         const loginAction =
             this.userUtil.resolveLoginActivityLogAction(loginWith);
@@ -522,6 +552,37 @@ export class UserAuthHttpService {
         }
 
         return outcome;
+    }
+
+    private async sendVerificationEmail(user: IUser): Promise<void> {
+        const isResendable =
+            await this.userVerificationDomain.isEmailResendable(user);
+        if (!isResendable) {
+            return;
+        }
+
+        const activityLogs = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userSendVerificationEmail,
+                userId: user.id,
+                createdBy: user.id,
+            }),
+        ];
+        // Sequential by design: write must not run if an earlier step throws
+        const recipient = await this.notificationDomain.getRecipient(
+            user,
+            EnumNotificationKind.verificationEmail
+        );
+        const emailVerification = await this.userVerificationDomain.createEmail(
+            user.id,
+            user.email
+        );
+
+        this.activityLogDomain.stagePrepared(activityLogs);
+
+        const payload =
+            this.userVerificationUtil.mapEmailPayload(emailVerification);
+        await this.notificationQueue.sendVerificationEmail(recipient, payload);
     }
 
     private async rotateSession(
@@ -695,16 +756,10 @@ export class UserAuthHttpService {
     }: UserLoginRequestDto): Promise<IResponseReturn<IUserLoginOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const attempt = await this.userAuthDomain.countCredentialAttempt(email);
-        if (!attempt.isAttemptCounted) {
-            const lockoutStages = this.userUtil.buildPasswordLockoutStages(
-                attempt.user.id
-            );
-            const lockoutLogs = lockoutStages.map(stage =>
-                this.activityLogDomain.prepare(stage)
-            );
-
-            this.activityLogDomain.stagePrepared(lockoutLogs);
-        }
+        const lockoutLogs = attempt.lockoutStages.map(stage =>
+            this.activityLogDomain.prepare(stage)
+        );
+        this.activityLogDomain.stagePrepared(lockoutLogs);
 
         this.userPasswordDomain.assertAttemptCounted(attempt.isAttemptCounted);
 
@@ -724,6 +779,14 @@ export class UserAuthHttpService {
             this.activityLogDomain.stagePrepared(failedLogs);
         }
         this.userAuthDomain.assertCredentialMatched(isMatch);
+
+        const isUnverified = this.userUtil.isUnverified(attempt.user);
+        if (isUnverified) {
+            // Sequential by design: gate before the work it guards
+            await this.sendVerificationEmail(attempt.user);
+        }
+        this.userAuthDomain.assertVerified(attempt.user);
+        this.userAuthDomain.assertPasswordNotExpired(attempt.user);
 
         const outcome = await this.completeLogin(
             attempt.user,

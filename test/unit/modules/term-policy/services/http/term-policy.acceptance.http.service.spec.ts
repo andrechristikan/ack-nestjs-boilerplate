@@ -18,11 +18,8 @@ import {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { NotificationUserSetting } from '@generated/prisma-client/client';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/http/term-policy.acceptance.http.service';
@@ -48,11 +45,8 @@ describe('TermPolicyAcceptanceHttpService', () => {
         mock<RequestStoreService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const notificationDomain: MockProxy<NotificationDomain> =
         mock<NotificationDomain>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
 
@@ -140,9 +134,7 @@ describe('TermPolicyAcceptanceHttpService', () => {
                     useValue: requestStoreService,
                 },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: NotificationDomain, useValue: notificationDomain },
-                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
@@ -201,8 +193,6 @@ describe('TermPolicyAcceptanceHttpService', () => {
             ...TestRecipient,
             userId: 'user-1',
         };
-        const notificationTokens = ['token-1'];
-        const settings: NotificationUserSetting[] = [];
         const accepted: ITermPolicyRef = {
             id: 'term-policy-1',
             type: EnumTermPolicyType.privacy,
@@ -218,17 +208,13 @@ describe('TermPolicyAcceptanceHttpService', () => {
 
         beforeEach(() => {
             activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
-            deviceDomain.getNotificationTokens.mockResolvedValue(
-                notificationTokens
-            );
-            notificationDomain.getListUserSetting.mockResolvedValue(settings);
-            notificationUtil.mapRecipient.mockReturnValue(recipient);
+            notificationDomain.getRecipient.mockResolvedValue(recipient);
             notificationQueue.sendUserAcceptTermPolicy.mockResolvedValue();
         });
 
         it('reads the recipient, accepts, stages the activity log, then queues the notification', async () => {
             const calls: string[] = [];
-            notificationUtil.mapRecipient.mockImplementation(() => {
+            notificationDomain.getRecipient.mockImplementation(async () => {
                 calls.push('recipient');
                 return recipient;
             });
@@ -253,17 +239,9 @@ describe('TermPolicyAcceptanceHttpService', () => {
 
             expect(result).toEqual({});
             expect(calls).toEqual(['recipient', 'accept', 'stage', 'enqueue']);
-            expect(deviceDomain.getNotificationTokens).toHaveBeenCalledWith(
-                'user-1'
-            );
-            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
-                'user-1'
-            );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.userAcceptTermPolicy,
-                ['token-1'],
-                settings
+                EnumNotificationKind.userAcceptTermPolicy
             );
             expect(termPolicyAcceptanceDomain.userAccept).toHaveBeenCalledWith(
                 'user-1',
@@ -286,7 +264,7 @@ describe('TermPolicyAcceptanceHttpService', () => {
 
         it('accepts nothing when the recipient read rejects', async () => {
             const error = new Error('recipient-unavailable');
-            deviceDomain.getNotificationTokens.mockRejectedValue(error);
+            notificationDomain.getRecipient.mockRejectedValue(error);
 
             const promise = service.userAccept(user, {
                 type: EnumTermPolicyType.privacy,

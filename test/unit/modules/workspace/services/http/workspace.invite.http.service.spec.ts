@@ -37,7 +37,6 @@ import type {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
@@ -46,7 +45,6 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -88,11 +86,8 @@ describe('WorkspaceInviteHttpService', () => {
         mock<ProjectMemberDomain>();
     const projectDomain: MockProxy<ProjectDomain> = mock<ProjectDomain>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const notificationDomain: MockProxy<NotificationDomain> =
         mock<NotificationDomain>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -217,8 +212,6 @@ describe('WorkspaceInviteHttpService', () => {
         userId: 'user-2',
     };
 
-    const notificationTokens = ['token-1'];
-
     const existingMember: WorkspaceMember = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -256,10 +249,6 @@ describe('WorkspaceInviteHttpService', () => {
         activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
         helperDateService.create.mockReturnValue(now);
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
-        deviceDomain.getNotificationTokens.mockResolvedValue(
-            notificationTokens
-        );
-        notificationDomain.getListUserSetting.mockResolvedValue([]);
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -279,9 +268,7 @@ describe('WorkspaceInviteHttpService', () => {
                 { provide: ProjectMemberDomain, useValue: projectMemberDomain },
                 { provide: ProjectDomain, useValue: projectDomain },
                 { provide: UserDomain, useValue: userDomain },
-                { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: NotificationDomain, useValue: notificationDomain },
-                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -384,7 +371,7 @@ describe('WorkspaceInviteHttpService', () => {
                 invite,
                 tokenData,
             });
-            notificationUtil.mapRecipient.mockReturnValue(recipient);
+            notificationDomain.getRecipient.mockResolvedValue(recipient);
         });
 
         it('checks, reads the inviter and invitee, writes, stages, and emails an unregistered invitee in order', async () => {
@@ -477,7 +464,7 @@ describe('WorkspaceInviteHttpService', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(notificationUtil.mapRecipient).not.toHaveBeenCalled();
+            expect(notificationDomain.getRecipient).not.toHaveBeenCalled();
             expect(
                 workspaceUtil.mapInviteNotificationPayload
             ).toHaveBeenCalledWith(workspace, invite, 'Jane Doe');
@@ -497,17 +484,9 @@ describe('WorkspaceInviteHttpService', () => {
 
             await service.createInvite(workspace, 'user-1', body);
 
-            expect(deviceDomain.getNotificationTokens).toHaveBeenCalledWith(
-                'user-2'
-            );
-            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
-                'user-2'
-            );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 existingUser,
-                EnumNotificationKind.workspaceInvite,
-                ['token-1'],
-                []
+                EnumNotificationKind.workspaceInvite
             );
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.workspaceInviteCreated,
@@ -698,7 +677,7 @@ describe('WorkspaceInviteHttpService', () => {
         it('creates nothing and stages nothing when the invitee recipient read rejects', async () => {
             const failure = new Error('read-failed');
             userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            deviceDomain.getNotificationTokens.mockRejectedValue(failure);
+            notificationDomain.getRecipient.mockRejectedValue(failure);
 
             await expect(
                 service.createInvite(workspace, 'user-1', body)
@@ -735,7 +714,7 @@ describe('WorkspaceInviteHttpService', () => {
                 invite,
                 tokenData,
             });
-            notificationUtil.mapRecipient.mockReturnValue(recipient);
+            notificationDomain.getRecipient.mockResolvedValue(recipient);
         });
 
         it('reads the pending invite, prepares the row, rotates, stages, and emails an unregistered invitee in order', async () => {
@@ -842,17 +821,9 @@ describe('WorkspaceInviteHttpService', () => {
 
             await service.resendInvite(workspace, 'user-1', 'invite-1', body);
 
-            expect(deviceDomain.getNotificationTokens).toHaveBeenCalledWith(
-                'user-2'
-            );
-            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
-                'user-2'
-            );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 existingUser,
-                EnumNotificationKind.workspaceInvite,
-                ['token-1'],
-                []
+                EnumNotificationKind.workspaceInvite
             );
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
                 action: EnumActivityLogAction.workspaceInviteResentByAdmin,
@@ -890,7 +861,7 @@ describe('WorkspaceInviteHttpService', () => {
         it('rotates nothing when the invitee recipient read rejects', async () => {
             const failure = new Error('read-failed');
             userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            deviceDomain.getNotificationTokens.mockRejectedValue(failure);
+            notificationDomain.getRecipient.mockRejectedValue(failure);
 
             await expect(
                 service.resendInvite(workspace, 'user-1', 'invite-1', body)

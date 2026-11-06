@@ -117,6 +117,11 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogSessionAllTargetMetadataSchema,
     },
+    [EnumActivityLogAction.userRevokeSessionByDeviceLogin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogSessionAllTargetMetadataSchema,
+    },
     [EnumActivityLogAction.userRemoveDevice]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,

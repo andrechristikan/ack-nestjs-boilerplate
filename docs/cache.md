@@ -43,24 +43,19 @@ One Redis connection serves caching:
 - `RedisCacheModule.forRoot()` and `CacheMainModule.forRoot()` are global.
 - `SessionDomainModule` is `@Global()`.
 - Feature modules do not re-import them.
-- `CacheMainProvider` and `SessionCacheProvider` share that client.
+- `CacheMainProvider` wraps that client.
+- `ApiKeyCache`, `AuthCache`, `FeatureFlagCache`, and `SessionCache` also inject `RedisClientCachedProvider` for the operations the cache manager cannot express: Lua scripts, `GETDEL`, and `SET NX PX`.
 - `RequestThrottleStorageService` injects `RedisClientCachedProvider` for its sliding-window Lua script, so rate limiting adds no extra connection. See [Security and Middleware][ref-doc-security-and-middleware].
 - BullMQ uses `QUEUE_REDIS_URL` and does not reuse this client.
 
 ### Module Dependency Flow
 
-```
-CommonModule
-    ├── RedisCacheModule (Global)
-    │   └── Creates: RedisClientCachedProvider
-    │
-    ├── CacheMainModule (Global)
-    │   └── Uses: RedisClientCachedProvider
-    │   └── Provides: CacheMainProvider
-    │
-    └── SessionDomainModule (Global)
-        └── Uses: RedisClientCachedProvider
-        └── Provides: SessionCacheProvider, SessionDomain, SessionCache, SessionUtil, SessionAnalyticDomain
+```mermaid
+flowchart TD
+    CommonModule --> RedisCacheModule["RedisCacheModule (Global)<br/>creates RedisClientCachedProvider, RedisUtil"]
+    CommonModule --> CacheMainModule["CacheMainModule (Global)<br/>uses RedisClientCachedProvider<br/>provides CacheMainProvider"]
+    CommonModule --> SessionDomainModule["SessionDomainModule (Global)<br/>provides SessionDomain, SessionCache, SessionUtil, SessionAnalyticDomain, SessionQueue"]
+    RedisCacheModule --> CacheMainModule
 ```
 
 ### RedisCacheModule
@@ -89,6 +84,8 @@ createKeyv(
 
 - Provides `CacheMainProvider`, the global application cache.
 - Depends on `RedisClientCachedProvider`.
+- Registers `CacheManagerModule.registerAsync` over that client, with `ttl` from `redis.cache.ttlInMs`.
+- Aliases `CACHE_MANAGER` to `CacheMainProvider` with `useExisting`.
 
 **Usage:**
 
@@ -108,6 +105,7 @@ Current consumers of `CacheMainProvider`:
 - `AuthCache`
 - `FeatureFlagCache`
 - `AnalyticCache`
+- `SessionCache`
 - `HealthRedisIndicator`
 - `ResponseCacheInterceptor`
 
@@ -117,8 +115,8 @@ How a pattern is filled follows the number of placeholders in it:
 
 | Placeholders | Filled by | Patterns |
 | --- | --- | --- |
-| one | `String.prototype.replace('{name}', () => value)` | `ApiKey:{key}`, `FeatureFlag:{key}`, `Apis:{key}`, `TwoFactor:Challenge:{token}`, `TwoFactor:Lock:{userId}` |
-| two or more, and every analytic key | `HelperStringService.fillPattern(pattern, values)` | `User:{userId}:Session:{sessionId}`, the four `Analytic:*` patterns (`Analytic:Fraud:Risk:{userId}` included), the throttle storage patterns |
+| one | `String.prototype.replace('{name}', () => value)` | `ApiKey:{key}`, `ApiKey:Lease:{key}`, `FeatureFlag:{key}`, `FeatureFlag:Lease:{key}`, `Apis:{key}`, `TwoFactor:Challenge:{token}` |
+| two or more, and every analytic key | `HelperStringService.fillPattern(pattern, values)` | `User:{userId}:Session:{sessionId}`, the four `Analytic:*` patterns (`Analytic:Fraud:Risk:{userId}` included), the three `Request:Throttle:*` storage patterns |
 
 - The function form of `replace` stops a value containing `$&` or `$1` from being read as a replacement pattern.
 - `fillPattern` scans `{token}` once and substitutes from the value map, so a substituted value is never re-read as a token.
@@ -126,31 +124,15 @@ How a pattern is filled follows the number of placeholders in it:
 
 ### SessionDomainModule
 
-- Registers `SessionCacheProvider` (session keys only) on the same Redis client.
 - It is global via `@Global()`.
+- `SessionCache` injects `CacheMainProvider` for set, get, and `mdel`, and `RedisClientCachedProvider` for the reads and the compare-and-set that must reject on a Redis failure.
 
-**Usage:**
-
-```typescript
-export class SessionCache {
-    constructor(@Inject(SessionCacheProvider) private cacheManager: Cache) {}
-}
-```
-
-- `SessionCache` is the only injection site of `SessionCacheProvider`.
-- `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express: `getLogin` and `updateLogin` (see [Session Cache](#session-cache)).
-
-`SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it. The module:
+The module:
 
 - imports `SessionRepositoryModule`
 - registers the `session` BullMQ queue
 - provides `SessionDomain`, `SessionCache`, `SessionUtil`, `SessionAnalyticDomain`, and `SessionQueue`
-- exports `SessionDomain`, `SessionCache`, `SessionAnalyticDomain`, `SessionQueue`, and `BullModule`
-
-Both cache modules:
-
-- register their own `CacheManagerModule.registerAsync` over the shared `RedisClientCachedProvider`, with `ttl` from `redis.cache.ttlInMs`
-- alias `CACHE_MANAGER` to their named provider with `useExisting`
+- exports `SessionDomain`, `SessionCache`, `SessionUtil`, `SessionAnalyticDomain`, `SessionQueue`, and `BullModule`
 
 ### Session Cache
 
@@ -158,33 +140,42 @@ Both cache modules:
 
 - `HelperStringService.fillPattern` fills both placeholders in a single pass.
 - A placeholder the call supplies no value for raises `HelperPatternTokenMissingException` (`52202`, 500) rather than leaving the literal `{token}` in a Redis key.
+- The entry holds `userId`, `sessionId`, and the SHA-256 digest of the `jti` (`jtiDigest`), never the `jti`.
+- The TTL is `session.loginCacheTtlInMs`, the access-token lifetime (`AUTH_JWT_ACCESS_TOKEN_EXPIRED`).
 
 | Method | What it does |
 | --- | --- |
 | `getLogin(userId, sessionId)` | Reads the entry through the Keyv client, so a Redis failure rejects; `null` on a miss |
-| `setLogin(userId, sessionId, jti, expiredAt)` | Writes the entry through the cache manager, with a TTL running to `expiredAt` |
-| `updateLogin(userId, sessionId, session, jti, expiredInMs)` | Rewrites the entry with the new `jti` and TTL on the shared client (see below); returns whether it wrote |
+| `setLogin(userId, sessionId, jti)` | Writes the entry through the cache manager with the login TTL |
+| `updateLogin(userId, sessionId, oldJti, newJti)` | Compare-and-set in one Lua script; answers `updated`, `absent`, or `mismatch` (`EnumSessionCacheUpdate`) |
 | `deleteLogins(userId, sessions)` | Deletes exactly the given session entries through `mdel`; nothing when the list is empty |
 
 `updateLogin` details:
 
-- It issues `SET … PX … XX`, so it writes only while the entry still exists.
+- The script rewrites the entry with the new digest and a fresh TTL only while the stored digest equals the old one.
+- It answers `absent` when the key does not exist, and `mismatch` when the stored digest differs.
 - It serializes the value with Keyv and prefixes the key with the store namespace, so the stored shape matches what `setLogin` writes.
 
-`SessionDomain` reaches `deleteLogins` through the session queue:
+`SessionDomain.setLogin` writes the entry, then re-reads the session row. When the row was revoked meanwhile, it deletes the entry again.
+
+A revoke reaches `SessionCache.deleteLogins` through the session queue:
 
 1. A path that revokes sessions commits the revoke first.
-2. It calls `SessionDomain.purgeRevokedLogins(userId, sessions)`, which enqueues a `purgeLogins` job on the `session` queue through `SessionQueue`. The job carries the user id and the exact revoked session refs.
-3. `SessionProcessorService.processPurgeLogins` runs `SessionDomain.deleteLogins`, which calls `SessionCache.deleteLogins`.
+2. The HTTP or processor service calls `SessionQueue.purgeLogins(userId, sessions)`, which enqueues a `purgeLogins` job on the `session` queue. The job carries the user id and the exact revoked session refs.
+3. `SessionProcessorService.processPurgeLogins` runs `SessionDomain.deleteLogins`, which calls `SessionCache.deleteLogins`, and `DeviceDomain.clearNotificationsWithoutLiveSession` in parallel.
 
-- The paths that call `purgeRevokedLogins` or `finalizeRevokeAll`: logout, a single self or admin revoke, device removal, the sessions a login revokes on a known device, account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, admin two-factor reset, and the credential lockout.
+- The paths that enqueue `purgeLogins`: logout, a single self or admin revoke, device removal, the sessions a login revokes on a known device (and the sessions the login affects on other users), account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, admin two-factor reset, and the credential lockout.
 - A revoke of every session of a user purges the refs the revoke returned.
 - `SessionQueue.purgeLogins` enqueues through `QueueBase.addSideEffect`, so a failed enqueue is logged and reported to Sentry and the committed revoke still answers success.
 - A revocation takes effect for cached logins when the job runs.
 - Each path then stages its activity rows.
 - Queue behaviour: [Queue][ref-doc-queue]. Flow narrative: [Authentication][ref-doc-authentication].
 
-A refresh rotates the entry with `updateLogin` after its database commit. When the entry is gone (a revoke purged it while the refresh ran), nothing is written and the refresh answers `SessionRevokedException` (401, `50401`).
+A refresh rotates the entry with `updateLogin` after its database commit:
+
+- `updated`: the refresh answers the new tokens.
+- `absent`: the entry expired or was purged, so the refresh sets it again through `setLogin`, which deletes it when the session row was revoked meanwhile.
+- `mismatch`: another refresh rotated the `jti` first, so the session is revoked and the refresh answers `SessionRevokedException` (401, `50401`).
 
 ### Redis Failures
 
@@ -196,8 +187,8 @@ The remaining calls split into three groups:
 
 | Group | Calls | On a Redis failure |
 | --- | --- | --- |
-| Propagate | `SessionCache.getLogin` (the session check of every JWT access and refresh token, and the refresh endpoint), `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `AuthCache.lockTwoFactorAttempt` (the lock set when a failed verification reaches the attempt limit), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500, or 503 (`52400`) when the failure is the Keyv not-connected error |
-| Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
+| Propagate | `SessionCache.getLogin` (the session check of every JWT access and refresh token, and the refresh endpoint), `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.setTwoFactorChallenge` (login with two-factor), `AuthCache.consumeTwoFactorChallenge`, `ApiKeyCache.deleteApiKey` (API key admin writes, `MigrationApiKeySeed.remove`), `FeatureFlagCache.deleteFeatureFlag` (feature flag admin writes) | The request answers 500, or 503 (`52400`) when the failure is the Keyv not-connected error. `consumeTwoFactorChallenge` throws `RedisUnavailableException` (503) itself |
+| Caught in the cache class and logged | `ApiKeyCache.getApiKey`, `takeApiKeyLease`, `setApiKey`, the matching `FeatureFlagCache` reads and writes, every `AnalyticCache` call | The request continues |
 | Retried as a job | `SessionCache.deleteLogins`, run by the `purgeLogins` job | The request has already answered; the job fails and BullMQ retries it |
 
 `AppGeneralFilter` maps the Keyv not-connected error through `RedisUtil.toException` to `RedisUnavailableException` (503, `52400`). Any other Redis error that reaches the filter answers 500 (`50000`). See [Handling Error][ref-doc-handling-error].
@@ -207,12 +198,13 @@ The remaining calls split into three groups:
 An API key admin write that changes or deletes a key runs, in order:
 
 1. Database write.
-2. Stages its activity row.
-3. Deletes the key's cache entry.
+2. Deletes the key's cache entry.
+3. Stages its activity row.
 
 Writes covered: status, name, dates, reset, delete.
 
-- When the delete fails, the request answers 500 (503 for the not-connected error) with the database change applied and its activity row written, because the error path flushes every staged row.
+- When the delete fails, the request answers 500 (503 for the not-connected error) with the database change applied and no activity row staged.
+- A feature flag status or metadata write deletes the flag's cache entry the same way, after its database write.
 - `MigrationApiKeySeed.remove` deletes the `ApiKey` rows first, then the cache entries of the seeded keys.
 
 ## Configuration
@@ -232,6 +224,8 @@ Writes covered: status, name, dates, reset, delete.
 ```
 
 **Default TTL:** Cache entries expire after **5 minutes** (300,000 milliseconds) by default. A cache operation can override it.
+
+**Session login TTL:** `session.loginCacheTtlInMs` equals the access-token lifetime.
 
 **Redis database:**
 
@@ -255,13 +249,13 @@ Writes covered: status, name, dates, reset, delete.
         QueueModule.forRoot(), // BullMQ, own connections on QUEUE_REDIS_URL
         CacheMainModule.forRoot(), // Depends on RedisCacheModule
         // ... DatabaseModule, RequestModule, and other globals ...
-        SessionDomainModule, // Feature modules later (registers SessionCacheProvider)
+        SessionDomainModule, // Feature modules later (SessionCache reuses the shared client)
     ],
 })
 export class CommonModule {}
 ```
 
-`CacheMainModule` needs `RedisClientCachedProvider` from `RedisCacheModule`. `SessionDomainModule` registers its session cache provider on the same client later.
+`CacheMainModule` needs `RedisClientCachedProvider` from `RedisCacheModule`. `SessionCache` in `SessionDomainModule` injects the same client and `CacheMainProvider`.
 
 ## Usage
 
@@ -278,12 +272,15 @@ export class FeatureFlagCache {
 }
 ```
 
-**Session cache:**
+**Shared Redis client (Lua, `GETDEL`, `SET NX PX`):**
 
 ```typescript
 @Injectable()
 export class SessionCache {
-    constructor(@Inject(SessionCacheProvider) private cacheManager: Cache) {}
+    constructor(
+        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
+        @Inject(RedisClientCachedProvider) private readonly keyv: Keyv
+    ) {}
 }
 ```
 

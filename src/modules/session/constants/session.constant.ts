@@ -34,3 +34,9 @@ export const SessionListSelect = {
         select: UserRefSelect,
     },
 } satisfies Prisma.SessionSelect;
+
+/** @public */
+export const SessionUserRefSelect = {
+    id: true,
+    userId: true,
+} satisfies Prisma.SessionSelect;

@@ -4,7 +4,7 @@
 
 | From another module | From a feature domain | From an HTTP service, processor service, or aggregation domain |
 | --- | --- | --- |
-| its exported domain | no, except `FeatureFlagDomain` to assert a flag or sub-key the module owns (`layering.md`, Roles) | from an HTTP or processor service, through `<Module>DomainModule`; from the aggregation domain its analytic domain only |
+| its exported domain | no, except `FeatureFlagDomain` to assert a flag or sub-key the module owns, and `DeviceDomain` in `NotificationDomain` for a recipient's notification tokens (`layering.md`, Roles) | from an HTTP or processor service, through `<Module>DomainModule`; from the aggregation domain its analytic domain only |
 | its exported queue class | no | from an HTTP or processor service, through `<Module>DomainModule` |
 | its exported util | yes, through `<Module>DomainModule` | yes, through `<Module>DomainModule` |
 | the aggregation domain | no | from `analytic`'s own HTTP service only |
@@ -26,11 +26,11 @@ A repository does not inject or call another repository. Work spanning one modul
 
 ## A repository module belongs to its own feature
 
-`<Module>RepositoryModule` has one importer: the domain module beside it. Data another module needs goes through the owning domain, which holds that feature's invariants, called from an HTTP or processor service. `src/migration/` sits outside this file and `layering.md`: a seed writes models through `DatabaseService` directly, and `MigrationModule` imports no feature repository module; a feature domain module only for an injection `seeding.md` allows.
+`<Module>RepositoryModule` has one importer: the domain module beside it. Data another module needs goes through the owning domain, which holds that feature's invariants, called from an HTTP or processor service, or from `NotificationDomain` for notification tokens. `src/migration/` sits outside this file and `layering.md`: a seed writes models through `DatabaseService` directly, and `MigrationModule` imports no feature repository module; a feature domain module only for an injection `seeding.md` allows.
 
 ## Composition runs one way
 
-The HTTP or processor service composes features; a feature never composes back. A feature domain module imports another feature domain module only for its util, and only `AnalyticDomainModule` imports one for its analytic domains. A circular import is a broken boundary; `forwardRef` hides it and is forbidden. The ways out:
+The HTTP or processor service composes features; a feature never composes back. A feature domain module imports another feature domain module only for its util, `NotificationDomainModule` imports `DeviceDomainModule` for `DeviceDomain`, and only `AnalyticDomainModule` imports one for its analytic domains. A circular import is a broken boundary; `forwardRef` hides it and is forbidden. The ways out:
 
 1. Two features in one flow: the HTTP or processor service sequences the calls, one shared write transaction included.
 2. A module-agnostic piece both need: extract it into `src/common/` (`layering.md`, Tiers).

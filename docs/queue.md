@@ -82,7 +82,7 @@ Environment variables:
 The queue system consists of:
 
 1. **Queue Module** (`src/queues/queue.module.ts`): `QueueModule.forRoot()` registers the BullMQ producer Redis connection under `QueueConfigKey`. It does not register named queues, and it does not register the worker connection.
-2. **Queue Processor Base** (`src/queues/bases/queue.processor.base.ts`): concrete `process` template (`job.log`, await `handle`, Nest `Logger.error` on failure), fatal-gate `onFailed` that reports to Sentry with the job name as a tag and the job id, name, `attemptsMade`, and `maxAttempts` as a context
+2. **Queue Processor Base** (`src/queues/bases/queue.processor.base.ts`): concrete `process` template (`job.log`, await `handle`, Nest `Logger.error` on failure), the protected `throwUnknownException`, and a fatal-gate `onFailed` that reports to Sentry with the job name as a tag and the job id, name, `attemptsMade`, and `maxAttempts` as a context
 3. **Queue Processor Decorator** (`src/queues/decorators/queue.decorator.ts`): `QueueProcessor`, the custom decorator for processor registration, which also opens the worker's own Redis connection
 4. **Queue Constants** (`src/queues/constants/queue.constant.ts`): `QueueConfigKey`, the config key of the producer connection
 5. **Queue Enums, Exceptions, Interface** (`src/queues/enums/queue.enum.ts`, `exceptions/queue.exception.ts`, `exceptions/queue.side-effect-failed.exception.ts`, `interfaces/queue.interface.ts`): `EnumQueue`, `EnumQueuePriority` and `EnumQueueJobState`, `QueueException`, `QueueSideEffectFailedException`, `IQueueResponse`
@@ -137,8 +137,8 @@ Currently available queues defined in `src/queues/enums/queue.enum.ts`:
 - `EnumQueue.workspace`: Workspace background processing queue
 - `EnumQueue.activityLog`: Activity log row writes (the `createMany` job)
 - `EnumQueue.session`: Session cache purges (the `purgeLogins` job)
-- `EnumQueue.termPolicy`: Term policy S3 content deletes (the `deleteContent` job)
-- `EnumQueue.user`: Previous profile photo S3 deletes (the `deletePhoto` job)
+- `EnumQueue.termPolicy`: Term policy S3 content copies and deletes (the `copyContent` and `deleteContent` jobs)
+- `EnumQueue.user`: Previous profile photo S3 deletes (the `deletePhoto` job) and credential lockouts (the `lockout` job)
 
 Queue priorities defined in `EnumQueuePriority`:
 
@@ -215,6 +215,8 @@ A `jobId` is a `{token}` pattern from the owning module's config, a `<namespace>
     - `notification.jobId.termPolicyBatchResendPattern`, `{process}-{termPolicyId}-{batchId}-{resendNonce}`, for an email batch job of a resend.
 - `notification.jobId.stepPattern` is `{notificationId}-{step}`. It fills the `jobId` of a push job, of a cleanup job, and of an email job for a recipient with an account, so one notification enqueues each step once while the job keeps its id (7 days after completion, 14 days after failure).
 - The activity log, session, term-policy, and user queues key each job as `{process}-{nonce}` (`activityLog.jobId.createManyPattern`, `session.jobId.purgeLoginsPattern`, `termPolicy.jobId.deleteContentPattern`, `user.jobId.deletePhotoPattern`) with a fresh nonce from `DatabaseUtil.createId()`, so every request adds its own job.
+- `termPolicy.jobId.copyContentPattern` is `{process}-{termPolicyId}`, so a policy publication adds its `copyContent` job once.
+- The `user` queue's `lockout` job sets no `jobId`.
 
 A queue class that enqueues many jobs at once builds them and calls `addBulkSideEffect` (`addBulk` for a method a job calls): `NotificationQueue.sendWelcomeByAdminBulk` for the admin import and `NotificationQueue.sendWorkspaceJoinRequestBulk` for the reviewers of a join request.
 
@@ -362,7 +364,7 @@ flowchart TD
 ```
 
 - A queue-class method a request calls after the commit enqueues through the protected `QueueBase.addSideEffect(name, data, options, description)` or `addBulkSideEffect(jobs, description)`, which wrap `add` and `addBulk`.
-    - A rejection becomes a `QueueSideEffectFailedException` (an `AppUnknownException` that carries the cause in `rawError` and names the effect in `description`), logged at `error` and passed to `SentryService.captureException`.
+    - A rejection becomes a `QueueSideEffectFailedException` (a fatal `QueueException` that carries the cause in `rawError` and names the effect in `description`), logged at `error` and passed to `SentryService.captureException`.
     - The method then resolves, so the request still succeeds.
 - A domain awaits the queue method directly, with no wrapper around it.
 - A domain exception the request throws is never replaced by an enqueue failure.
@@ -378,9 +380,11 @@ The jobs of the queues a request feeds:
 | Queue | Job | Carries | Processor effect |
 | --- | --- | --- | --- |
 | `activityLog` | `createMany` | the rows one request staged, with their ids and `createdAt` | `ActivityLogRepository.createMany` writes only the ids that are absent |
-| `session` | `purgeLogins` | the user id and the exact revoked session refs | `SessionCache.deleteLogins` deletes those entries |
+| `session` | `purgeLogins` | the user id and the exact revoked session refs | `SessionCache.deleteLogins` deletes those entries, and `DeviceDomain.clearNotificationsWithoutLiveSession` clears the notification tokens of devices left with no live session |
+| `termPolicy` | `copyContent` | the term policy id, the content items, and the destination | `AwsS3Service.copyItems` copies the items to the public destination; a short copy throws a fatal `QueueException` |
 | `termPolicy` | `deleteContent` | the content directory path of a deleted draft | `AwsS3Service.deleteDir` empties the private bucket directory |
 | `user` | `deletePhoto` | the user id, key, and access of the replaced profile photo | `AwsS3Service.deleteItem` deletes the object |
+| `user` | `lockout` | the user id | `UserProcessorService.lockout` deactivates the user, revokes the user's sessions and devices in one transaction, then enqueues the `purgeLogins` job |
 
 - A profile photo is enqueued for delete only when its key sits under the user's own profile photo path and differs from the new key.
 - The `deletePhoto` processor throws a fatal `QueueException` when the stored access names no bucket.
@@ -464,10 +468,11 @@ A method that a job calls, instead of a request after commit, calls `this.queue.
 })
 export class NotificationPushProcessor extends QueueProcessorBase {
     constructor(
-        private readonly notificationPushProcessorService: NotificationPushProcessorService,
-        sentryService: SentryService
+        protected readonly sentryService: SentryService,
+        protected readonly messageService: MessageService,
+        private readonly notificationPushProcessorService: NotificationPushProcessorService
     ) {
-        super(sentryService);
+        super(sentryService, messageService);
     }
 
     protected async handle(
@@ -483,9 +488,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                     >
                 );
             default:
-                return {
-                    message: `No notification processor found for the given job name ${job.name}`,
-                };
+                this.notificationPushProcessorService.processUnknown(job.name);
         }
     }
 }
@@ -493,13 +496,13 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 
 `handle` is the dispatcher:
 
-- It switches on `job.name` and awaits a `*.processor.service.ts` method.
+- It switches on `job.name` and awaits a `*.processor.service.ts` method. An unknown job name goes to the service's `processUnknown`, which throws.
 - Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` and `NotificationPushProcessor` map `HelperDecryptFailedException` to BullMQ `UnrecoverableError`, and `NotificationEmailProcessor` does the same for `NotificationEmailDeliveryUnknownException`).
 - The subclass implements `handle` only. `QueueProcessorBase` owns `process`, Nest failure logging, and `job.log`.
 
 The second argument of `@QueueProcessor` is `IQueueProcessorOptions`:
 
-- It is a BullMQ `WorkerOptions` minus `name` and `connection`. The decorator owns the name, and the shared Redis connection is the connection.
+- It is a BullMQ `WorkerOptions` minus `name` and `connection`. The decorator owns the name and the worker's own Redis connection.
 - A worker that needs its own throughput ceiling passes one: `NotificationPushProcessor` sets `limiter` from the Firebase send-quota constants.
 - The decorator derives the worker name as `{APP_NAME}-{APP_ENV}:{queue}:consumer`, read from `process.env` at decoration time.
 
@@ -518,7 +521,7 @@ The second argument of `@QueueProcessor` is `IQueueProcessorOptions`:
         YourNewProcessor, // Add processor
     ],
     exports: [],
-    imports: [],
+    imports: [DeviceDomainModule, UserDomainModule],
 })
 export class NotificationProcessorModule {}
 ```
@@ -543,14 +546,14 @@ export class NotificationProcessorModule {}
 export class RouterProcessorModule {}
 ```
 
-A processor module imports whatever its processor services depend on: `WorkspaceProcessorModule` imports `WorkspaceDomainModule`, while `NotificationProcessorModule` needs no imports because everything it injects is global.
+A processor module imports whatever its processor services depend on: `WorkspaceProcessorModule` imports `WorkspaceDomainModule`, `SessionProcessorModule` imports `SessionDomainModule` and `DeviceDomainModule`, and `NotificationProcessorModule` imports `DeviceDomainModule` and `UserDomainModule`. `TermPolicyProcessorModule` imports nothing.
 
 ## QueueProcessorBase
 
 `QueueProcessorBase` is the base class for all queue processors. It:
 
 - extends `WorkerHost` from BullMQ
-- takes the global `SentryService` in its constructor
+- takes the global `SentryService` and `MessageService` in its constructor
 - owns the concrete `process` template (including BullMQ `job.log` lines)
 - reports a fatal job failure to Sentry once from the `failed` worker event
 
@@ -562,11 +565,20 @@ Location: `src/queues/bases/queue.processor.base.ts`
 export abstract class QueueProcessorBase extends WorkerHost {
     private readonly logger = new Logger(QueueProcessorBase.name);
 
-    constructor(protected readonly sentryService: SentryService) {
+    constructor(
+        protected readonly sentryService: SentryService,
+        protected readonly messageService: MessageService
+    ) {
         super();
     }
 
     protected abstract handle(job: Job): Promise<IQueueResponse>;
+
+    protected throwUnknownException(error: unknown): never {
+        const message = this.messageService.setMessage('queue.error.unknown');
+
+        throw new QueueException(message, true, error);
+    }
 
     async process(job: Job): Promise<IQueueResponse> {
         const maxAttempts = job.opts.attempts ?? 1;
@@ -601,12 +613,18 @@ export abstract class QueueProcessorBase extends WorkerHost {
                 throw error;
             }
 
-            throw new AppUnknownException(error);
+            this.throwUnknownException(error);
         }
     }
 
     @OnWorkerEvent('failed')
-    onFailed(job: Job<unknown, null, string>, error: Error): void {
+    onFailed(job: Job<unknown, null, string> | undefined, error: Error): void {
+        if (!job) {
+            this.sentryService.captureException(error);
+
+            return;
+        }
+
         const maxAttempts = job.opts.attempts ?? 1;
         const isLastAttempt =
             error instanceof UnrecoverableError ||
@@ -658,7 +676,7 @@ flowchart TD
     logFail --> nestErr["Logger.error once"]
     nestErr --> typed{QueueException, AppBaseException, or UnrecoverableError?}
     typed -->|yes| rethrow[throw as is]
-    typed -->|no| wrap[throw AppUnknownException]
+    typed -->|no| wrap["throw fatal QueueException (queue.error.unknown)"]
     rethrow --> failedEvt[BullMQ failed event]
     wrap --> failedEvt
     failedEvt --> gate{final attempt or UnrecoverableError?}
@@ -678,13 +696,14 @@ flowchart TD
 
 2. **On throw inside `process`**: one failure `job.log` line, one Nest `Logger.error` (object-first) for Pino, then a throw so BullMQ can retry or mark the job failed.
     - A `QueueException`, an `AppBaseException`, or an `UnrecoverableError` is thrown as it is.
-    - Any other error is wrapped in `AppUnknownException`, with the cause in `rawError`.
+    - Any other error is wrapped in a fatal `QueueException` (message `queue.error.unknown`), with the cause in `rawError`.
 3. **On Job Failure (`onFailed`)**: triggered by the BullMQ `failed` worker event after the throw.
 4. **Retry Check**: the failure is final when BullMQ will not retry it: `attemptsMade` (which already counts the failed attempt) has reached `attempts`, or the error is an `UnrecoverableError`.
 5. **Error Classification**:
     - `QueueException` with `isFatal: true` → Reports to Sentry
     - `QueueException` with `isFatal: false` → Does not report to Sentry
     - Other exceptions, `UnrecoverableError` included → Reports to Sentry (treated as fatal)
+    - A `failed` event with no job → Reports to Sentry
 6. **Sentry Reporting**: on that final fatal failure, `SentryService.captureException(error, captureContext)` runs once with:
     - the tag `job.name`
     - the `job` context holding `id`, `name`, `attemptsMade`, and `maxAttempts`
@@ -720,7 +739,7 @@ A notification processor service throws `QueueException(summary, true)` when a s
 
 When a job fails:
 
-1. `QueueProcessorBase.process` writes a failure `job.log` line, calls Nest `Logger.error` once, and throws the error as is when it is a `QueueException`, an `AppBaseException`, or an `UnrecoverableError`, and wrapped in `AppUnknownException` otherwise
+1. `QueueProcessorBase.process` writes a failure `job.log` line, calls Nest `Logger.error` once, and throws the error as is when it is a `QueueException`, an `AppBaseException`, or an `UnrecoverableError`, and wrapped in a fatal `QueueException` otherwise
 2. On the final failure (last attempt, or an `UnrecoverableError`), `onFailed` classifies the error:
     - If error is `QueueException` with `isFatal: true` → Reports to Sentry (with the `job.name` tag and the `job` context)
     - If error is `QueueException` with `isFatal: false` → Does not report to Sentry

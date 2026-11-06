@@ -29,23 +29,23 @@ This page is the human catalog.
 | ------- | -------------- | --------------- | ------- |
 | `50000` | `app`          | `50000`         | 1       |
 | `50100` | `file`         | `50100`–`50109` | 10      |
-| `50200` | `pagination`   | `50200`–`50213` | 14      |
-| `50300` | `request`      | `50300`–`50304` | 5       |
+| `50200` | `pagination`   | `50200`–`50211` | 12      |
+| `50300` | `request`      | `50300`–`50306` | 7       |
 | `50400` | `session`      | `50400`–`50401` | 2       |
-| `50500` | `role`         | `50500`–`50503` | 4       |
+| `50500` | `role`         | `50500`–`50506` | 7       |
 | `50600` | `feature-flag` | `50600`–`50603` | 4       |
 | `50700` | `api-key`      | `50700`–`50707` | 8       |
 | `50800` | `auth`         | `50800`–`50820` | 21      |
-| `50900` | `country`      | `50900`–`50902` | 3       |
-| `51000` | `user`         | `51000`–`51028` | 29      |
+| `50900` | `country`      | `50900`         | 1       |
+| `51000` | `user`         | `51000`–`51027` | 28      |
 | `51100` | `policy`       | `51100`–`51103` | 4       |
-| `51200` | `notification` | `51200`–`51203` | 4       |
+| `51200` | `notification` | `51200`–`51204` | 5       |
 | `51300` | `device`       | `51300`         | 1       |
 | `51400` | `aws`          | `51400`–`51406` | 7       |
-| `51500` | `term-policy`  | `51500`–`51509` | 10      |
-| `51600` | `workspace`    | `51600`–`51623` | 24      |
+| `51500` | `term-policy`  | `51500`–`51512` | 13      |
+| `51600` | `workspace`    | `51600`–`51625` | 26      |
 | `51700` | `project`      | `51700`–`51709` | 10      |
-| `51800` | `database`     | `51800`–`51802` | 3       |
+| `51800` | `database`     | `51800`–`51804` | 5       |
 | `51900` | `response`     | `51900`–`51903` | 4       |
 | `52000` | `activity-log` | `52000`         | 1       |
 | `52100` | `analytic`     | `52100`         | 1       |
@@ -81,20 +81,18 @@ This page is the human catalog.
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 | --- | --- | --- | --- | --- | --- |
-| `filterInvalidValue` | `50200` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` or `pagination.error.filterInvalidValueEnum` | '{property}' value provided is invalid (enum variant uses the Enum messagePath). |
+| `filterInvalidValue` | `50200` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` or `pagination.error.filterInvalidValueEnum` | '{property}' value provided is invalid. The enum variant also lists the allowed values. |
 | `invalidPerPage` | `50201` | `invalidPerPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPerPage` | The 'perPage' parameter must be between 1 and {maxPerPage}. |
 | `invalidCursorPaginationParams` | `50202` | `invalidCursorPaginationParams` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorPaginationParams` | Invalid cursor pagination parameters provided. |
 | `cursorTooLong` | `50203` | `cursorTooLong` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.cursorTooLong` | The cursor length must not exceed {maxCursorLength} characters. |
 | `invalidCursorFormat` | `50204` | `invalidCursorFormat` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorFormat` | The provided cursor is not in a valid format. |
-| `invalidOffsetPaginationParams` | `50205` | `invalidOffsetPaginationParams` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidOffsetPaginationParams` | Invalid offset pagination parameters provided. |
-| `invalidPage` | `50206` | `invalidPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPage` | The 'page' parameter must be a positive integer and maximum {maxPage}. |
-| `pageExceedsMaximum` | `50207` | `pageExceedsMaximum` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.pageExceedsMaximum` | The 'page' parameter exceeds the maximum allowed value of {maxPage}. Received: {receivedPage}. |
-| `pageCannotBeLessThanOne` | `50208` | `pageCannotBeLessThanOne` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.pageCannotBeLessThanOne` | The 'page' parameter cannot be less than {minPage}. Received: {receivedPage}. |
-| `perPageExceedsMaximum` | `50209` | `perPageExceedsMaximum` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.perPageExceedsMaximum` | The 'perPage' parameter exceeds the maximum allowed value of {maxPerPage}. Received: {receivedPerPage}. |
-| `perPageCannotBeLessThanOne` | `50210` | `perPageCannotBeLessThanOne` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.perPageCannotBeLessThanOne` | The 'perPage' parameter cannot be less than {minPerPage}. Received: {receivedPerPage}. |
-| `invalidCursorData` | `50211` | `invalidCursorData` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorData` | The provided cursor data is invalid. |
-| `failedToEncodeCursor` | `50212` | `failedToEncodeCursor` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.failedToEncodeCursor` | Failed to encode cursor data. |
-| `failedToDecodeCursor` | `50213` | `failedToDecodeCursor` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.failedToDecodeCursor` | Failed to decode cursor data. |
+| `invalidPage` | `50205` | `invalidPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPage` | The 'page' parameter must be a positive integer and maximum {maxPage}. |
+| `pageExceedsMaximum` | `50206` | `pageExceedsMaximum` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.pageExceedsMaximum` | The 'page' parameter exceeds the maximum allowed value of {maxPage}. Received: {receivedPage}. |
+| `pageCannotBeLessThanOne` | `50207` | `pageCannotBeLessThanOne` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.pageCannotBeLessThanOne` | The 'page' parameter cannot be less than {minPage}. Received: {receivedPage}. |
+| `perPageExceedsMaximum` | `50208` | `perPageExceedsMaximum` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.perPageExceedsMaximum` | The 'perPage' parameter exceeds the maximum allowed value of {maxPerPage}. Received: {receivedPerPage}. |
+| `perPageCannotBeLessThanOne` | `50209` | `perPageCannotBeLessThanOne` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.perPageCannotBeLessThanOne` | The 'perPage' parameter cannot be less than {minPerPage}. Received: {receivedPerPage}. |
+| `invalidCursorData` | `50210` | `invalidCursorData` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorData` | The provided cursor data is invalid. |
+| `failedToDecodeCursor` | `50211` | `failedToDecodeCursor` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.failedToDecodeCursor` | Failed to decode cursor data. |
 
 - Each list request schema validates `orderBy` against the route's allow-list of fields and directions.
 - An `orderBy` value outside the allow-list answers 422 with the request validation code `50300`, not a pagination code.
@@ -108,6 +106,8 @@ This page is the human catalog.
 | `envNotAllowed` | `50302` | `envNotAllowed` | 404 (`NOT_FOUND`) | `http.clientError.notFound` | Not Found |
 | `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
 | `contextMissing` | `50304` | `contextMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.contextMissing` | The request could not be processed. Please try again later. |
+| `payloadTooLarge` | `50305` | `payloadTooLarge` | 413 (`PAYLOAD_TOO_LARGE`) | `request.error.payloadTooLarge` | The request body is larger than the allowed size. |
+| `unsupportedMediaType` | `50306` | `unsupportedMediaType` | 415 (`UNSUPPORTED_MEDIA_TYPE`) | `request.error.unsupportedMediaType` | The request body uses an unsupported media type. |
 
 - `envNotAllowed` is raised by `RequestEnvGuard` when the current app environment is not in the route's allowed list, so the route answers as if it does not exist.
 - `RequestContextMissingException` raises `contextMissing` in these cases:
@@ -115,10 +115,11 @@ This page is the human catalog.
     - any store parameter decorator, or `@AuthJwtPayload(field)`, is asked for a field whose value is `null`;
     - `UserDomain.validateUserGuard` receives a JWT payload with no `userId`;
     - `ProjectDomain.validateProjectGuard` finds no `:projectId` route param;
-    - `UserLoginDomain` finds no request-log store entry while it opens or refreshes a session.
+    - `SessionDomain.getRequestLog` finds no request-log store entry while a session opens or refreshes.
+- `payloadTooLarge` and `unsupportedMediaType` are raised by the request body-parser middleware when the body parser reports status 413 or 415.
 - A decorator that reads a value a guard stores answers that guard's exception when the store entry is empty:
     - `AuthJwtGuardMissingException` (`50820`) for `@AuthJwtPayload()`
-    - `UserGuardMissingException` (`51027`) for `@UserCurrent()` and `@RoleCurrent()`
+    - `UserGuardMissingException` (`51023`) for `@UserCurrent()` and `@RoleCurrent()`
     - `PolicyGuardMissingException` (`51103`) for `@PolicyCurrent()`
     - `WorkspaceGuardMissingException` (`51622`) for `@WorkspaceCurrent()`
     - `WorkspaceMemberGuardMissingException` (`51623`) for `@WorkspaceMemberCurrent()`
@@ -144,8 +145,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `notFound` | `50400` | `notFound` | 404 (`NOT_FOUND`) | `session.error.notFound` | Sorry, we couldn't find the session. |
 | `revoked` | `50401` | `revoked` | 401 (`UNAUTHORIZED`) | `session.error.revoked` | Your session has expired or been revoked. Please sign in again. |
 
-- `revoked` is raised by the JWT access and refresh strategies for a missing session key or a `jti` mismatch.
-- `UserLoginDomain.refreshSession` and `SessionDomain.updateJtiInTx` raise it for a lost refresh race: the session cache entry is gone, the `jti` hash does not match, the rotation matches no live session row, or the Redis rewrite finds the key purged.
+- `revoked` is raised by `AuthDomain.validateJwtAccessSession` when the session cache holds no login digest or the access token `jti` does not hash to it.
+- `SessionDomain.getRefreshedTokens` raises it when the refresh rotation returns no tokens: the session cache entry is gone, the `jti` hash does not match, the rotation matches no live session row, or the Redis rewrite finds the key purged. A reused refresh token takes the same path and also revokes the session.
 - A refresh token without a `jti` answers `jwtRefreshTokenInvalid` (`50801`) instead.
 
 ## `role`
@@ -156,6 +157,9 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `exist` | `50501` | `exist` | 409 (`CONFLICT`) | `role.error.exist` | A role with this name already exists. |
 | `forbidden` | `50502` | `forbidden` | 403 (`FORBIDDEN`) | `role.error.forbidden` | Sorry, your role doesn't grant access to this resource. |
 | `used` | `50503` | `used` | 409 (`CONFLICT`) | `role.error.used` | This role is currently in use and cannot be deleted. |
+| `rankForbidden` | `50504` | `rankForbidden` | 403 (`FORBIDDEN`) | `role.error.rankForbidden` | Sorry, your role doesn't outrank the role you are acting on. |
+| `selfForbidden` | `50505` | `selfForbidden` | 403 (`FORBIDDEN`) | `role.error.selfForbidden` | Sorry, you cannot modify the role you hold. |
+| `immutable` | `50506` | `immutable` | 400 (`BAD_REQUEST`) | `role.error.immutable` | This role is protected: it cannot be deleted and its type cannot change. |
 
 ## `feature-flag`
 
@@ -211,7 +215,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `twoFactorAlreadyEnabled` | `50809` | `twoFactorAlreadyEnabled` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorAlreadyEnabled` | Two-factor authentication is already enabled. |
 | `twoFactorRequiredSetup` | `50810` | `twoFactorRequiredSetup` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorRequiredSetup` | Two-factor authentication setup is required before continuing. |
 | `twoFactorNotRequiredSetup` | `50811` | `twoFactorNotRequiredSetup` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorNotRequiredSetup` | Two-factor authentication setup is not required. |
-| `twoFactorAttemptTemporaryLock` | `50812` | `twoFactorAttemptTemporaryLock` | 429 (`TOO_MANY_REQUESTS`) | `auth.error.twoFactorAttemptTemporaryLock` | Too many incorrect two-factor attempts. Two-factor authentication is temporarily locked. Please try again after {retryAfterSeconds}s. |
+| `twoFactorAttemptMax` | `50812` | `twoFactorAttemptMax` | 403 (`FORBIDDEN`) | `auth.error.twoFactorAttemptMax` | Maximum two-factor attempts exceeded. |
 | `twoFactorMethodRequired` | `50813` | `twoFactorMethodRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorMethodRequired` | A two-factor authentication method is required. |
 | `twoFactorSetupRequired` | `50814` | `twoFactorSetupRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorSetupRequired` | Start two-factor setup before confirming the code. |
 | `twoFactorSecretUnavailable` | `50815` | `twoFactorSecretUnavailable` | 409 (`CONFLICT`) | `auth.error.twoFactorSecretUnavailable` | Authenticator codes can't be checked for this account. Sign in with a backup code, then set up two-factor authentication again using another backup code. |
@@ -233,8 +237,6 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 | --- | --- | --- | --- | --- | --- |
 | `notFound` | `50900` | `notFound` | 404 (`NOT_FOUND`) | `country.error.notFound` | Country not found. |
-| `inactive` | `50901` | `inactive` | none | none | Reserved enum member; no exception or i18n path. |
-| `exist` | `50902` | `exist` | none | none | Reserved enum member; no exception or i18n path. |
 
 ## `user`
 
@@ -245,7 +247,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `emailExist` | `51002` | `emailExist` | 409 (`CONFLICT`) | `user.error.emailExist` | This email already exists. |
 | `usernameExist` | `51003` | `usernameExist` | 409 (`CONFLICT`) | `user.error.usernameExist` | This username has already been taken. |
 | `mobileNumberNotFound` | `51004` | `mobileNumberNotFound` | 404 (`NOT_FOUND`) | `user.error.mobileNumberNotFound` | Mobile number not found. |
-| `statusInvalid` | `51005` | `statusInvalid` | none | `user.error.statusInvalid` | Reserved enum member; no exception. The i18n key exists: "Invalid user status." |
+| `statusInvalid` | `51005` | `statusInvalid` | 400 (`BAD_REQUEST`) | `user.error.statusInvalid` | Invalid user status. |
 | `blockedInvalid` | `51006` | `blockedInvalid` | 400 (`BAD_REQUEST`) | `user.error.blockedInvalid` | This user account has been blocked. |
 | `inactiveForbidden` | `51007` | `inactiveForbidden` | 403 (`FORBIDDEN`) | `user.error.inactive` | This user is inactive. |
 | `blockedForbidden` | `51008` | `blockedForbidden` | 403 (`FORBIDDEN`) | `user.error.blocked` | This user account has been blocked. |
@@ -257,22 +259,25 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `usernameNotAllowed` | `51014` | `usernameNotAllowed` | 400 (`BAD_REQUEST`) | `user.error.usernameNotAllowed` | This username is not allowed. |
 | `usernameContainBadWord` | `51015` | `usernameContainBadWord` | 400 (`BAD_REQUEST`) | `user.error.usernameContainBadWord` | Username contains inappropriate words. |
 | `emailNotVerified` | `51016` | `emailNotVerified` | 403 (`FORBIDDEN`) | `user.error.emailNotVerified` | Email not verified. |
-| `passwordNotSet` | `51017` | `passwordNotSet` | 400 (`BAD_REQUEST`) | `user.error.passwordNotSet` | Password has not been set for this account. |
-| `tokenInvalid` | `51018` | `tokenInvalid` | 400 (`BAD_REQUEST`) | `user.error.verificationTokenInvalid` | Verification token is invalid or expired. |
-| `emailAlreadyVerified` | `51019` | `emailAlreadyVerified` | 400 (`BAD_REQUEST`) | `user.error.emailAlreadyVerified` | This email has already been verified. |
-| `mobileNumberExist` | `51020` | `mobileNumberExist` | 409 (`CONFLICT`) | `user.error.mobileNumberExist` | This mobile number already exists. |
-| `verificationEmailResendLimitExceeded` | `51021` | `verificationEmailResendLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.verificationEmailResendLimitExceeded` | You have exceeded the limit for resending verification emails. Try again after {minutes} minutes. |
-| `forgotPasswordRequestLimitExceeded` | `51022` | `forgotPasswordRequestLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.forgotPasswordRequestLimitExceeded` | You have exceeded the limit for password reset requests. Try again after {minutes} minutes. |
-| `twoFactorMethodRequired` | `51023` | `twoFactorMethodRequired` | none | none | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
-| `accountNotFound` | `51024` | `accountNotFound` | 401 (`UNAUTHORIZED`) | `user.error.accountNotFound` | The account of this session no longer exists. |
-| `importEmailExist` | `51025` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
-| `importUsernameExist` | `51026` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
-| `guardMissing` | `51027` | `guardMissing` | 401 (`UNAUTHORIZED`) | `user.error.guardMissing` | Your account could not be verified. Please sign in again. |
-| `photoKeyInvalid` | `51028` | `photoKeyInvalid` | 400 (`BAD_REQUEST`) | `user.error.photoKeyInvalid` | This photo does not belong to your profile. |
+| `tokenInvalid` | `51017` | `tokenInvalid` | 400 (`BAD_REQUEST`) | `user.error.verificationTokenInvalid` | Verification token is invalid or expired. |
+| `emailAlreadyVerified` | `51018` | `emailAlreadyVerified` | 400 (`BAD_REQUEST`) | `user.error.emailAlreadyVerified` | This email has already been verified. |
+| `mobileNumberExist` | `51019` | `mobileNumberExist` | 409 (`CONFLICT`) | `user.error.mobileNumberExist` | This mobile number already exists. |
+| `accountNotFound` | `51020` | `accountNotFound` | 401 (`UNAUTHORIZED`) | `user.error.accountNotFound` | The account of this session no longer exists. |
+| `importEmailExist` | `51021` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
+| `importUsernameExist` | `51022` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
+| `guardMissing` | `51023` | `guardMissing` | 401 (`UNAUTHORIZED`) | `user.error.guardMissing` | Your account could not be verified. Please sign in again. |
+| `photoKeyInvalid` | `51024` | `photoKeyInvalid` | 400 (`BAD_REQUEST`) | `user.error.photoKeyInvalid` | This photo does not belong to your profile. |
+| `photoSizeExceeded` | `51025` | `photoSizeExceeded` | 400 (`BAD_REQUEST`) | `user.error.photoSizeExceeded` | This photo is larger than the allowed size. |
+| `credentialInvalid` | `51026` | `credentialInvalid` | 401 (`UNAUTHORIZED`) | `user.error.credentialInvalid` | The email or password is incorrect. |
+| `deleteSelfForbidden` | `51027` | `deleteSelfForbidden` | 403 (`FORBIDDEN`) | `user.error.deleteSelfForbidden` | An administrator account cannot delete itself. |
 
 - `accountNotFound` is raised by `UserDomain.validateUserGuard` when a valid token names a user whose row no longer exists.
 - `guardMissing` is raised by the role, policy, term-policy, workspace-member, and project-member guards, and by `@UserCurrent()` and `@RoleCurrent()`, when `UserGuard` stored no user.
 - `photoKeyInvalid` is raised by `UserProfileDomain.updatePhotoProfile` when the submitted key is not under the user's own profile photo path (`UserUtil.isPhotoProfileKeyOwned`). See [File Upload](file-upload.md#presign-upload).
+- `photoSizeExceeded` is raised by `UserProfileDomain` when a profile photo upload or presign exceeds the allowed size.
+- `credentialInvalid` is raised by `UserAuthDomain` at credential sign-in for an unknown email, an inactive account, an account with no password, or a wrong password.
+- `deleteSelfForbidden` is raised by `UserDomain.assertSelfDeletable` when the caller's role type is `admin` or `superAdmin`.
+- `statusInvalid` is raised by `UserDomain.updateStatusByAdminInTx` when the requested status equals the current one or the guarded write matches no row, and by `UserHttpService` for a write conflict on that transition.
 
 ## `policy`
 
@@ -293,6 +298,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `alreadyRead` | `51201` | `alreadyRead` | 400 (`BAD_REQUEST`) | `notification.error.alreadyRead` | Notification is already marked as read. |
 | `invalidType` | `51202` | `invalidType` | 400 (`BAD_REQUEST`) | `notification.error.invalidType` | Invalid notification type. |
 | `invalidChannel` | `51203` | `invalidChannel` | 400 (`BAD_REQUEST`) | `notification.error.invalidChannel` | Invalid notification channel. |
+| `settingInvalid` | `51204` | `settingInvalid` | 400 (`BAD_REQUEST`) | `notification.error.settingInvalid` | Notification setting cannot be updated. |
 
 ## `device`
 
@@ -325,14 +331,21 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `notFound` | `51500` | `notFound` | 404 (`NOT_FOUND`) | `termPolicy.error.notFound` | Term policy not found. |
 | `exist` | `51501` | `exist` | 409 (`CONFLICT`) | `termPolicy.error.exist` | A term policy with this name already exists. |
 | `languageDuplicate` | `51502` | `languageDuplicate` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentsLanguageMustBeUnique` | Each language can only be used once in term policy contents. |
-| `alreadyAccepted` | `51503` | `alreadyAccepted` | 409 (`CONFLICT`) | `termPolicy.error.alreadyAccepted` | You have already accepted this term policy. |
-| `requiredInvalid` | `51504` | `requiredInvalid` | 403 (`FORBIDDEN`) | `termPolicy.error.requiredInvalid` | Required field value is invalid. |
+| `alreadyAccepted` | `51503` | `alreadyAccepted` | 400 (`BAD_REQUEST`) | `termPolicy.error.alreadyAccepted` | You have already accepted this term policy. |
+| `requiredInvalid` | `51504` | `requiredInvalid` | 403 (`FORBIDDEN`) | `termPolicy.error.requiredInvalid` | Accept the latest terms or policies to continue. |
 | `statusInvalid` | `51505` | `statusInvalid` | 400 (`BAD_REQUEST`) | `termPolicy.error.statusInvalid` | Term policy status is invalid. |
 | `contentNotFound` | `51506` | `contentNotFound` | 404 (`NOT_FOUND`) | `termPolicy.error.contentNotFound` | Term policy content not found. |
 | `contentExist` | `51507` | `contentExist` | 409 (`CONFLICT`) | `termPolicy.error.contentExist` | This content already exists in the term policy. |
 | `contentEmpty` | `51508` | `contentEmpty` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentEmpty` | Term policy content cannot be empty. |
 | `contentInvalid` | `51509` | `contentInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `termPolicy.error.contentInvalid` | Term policy content is invalid. |
+| `requiredNotPublished` | `51510` | `requiredNotPublished` | 500 (`INTERNAL_SERVER_ERROR`) | `termPolicy.error.requiredNotPublished` | A required term policy is not published yet. |
+| `contentSizeExceeded` | `51511` | `contentSizeExceeded` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentSizeExceeded` | Term policy content is larger than the allowed size. |
+| `contentKeyInvalid` | `51512` | `contentKeyInvalid` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentKeyInvalid` | Term policy content key is outside the policy storage path. |
 
+- `requiredNotPublished` is raised by `TermPolicyAcceptanceDomain` when a required type has no published version.
+- `contentSizeExceeded` is raised by `TermPolicyDomain` and `TermPolicyContentDomain` when a content size is above the allowed size.
+- `contentKeyInvalid` is raised by the same domains when a content key is outside the policy's storage path.
+- `alreadyAccepted` answers a duplicate acceptance and a write conflict on the acceptance transaction.
 - `contentInvalid` is raised by `TermPolicyContentDomain` and `TermPolicyDomain` when `TermPolicyUtil.toContents` finds a stored content whose language or access is not a known enum value.
 
 ## `workspace`
@@ -350,7 +363,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `memberPeerForbidden` | `51608` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
 | `inviteDuplicate` | `51609` | `inviteDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.inviteDuplicate` | There is already a pending invite for this email in this workspace. |
 | `inviteProjectMismatch` | `51610` | `inviteProjectMismatch` | 400 (`BAD_REQUEST`) | `workspace.error.inviteProjectMismatch` | This project does not belong to the current workspace. |
-| `inviteRoleRequired` | `51611` | `inviteRoleRequired` | 400 (`BAD_REQUEST`) | `workspace.error.inviteRoleRequired` | `projectMemberRole` is required when `projectId` is set, and must be omitted otherwise. |
+| `inviteRoleRequired` | `51611` | `inviteRoleRequired` | 400 (`BAD_REQUEST`) | `workspace.error.inviteRoleRequired` | projectMemberRole is required when projectId is set, and must be omitted otherwise. |
 | `inviteNotFound` | `51612` | `inviteNotFound` | 404 (`NOT_FOUND`) | `workspace.error.inviteNotFound` | Sorry, we couldn't find that workspace invite. |
 | `inviteAlreadyProcessed` | `51613` | `inviteAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.inviteAlreadyProcessed` | This workspace invite is no longer pending. |
 | `notPublic` | `51614` | `notPublic` | 400 (`BAD_REQUEST`) | `workspace.error.notPublic` | This workspace is not accepting public join requests. |
@@ -363,12 +376,16 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `headerMissing` | `51621` | `headerMissing` | 400 (`BAD_REQUEST`) | `workspace.error.headerMissing` | The x-workspace-id header is required. |
 | `guardMissing` | `51622` | `guardMissing` | 403 (`FORBIDDEN`) | `workspace.error.guardMissing` | The workspace could not be verified for this request. |
 | `memberGuardMissing` | `51623` | `memberGuardMissing` | 403 (`FORBIDDEN`) | `workspace.error.memberGuardMissing` | Your workspace membership could not be verified for this request. |
+| `memberAlreadyExists` | `51624` | `memberAlreadyExists` | 400 (`BAD_REQUEST`) | `workspace.error.memberAlreadyExists` | This user is already a member of this workspace. |
+| `ownerTransferRequired` | `51625` | `ownerTransferRequired` | 400 (`BAD_REQUEST`) | `workspace.error.ownerTransferRequired` | You own a workspace with other members; transfer ownership before deleting your account. |
 
 - `WorkspaceGuard` resolves the workspace from the `x-workspace-id` header:
     - `headerMissing` answers an absent header.
     - `notFound` answers a malformed id or one that names no active workspace.
 - `WorkspaceMemberGuard` answers `memberForbidden` when the caller is not a member.
 - `guardMissing` is raised by `WorkspaceMemberGuard`, `ProjectGuard`, and `@WorkspaceCurrent()` when `WorkspaceGuard` stored no workspace.
+- `memberAlreadyExists` is raised by `WorkspaceInviteDomain.assertInviteeNotMember` when the invitee already belongs to the workspace.
+- `ownerTransferRequired` is raised by `WorkspaceDomain.assertOwnedHasNoOtherMembersInTx` when a user deleting their account owns a workspace with other members.
 - `memberGuardMissing` is raised by `WorkspaceRoleGuard`, `ProjectRoleGuard`, and `@WorkspaceMemberCurrent()` when `WorkspaceMemberGuard` stored no member.
 
 ## `project`
@@ -397,6 +414,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `uniqueValueGenerationFailed` | `51800` | `uniqueValueGenerationFailed` | 409 (`CONFLICT`) | `database.error.uniqueValueGenerationFailed` | We couldn't complete this action. Please try again. |
 | `writeConflict` | `51801` | `writeConflict` | 409 (`CONFLICT`) | `database.error.writeConflict` | The request conflicted with another change. Please try again. |
 | `unavailable` | `51802` | `unavailable` | 503 (`SERVICE_UNAVAILABLE`) | `database.error.unavailable` | The service is temporarily unavailable. Please try again later. |
+| `idInvalid` | `51803` | `idInvalid` | 400 (`BAD_REQUEST`) | `database.error.idInvalid` | The request carries an invalid identifier. |
+| `transactionExpired` | `51804` | `transactionExpired` | 503 (`SERVICE_UNAVAILABLE`) | `database.error.transactionExpired` | The service is temporarily unavailable. Please try again later. |
 
 - `DatabaseUniqueValueGenerationFailedException` (`51800`) is thrown directly when every attempt to draw a unique generated value collides. `DatabaseUtil.toException` never produces it.
 - `DatabaseWriteConflictException` (`51801`) is the mapped form of a Prisma `P2034` write conflict between concurrent transactions.
@@ -404,7 +423,9 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 - `DatabaseUnavailableException` (`51802`) is the mapped form of two failures:
     - a `PrismaClientInitializationError`
     - a Prisma error whose code is in `DatabaseUnavailableCodes` (`src/common/database/constants/database.constant.ts`): `P1001`, `P1002`, `P1008`, `P1017`, `P2024`
-- `DatabaseUtil.toException` maps only `51801` and `51802`, and `AppGeneralFilter` renders them. See [Handling Error](handling-error.md).
+- `DatabaseIdInvalidException` (`51803`) is the mapped form of a Prisma `P2023` error, such as a malformed ObjectId.
+- `DatabaseTransactionExpiredException` (`51804`) is the mapped form of a Prisma `P2028` transaction API error.
+- `DatabaseUtil.toException` maps `51801` to `51804`, and `AppGeneralFilter` renders them. See [Handling Error](handling-error.md).
 
 ## `response`
 
@@ -427,7 +448,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 | --- | --- | --- | --- | --- | --- |
-| `invalidDateRange` | `52100` | `invalidDateRange` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` | The start date must be before the end date. |
+| `invalidDateRange` | `52100` | `invalidDateRange` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` | The start date must be before the end date and the range cannot exceed the maximum window. |
 
 ## `helper`
 

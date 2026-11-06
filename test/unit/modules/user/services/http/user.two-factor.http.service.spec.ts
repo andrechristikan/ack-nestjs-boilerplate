@@ -15,9 +15,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -49,13 +47,11 @@ import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/us
 import type {
     IUser,
     IUserCredentialAttempt,
+    IUserTwoFactorAttempt,
     IUserTwoFactorSetup,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
-import type {
-    NotificationUserSetting,
-    TwoFactor,
-} from '@generated/prisma-client/client';
+import type { TwoFactor } from '@generated/prisma-client/client';
 
 describe('UserTwoFactorHttpService', () => {
     const userTwoFactorDomain: MockProxy<UserTwoFactorDomain> =
@@ -67,11 +63,8 @@ describe('UserTwoFactorHttpService', () => {
     const userAuthDomain: MockProxy<UserAuthDomain> = mock<UserAuthDomain>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const notificationDomain: MockProxy<NotificationDomain> =
         mock<NotificationDomain>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -162,14 +155,15 @@ describe('UserTwoFactorHttpService', () => {
         user,
         hashedPassword: 'hashed-password',
         isAttemptCounted: true,
+        lockoutStages: [],
+    };
+    const twoFactorAttempt: IUserTwoFactorAttempt = {
+        isAttemptCounted: true,
+        lockoutStages: [],
     };
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
-    const notificationTokens = ['token-marten'];
-    const settings = [
-        { channel: 'push' },
-    ] as unknown as NotificationUserSetting[];
     const verified: IUserTwoFactorVerifyResult = {
         method: EnumAuthTwoFactorMethod.code,
         newBackupCodes: null,
@@ -182,14 +176,10 @@ describe('UserTwoFactorHttpService', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userTwoFactorDomain.countAttempt.mockResolvedValue(true);
+        userTwoFactorDomain.countAttempt.mockResolvedValue(twoFactorAttempt);
         userPasswordDomain.countPasswordAttempt.mockResolvedValue(null);
         userTwoFactorDomain.verify.mockResolvedValue(verified);
-        deviceDomain.getNotificationTokens.mockResolvedValue(
-            notificationTokens
-        );
-        notificationDomain.getListUserSetting.mockResolvedValue(settings);
-        notificationUtil.mapRecipient.mockReturnValue(recipient);
+        notificationDomain.getRecipient.mockResolvedValue(recipient);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -207,12 +197,10 @@ describe('UserTwoFactorHttpService', () => {
                 { provide: UserAuthDomain, useValue: userAuthDomain },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: SessionDomain, useValue: sessionDomain },
-                { provide: DeviceDomain, useValue: deviceDomain },
                 {
                     provide: NotificationDomain,
                     useValue: notificationDomain,
                 },
-                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RoleDomain, useValue: roleDomain },
@@ -339,6 +327,14 @@ describe('UserTwoFactorHttpService', () => {
             expect(userTwoFactorDomain.countAttempt).toHaveBeenCalledBefore(
                 userTwoFactorDomain.verify
             );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([]);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledBefore(
+                userTwoFactorDomain.assertAttemptCounted
+            );
+            expect(
+                userTwoFactorDomain.assertAttemptCounted
+            ).toHaveBeenCalledWith(true);
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 code: null,
@@ -384,7 +380,9 @@ describe('UserTwoFactorHttpService', () => {
             expect(
                 userTwoFactorDomain.saveSetupConsumingBackupCode
             ).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
         it('skips the password check for a passwordless account', async () => {
@@ -467,6 +465,9 @@ describe('UserTwoFactorHttpService', () => {
 
                 return ['CODE1'];
             });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                calls.push('stagePrepared');
+            });
 
             await expect(service.enableTwoFactor(user, dto)).resolves.toEqual({
                 data: { backupCodes: ['CODE1'] },
@@ -488,16 +489,22 @@ describe('UserTwoFactorHttpService', () => {
             expect(userTwoFactorDomain.countAttempt).toHaveBeenCalledBefore(
                 userTwoFactorDomain.verifySetupCode
             );
-            expect(calls).toEqual(['verifySetupCode', 'enableTwoFactor']);
+            expect(calls).toEqual([
+                'stagePrepared',
+                'verifySetupCode',
+                'enableTwoFactor',
+                'stagePrepared',
+            ]);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userEnableTwoFactor,
                 userId: 'user-marten',
                 createdBy: 'user-marten',
             });
-            expect(userTwoFactorDomain.enableTwoFactor).toHaveBeenCalledBefore(
-                activityLogDomain.stagePrepared
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(
+                1,
+                []
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(2, [
                 activityLog,
             ]);
         });
@@ -524,7 +531,9 @@ describe('UserTwoFactorHttpService', () => {
                 service.enableTwoFactor(user, { ...enableDto, code: '000000' })
             ).rejects.toBe(failure);
             expect(userTwoFactorDomain.enableTwoFactor).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
         it('skips the password check for a passwordless account', async () => {
@@ -631,6 +640,9 @@ describe('UserTwoFactorHttpService', () => {
             sessionQueue.purgeLogins.mockImplementation(async () => {
                 calls.push('purge');
             });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                calls.push('stage');
+            });
 
             await expect(service.disableTwoFactor(user, dto)).resolves.toEqual(
                 {}
@@ -659,12 +671,14 @@ describe('UserTwoFactorHttpService', () => {
                 now
             );
             expect(calls).toEqual([
+                'stage',
                 'verify',
                 'begin',
                 'disableInTx',
                 'revokeSessions',
                 'commit',
                 'purge',
+                'stage',
             ]);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userDisableTwoFactor,
@@ -673,10 +687,11 @@ describe('UserTwoFactorHttpService', () => {
                 'user-marten',
                 revoked
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledBefore(
-                activityLogDomain.stagePrepared
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(
+                1,
+                []
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(2, [
                 activityLog,
             ]);
         });
@@ -728,7 +743,9 @@ describe('UserTwoFactorHttpService', () => {
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
         it('rethrows an app exception of the transaction unchanged, purging and staging nothing', async () => {
@@ -740,7 +757,9 @@ describe('UserTwoFactorHttpService', () => {
             );
             expect(databaseUtil.toException).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
         it('wraps any other transaction failure in the unknown exception, purging and staging nothing', async () => {
@@ -756,7 +775,9 @@ describe('UserTwoFactorHttpService', () => {
                 rawError: cause,
             });
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
     });
 
@@ -765,9 +786,17 @@ describe('UserTwoFactorHttpService', () => {
             const dto: UserTwoFactorRegenerateBackupCodeRequestDto = {
                 code: '123456',
             };
-            userTwoFactorDomain.regenerateTwoFactorBackupCodes.mockResolvedValue(
-                ['CODE1', 'CODE2']
+            const calls: string[] = [];
+            userTwoFactorDomain.regenerateTwoFactorBackupCodes.mockImplementation(
+                async () => {
+                    calls.push('regenerate');
+
+                    return ['CODE1', 'CODE2'];
+                }
             );
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                calls.push('stage');
+            });
 
             await expect(
                 service.regenerateTwoFactorBackupCodes(user, dto)
@@ -790,10 +819,12 @@ describe('UserTwoFactorHttpService', () => {
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
             });
-            expect(
-                userTwoFactorDomain.regenerateTwoFactorBackupCodes
-            ).toHaveBeenCalledBefore(activityLogDomain.stagePrepared);
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+            expect(calls).toEqual(['stage', 'regenerate', 'stage']);
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(
+                1,
+                []
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(2, [
                 activityLog,
             ]);
         });
@@ -818,7 +849,9 @@ describe('UserTwoFactorHttpService', () => {
             expect(
                 userTwoFactorDomain.regenerateTwoFactorBackupCodes
             ).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
     });
 
@@ -882,11 +915,9 @@ describe('UserTwoFactorHttpService', () => {
             expect(userTwoFactorDomain.assertEnabled).toHaveBeenCalledWith(
                 user
             );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.resetTwoFactorByAdmin,
-                ['token-marten'],
-                settings
+                EnumNotificationKind.resetTwoFactorByAdmin
             );
             expect(userTwoFactorDomain.resetByAdminInTx).toHaveBeenCalledWith(
                 tx,
@@ -941,7 +972,7 @@ describe('UserTwoFactorHttpService', () => {
         });
 
         it('resets nothing when the recipient read rejects', async () => {
-            deviceDomain.getNotificationTokens.mockRejectedValue(
+            notificationDomain.getRecipient.mockRejectedValue(
                 new Error('read')
             );
 
@@ -1017,6 +1048,14 @@ describe('UserTwoFactorHttpService', () => {
                 'assertPasswordAttempt',
                 'getBackupCodeForSetup',
             ]);
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(
+                1,
+                []
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledBefore(
+                userAuthDomain.assertPasswordAttempt
+            );
+            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
         });
 
         it('counts and verifies the credential before enable verifies the setup code', async () => {
@@ -1048,25 +1087,29 @@ describe('UserTwoFactorHttpService', () => {
         it('stages both lockout rows after the spent attempt is counted and answers the attempt limit', async () => {
             const limit = new UserPasswordAttemptMaxException();
             const calls: string[] = [];
+            const spent = {
+                ...passwordAttempt,
+                isAttemptCounted: false,
+                lockoutStages: [
+                    {
+                        action: EnumActivityLogAction.userRevokeAllSessions,
+                        userId: 'user-marten',
+                        createdBy: 'user-marten',
+                    },
+                    {
+                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                        userId: 'user-marten',
+                        createdBy: 'user-marten',
+                    },
+                ],
+            };
             userPasswordDomain.countPasswordAttempt.mockImplementation(
                 async () => {
                     calls.push('countPasswordAttempt');
 
-                    return { ...passwordAttempt, isAttemptCounted: false };
+                    return spent;
                 }
             );
-            userUtil.buildPasswordLockoutStages.mockReturnValue([
-                {
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: 'user-marten',
-                    createdBy: 'user-marten',
-                },
-                {
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    userId: 'user-marten',
-                    createdBy: 'user-marten',
-                },
-            ]);
             userAuthDomain.assertPasswordAttempt.mockImplementation(
                 async () => {
                     calls.push('assert');
@@ -1082,9 +1125,7 @@ describe('UserTwoFactorHttpService', () => {
                 service.setupTwoFactor(user, { password: 'Current-pass1' })
             ).rejects.toBe(limit);
 
-            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
-                'user-marten'
-            );
+            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-marten',
@@ -1106,7 +1147,7 @@ describe('UserTwoFactorHttpService', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
-                { ...passwordAttempt, isAttemptCounted: false },
+                spent,
                 'Current-pass1'
             );
             expect(userTwoFactorDomain.saveSetup).not.toHaveBeenCalled();
@@ -1148,9 +1189,13 @@ describe('UserTwoFactorHttpService', () => {
             },
         ];
 
+        const spent: IUserTwoFactorAttempt = {
+            isAttemptCounted: false,
+            lockoutStages,
+        };
+
         beforeEach(() => {
-            userTwoFactorDomain.countAttempt.mockResolvedValue(false);
-            userUtil.buildTwoFactorLockoutStages.mockReturnValue(lockoutStages);
+            userTwoFactorDomain.countAttempt.mockResolvedValue(spent);
             userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
                 throw limit;
             });
@@ -1164,10 +1209,15 @@ describe('UserTwoFactorHttpService', () => {
             userTwoFactorDomain.countAttempt.mockImplementation(async () => {
                 calls.push('countAttempt');
 
-                return false;
+                return spent;
             });
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 calls.push('stagePrepared');
+            });
+            userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
+                calls.push('assertAttemptCounted');
+
+                throw limit;
             });
 
             await expect(
@@ -1178,19 +1228,24 @@ describe('UserTwoFactorHttpService', () => {
             ).rejects.toBe(limit);
 
             expect(userTwoFactorDomain.countAttempt).toHaveBeenCalledWith(user);
-            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
-                'user-marten'
-            );
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(activityLogDomain.prepare).toHaveBeenCalledWith(
                 lockoutStages[0]
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith(
                 lockoutStages[1]
             );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
-                lockoutLogs
-            );
-            expect(calls).toEqual(['countAttempt', 'stagePrepared']);
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith(lockoutLogs);
+            expect(calls).toEqual([
+                'countAttempt',
+                'stagePrepared',
+                'assertAttemptCounted',
+            ]);
+            expect(
+                userTwoFactorDomain.assertAttemptCounted
+            ).toHaveBeenCalledWith(false);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
@@ -1212,12 +1267,10 @@ describe('UserTwoFactorHttpService', () => {
                 })
             ).rejects.toBe(limit);
 
-            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
-                'user-marten'
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
-                lockoutLogs
-            );
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith(lockoutLogs);
             expect(userTwoFactorDomain.verifySetupCode).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.enableTwoFactor).not.toHaveBeenCalled();
         });
@@ -1238,12 +1291,10 @@ describe('UserTwoFactorHttpService', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
-                'user-marten'
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
-                lockoutLogs
-            );
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith(lockoutLogs);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.disableInTx).not.toHaveBeenCalled();
@@ -1256,12 +1307,10 @@ describe('UserTwoFactorHttpService', () => {
                 })
             ).rejects.toBe(limit);
 
-            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
-                'user-marten'
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
-                lockoutLogs
-            );
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith(lockoutLogs);
             expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
             expect(
                 userTwoFactorDomain.regenerateTwoFactorBackupCodes

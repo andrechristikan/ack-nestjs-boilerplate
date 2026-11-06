@@ -104,16 +104,10 @@ export class UserHttpService {
             return;
         }
 
-        if (!attempt.isAttemptCounted) {
-            const lockoutStages = this.userUtil.buildPasswordLockoutStages(
-                user.id
-            );
-            const lockoutLogs = lockoutStages.map(stage =>
-                this.activityLogDomain.prepare(stage)
-            );
-
-            this.activityLogDomain.stagePrepared(lockoutLogs);
-        }
+        const lockoutLogs = attempt.lockoutStages.map(stage =>
+            this.activityLogDomain.prepare(stage)
+        );
+        this.activityLogDomain.stagePrepared(lockoutLogs);
 
         await this.userAuthDomain.assertPasswordAttempt(attempt, password);
     }

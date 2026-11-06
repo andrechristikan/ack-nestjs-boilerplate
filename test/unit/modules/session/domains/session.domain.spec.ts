@@ -23,17 +23,21 @@ import type {
     ISession,
     ISessionCache,
     ISessionList,
+    ISessionPurgeLoginsPayload,
     ISessionRef,
+    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import { SessionUtil } from '@modules/session/utils/session.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 describe('SessionDomain', () => {
     const sessionRepository: MockProxy<SessionRepository> =
         mock<SessionRepository>();
     const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
+    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -88,6 +92,7 @@ describe('SessionDomain', () => {
                 SessionDomain,
                 { provide: SessionRepository, useValue: sessionRepository },
                 { provide: SessionCache, useValue: sessionCache },
+                { provide: SessionUtil, useValue: sessionUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: RequestStoreService,
@@ -538,6 +543,44 @@ describe('SessionDomain', () => {
             );
 
             expect(result).toBe(refs);
+        });
+    });
+
+    describe('revokeByDeviceOwnershipIdsInTx', () => {
+        it('revokes on the caller transaction and returns the refs grouped per user', async () => {
+            const revokedAt = new Date('2026-01-05T00:00:00.000Z');
+            const rows: ISessionUserRef[] = [
+                { id: 'session-2', userId: 'user-2' },
+                { id: 'session-3', userId: 'user-2' },
+            ];
+            const grouped: ISessionPurgeLoginsPayload[] = [
+                {
+                    userId: 'user-2',
+                    sessions: [{ id: 'session-2' }, { id: 'session-3' }],
+                },
+            ];
+            sessionRepository.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
+                rows
+            );
+            sessionUtil.groupRefsByUser.mockReturnValue(grouped);
+
+            const result = await domain.revokeByDeviceOwnershipIdsInTx(
+                tx,
+                ['device-ownership-2'],
+                'user-1',
+                revokedAt
+            );
+
+            expect(
+                sessionRepository.revokeByDeviceOwnershipIdsInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                ['device-ownership-2'],
+                'user-1',
+                new Date('2026-01-05T00:00:00.000Z')
+            );
+            expect(sessionUtil.groupRefsByUser).toHaveBeenCalledWith(rows);
+            expect(result).toBe(grouped);
         });
     });
 

@@ -214,8 +214,11 @@ jwt: {
     }
     audience: string; // JWT audience claim
     issuer: string; // JWT issuer claim
+    jtiLength: number; // Length of the random `jti` claim (32)
 }
 ```
+
+The signing algorithm is a literal: `ES256` for the access token, `ES512` for the refresh token.
 
 The token header and scheme are constants, not config, in `src/modules/auth/constants/auth.constant.ts`:
 
@@ -233,6 +236,7 @@ password: {
     expiredInMs: number; // Password expiration time (ms)
     expiredTemporaryInMs: number; // Temporary password expiration (ms)
     periodInDays: number; // Password renewal period in days (`ms('90d') / ms('1d')`)
+    temporaryLength: number; // Length of a generated temporary password (10)
 }
 ```
 
@@ -249,13 +253,11 @@ twoFactor: {
     secretLength: number; // Length of OTP secret
     challengeTtlInMs: number; // Challenge TTL in milliseconds
     challengeKeyPattern: string; // Cache key pattern for challenge ('TwoFactor:Challenge:{token}')
-    lockKeyPattern: string; // Cache key pattern for lockout ('TwoFactor:Lock:{userId}')
     backupCodes: {
         count: number; // Number of backup codes
         length: number; // Length of each backup code
     }
-    maxAttempt: number; // Maximum failed two-factor attempts before lock
-    lockAttemptDurationInMs: number; // Lock duration after max failed attempts (milliseconds)
+    maxAttempt: number; // Maximum failed two-factor attempts before the lockout job runs
     encryption: {
         key: string; // Root secret for TOTP secrets, from AUTH_TWO_FACTOR_ENCRYPTION_KEY (64 base64url characters)
     }
@@ -284,10 +286,22 @@ google: {
 ```typescript
 xApiKey: {
     keyPattern: string; // Cache key pattern for API keys ('ApiKey:{key}')
+    cacheTtlInMs: number; // API key cache TTL (ms('5m'))
+    leaseKeyPattern: string; // Cache key pattern for the load lease ('ApiKey:Lease:{key}')
+    leaseTtlInMs: number; // Load lease TTL (ms('10s'))
 }
 ```
 
 The API key header is the constant `ApiKeyHeaderName` (`x-api-key`) in `src/modules/api-key/constants/api-key.constant.ts`.
+
+**`jwks`**: JWKS client limits used by the access and refresh strategies
+
+```typescript
+jwks: {
+    requestsPerMinute: number; // JWKS requests allowed per minute (60)
+    cacheMaxAgeInMs: number; // JWKS cache max age (ms('10m'))
+}
+```
 
 ### Database Configuration
 
@@ -611,16 +625,19 @@ queue: {
 
 #### Configuration Keys:
 
-**`usernameRegex`**: Username validation expression
-
-```typescript
-usernameRegex: RegExp; // Regular expression a valid username matches (/^[a-zA-Z0-9-_]+$/)
-```
-
 **`uploadPhotoProfilePath`**: User profile photo upload path template
 
 ```typescript
 uploadPhotoProfilePath: string; // Path template for user profile photo uploads
+```
+
+**`photo`**: Profile photo limits
+
+```typescript
+photo: {
+    maxSizeInBytes: number; // Largest profile photo (bytes('2mb'))
+    filenameRandomLength: number; // Random part length of the stored photo filename (20)
+}
 ```
 
 **`maxDataImport`**: User CSV import row cap
@@ -650,18 +667,27 @@ default: {
 }
 ```
 
-**`onboarding`**: `withTransaction` timeouts `WorkspaceDomain.commitOnboarding` applies to the onboarding compose
+**`create`**: `withTransaction` timeouts of the user create flows
 
 ```typescript
-onboarding: {
-    createTimeoutInMs: number; // Single-user compose (`WorkspaceDomain.commitOnboarding`) (ms('10s'))
-    createBulkTimeoutInMs: number; // Bulk compose (`WorkspaceDomain.commitOnboarding`) (ms('30s'))
+create: {
+    timeoutInMs: number; // Single-user create (ms('10s'))
+    bulkTimeoutInMs: number; // Bulk create (ms('30s'))
 }
 ```
 
-> - Single-user callers (`OnboardingDomain.createByAdmin`, `signUp`, and `loginWithSocial`) pass `createTimeoutInMs` from `UserOnboardingDomain.getCreateTimeoutInMs`.
-> - `OnboardingDomain.importByAdmin` passes `createBulkTimeoutInMs` from `UserOnboardingDomain.getCreateBulkTimeoutInMs`.
-> - Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
+- `UserRegistrationHttpService` reads both keys for `signUp`, `createByAdmin`, and `importByAdmin`.
+- `UserAuthHttpService` reads `timeoutInMs` for the first-login sign-up of `loginWithSocial`.
+
+**`deleteSelf`**: Self-delete settings
+
+```typescript
+deleteSelf: {
+    timeoutInMs: number; // `withTransaction` timeout of the self-delete (ms('30s'))
+    emailPattern: string; // Replacement email ('deleted.{id}.{email}')
+    usernamePattern: string; // Replacement username ('deleted.{id}.{username}')
+}
+```
 
 **`jobId`**: Job id patterns of the user queue
 
@@ -755,10 +781,10 @@ batchDelayInMs: number; // Per-job BullMQ delay: the term-policy email job at po
 
 #### Configuration Keys:
 
-**`expiredInMs`**: Verification expiration time
+**`expiredInMinutes`**: Verification expiration time
 
 ```typescript
-expiredInMs: number; // Verification expiration (ms('5m')); consumer converts to minutes
+expiredInMinutes: number; // Verification expiration in minutes (`ms('5m') / ms('1m')`)
 ```
 
 **`otpLength`**: OTP code length
@@ -779,10 +805,10 @@ tokenLength: number; // Length of verification token
 linkPattern: string; // Full verification link template ('{homeUrl}/verify-email/{token}')
 ```
 
-**`resendInMs`**: Resend cooldown period
+**`resendInMinutes`**: Resend cooldown period
 
 ```typescript
-resendInMs: number; // Minimum time between resend attempts (ms('2m')); consumer converts to minutes
+resendInMinutes: number; // Minimum minutes between resend attempts (`ms('2m') / ms('1m')`)
 ```
 
 **`reference`**: Verification reference configuration
@@ -800,10 +826,10 @@ reference: {
 
 #### Configuration Keys:
 
-**`expiredInMs`**: Reset link expiration
+**`expiredInMinutes`**: Reset link expiration
 
 ```typescript
-expiredInMs: number; // Password reset expiration (ms('5m')); consumer converts to minutes
+expiredInMinutes: number; // Password reset expiration in minutes (`ms('5m') / ms('1m')`)
 ```
 
 **`tokenLength`**: Reset token length
@@ -818,10 +844,10 @@ tokenLength: number; // Length of password reset token
 linkPattern: string; // Full password reset link template ('{homeUrl}/forgot-password/{token}')
 ```
 
-**`resendInMs`**: Resend cooldown period
+**`resendInMinutes`**: Resend cooldown period
 
 ```typescript
-resendInMs: number; // Minimum time between resend attempts (ms('2m')); consumer converts to minutes
+resendInMinutes: number; // Minimum minutes between resend attempts (`ms('2m') / ms('1m')`)
 ```
 
 **`reference`**: Reset reference configuration
@@ -863,6 +889,12 @@ url: string; // URL for organization/home page
 keyPattern: string; // Redis key pattern for user sessions ('User:{userId}:Session:{sessionId}')
 ```
 
+**`loginCacheTtlInMs`**: Login cache TTL
+
+```typescript
+loginCacheTtlInMs: number; // Equals the access token lifetime, parsed from AUTH_JWT_ACCESS_TOKEN_EXPIRED
+```
+
 **`jobId`**: Job id patterns of the session queue
 
 ```typescript
@@ -889,11 +921,20 @@ uploadContentPath: string; // Path pattern for uploading policy content files
 contentPublicPath: string; // Public path for accessing policy content
 ```
 
+**`content`**: Policy content limits
+
+```typescript
+content: {
+    maxSizeInBytes: number; // Largest policy content file (bytes('10mb'))
+}
+```
+
 **`jobId`**: Job id patterns of the term policy queue
 
 ```typescript
 jobId: {
     deleteContentPattern: string; // Job id of a content delete job ('{process}-{nonce}')
+    copyContentPattern: string; // Job id of a content copy job ('{process}-{termPolicyId}')
 }
 ```
 
@@ -912,7 +953,14 @@ keyPattern: string; // Redis cache key pattern for feature flag data ('FeatureFl
 **`cacheTtlInMs`**: Cache TTL for feature flags
 
 ```typescript
-cacheTtlInMs: number; // Cache TTL in milliseconds for feature flag data
+cacheTtlInMs: number; // Cache TTL in milliseconds for feature flag data (ms('1h'))
+```
+
+**`leaseKeyPattern`** and **`leaseTtlInMs`**: Load lease for a flag cache miss
+
+```typescript
+leaseKeyPattern: string; // Cache key pattern for the load lease ('FeatureFlag:Lease:{key}')
+leaseTtlInMs: number; // Load lease TTL (ms('10s'))
 ```
 
 **`anonymous`**: Anonymous evaluation identity configuration
@@ -1045,6 +1093,12 @@ diskThresholdPercent: number; // Disk usage alert threshold as a fraction (defau
 diskPath: string; // Filesystem path checked for storage (default: '/')
 ```
 
+**`jwksTimeoutInMs`**: JWKS indicator timeout
+
+```typescript
+jwksTimeoutInMs: number; // Timeout of the JWKS health indicator request (ms('3s'))
+```
+
 **`gracefulShutdownTimeoutInMs`**: Terminus graceful-shutdown window
 
 ```typescript
@@ -1168,6 +1222,14 @@ slugMaxLength: number; // Maximum slug length (default: 30)
 slugMaxAttempts: number; // Maximum attempts to generate a unique slug (default: 5)
 ```
 
+**`delete`**: Workspace delete settings
+
+```typescript
+delete: {
+    timeoutInMs: number; // `withTransaction` timeout of the workspace delete (ms('10s'))
+}
+```
+
 **`invite`**: Workspace invitation configuration
 
 ```typescript
@@ -1176,9 +1238,11 @@ invite: {
     tokenLength: number; // Length of the invitation token (default: 100)
     referencePrefix: string; // Prefix for invitation references (default: 'WIN')
     referenceRandomLength: number; // Random part length of the invitation reference (default: 25)
-    linkPattern: string; // Claim link template for an invitee who already has an account ('{homeUrl}/workspace/invites/{token}')
+    referenceMaxAttempts: number; // Attempts to generate a unique invitation reference (default: 5)
+    expireChunkSize: number; // Invitations the expiry sweep processes per chunk (default: 100)
+    linkPattern: string; // Claim link template for an invitee who already has an account ('{homeUrl}/workspace/invites?inviteToken={token}')
     signUpLinkPattern: string; // Sign-up link template for an invitee without an account ('{homeUrl}/sign-up?inviteToken={token}')
-    expirySweepCron: string; // Cron pattern for the invitation expiry sweep (default: '0 0 * * *')
+    expirySweepCron: string; // Cron pattern for the invitation expiry sweep (default: '0 * * * *', hourly)
 }
 ```
 
@@ -1187,6 +1251,8 @@ invite: {
 ```typescript
 joinRequest: {
     reviewLinkPattern: string; // Review link template for a join request ('{homeUrl}/workspace/join-requests/{joinRequestId}')
+    expiresInMs: number; // Join request validity (ms('7d'))
+    expireChunkSize: number; // Join requests the expiry sweep processes per chunk (default: 100)
 }
 ```
 
@@ -1236,14 +1302,14 @@ Live metric cache TTLs and key patterns, plus anomaly and fraud detection thresh
 
 ```typescript
 cache: {
-    dashboardTtlInMs: number; // Dashboard metric TTL (default: 1h)
-    anomalySummaryTtlInMs: number; // Anomaly summary TTL (default: 5m)
-    fraudSummaryTtlInMs: number; // Fraud summary TTL (default: 5m)
-    riskScoreTtlInMs: number; // Per-user risk score TTL (default: 10m)
+    dashboardTtlInMs: number; // Dashboard metric TTL (default: 30m)
+    anomalySummaryTtlInMs: number; // Anomaly summary TTL (default: 15m)
+    fraudSummaryTtlInMs: number; // Fraud summary TTL (default: 15m)
+    riskScoreTtlInMs: number; // Per-user risk score TTL (default: 15m)
     keyPatterns: {
         dashboard: string; // Analytic:Dashboard:{metric}:{start}:{end}
-        anomaly: string; // Analytic:Anomaly:{signal}:{window}
-        fraud: string; // Analytic:Fraud:{signal}:{window}
+        anomalySummary: string; // Analytic:Anomaly:{signal}:{window}
+        fraudSummary: string; // Analytic:Fraud:{signal}:{window}
         riskScore: string; // Analytic:Fraud:Risk:{userId}
     }
     windowTokenPattern: string; // '{start}:{end}'
@@ -1254,6 +1320,12 @@ cache: {
 - `AnalyticDateUtil` fills the two token patterns.
 - `AnalyticCache` fills the four key patterns.
 - A paginated dashboard metric appends `page=<n>:perPage=<n>` to its metric token, so one page of a list caches under its own key.
+
+**`maxWindowInMs`**: Longest date window a dashboard, anomaly, or fraud query accepts (ms('90d'))
+
+**`device`**: `inactivityInMs` (ms('30d')) is the inactivity after which the dashboard counts a device as inactive
+
+**`project`**: `perWorkspaceLimit` (100) bounds the project analytic read per workspace
 
 **`anomaly`**: Impossible-travel, login-spike, failed-login, device-proliferation, and login-time thresholds used by `AnalyticAnomalyDomain`
 
@@ -1273,6 +1345,14 @@ cache: {
 ```typescript
 jobId: {
     createManyPattern: string; // Job id of a flush job ('{process}-{nonce}')
+}
+```
+
+**`analytic`**: Activity log analytic read settings
+
+```typescript
+analytic: {
+    pageSize: number; // Rows per page of the analytic read (5000)
 }
 ```
 

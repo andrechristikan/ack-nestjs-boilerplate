@@ -8,6 +8,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Duration } from 'luxon';
 
@@ -142,6 +143,34 @@ describe('UserVerificationUtil', () => {
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 '{homeUrl}/verify?token={token}',
                 { homeUrl: 'https://example.com', token: 'random-token' }
+            );
+        });
+    });
+
+    describe('mapEmailPayload', () => {
+        it('maps the verification into the email payload with an ISO expiry', () => {
+            const verification: IUserVerificationEmailCreate = {
+                type: EnumVerificationType.email,
+                reference: 'VRF-random-token',
+                expiredAt,
+                expiredInMinutes: 15,
+                resendInMinutes: 5,
+                token: 'random-token',
+                hashedToken: 'hashed-token',
+                link: 'https://example.com/verify?token=random-token',
+            };
+            helperDateService.formatToIso.mockReturnValue(
+                '2026-03-01T00:15:00.000Z'
+            );
+
+            expect(util.mapEmailPayload(verification)).toEqual({
+                link: 'https://example.com/verify?token=random-token',
+                expiredAt: '2026-03-01T00:15:00.000Z',
+                expiredInMinutes: 15,
+                reference: 'VRF-random-token',
+            });
+            expect(helperDateService.formatToIso).toHaveBeenCalledWith(
+                expiredAt
             );
         });
     });

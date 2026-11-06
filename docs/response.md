@@ -54,7 +54,7 @@ Standard API response decorator with optional caching.
 - `IResponseOptions` carries only `schema` and `cache`.
 - Success HTTP status and body `statusCode` both follow `@HttpCode` when present, otherwise Nest method defaults (`POST` → 201, else 200).
 - A handler overrides either at runtime via `metadata` on its return.
-- The decorator also documents the success envelope and `DocSerializationErrorResponses.serialization`.
+- The decorator also documents the success envelope and `ResponseDocErrors` (the serialization failure).
 
 **Requirements:**
 
@@ -73,7 +73,7 @@ Standard API response decorator with optional caching.
 @Get('/get/:userId')
 async get(
   @Param('userId', { schema: RequestMongoIdSchema }) userId: string
-): Promise<IResponseReturn<UserProfileResponseDto>> {
+): Promise<IResponseReturn<IUserProfile>> {
   return this.userHttpService.getOne(userId);
 }
 ```
@@ -88,9 +88,9 @@ async get(
 @Post('/create')
 async create(
   @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
-  @AuthJwtPayload('userId') createdBy: string
+  @UserCurrent() user: IUser
 ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-  return this.userHttpService.createByAdmin(body, createdBy);
+  return this.userRegistrationHttpService.createByAdmin(body, user);
 }
 ```
 
@@ -101,8 +101,7 @@ The controller carries the message path and nothing else. The values that fill i
 ```typescript
 // notification.shared.controller.ts
 @Response('notification.markAllAsRead')
-@HttpCode(HttpStatus.OK)
-@Post('/update/read')
+@Patch('/read-all')
 async markAllAsRead(
   @AuthJwtPayload('userId') userId: string
 ): Promise<IResponseReturn<void>> {
@@ -183,7 +182,7 @@ async list(
 
 `UserHttpService.getListOffsetByAdmin` runs `PaginationQueryUtil.offset`, merges the store patch, and forwards to the domain and repository.
 
-- The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `hasPrevious`, `nextPage`, `previousPage`) come from `PaginationService.offset`, which computes them in `offsetPage`.
+- The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `hasPrevious`, `nextPage`, `previousPage`) come from `PaginationService.offset`, which computes them in `PaginationOffsetUtil.page`.
 - `page` is 1-based, so the first page reports `1`.
 - `totalPage` is `Math.ceil(count / perPage)`, so a page with no rows reports `0`.
 - The handler's generic is the ROW type the repository returns, and the schema on the decorator is what shapes that row on the way out (see [Pagination Documentation][ref-doc-pagination]).
@@ -222,8 +221,7 @@ File download response decorator for CSV and PDF downloads, with proper headers 
 - CSV data is a non-empty string (already converted)
 - PDF data is a Buffer
 - Optional `filename`:
-    - If not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) through `HelperStringService.fillPattern`, with the request timestamp and the literal `csv`. The generated fallback is therefore always a `.csv` name.
-    - A PDF download carries an explicit `filename`.
+    - If not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) through `HelperStringService.fillPattern`, with the request timestamp and the extension of the returned payload (`csv` or `pdf`).
 
 **Interceptor:** `ResponseFileInterceptor`, in order:
 
@@ -246,7 +244,7 @@ A PDF is not row-counted, and the byte cap covers both.
 `POST /admin/user/export` is the file-download route.
 
 - `UserImportDomain.exportByAdmin` reads at most `user.maxDataExport` + 1 users and raises `FileExceedMaxDataExportException` when the extra row comes back.
-- `UserImportHttpService.exportByAdmin` maps rows to `UserExportResponseDto` and returns a CSV string.
+- `UserExportHttpService.exportByAdmin` maps rows to `UserExportResponseDto` and returns a CSV string.
 - The interceptor fills the filename from `response.filenameExportPattern` (`export-{timestamp}.csv`) because this handler omits `filename`.
 
 ```typescript
@@ -257,7 +255,7 @@ A PDF is not row-counted, and the byte cap covers both.
 async export(
   @Query({ schema: UserExportRequestSchema }) query: UserExportRequestDto
 ): Promise<IResponseFileReturn> {
-  return this.userImportHttpService.exportByAdmin(query);
+  return this.userExportHttpService.exportByAdmin(query);
 }
 ```
 
@@ -316,7 +314,7 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     deletedBy: true,
 }).extend({
     deviceId: z.string().meta({
-        description: 'Device ownership ID',
+        description: 'Device ID',
         example: faker.database.mongodbObjectId(),
     }),
     userId: z.string().meta({
@@ -338,18 +336,17 @@ export type DeviceOwnershipResponseDto = z.infer<
 
 `@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else.
 
-- Every handler returns an envelope: a route with no data is typed `Promise<IResponseReturn<void>>` and ends with `return {};`.
-- Where the HTTP service passes `metadata` overrides, as `markAllAsRead` does with `messageProperties`, the handler returns the HTTP service's `IResponseReturn<void>` as is.
+- Every handler returns the HTTP service's envelope: a route with no data is typed `Promise<IResponseReturn<void>>`, and the HTTP service returns `{}` or `{ metadata }`.
+- Where the HTTP service passes `metadata` overrides, as `markAllAsRead` does with `messageProperties`, the handler returns them unchanged.
 
 ```typescript
 @Response('role.delete')
 @Delete('/delete/:roleId')
 async delete(
-  @Param('roleId', { schema: RequestMongoIdSchema }) roleId: string
+  @Param('roleId', { schema: RequestMongoIdSchema }) roleId: string,
+  @UserCurrent() user: IUser
 ): Promise<IResponseReturn<void>> {
-  await this.roleHttpService.deleteByAdmin(roleId);
-
-  return {};
+  return this.roleHttpService.deleteByAdmin(roleId, user);
 }
 ```
 
@@ -511,6 +508,8 @@ async hello(): Promise<IResponseReturn<HelloResponseDto>> {
 }
 ```
 
+No route in `src/` sets `cache`; the snippet shows the option.
+
 **Cache Key:**
 
 ```text
@@ -523,7 +522,7 @@ Apis:{key}
 
 - `key` becomes `CacheKey`.
 - `ttl` is milliseconds and becomes `CacheTTL`.
-- `GET /public/hello` passes `cache: true`, so the interceptor default key from `response.keyPattern` (`Apis:{key}`) applies and TTL comes from `redis.cache.ttlInMs`.
+- With `cache: true`, the interceptor default key from `response.keyPattern` (`Apis:{key}`) applies and TTL comes from `redis.cache.ttlInMs`.
 
 See [NestJS Cache Manager](https://docs.nestjs.com/techniques/caching) and [Cache Documentation][ref-doc-cache] for configuration.
 

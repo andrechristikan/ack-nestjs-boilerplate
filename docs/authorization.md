@@ -145,7 +145,7 @@ Each guard checks, at request time, the store entry that a guard running earlier
 | `WorkspaceGuard` | the request workspace id (`RequestWorkspaceIdStoreKey`, written by the global `RequestWorkspaceMiddleware` from `x-workspace-id`, `null` when the header is absent) | `WorkspaceHeaderMissingException` (400, `51621`); the guard has no guard-missing case because it reads no guard's store |
 | `ApiKeyXApiKeyTypeGuard` | the API key | `ApiKeyGuardMissingException` (401, `50707`) |
 | `UserGuard` | the JWT payload on `request.user` | `AuthJwtGuardMissingException` (401, `50820`) |
-| `RoleGuard` | the user | `UserGuardMissingException` (401, `51027`) |
+| `RoleGuard` | the user | `UserGuardMissingException` (401, `51023`) |
 | `PolicyGuard` | the user, then the policy list | `UserGuardMissingException`, then `PolicyGuardMissingException` (403, `51103`) |
 | `TermPolicyGuard` | the user | `UserGuardMissingException` |
 | `WorkspaceMemberGuard` | the user, then the workspace | `UserGuardMissingException`, then `WorkspaceGuardMissingException` (403, `51622`) |
@@ -191,9 +191,9 @@ Shared profile:
 ```typescript
 @TermPolicyAcceptanceProtected()
 @UserProtected()
+@RequestThrottle({ user: true })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true })
 @Get('/profile/get')
 async profile(
   @AuthJwtPayload('userId') userId: string
@@ -208,7 +208,7 @@ Reads back the authenticated user `UserGuard` stored, or one of its fields when 
 
 **Returns:** `IUser`, or the named field of it. Both are non-null:
 
-- An empty store key throws `UserGuardMissingException` (401, `51027`).
+- An empty store key throws `UserGuardMissingException` (401, `51023`).
 - A field holding `null` throws `RequestContextMissingException` (500, `50304`).
 
 **Usage:**
@@ -239,12 +239,13 @@ The guard implementation that performs the actual validation.
 The `UserProtected` decorator follows this validation sequence:
 
 1. **Authentication Check**: Verifies that the JWT guard put a payload on `request.user`. Without one the guard throws `AuthJwtGuardMissingException` (401, `50820`)
-2. **User Lookup**: Retrieves user from database with role information
-3. **User Existence**: Ensures user record exists. A valid token whose user row is gone throws `UserAccountNotFoundException` (401, `51024`)
-4. **Blocked Check**: Rejects a user whose status is `blocked`
-5. **Status Validation**: Confirms user status is `active`
-6. **Password Expiry**: Checks if password has expired
-7. **Email Verification**: Validates email verification if required
+2. **Payload Check**: A payload without `userId` throws `RequestContextMissingException` (500, `50304`)
+3. **User Lookup**: Retrieves user from database with role information
+4. **User Existence**: Ensures user record exists. A valid token whose user row is gone throws `UserAccountNotFoundException` (401, `51020`)
+5. **Blocked Check**: Rejects a user whose status is `blocked`
+6. **Status Validation**: Confirms user status is `active`
+7. **Password Expiry**: Checks if password has expired, only when the session logged in with a credential. A social login skips this check
+8. **Email Verification**: Validates email verification if required
 
 **Flow Diagram:**
 
@@ -263,7 +264,7 @@ flowchart TD
     CheckBlocked -->|No| CheckStatus{User status<br/>is active?}
 
     CheckStatus -->|No| ErrorInactive[Throw UserInactiveForbiddenException<br/>403 Forbidden]
-    CheckStatus -->|Yes| CheckPassword{Password<br/>expired?}
+    CheckStatus -->|Yes| CheckPassword{Credential login<br/>AND password expired?}
 
     CheckPassword -->|Yes| ErrorPassword[Throw UserPasswordExpiredException<br/>403 Forbidden]
     CheckPassword -->|No| CheckVerified{isVerified required<br/>AND user not verified?}
@@ -341,7 +342,7 @@ async list(
 Two parameter decorators read the role:
 
 - `@RoleCurrent(field?)` returns the role `UserGuard` loaded (`IRoleWithPolicies`), or one of its fields: `type`, `name`, `policies`, and the rest. It reads `UserStoreKey`.
-    - A missing user throws `UserGuardMissingException` (401, `51027`).
+    - A missing user throws `UserGuardMissingException` (401, `51023`).
     - A `null` field of the role throws `RequestContextMissingException` (500, `50304`).
 - `@PolicyCurrent()` returns the `Policy[]` `RoleGuard` stored under `PolicyStoreKey`.
     - An empty list is a valid value (a `superAdmin`).
@@ -600,9 +601,9 @@ Details: [Term Policy Documentation][ref-doc-term-policy].
 ```typescript
 @TermPolicyAcceptanceProtected()
 @UserProtected()
+@RequestThrottle({ user: true })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true })
 @Get('/acceptance/list')
 async listAccepted(
   @Query({ schema: TermPolicyAcceptedListRequestSchema })
@@ -630,9 +631,9 @@ The `TermPolicyAcceptanceProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Default Policy Check**: If no required policies specified, sets defaults to `termsOfService` and `privacy`
-3. **Term Policy Lookup**: Retrieves user's term policy acceptance status from the stored user's `termPolicy`
-4. **Acceptance Validation**: Checks if all required term policies are accepted
-5. **Access Decision**: Grants access only if all required policies are accepted
+3. **Pending Lookup**: `TermPolicyAcceptanceDomain.getPendingForUser` reads the latest published version of each required type and drops the versions the user has an acceptance record for
+4. **Acceptance Validation**: Passes when nothing is pending
+5. **Access Decision**: Grants access only if no required policy is pending, otherwise throws `TermPolicyRequiredInvalidException` (403, `51504`)
 
 **Flow Diagram:**
 
@@ -648,10 +649,10 @@ flowchart TD
     CheckRequired -->|No| SetDefault[Set default policies:<br/>termsOfService and privacy]
     CheckRequired -->|Yes| UseSpecified[Use specified policies]
 
-    SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
+    SetDefault --> GetTermPolicy[Read the latest published version<br/>of each required type]
     UseSpecified --> GetTermPolicy
 
-    GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
+    GetTermPolicy --> CheckAcceptance{User has an acceptance record<br/>for each of those versions?}
 
     CheckAcceptance -->|No| ErrorRequired[Throw TermPolicyRequiredInvalidException<br/>403 Forbidden]
     CheckAcceptance -->|Yes| GrantAccess[Grant access]
@@ -668,9 +669,9 @@ flowchart TD
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - Without the required decorators the stored user is never populated, so the guard throws `UserGuardMissingException` (401 Unauthorized)
-- `POST /user/term-policy/accept` and `POST /user/refresh` carry no `@TermPolicyAcceptanceProtected()`, so a caller who has not accepted the policies can accept them and refresh the token
+- `POST /shared/user/term-policy/accept`, `GET /shared/user/term-policy/pending/list`, and `POST /shared/user/refresh` carry no `@TermPolicyAcceptanceProtected()`, so a caller who has not accepted the policies can list and accept them and refresh the token
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
-- Access is granted only when the user has accepted every specified term policy
+- Access is granted only when the user has an acceptance record for the latest published version of every specified term policy type
 
 ## Workspace and Project Protected
 
@@ -732,6 +733,8 @@ For the guard bodies, the exceptions and status codes each one throws, the store
 }
 ```
 
+- `description` is optional on create. An update requires `description` and `type`, and `null` clears the description.
+
 **Example policy creation request** (`POST /admin/role/:roleId/policy/create`), one call per subject:
 
 ```json
@@ -747,7 +750,7 @@ For the guard bodies, the exceptions and status codes each one throws, the store
 
 - **name**: Unique identifier for the role (alphanumeric, lowercase, 3-30 characters)
 - **description**: Optional description explaining the role's purpose (max 500 characters)
-- **type**: Role type from `EnumRoleType` (superAdmin, admin, or user)
+- **type**: Role type, `admin` or `user`. A role cannot be created or updated to `superAdmin`
 
 **Policy Structure:**
 
@@ -791,8 +794,11 @@ flowchart LR
 
 ### Important Notes
 
-- **Role names are unique**: creating a second role with an existing name is rejected
-- **A role in use cannot be deleted**: deletion is rejected (`RoleUsedException`) while any user holds the role
+- **Role names are unique**: creating a second role with an existing name is rejected (`RoleExistException`)
+- **A role in use cannot be deleted**: deletion is rejected (`RoleUsedException`, 409) while any user holds the role
+- **The actor must outrank the role type**: `superAdmin` (3) outranks every type, `admin` (2) outranks `user` (1), and any other pairing throws `RoleRankForbiddenException` (403). Create, update, delete, and every policy write on the role apply the rule
+- **An actor cannot update or delete the role they hold** (`RoleSelfForbiddenException`, 403), and policy writes on that role are rejected the same way
+- **An immutable role** (`isImmutable`) cannot be deleted, and its type cannot change (`RoleImmutableException`, 400)
 
 <!-- REFERENCES -->
 

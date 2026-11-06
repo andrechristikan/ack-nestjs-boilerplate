@@ -10,6 +10,7 @@ import type {
     ISession,
     ISessionList,
     ISessionRef,
+    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
@@ -83,4 +84,10 @@ export interface ISessionRepository {
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]>;
+    revokeByDeviceOwnershipIdsInTx(
+        tx: IDatabaseTransactionClient,
+        deviceOwnershipIds: string[],
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionUserRef[]>;
 }

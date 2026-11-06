@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -14,6 +15,7 @@ import {
 import type { TwoFactor } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -274,17 +276,33 @@ describe('UserPasswordDomain', () => {
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: true,
+                lockoutStages: [],
             });
             expect(userUtil.hasPassword).toHaveBeenCalledWith(baseUser);
+            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(
                 userRepository.incrementPasswordAttempt
             ).toHaveBeenCalledWith('user-hollow', 5);
             expect(userQueue.lockout).not.toHaveBeenCalled();
         });
 
-        it('returns an uncounted attempt and enqueues one lockout when the budget is spent', async () => {
+        it('returns an uncounted attempt with the lockout stages and enqueues one lockout when the budget is spent', async () => {
+            const lockoutStages: IActivityLogStageInput<EnumActivityLogAction>[] =
+                [
+                    {
+                        action: EnumActivityLogAction.userRevokeAllSessions,
+                        userId: 'user-hollow',
+                        createdBy: 'user-hollow',
+                    },
+                    {
+                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                        userId: 'user-hollow',
+                        createdBy: 'user-hollow',
+                    },
+                ];
             userUtil.hasPassword.mockReturnValue(true);
             userRepository.incrementPasswordAttempt.mockResolvedValue(null);
+            userUtil.buildPasswordLockoutStages.mockReturnValue(lockoutStages);
 
             await expect(
                 domain.countPasswordAttempt(baseUser)
@@ -292,9 +310,13 @@ describe('UserPasswordDomain', () => {
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: false,
+                lockoutStages,
             });
             expect(userQueue.lockout).toHaveBeenCalledTimes(1);
             expect(userQueue.lockout).toHaveBeenCalledWith('user-hollow');
+            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
+                'user-hollow'
+            );
         });
     });
 

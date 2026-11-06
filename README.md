@@ -122,17 +122,17 @@ You will get more out of this project if you already know:
 
 Versions this project expects:
 
-| Name           | Version                                     |
-| -------------- | ------------------------------------------- |
-| NestJs         | v12.x                                       |
-| NodeJs         | >= 26.13.0                                  |
-| PNPM           | >= 10.25.0 (pin `pnpm@12.5.1`)              |
-| TypeScript     | v6.0.x                                      |
-| Prisma         | v6.19.x                                     |
-| MongoDB        | v8.0+ replica set (compose: `mongo:latest`) |
-| Redis          | v6.2+ (compose: `redis:latest`)             |
-| Docker         | v28.5.x+                                    |
-| Docker Compose | v2.40.x+                                    |
+| Name           | Version                                      |
+| -------------- | -------------------------------------------- |
+| NestJs         | v12.x                                        |
+| NodeJs         | 26.13.x+                                     |
+| PNPM           | 10.25.x+ (pin pnpm 12.5.x+)                  |
+| TypeScript     | 6.0.x+                                       |
+| Prisma         | 6.19.x+                                      |
+| MongoDB        | 8.0.x+ replica set (compose: `mongo:latest`) |
+| Redis          | 6.2.x+ (compose: `redis:latest`)             |
+| Docker         | 28.5.x+                                      |
+| Docker Compose | 2.40.x+                                      |
 
 See [package.json][ref-package-json] for the full list.
 

@@ -13,7 +13,6 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type {
-    NotificationUserSetting,
     PasswordHistory,
     TwoFactor,
     User,
@@ -31,7 +30,6 @@ import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.
 import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import {
     EnumFeatureFlagKey,
@@ -41,7 +39,6 @@ import { NotificationDomain } from '@modules/notification/domains/notification.d
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
@@ -66,6 +63,7 @@ import type {
     IUserCredentialAttempt,
     IUserForgotPassword,
     IUserForgotPasswordCreate,
+    IUserTwoFactorAttempt,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
@@ -80,7 +78,6 @@ describe('UserPasswordHttpService', () => {
     const passwordHistoryDomain: MockProxy<PasswordHistoryDomain> =
         mock<PasswordHistoryDomain>();
     const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const notificationDomain: MockProxy<NotificationDomain> =
         mock<NotificationDomain>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
@@ -93,8 +90,6 @@ describe('UserPasswordHttpService', () => {
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -173,10 +168,6 @@ describe('UserPasswordHttpService', () => {
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
-    const notificationTokens = ['token-linden'];
-    const settings = [
-        { channel: 'push' },
-    ] as unknown as NotificationUserSetting[];
     const twoFactorRow: TwoFactor = {
         id: 'two-factor-linden',
         userId: 'user-linden',
@@ -223,6 +214,11 @@ describe('UserPasswordHttpService', () => {
         user,
     } as IUserForgotPassword;
 
+    const twoFactorAttempt: IUserTwoFactorAttempt = {
+        isAttemptCounted: true,
+        lockoutStages: [],
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(activityLog);
@@ -233,12 +229,8 @@ describe('UserPasswordHttpService', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        deviceDomain.getNotificationTokens.mockResolvedValue(
-            notificationTokens
-        );
-        notificationDomain.getListUserSetting.mockResolvedValue(settings);
-        notificationUtil.mapRecipient.mockReturnValue(recipient);
-        userTwoFactorDomain.countAttempt.mockResolvedValue(true);
+        notificationDomain.getRecipient.mockResolvedValue(recipient);
+        userTwoFactorDomain.countAttempt.mockResolvedValue(twoFactorAttempt);
         userTwoFactorDomain.getProvidedMethod.mockReturnValue(
             EnumAuthTwoFactorMethod.code
         );
@@ -260,7 +252,6 @@ describe('UserPasswordHttpService', () => {
                     useValue: passwordHistoryDomain,
                 },
                 { provide: SessionDomain, useValue: sessionDomain },
-                { provide: DeviceDomain, useValue: deviceDomain },
                 {
                     provide: NotificationDomain,
                     useValue: notificationDomain,
@@ -271,7 +262,6 @@ describe('UserPasswordHttpService', () => {
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -346,11 +336,9 @@ describe('UserPasswordHttpService', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.temporaryPasswordByAdmin,
-                ['token-linden'],
-                settings
+                EnumNotificationKind.temporaryPasswordByAdmin
             );
             expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -430,7 +418,7 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('writes nothing when the recipient read rejects', async () => {
-            deviceDomain.getNotificationTokens.mockRejectedValue(
+            notificationDomain.getRecipient.mockRejectedValue(
                 new Error('read')
             );
 
@@ -466,6 +454,7 @@ describe('UserPasswordHttpService', () => {
             user,
             hashedPassword: 'hashed-password',
             isAttemptCounted: true,
+            lockoutStages: [],
         };
 
         beforeEach(() => {
@@ -567,11 +556,9 @@ describe('UserPasswordHttpService', () => {
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userChangePassword,
             });
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.changePassword,
-                ['token-linden'],
-                settings
+                EnumNotificationKind.changePassword
             );
             expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -692,6 +679,17 @@ describe('UserPasswordHttpService', () => {
             expect(userTwoFactorDomain.countAttempt).toHaveBeenCalledBefore(
                 userTwoFactorDomain.verify
             );
+            expect(
+                userTwoFactorDomain.getProvidedMethod
+            ).toHaveBeenCalledBefore(userTwoFactorDomain.countAttempt);
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(
+                2,
+                []
+            );
+            expect(
+                userTwoFactorDomain.assertAttemptCounted
+            ).toHaveBeenCalledWith(true);
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).toHaveBeenCalledWith(
                 twoFactorUser,
                 {
@@ -790,23 +788,26 @@ describe('UserPasswordHttpService', () => {
 
         it('stages both lockout rows after the spent count and throws AuthTwoFactorAttemptMaxException when the two-factor budget is spent', async () => {
             const calls: string[] = [];
+            const spent: IUserTwoFactorAttempt = {
+                isAttemptCounted: false,
+                lockoutStages: [
+                    {
+                        action: EnumActivityLogAction.userRevokeAllSessions,
+                        userId: 'user-linden',
+                        createdBy: 'user-linden',
+                    },
+                    {
+                        action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                        userId: 'user-linden',
+                        createdBy: 'user-linden',
+                    },
+                ],
+            };
             userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userUtil.buildTwoFactorLockoutStages.mockReturnValue([
-                {
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: 'user-linden',
-                    createdBy: 'user-linden',
-                },
-                {
-                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                    userId: 'user-linden',
-                    createdBy: 'user-linden',
-                },
-            ]);
             userTwoFactorDomain.countAttempt.mockImplementation(async () => {
                 calls.push('countAttempt');
 
-                return false;
+                return spent;
             });
             userTwoFactorDomain.assertAttemptCounted.mockImplementation(() => {
                 calls.push('assert');
@@ -843,14 +844,15 @@ describe('UserPasswordHttpService', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
-                'user-linden'
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(2, [
                 activityLog,
                 activityLog,
             ]);
-            expect(calls).toEqual(['countAttempt', 'stage', 'assert']);
+            expect(
+                userTwoFactorDomain.assertAttemptCounted
+            ).toHaveBeenCalledWith(false);
+            expect(calls).toEqual(['stage', 'countAttempt', 'stage', 'assert']);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).not.toHaveBeenCalled();
@@ -889,30 +891,39 @@ describe('UserPasswordHttpService', () => {
             ).not.toHaveBeenCalled();
             expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledBefore(
+                userAuthDomain.assertPasswordAttempt
+            );
         });
 
         it('stages both lockout rows after the spent attempt is counted and throws UserPasswordAttemptMaxException at the max attempt', async () => {
             const calls: string[] = [];
+            const spent: IUserCredentialAttempt = {
+                ...passwordAttempt,
+                isAttemptCounted: false,
+                lockoutStages: [
+                    {
+                        action: EnumActivityLogAction.userRevokeAllSessions,
+                        userId: 'user-linden',
+                        createdBy: 'user-linden',
+                    },
+                    {
+                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                        userId: 'user-linden',
+                        createdBy: 'user-linden',
+                    },
+                ],
+            };
             userPasswordDomain.countPasswordAttempt.mockImplementation(
                 async () => {
                     calls.push('countAttempt');
 
-                    return { ...passwordAttempt, isAttemptCounted: false };
+                    return spent;
                 }
             );
-            userUtil.buildPasswordLockoutStages.mockReturnValue([
-                {
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: 'user-linden',
-                    createdBy: 'user-linden',
-                },
-                {
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    userId: 'user-linden',
-                    createdBy: 'user-linden',
-                },
-            ]);
             userAuthDomain.assertPasswordAttempt.mockImplementation(
                 async () => {
                     calls.push('assert');
@@ -946,9 +957,7 @@ describe('UserPasswordHttpService', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
-                'user-linden'
-            );
+            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
                 activityLog,
@@ -957,14 +966,15 @@ describe('UserPasswordHttpService', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
-                { ...passwordAttempt, isAttemptCounted: false },
+                spent,
                 'old-password'
             );
+            expect(passwordHistoryDomain.assertNew).not.toHaveBeenCalled();
             expect(userDomain.updatePasswordInTx).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the recipient read rejects', async () => {
-            deviceDomain.getNotificationTokens.mockRejectedValue(
+            notificationDomain.getRecipient.mockRejectedValue(
                 new Error('read')
             );
 
@@ -982,7 +992,9 @@ describe('UserPasswordHttpService', () => {
             await expect(service.changePassword(user, dto)).rejects.toBe(cause);
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(notificationQueue.sendChangePassword).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
     });
 
@@ -1030,11 +1042,9 @@ describe('UserPasswordHttpService', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.forgotPassword,
-                ['token-linden'],
-                settings
+                EnumNotificationKind.forgotPassword
             );
             expect(
                 userPasswordDomain.createForgotPassword
@@ -1061,14 +1071,12 @@ describe('UserPasswordHttpService', () => {
                 userPasswordDomain.createForgotPassword
             ).not.toHaveBeenCalled();
             expect(notificationQueue.sendForgotPassword).not.toHaveBeenCalled();
-            expect(
-                notificationDomain.getListUserSetting
-            ).not.toHaveBeenCalled();
+            expect(notificationDomain.getRecipient).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('creates nothing when the recipient read rejects', async () => {
-            notificationDomain.getListUserSetting.mockRejectedValue(
+            notificationDomain.getRecipient.mockRejectedValue(
                 new Error('read')
             );
 
@@ -1176,11 +1184,9 @@ describe('UserPasswordHttpService', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.resetPassword,
-                ['token-linden'],
-                settings
+                EnumNotificationKind.resetPassword
             );
             expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -1252,6 +1258,20 @@ describe('UserPasswordHttpService', () => {
             expect(userTwoFactorDomain.countAttempt).toHaveBeenCalledWith(
                 twoFactorUser
             );
+            expect(
+                userTwoFactorDomain.getProvidedMethod
+            ).toHaveBeenCalledBefore(userTwoFactorDomain.countAttempt);
+            expect(activityLogDomain.stagePrepared).toHaveBeenNthCalledWith(
+                1,
+                []
+            );
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledBefore(
+                userTwoFactorDomain.assertAttemptCounted
+            );
+            expect(
+                userTwoFactorDomain.assertAttemptCounted
+            ).toHaveBeenCalledWith(true);
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(userTwoFactorDomain.verify).toHaveBeenCalledWith(
                 twoFactorUser,
                 {
@@ -1343,7 +1363,7 @@ describe('UserPasswordHttpService', () => {
         });
 
         it('writes nothing when the recipient read rejects', async () => {
-            deviceDomain.getNotificationTokens.mockRejectedValue(
+            notificationDomain.getRecipient.mockRejectedValue(
                 new Error('read')
             );
 

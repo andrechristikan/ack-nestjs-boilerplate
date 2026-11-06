@@ -39,7 +39,7 @@ export class UserAuthDomain {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    /** Resolves the active credential user of an email, counts one password attempt, and enqueues the lockout job when the budget is spent; isAttemptCounted is false on a spent budget, and an unknown, inactive, or passwordless account throws the credential error. */
+    /** Resolves the active credential user of an email, counts one password attempt, and enqueues the lockout job when the budget is spent; isAttemptCounted false with the lockout activity stages on a spent budget, and an unknown, inactive, or passwordless account throws the credential error. */
     async countCredentialAttempt(
         email: string
     ): Promise<IUserCredentialAttempt> {
@@ -57,7 +57,7 @@ export class UserAuthDomain {
         return attempt;
     }
 
-    /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch or a null password, so the caller records the failure before asserting it, and an expired password throws after a match. */
+    /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch or a null password, so the caller records the failure before asserting it. */
     async verifyCredential(
         { user, hashedPassword }: IUserCredentialAttempt,
         plainPassword: string | null
@@ -76,12 +76,6 @@ export class UserAuthDomain {
 
         await this.userPasswordDomain.resetPasswordAttempt(user.id);
 
-        const checkPasswordExpired: boolean =
-            this.authPasswordUtil.checkPasswordExpired(user.passwordExpired);
-        if (checkPasswordExpired) {
-            throw new UserPasswordExpiredException();
-        }
-
         return true;
     }
 
@@ -94,6 +88,15 @@ export class UserAuthDomain {
 
         const isMatch = await this.verifyCredential(attempt, plainPassword);
         this.assertPasswordMatched(isMatch);
+        this.assertPasswordNotExpired(attempt.user);
+    }
+
+    assertPasswordNotExpired(user: IUser): void {
+        const checkPasswordExpired: boolean =
+            this.authPasswordUtil.checkPasswordExpired(user.passwordExpired);
+        if (checkPasswordExpired) {
+            throw new UserPasswordExpiredException();
+        }
     }
 
     assertPasswordMatched(isMatch: boolean): void {

@@ -75,6 +75,11 @@ export interface IDeviceOwnershipRepository {
         notificationToken: string,
         userId: string
     ): Promise<void>;
+    findOtherIdsByDeviceInTx(
+        tx: IDatabaseTransactionClient,
+        deviceId: string,
+        userId: string
+    ): Promise<string[]>;
     clearTokens(userId: string, tokens: string[]): Promise<Prisma.BatchPayload>;
     clearTokensWithoutLiveSession(
         userId: string,

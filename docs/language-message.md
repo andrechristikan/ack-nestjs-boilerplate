@@ -49,10 +49,12 @@ Configuration structure:
 
 ```typescript
 // src/configs/message.config.ts
-export default registerAs('message', (): IConfigMessage => ({
-    availableLanguage: Object.values(EnumMessageLanguage),
-    language: process.env.APP_LANGUAGE!,
-}));
+export default registerAs('message', (): IConfigMessage => {
+    return {
+        availableLanguage: Object.values(EnumMessageLanguage),
+        language: process.env.APP_LANGUAGE!,
+    };
+});
 ```
 
 `MessageModule.forRoot()` registers nestjs-i18n with:
@@ -99,6 +101,7 @@ Message files use JSON format with nested structure.
 | `passwordHistory.json` | Password history messages |
 | `policy.json` | Policy messages |
 | `project.json` | Project messages |
+| `queue.json` | Queue job messages |
 | `redis.json` | Redis kit errors (unavailable) |
 | `request.json` | Request validation messages |
 | `response.json` | Response kit errors (serialization, pagination shape, file download data) |
@@ -134,7 +137,7 @@ Access pattern:
 
 ### Basic Translation
 
-Inject `MessageService` and call `setMessage` with a key path. `NotificationEmailWorkspaceDomain` labels a join-request rejection reason this way:
+Inject `MessageService` and call `setMessage` with a key path. `NotificationPushWorkspaceDomain` labels a join-request rejection reason this way:
 
 ```typescript
 const rejectReasonLabel = this.messageService.setMessage(
@@ -174,18 +177,18 @@ Pass variables through the `properties` option:
 // src/languages/en/user.json
 {
     "error": {
-        "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails. Try again after {minutes} minutes.",
+        "passwordMustNew": "New password must be different from previous passwords within the past {period} days.",
         "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"
     }
 }
 ```
 
 ```typescript
-const resendLimit = this.messageService.setMessage(
-    'user.error.verificationEmailResendLimitExceeded',
-    { properties: { minutes: 5 } }
+const passwordMustNew = this.messageService.setMessage(
+    'user.error.passwordMustNew',
+    { properties: { period: 90 } }
 );
-// Output: "You have exceeded the limit for resending verification emails. Try again after 5 minutes."
+// Output: "New password must be different from previous passwords within the past 90 days."
 
 const importExist = this.messageService.setMessage(
     'user.error.importEmailExist',
@@ -234,8 +237,8 @@ throw new UserEmailExistException();
 With variables, the exception class accepts constructor params and maps them to `messageProperties` internally:
 
 ```typescript
-throw new UserVerificationEmailResendLimitExceededException(minutes);
-// the class internally calls super('user.error.verificationEmailResendLimitExceeded', { messageProperties: { minutes } })
+throw new UserPasswordMustNewException(period);
+// the class internally calls super('user.error.passwordMustNew', { messageProperties: { period } })
 ```
 
 ### Response Decorator
@@ -262,8 +265,7 @@ With variables:
 ```typescript
 // controller
 @Response('notification.markAllAsRead')
-@HttpCode(HttpStatus.OK)
-@Post('/update/read')
+@Patch('/read-all')
 async markAllAsRead(
     @AuthJwtPayload('userId') userId: string
 ): Promise<IResponseReturn<void>> {

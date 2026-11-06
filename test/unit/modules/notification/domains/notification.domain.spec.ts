@@ -14,7 +14,9 @@ import {
     EnumNotificationPriority,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
@@ -23,10 +25,13 @@ import { NotificationNotFoundException } from '@modules/notification/exceptions/
 import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationDomain', () => {
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
@@ -69,6 +74,7 @@ describe('NotificationDomain', () => {
         messageService.setMessage.mockImplementation((path: string) => path);
         const module = await Test.createTestingModule({
             providers: [
+                { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: MessageService, useValue: messageService },
                 NotificationDomain,
                 {
@@ -205,6 +211,54 @@ describe('NotificationDomain', () => {
             expect(
                 notificationUserSettingRepository.findUserSetting
             ).toHaveBeenCalledWith('user-id');
+        });
+    });
+
+    describe('getRecipient', () => {
+        it('returns the recipient mapped from the live tokens and configurable settings', async () => {
+            const user: IUserRecipient = {
+                id: 'user-id',
+                email: 'user@example.com',
+                username: 'user',
+            };
+            const recipient: INotificationRecipient = {
+                userId: 'user-id',
+                email: 'user@example.com',
+                username: 'user',
+                notificationTokens: ['token-1'],
+                channels: [EnumNotificationChannel.email],
+            };
+            const configurable = [setting];
+            deviceDomain.getNotificationTokens.mockResolvedValue(['token-1']);
+            notificationUserSettingRepository.findUserSetting.mockResolvedValue(
+                [setting]
+            );
+            notificationUtil.listConfigurableSettings.mockReturnValue(
+                configurable
+            );
+            notificationUtil.mapRecipient.mockReturnValue(recipient);
+
+            const result = await domain.getRecipient(
+                user,
+                EnumNotificationKind.verificationEmail
+            );
+
+            expect(result).toBe(recipient);
+            expect(deviceDomain.getNotificationTokens).toHaveBeenCalledWith(
+                'user-id'
+            );
+            expect(
+                notificationUserSettingRepository.findUserSetting
+            ).toHaveBeenCalledWith('user-id');
+            expect(
+                notificationUtil.listConfigurableSettings
+            ).toHaveBeenCalledWith([setting]);
+            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.verificationEmail,
+                ['token-1'],
+                configurable
+            );
         });
     });
 

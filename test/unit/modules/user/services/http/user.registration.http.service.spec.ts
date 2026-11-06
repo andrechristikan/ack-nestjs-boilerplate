@@ -36,7 +36,10 @@ import { EnumCountryStatusCodeError } from '@modules/country/enums/country.statu
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationRecipient,
+    INotificationVerificationEmailPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
@@ -74,6 +77,7 @@ import type {
 import { UserRegistrationHttpService } from '@modules/user/services/http/user.registration.http.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
@@ -90,6 +94,8 @@ describe('UserRegistrationHttpService', () => {
     const userImportDomain: MockProxy<UserImportDomain> =
         mock<UserImportDomain>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
+    const userVerificationUtil: MockProxy<UserVerificationUtil> =
+        mock<UserVerificationUtil>();
     const passwordHistoryDomain: MockProxy<PasswordHistoryDomain> =
         mock<PasswordHistoryDomain>();
     const notificationDomain: MockProxy<NotificationDomain> =
@@ -273,6 +279,12 @@ describe('UserRegistrationHttpService', () => {
         hashedToken: 'hashed-token',
         link: 'https://example.com/verify?token=raw-token',
     };
+    const welcomePayload: INotificationVerificationEmailPayload = {
+        link: 'https://example.com/verify?token=raw-token',
+        expiredAt: '2026-03-05T07:00:00.000+07:00',
+        expiredInMinutes: 15,
+        reference: 'VRF-bramble',
+    };
     const historyEntry: IPasswordHistoryCreate = {
         userId: 'user-bramble',
         password: 'hashed',
@@ -358,6 +370,10 @@ describe('UserRegistrationHttpService', () => {
                 { provide: UserImportDomain, useValue: userImportDomain },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
                 {
+                    provide: UserVerificationUtil,
+                    useValue: userVerificationUtil,
+                },
+                {
                     provide: PasswordHistoryDomain,
                     useValue: passwordHistoryDomain,
                 },
@@ -424,6 +440,9 @@ describe('UserRegistrationHttpService', () => {
             userDomain.existsByEmail.mockResolvedValue(false);
             userDomain.checkUsername.mockResolvedValue(clearUsername);
             userCreateUtil.buildStages.mockReturnValue([stageInput]);
+            userVerificationUtil.mapEmailPayload.mockReturnValue(
+                welcomePayload
+            );
         });
 
         it('commits the new user on one transaction, stages the created rows, sends the welcome, and returns an empty envelope', async () => {
@@ -464,14 +483,12 @@ describe('UserRegistrationHttpService', () => {
                 [],
                 []
             );
+            expect(userVerificationUtil.mapEmailPayload).toHaveBeenCalledWith(
+                emailVerification
+            );
             expect(notificationQueue.sendWelcome).toHaveBeenCalledWith(
                 recipient,
-                {
-                    expiredAt: '2026-03-05T00:00:00.000Z',
-                    reference: 'VRF-bramble',
-                    link: 'https://example.com/verify?token=raw-token',
-                    expiredInMinutes: 15,
-                }
+                welcomePayload
             );
         });
 

@@ -12,7 +12,7 @@ Each row sits under its heading in `generated/docs/report-src-sweep.md`, in the 
 ```markdown
 ## CHANGE
 
-- [ ] `src/modules/country/exceptions/country.not-found.exception.ts:13`: `CountryNotFoundException` answers HTTP 404, and `getOne` throws it for the `countryId` a sign-up body carries (`src/modules/user/services/http/user.registration.http.service.ts:298`), so a sign-up naming an unknown country answers 404.
+- [ ] `src/modules/country/exceptions/country.not-found.exception.ts:13`: `CountryNotFoundException` answers HTTP 404, and `getOne` throws it for the `countryId` a sign-up body carries (`src/modules/user/services/http/user.registration.http.service.ts:297`), so a sign-up naming an unknown country answers 404.
 
 ## DELETE
 

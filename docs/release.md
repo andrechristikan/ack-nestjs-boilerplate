@@ -6,7 +6,7 @@ Release files live in `ci/`. The release workflows live in `.github/workflows/`.
 
 The application ships as one image built from `ci/dockerfile.production`.
 
-- The base is `node:24.15.0-alpine`.
+- The base is the `node` 26.13.x+ Alpine image, set in `ci/dockerfile.production`.
 - The image holds production dependencies only.
 - The process runs as the non-root user `ec2-user`.
 - The application reads its settings from a mounted `.env` file or from the process environment.
@@ -80,7 +80,7 @@ One script writes all of it, and it runs in either place:
     ```bash
     pnpm generate:secret --direct-insert
     ```
-- On the host itself, with Node.js >= 24.15.0 and no `pnpm install`, because the script uses only built-in modules:
+- On the host itself, with Node.js 26.13.x+ and no `pnpm install`, because the script uses only built-in modules:
     ```bash
     node scripts/generate-secret.ts all --direct-insert
     ```
@@ -168,7 +168,7 @@ Two project commands prepare the database:
 
 Facts about both commands:
 
-- They run from a checkout on a machine with Node.js >= 24.15.0, or in a one-off container (below).
+- They run from a checkout on a machine with Node.js 26.13.x+, or in a one-off container (below).
 - They read `.env` from the checkout and the process environment.
 - A seed that throws ends `pnpm migration:seed` with exit code `1` and skips the seeds after it.
 - The seed process builds the same `CommonModule` as the API.
@@ -184,7 +184,7 @@ docker run --rm \
   -e HOME=/tmp \
   -e PATH=/tmp/bin:/usr/local/bin:/usr/bin:/bin \
   -v "$PWD":/app -w /app \
-  node:24.15.0-alpine \
+  node:26.13.0-alpine \
   sh -c 'mkdir -p /tmp/bin && corepack enable --install-directory /tmp/bin && pnpm install --frozen-lockfile --ignore-scripts && pnpm generate && pnpm db:migrate && pnpm migration:seed'
 ```
 
@@ -210,7 +210,7 @@ Facts about the seed data:
 - Every public route except `GET /api/public/hello` sits behind `x-api-key`, so `MigrationApiKeyData` (`src/migration/data/migration.api-key.data.ts`) defines the keys for the environment before seeding.
 - The `user` seed creates a superadmin and an admin in every environment, with the password published in `src/migration/data/migration.user.data.ts`.
 - Different values go there before seeding, or both passwords change once the API answers.
-- Seeds that need S3 or SES (`templateTermPolicy`, `awsS3Config`, `templateEmailNotification`) are separate commands described in the [Database Documentation][ref-doc-database].
+- Seeds that need S3 or SES (`awsS3Config`, `templateEmailNotification`) are separate commands described in the [Database Documentation][ref-doc-database].
 
 ### Check the application
 
@@ -273,7 +273,7 @@ Facts about these services:
     - `DATABASE_URL`, `CACHE_REDIS_URL`, and `QUEUE_REDIS_URL` in the forms above
     - `AUTH_JWT_ACCESS_TOKEN_JWKS_URI` and `AUTH_JWT_REFRESH_TOKEN_JWKS_URI` with the URLs from step 3
     - the variables in [Variables set by hand](#variables-set-by-hand)
-5. Push the schema and seed the database from a checkout whose `.env` reaches the database and Redis, on a machine with Node.js >= 24.15.0:
+5. Push the schema and seed the database from a checkout whose `.env` reaches the database and Redis, on a machine with Node.js 26.13.x+:
     ```bash
     pnpm install --frozen-lockfile
     pnpm generate
@@ -296,7 +296,7 @@ Facts about these services:
     - The `.env` mounts read-only at `/app/.env`, and its mode is `0644`.
     - `.env` sets `HTTP_HOST=0.0.0.0` for the container.
 
-    Without a container, on a machine with Node.js >= 24.15.0 and pnpm:
+    Without a container, on a machine with Node.js 26.13.x+ and pnpm:
 
     ```bash
     pnpm install --frozen-lockfile
@@ -322,7 +322,7 @@ One host runs the whole stack from the repository checkout.
 
 - [Docker Engine][ref-docker-engine] with the Compose v2 plugin (`docker compose version` prints a version)
 - The repository checkout, because Compose builds the `apis` image from it and bind-mounts files from `ci/`
-- Node.js >= 24.15.0, only when the secrets are generated on the host
+- Node.js 26.13.x+, only when the secrets are generated on the host
 
 ### Stack on the host
 

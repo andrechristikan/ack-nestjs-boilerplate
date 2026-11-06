@@ -3,6 +3,7 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumVerificationType } from '@generated/prisma-client/client';
+import type { INotificationVerificationEmailPayload } from '@modules/notification/interfaces/notification.interface';
 import type {
     IUserVerificationEmailCreate,
     IUserVerificationMobileNumberCreate,
@@ -118,6 +119,21 @@ export class UserVerificationUtil {
             expiredInMinutes: this.verificationExpiredInMinutes,
             link,
             resendInMinutes: this.verificationResendInMinutes,
+        };
+    }
+
+    mapEmailPayload(
+        verification: IUserVerificationEmailCreate
+    ): INotificationVerificationEmailPayload {
+        const expiredAt = this.helperDateService.formatToIso(
+            verification.expiredAt
+        );
+
+        return {
+            link: verification.link,
+            expiredAt,
+            expiredInMinutes: verification.expiredInMinutes,
+            reference: verification.reference,
         };
     }
 

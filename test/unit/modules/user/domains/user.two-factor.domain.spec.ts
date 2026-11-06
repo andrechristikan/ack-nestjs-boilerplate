@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -22,6 +23,7 @@ import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exception
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
+import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import type {
@@ -32,6 +34,7 @@ import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
+import { UserUtil } from '@modules/user/utils/user.util';
 
 describe('UserTwoFactorDomain', () => {
     const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
@@ -42,6 +45,7 @@ describe('UserTwoFactorDomain', () => {
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -141,6 +145,7 @@ describe('UserTwoFactorDomain', () => {
                 { provide: SentryService, useValue: sentryService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: UserQueue, useValue: userQueue },
+                { provide: UserUtil, useValue: userUtil },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -339,40 +344,49 @@ describe('UserTwoFactorDomain', () => {
     });
 
     describe('countAttempt', () => {
-        it('counts one attempt against the max attempt budget and answers true', async () => {
+        const lockoutStages: IActivityLogStageInput<EnumActivityLogAction>[] = [
+            {
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId: 'user-quartz',
+                createdBy: 'user-quartz',
+            },
+            {
+                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                userId: 'user-quartz',
+                createdBy: 'user-quartz',
+            },
+        ];
+
+        it('returns a counted attempt with no lockout stages within the budget', async () => {
             userTwoFactorRepository.incrementAttempt.mockResolvedValue(2);
 
-            await expect(domain.countAttempt(baseUser)).resolves.toBe(true);
+            await expect(domain.countAttempt(baseUser)).resolves.toEqual({
+                isAttemptCounted: true,
+                lockoutStages: [],
+            });
             expect(
                 userTwoFactorRepository.incrementAttempt
             ).toHaveBeenCalledWith('user-quartz', 5);
             expect(userQueue.lockout).not.toHaveBeenCalled();
+            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
         });
 
-        it('answers false and enqueues the lockout when the guarded increment finds the budget spent', async () => {
+        it('returns an uncounted attempt with the lockout stages and enqueues the lockout when the guarded increment finds the budget spent', async () => {
             userTwoFactorRepository.incrementAttempt.mockResolvedValue(null);
+            userUtil.buildTwoFactorLockoutStages.mockReturnValue(lockoutStages);
 
-            await expect(domain.countAttempt(baseUser)).resolves.toBe(false);
+            await expect(domain.countAttempt(baseUser)).resolves.toEqual({
+                isAttemptCounted: false,
+                lockoutStages,
+            });
             expect(userQueue.lockout).toHaveBeenCalledOnce();
             expect(userQueue.lockout).toHaveBeenCalledWith('user-quartz');
             expect(userQueue.lockout).toHaveBeenCalledAfter(
                 userTwoFactorRepository.incrementAttempt
             );
-        });
-
-        it('answers false for every parallel attempt beyond the budget', async () => {
-            userTwoFactorRepository.incrementAttempt
-                .mockResolvedValueOnce(5)
-                .mockResolvedValue(null);
-
-            await expect(
-                Promise.all([
-                    domain.countAttempt(baseUser),
-                    domain.countAttempt(baseUser),
-                    domain.countAttempt(baseUser),
-                ])
-            ).resolves.toEqual([true, false, false]);
-            expect(userQueue.lockout).toHaveBeenCalledTimes(2);
+            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
+                'user-quartz'
+            );
         });
     });
 

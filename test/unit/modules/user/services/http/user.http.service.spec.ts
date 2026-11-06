@@ -686,6 +686,7 @@ describe('UserHttpService', () => {
             user: baseUser,
             hashedPassword: 'hashed-password',
             isAttemptCounted: true,
+            lockoutStages: [],
         };
 
         beforeEach(() => {
@@ -938,7 +939,9 @@ describe('UserHttpService', () => {
             expect(userDomain.deleteSelfInTx).not.toHaveBeenCalled();
             expect(databaseUtil.toException).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
         it('cascades a workspace with no other member', async () => {
@@ -1009,7 +1012,9 @@ describe('UserHttpService', () => {
 
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
         it('stages one workspaceDeleted row per deleted workspace after the purge', async () => {
@@ -1047,12 +1052,13 @@ describe('UserHttpService', () => {
             expect(calls).toEqual([
                 `prepare:${EnumActivityLogAction.userRevokeAllSessions}`,
                 `prepare:${EnumActivityLogAction.userDeleteSelf}`,
+                'stage',
                 'purge',
                 `prepare:${EnumActivityLogAction.workspaceDeleted}`,
                 `prepare:${EnumActivityLogAction.workspaceDeleted}`,
                 'stage',
             ]);
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(2);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
                 activityLog,
@@ -1132,7 +1138,7 @@ describe('UserHttpService', () => {
             expect(userDomain.deleteSelfInTx).not.toHaveBeenCalled();
         });
 
-        it('deletes nothing and stages nothing when the password does not match', async () => {
+        it('deletes nothing and stages no row when the password does not match', async () => {
             const failure = new UserPasswordNotMatchException();
             userAuthDomain.assertPasswordAttempt.mockRejectedValue(failure);
 
@@ -1146,31 +1152,41 @@ describe('UserHttpService', () => {
             );
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledBefore(
+                userAuthDomain.assertPasswordAttempt
+            );
+            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
         });
 
         it('stages both lockout rows after the spent attempt is counted and before the attempt limit is answered, deleting nothing', async () => {
             const calls: string[] = [];
             const failure = new UserPasswordAttemptMaxException();
+            const spent = {
+                ...counted,
+                isAttemptCounted: false,
+                lockoutStages: [
+                    {
+                        action: EnumActivityLogAction.userRevokeAllSessions,
+                        userId: 'user-cinder',
+                        createdBy: 'user-cinder',
+                    },
+                    {
+                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                        userId: 'user-cinder',
+                        createdBy: 'user-cinder',
+                    },
+                ],
+            };
             userPasswordDomain.countPasswordAttempt.mockImplementation(
                 async () => {
                     calls.push('countAttempt');
 
-                    return { ...counted, isAttemptCounted: false };
+                    return spent;
                 }
             );
-            userUtil.buildPasswordLockoutStages.mockReturnValue([
-                {
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: 'user-cinder',
-                    createdBy: 'user-cinder',
-                },
-                {
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    userId: 'user-cinder',
-                    createdBy: 'user-cinder',
-                },
-            ]);
             userAuthDomain.assertPasswordAttempt.mockImplementation(
                 async () => {
                     calls.push('assert');
@@ -1186,9 +1202,7 @@ describe('UserHttpService', () => {
                 failure
             );
 
-            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
-                'user-cinder'
-            );
+            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-cinder',
@@ -1199,12 +1213,14 @@ describe('UserHttpService', () => {
                 userId: 'user-cinder',
                 createdBy: 'user-cinder',
             });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledTimes(1);
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([activityLog, activityLog]);
             expect(calls).toEqual(['countAttempt', 'stage', 'assert']);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userAuthDomain.assertPasswordAttempt).toHaveBeenCalledWith(
-                { ...counted, isAttemptCounted: false },
+                spent,
                 'plain-password'
             );
             expect(userDomain.deleteSelfInTx).not.toHaveBeenCalled();
@@ -1240,7 +1256,9 @@ describe('UserHttpService', () => {
             });
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userProfileDomain.deleteOwnedPhoto).not.toHaveBeenCalled();
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                activityLogDomain.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([]);
         });
     });
 });

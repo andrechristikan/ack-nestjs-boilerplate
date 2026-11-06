@@ -485,7 +485,7 @@ When `LOGGER_PRETTIER=false`, logs are written in JSON format:
     "service": {
         "name": "ACKNestJs",
         "environment": "production",
-        "version": "9.0.0"
+        "version": "9.1.0"
     },
     "level": 30
 }
@@ -647,7 +647,7 @@ INFO [2025-12-29 15:18:54.496 +0700]: [UserDomain] Creating new user
     service: {
       "name": "ACKNestJs",
       "environment": "local",
-      "version": "9.0.0"
+      "version": "9.1.0"
     }
     additionalData: {
       "userId": "user-123",
@@ -693,7 +693,7 @@ Production-optimized structured JSON for log aggregation and analysis tools:
     "service": {
         "name": "ACKNestJs",
         "environment": "production",
-        "version": "9.0.0"
+        "version": "9.1.0"
     },
     "additionalData": { "userId": "user-123", "action": "create" },
     "level": 30
@@ -849,12 +849,14 @@ Forwarded levels are environment-aware:
     - Any other `AppBaseException` is reported as its `rawError` when it has one, otherwise as itself.
 - `AppHttpFilter`: logs and reports the `HttpException` for framework errors with HTTP status >= 500
 - `QueueProcessorBase`:
-    - In `process`, it writes BullMQ `job.log` lines (start, metadata-only input, finish or failure). On catch it calls Nest `Logger.error` once, then rethrows a `QueueException`, `AppBaseException`, or `UnrecoverableError` unchanged and wraps any other error in `AppUnknownException`.
+    - In `process`, it writes BullMQ `job.log` lines (start, metadata-only input, finish or failure). On catch it calls Nest `Logger.error` once, then rethrows a `QueueException`, `AppBaseException`, or `UnrecoverableError` unchanged and passes any other error to `throwUnknownException`, which throws a fatal `QueueException` (`queue.error.unknown`) carrying the error as `rawError`.
     - In `onFailed`, it reports a failed job once when BullMQ will not retry it (final attempt, or immediately for an `UnrecoverableError`), and only when the error is fatal.
+    - A `failed` event that carries no job reports the error directly.
     - `captureException` receives a `captureContext` with the tag `job.name` and a `job` context holding `id`, `name`, `attemptsMade`, and `maxAttempts`.
     - A `QueueException` is reported only when `isFatal` is set.
 - `QueueBase`: logs a failed post-commit enqueue at `error` as `QueueSideEffectFailedException` and reports it with `captureException`; the request still succeeds (see [Queue][ref-doc-queue])
-- `AuthTwoFactorDomain`: reports a stored TOTP secret that fails to decrypt, before answering `409 twoFactorSecretUnavailable`
+- `UserTwoFactorDomain`: reports a stored TOTP secret that fails to decrypt, before answering `409 twoFactorSecretUnavailable`
+- `ActivityLogDomain`: logs and reports each staged activity-log row that fails contract validation as `ActivityLogContractInvalidException`
 - The bootstrap `catch` handler in `src/main.ts` and `src/migration.ts`: reports a boot failure with `Sentry.captureException` and waits for `Sentry.flush` before the process exits (see [Boot Failure](#boot-failure))
 
 `beforeSend` is the last filter every Issue passes through. It drops:
@@ -863,8 +865,6 @@ Forwarded levels are environment-aware:
 - an event whose `request.url` matches `logger.excludedRoutes`
 - an event whose response status code is below 500
 - an event at `info` or `debug` level
-
-Outside production, `beforeSend` also attaches the original exception under `event.extra`.
 
 `tracesSampler` applies the same excluded-route match to transactions:
 

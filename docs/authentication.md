@@ -24,7 +24,7 @@ Credential login, JWT access/refresh (ES256/ES512), Redis plus Mongo sessions, G
 Configuration lives in two files:
 
 - `src/configs/auth.config.ts` holds tokens, password, two-factor, social providers, and API keys.
-- `src/configs/session.config.ts` holds the Redis session key pattern.
+- `src/configs/session.config.ts` holds the Redis session key pattern, the login cache TTL (`loginCacheTtlInMs`, the access-token lifetime from `AUTH_JWT_ACCESS_TOKEN_EXPIRED`), and the purge job id pattern.
 
 ## Related Documents
 
@@ -134,6 +134,9 @@ export default registerAs('auth', (): IConfigAuth => ({
         // Password reuse window in days (90), the unit the reuse check takes
         // A password kept in history for this long cannot be set again
         periodInDays: ms('90d') / ms('1d'),
+
+        // Length of a generated temporary password
+        temporaryLength: 10,
     },
 }));
 ```
@@ -147,11 +150,12 @@ graph TD
     C --> D[Password History<br/>Stored]
     D --> E[Password Expiration<br/>Timer Started]
     E --> F{Login Attempt}
-    F -->|Success| K{Password Expired?}
-    F -->|Fail| H[Attempt Counter<br/>Incremented]
-    H --> I{Max Attempts Reached?}
-    I -->|No| F
-    I -->|Yes| J[User Inactivated]
+    F --> H[Attempt Counter<br/>Incremented before the compare]
+    H --> I{Budget Spent?}
+    I -->|Yes| J[Lockout job<br/>inactivates the user]
+    I -->|No| Q{Password Matches?}
+    Q -->|No| F
+    Q -->|Yes| K{Password Expired?}
     K -->|No| G[Session Created]
     K -->|Yes| L[Login rejected<br/>UserPasswordExpiredException]
     L --> M[Reset Password<br/>via forgot-password flow]
@@ -230,6 +234,17 @@ export default registerAs('auth', (): IConfigAuth => ({
 
         // JWT issuer claim (identifies who issued the token)
         issuer: process.env.AUTH_JWT_ISSUER!,
+
+        // Length of the random jti
+        jtiLength: 32,
+    },
+
+    jwks: {
+        // Fetches the strategies make to the JWKS endpoint per minute
+        requestsPerMinute: 60,
+
+        // How long a fetched key stays cached
+        cacheMaxAgeInMs: ms('10m'),
     },
 }));
 ```
@@ -245,8 +260,8 @@ The Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) veri
 
 Both strategies:
 
-- cache JWKS keys
-- rate-limit fetches to 5 requests per minute
+- cache JWKS keys for `auth.jwks.cacheMaxAgeInMs` (10 minutes)
+- rate-limit fetches to `auth.jwks.requestsPerMinute` (60) requests per minute
 - enforce `audience`, `issuer`, expiration, and `nbf`
 
 The configured `publicKey` is only used by `AuthJwtDomain.validateAccessToken` / `AuthJwtDomain.validateRefreshToken`.
@@ -277,14 +292,14 @@ sequenceDiagram
 
     API->>API: Generate sessionId and jti (32-char random string)
 
-    API->>Database: One transaction: upsert device, resolve device ownership,<br/>revoke prior active sessions on that ownership,<br/>update last-login fields, create session record
-    Database-->>API: Session created, device ownership id and superseded session ids returned
+    API->>Database: One transaction: upsert device, resolve device ownership,<br/>revoke prior active sessions on that ownership,<br/>revoke active sessions of other users on the same device,<br/>create session record, update last-login fields
+    Database-->>API: Session created, device ownership id and revoked session refs returned
 
     API->>API: Generate Access Token (ES256, 1 hour, includes jti and the persisted device ownership id)
     API->>API: Generate Refresh Token (ES512, 30 days, includes jti and the persisted device ownership id)
 
-    API->>Redis: Store session with TTL, delete superseded session keys
-    Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
+    API->>Redis: Store session with TTL, enqueue purge jobs for the revoked sessions
+    Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jtiDigest}<br/>TTL: follows AUTH_JWT_ACCESS_TOKEN_EXPIRED
     Redis-->>API: Session cached
 
     API-->>Client: Response with tokens
@@ -299,8 +314,8 @@ sequenceDiagram
     API->>API: Extract sessionId & jti from token
     API->>Redis: Get session data by userId:sessionId
 
-    alt Session exists and jti matches
-        Redis-->>API: Session valid (jti matches)
+    alt Session exists and the jti digest matches
+        Redis-->>API: Session valid (digest matches)
         API-->>Client: Response
     else Session not found or jti mismatch
         Redis-->>API: Validation failed
@@ -314,70 +329,64 @@ The session read goes straight to the Redis store (`SessionCache.getLogin`), so 
 - A Redis outage during the read answers 503 (`RedisUnavailableException`, `52400`) when Redis is not connected, and 500 (`AppUnknownException`) for any other store error.
 - A missing key or a `jti` mismatch answers `SessionRevokedException` (401, `50401`).
 
-The route itself is gated by `@FeatureFlagProtected('loginWithCredential')` and `@ApiKeyProtected()`, so a disabled flag rejects the request with `FeatureFlagDisabledException` (404, `50601`) before any credential is read.
+The route itself is gated by `@FeatureFlagProtected(EnumFeatureFlagKey.loginWithCredential)` and `@ApiKeyProtected()`, so a disabled flag rejects the request with `FeatureFlagDisabledException` (404, `50601`) before any credential is read.
 
 Credential checks run in a fixed order. Each one throws before the next is reached:
 
-1. user found (`UserNotFoundException`)
-2. status active (`UserInactiveForbiddenException`)
-3. password set (`UserPasswordNotSetException`)
-4. attempt limit not already reached (the lockout below runs, then `UserPasswordAttemptMaxException` is thrown)
-5. password matches (`UserLoginDomain.recordLoginFailed` increments the attempt counter and writes a `userLoginFailed` row, then `UserPasswordNotMatchException` is thrown)
+1. user found and status `active`, else `UserCredentialInvalidException` (401, `51026`)
+2. password set, else the same `UserCredentialInvalidException`
+3. password attempt counted: a guarded update increments the counter only while it is below `maxAttempt`, before the password is compared
+4. attempt budget not spent: a spent budget enqueues the lockout job, and the service stages the lockout rows returned with the attempt, then answers `UserPasswordAttemptMaxException` (403, `51012`)
+5. password matches: a mismatch writes a `userLoginFailed` row and answers `UserCredentialInvalidException` (401, `51026`)
+6. email verified: an unverified account is sent a verification email when `UserVerificationDomain.isEmailResendable` holds, then answers `UserEmailNotVerifiedException` (403, `51016`) whether the email was sent or not
+7. password not expired (`UserPasswordExpiredException`, 403, `51011`), checked only after a match and after the verification check
 
-- The rows these two branches write are flushed although the request answers an error, because the error path flushes every staged activity log ([Activity Log][ref-doc-activity-log]).
-- A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
+- An unknown email, an inactive account, a passwordless account, and a wrong password answer the same `UserCredentialInvalidException`, so a caller cannot tell which case failed.
+- The `userLoginFailed` row and the lockout rows are flushed although the request answers an error, because the error path flushes every staged activity log ([Activity Log][ref-doc-activity-log]).
+- A match resets the attempt counter before the verification and expiry checks.
+- An unverified account with an expired password still receives the verification email and answers `UserEmailNotVerifiedException`.
 
-**Lockout.** `UserPasswordDomain.reachMaxPasswordAttempt` prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` for the user, then runs one transaction that:
+**Lockout.** A spent password or two-factor budget enqueues the `lockout` job on the `user` queue (`UserQueue.lockout`, payload `{ userId }`). The attempt count returns the lockout rows `userRevokeAllSessions` and the matching `userReachMax…Attempt` (`UserPasswordDomain.countPasswordAttempt`, `UserAuthDomain.countCredentialAttempt`, `UserTwoFactorDomain.countAttempt`). The service stages them, then asserts the counted attempt and answers its max-attempt exception.
 
-1. sets the user `inactive`, with `updatedBy` set to the user.
-2. revokes every active session of the user, with the user as the revoking actor.
-3. revokes every live device ownership of the user and clears the push token of each of those devices ([Device][ref-doc-device]).
+`UserProcessorService.lockout` runs one transaction:
 
-After the commit:
+1. A guarded update sets the user `inactive`, matching only an active user. A user already inactive ends the job there.
+2. It revokes every active session of the user, with the user as the revoking actor.
+3. It revokes every live device ownership of the user and clears their push tokens ([Device][ref-doc-device]).
 
-1. The lockout enqueues the purge of the revoked session keys (`SessionDomain.finalizeRevokeAll`): one `purgeLogins` job on the `session` queue carrying the user id and the exact refs the transaction revoked.
-2. It stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`.
-
-Both rows are written on every lockout, including one where the user had no active session.
-
-`UserAuthDomain` then throws `UserPasswordAttemptMaxException`.
-
-The transaction runs once:
-
-- A domain exception raised inside it travels out as it is.
-- Every other failure is wrapped in `AppUnknownException`, and the filter maps a MongoDB write conflict (`P2034`) to 409 (`DatabaseWriteConflictException`, `51801`) and any unmapped failure to 500. On that path no purge job is enqueued and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
+After the commit the job enqueues the purge of the revoked session keys: one `purgeLogins` job on the `session` queue carrying the user id and the exact refs the transaction revoked.
 
 ```mermaid
 sequenceDiagram
     participant API
+    participant UserQueue as User queue
     participant Database
-    participant Queue as Session queue
+    participant SessionQueue as Session queue
 
-    API->>API: prepare userRevokeAllSessions, userReachMaxPasswordAttempt
-    API->>Database: withTransaction: set user inactive,<br/>revoke sessions, revoke device ownerships + clear push tokens
-    alt Committed
-        Database-->>API: Committed
-        API->>Queue: Add purgeLogins job with the revoked session refs
-        API->>API: stage userRevokeAllSessions, then userReachMaxPasswordAttempt
+    API->>Database: Guarded attempt increment (attempt < max)
+    alt Budget spent
+        API->>UserQueue: Add lockout job
+        API->>API: stage userRevokeAllSessions, userReachMaxPasswordAttempt
         API->>API: throw UserPasswordAttemptMaxException
-    else Aborted
-        Database-->>API: Aborted
-        API->>API: 409 (write conflict) or 500 (AppUnknownException), no purge job and nothing staged
+        UserQueue->>Database: withTransaction: set user inactive,<br/>revoke sessions, revoke device ownerships + clear push tokens
+        UserQueue->>SessionQueue: Add purgeLogins job with the revoked session refs
     end
 ```
 
-Two branches then short-circuit before any session or token is created:
+One branch then short-circuits before any session or token is created. When two-factor is enabled:
 
-- **Email not verified**:
-    - A new email verification is issued.
-    - The recipient snapshot (address, enabled channels, device tokens) is read before the verification row is written.
-    - The verification email job is enqueued with that snapshot. A failed enqueue is logged and reported, and the login still fails with `UserEmailNotVerifiedException`.
-    - The login fails with `UserEmailNotVerifiedException`.
-- **Two-factor enabled**: no session and no tokens are created.
-    - The challenge is written to Redis (`AuthCache.createChallenge`), concurrently with the secret provisioning when setup is required. A Redis failure there answers 500, or 503 (`52400`) when Redis is not connected.
-    - The response carries `data.isTwoFactorEnable: true` and `data.twoFactor` with `challengeToken`, `challengeExpiresInMs`, `isRequiredSetup`, and `backupCodesRemaining`.
-    - When `isRequiredSetup` is true, the response also provisions the secret and carries `otpauthUrl` and `secret`.
-    - See [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp).
+- No session and no tokens are created.
+- The challenge is written to Redis (`AuthCache.createChallenge`), concurrently with the secret provisioning when setup is required. A Redis failure there answers 500, or 503 (`52400`) when Redis is not connected.
+- The response carries `data.isTwoFactorEnable: true` and `data.twoFactor` with `challengeToken`, `challengeExpiresInMs`, `isRequiredSetup`, and `backupCodesRemaining`.
+- When `isRequiredSetup` is true, the response also provisions the secret and carries `otpauthUrl` and `secret`.
+- See [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp).
+
+An unverified email never reaches a session. After the password matched, the login handles an active, unverified account in this order:
+
+1. `UserVerificationDomain.isEmailResendable` is false when the account is verified or its last verification email is inside `verification.resendInMinutes`. The login then sends nothing.
+2. When it holds, the login reads the recipient through `NotificationDomain.getRecipient`, creates the verification (`UserVerificationDomain.createEmail`), stages `userSendVerificationEmail`, and enqueues the verification email.
+3. The login answers `UserEmailNotVerifiedException` (403, `51016`) whether the email was sent or not, so the response never reveals which. The `userSendVerificationEmail` row is staged only when the email was sent and is written although the request answers an error.
+4. A wrong password sends no email. The resend-verification route shares the same gate and answers 200 in every account state.
 
 `IUserLoginOutcome` models the login result as a union of two outcomes:
 
@@ -385,41 +394,50 @@ Two branches then short-circuit before any session or token is created:
 - A two-factor outcome: `isTwoFactorEnable: true` with `twoFactor`. It is either the verify challenge or, when `isRequiredSetup` is true, the setup challenge that also carries `otpauthUrl` and `secret`.
 - Both carry `lastWorkspaceId` and `lastWorkspaceChangedAt`.
 
-Session creation also enforces the device constraint. Inside one database transaction:
+Session creation also enforces the device constraints. Inside one database transaction (`UserAuthHttpService.createTokenAndSession`, shared by credential login, social login, and two-factor verification):
 
-- device upsert
-- device-ownership lookup
-- revocation of every still-active session bound to that device-user pair
-- creation of the new session record
+1. device upsert and device-ownership upsert
+2. revocation of every still-active session bound to that device-user pair, unless the ownership is new
+3. revocation of every active session bound to another user's ownership of the same device ([Device][ref-doc-device])
+4. creation of the new session record
+5. the last-login update
 
 Ordering around the transaction:
 
 - The login activity row is prepared before the transaction.
-- The session id and `jti` are minted before it (`AuthJwtDomain.createLoginIdentifiers`).
+- The session id and `jti` are minted before it (`AuthUtil.createLoginIdentifiers`).
 - The token pair is signed after the commit (`AuthJwtDomain.createTokens`), so the `deviceOwnershipId` claim is the id the transaction persisted.
 
 After the commit, one parallel batch runs:
 
-- the new session key is written (`SessionCache.setLogin`)
-- the purge of exactly the superseded session ids is enqueued (`SessionDomain.purgeRevokedLogins`)
+- the new session key is written (`SessionDomain.setLogin`)
+- the purge of exactly the superseded session refs is enqueued (`SessionQueue.purgeLogins`)
+- one purge per other user whose sessions the login revoked is enqueued, each with that user's exact refs
 - the new-device login notification is enqueued when the device ownership was created rather than reused, with the recipient snapshot read before the transaction and the session id as the event id of the job
 
 Then:
 
 - The login row is staged once that batch settles.
+- One `userRevokeSessionByDeviceLogin` row per affected user is staged after it.
 - A purge or notification enqueue failure is logged and reported, and the login still succeeds.
-- A failed session key write answers 500, or 503 (`52400`) when Redis is not connected, and stages no row.
+- `SessionDomain.setLogin` writes the key, then re-reads the session row and deletes the key when the row was revoked meanwhile.
+- A failed key write revokes the new session, enqueues its purge, and answers 500, or 503 (`52400`) when Redis is not connected. No login row is staged.
 
 #### JWT Refresh Token Flow
 
 - When the access token expires, the refresh token is used to obtain a new access token.
 - Each refresh issues a new `jti`, which is what the session check matches.
+- `AuthJwtRefreshGuard` verifies the token signature, expiry, audience, and issuer only. It reads no session, so the rotation below is the only session check.
 
-`UserLoginDomain.refreshSession`:
+`UserAuthHttpService.refresh` rotates the session (`rotateSession`):
 
-- rotates the `jti` in the database first and in Redis after the commit
-- stages `userRefreshToken` only after the Redis rewrite
-- writes to Redis only while the session key still exists, so a refresh cannot bring back a session a revoke has purged
+1. It signs the new token pair under a fresh `jti`. The new refresh token expires when the presented one would.
+2. It rotates the `jti` in the database by compare-and-set: the `where` carries the session id, the old `jti`, `isRevoked: false`, and an unexpired `expiredAt`.
+3. A rotation that matches no row is token reuse or a revoked session: the session is revoked if still active, its purge is enqueued, and the request answers `SessionRevokedException` (401, `50401`).
+4. After the commit it rotates the Redis entry by compare-and-set on the stored `jti` digest, which also resets the entry TTL.
+5. A digest mismatch is reuse as well: the session is revoked and purged, and the request answers `SessionRevokedException`.
+6. A missing entry (it expired or was purged) is rewritten through `SessionDomain.setLogin`, which deletes it again when the session row is revoked.
+7. `userRefreshToken` is staged only after step 6 completes.
 
 ```mermaid
 sequenceDiagram
@@ -427,48 +445,47 @@ sequenceDiagram
     participant API
     participant Redis
     participant Database
-
-    Client->>API: API Request with expired Access Token
-    API->>API: Verify token signature (ES256)
-    API-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
+    participant Queue as Session queue
 
     Client->>API: POST /shared/user/refresh
     Note over Client,API: Authorization: Bearer <refresh_token>
 
     API->>API: Verify Refresh Token (ES512)
-    API->>Redis: Get session by userId:sessionId, compare jti
-    alt Session key missing or jti mismatch
+    API->>API: Generate new jti and new tokens<br/>(refresh expiry = remaining life of the old refresh token)
+    API->>API: prepare userRefreshToken, userRevokeSession
+    API->>Database: withTransaction: rotate jti where jti = old, not revoked,<br/>not expired; update last-login fields
+    alt No live session matched the old jti
+        Database-->>API: Not rotated
+        API->>Database: Revoke the session if still active
+        API->>Queue: Add purgeLogins job when a session was revoked
+        API->>API: stage userRevokeSession when a session was revoked
         API-->>Client: 401 Unauthorized (SessionRevokedException, 50401)
-    else Session key found and jti matches
-        API->>API: Generate new jti and new tokens<br/>(refresh expiry = remaining life of the old refresh token)
-        API->>API: prepare userRefreshToken
-        API->>Database: withTransaction: rotate jti on a session that is<br/>not revoked and not expired, update last-login fields
-        alt No live session matched
-            Database-->>API: Transaction aborted
+    else Committed
+        API->>Redis: Compare-and-set the jti digest, reset the TTL
+        alt Digest matches
+            Redis-->>API: updated
+            API->>API: stage userRefreshToken
+            API-->>Client: New Access Token + New Refresh Token
+            Note over Client,API: Session ID remains the same<br/>New refresh token expires at the same<br/>instant the old one would have
+        else Digest mismatch
+            Redis-->>API: mismatch
+            API->>Database: Revoke the session
+            API->>Queue: Add purgeLogins job
             API-->>Client: 401 Unauthorized (SessionRevokedException, 50401)
-        else Committed
-            API->>Redis: SET session with new jti, PX remaining life, XX
-            alt Key still exists
-                Redis-->>API: OK
-                API->>API: stage userRefreshToken
-                API-->>Client: New Access Token + New Refresh Token
-                Note over Client,API: Session ID remains the same<br/>New refresh token expires at the same<br/>instant the old one would have
-            else Key purged meanwhile
-                Redis-->>API: Not written
-                API-->>Client: 401 Unauthorized (SessionRevokedException, 50401)
-            else Redis failure
-                API-->>Client: 500 (AppUnknownException), or 503 (RedisUnavailableException)
-            end
+        else Entry absent
+            Redis-->>API: absent
+            API->>Redis: setLogin with the new jti
+            API-->>Client: New Access Token + New Refresh Token
         end
     end
 ```
 
-- `AuthJwtRefreshGuard` runs the first session check before the handler. A missing key or a `jti` mismatch answers `SessionRevokedException` (401, `50401`), the same answer `AuthJwtAccessGuard` gives.
-- A Redis outage during that first check answers the same as on an access request: 503 (`RedisUnavailableException`, `52400`) when Redis is not connected, and 500 (`AppUnknownException`) for any other store error.
-- `refreshSession` repeats the check against the same key and answers `SessionRevokedException` (401, `50401`) when it fails.
-- The same `SessionRevokedException` answers a lost refresh race: the rotation matches no live session row (`SessionDomain.updateJtiInTx`), or the Redis rewrite finds the key purged.
-- A refresh token without a `jti` answers `AuthJwtRefreshTokenInvalidException` (401, `50801`), in the guard and in `refreshSession` before any cache read.
-- `userRefreshToken` is success-only, so a refresh that ends in 401 or 500 writes no row.
+- A Redis outage during the compare-and-set answers 500 (`AppUnknownException`), or 503 (`RedisUnavailableException`, `52400`) when the error maps to an unreachable Redis.
+- A failed rewrite of an absent entry revokes the session first, then answers 500 or 503.
+- A write conflict in the rotation transaction answers `SessionRevokedException` without revoking the session.
+- A refresh token without a `jti` or `sessionId` answers `AuthJwtRefreshTokenInvalidException` (401, `50801`) in the strategy.
+- A retry of a lost response with the old token is reuse, so it revokes the session.
+- `userRefreshToken` is success-only, so a refresh that ends in 401 or 500 writes no `userRefreshToken` row.
 
 #### JWT Logout Flow
 
@@ -478,17 +495,17 @@ Endpoint: `POST /shared/user/logout`.
 - It returns `200 OK` with message `user.logout`.
 - It records the `userLogout` activity-log action.
 
-The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access-token payload, then:
+The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access-token payload, then `UserAuthHttpService.logout`:
 
-1. Verifies the session is still active in the database (`SessionDomain.validateActive`) and prepares `userLogout`.
-    - A session that is not active answers `404 session.error.notFound`.
-2. Calls `UserLoginDomain.logout`, which opens `this.databaseService.withTransaction` and composes `SessionDomain.revokeInTx` and `DeviceDomain.clearNotificationInTx`:
-    - The revoke matches only a session that is not yet revoked.
-    - When the revoke matches nothing (a concurrent logout of the same session got there first), the transaction aborts with `SessionNotFoundException` (404, `50400`) and nothing changes.
+1. Prepares `userLogout`.
+2. Opens `this.databaseService.withTransaction` and composes `SessionDomain.revokeInTx` and `DeviceDomain.clearNotificationInTx`:
+    - The revoke matches only a session of the caller that is not yet revoked.
+    - When the revoke matches nothing, the transaction aborts with `SessionNotFoundException` (404, `50400`) and nothing changes.
+    - A write conflict in the transaction answers the same `SessionNotFoundException`.
     - `DeviceDomain.clearNotificationInTx` resolves the device only through a live ownership: the `deviceOwnershipId` from the token, belonging to the caller, not revoked.
     - When no such ownership exists (missing, owned by another user, or already revoked), the domain logs a warning and clears no push token. The session revoke still commits.
-    - Otherwise `DeviceRepository.clearNotificationByIdsInTx` clears the device's push token, stamps `lastActiveAt`, and sets `updatedBy` to the user.
-3. After the commit, `SessionDomain.purgeRevokedLogins` enqueues the purge of the session's Redis key.
+    - Otherwise the ownership's push token and provider are cleared and its `lastActiveAt` is stamped.
+3. After the commit, `SessionQueue.purgeLogins` enqueues the purge of the session's Redis key.
     - An enqueue failure is logged and reported, and the logout still succeeds.
 4. Stages `userLogout`.
     - `ActivityLogInterceptor` writes the row once the handler returns.
@@ -502,20 +519,15 @@ sequenceDiagram
 
     Client->>API: POST /shared/user/logout (Bearer access token)
     API->>API: Extract userId, sessionId, deviceOwnershipId from payload
-    API->>Database: Find active session by userId:sessionId
-    alt Session active
-        API->>Database: withTransaction: revoke the session if not yet revoked,<br/>clear the device push token of a live ownership
-        alt Revoke matched the session
-            Database-->>API: Committed (push token cleared when a live ownership of the caller exists)
-            API->>Queue: Add purgeLogins job for the session
-            API->>API: stage userLogout
-            API-->>Client: 200 OK (user.logout)
-        else Already revoked by a concurrent request
-            Database-->>API: Transaction aborted
-            API-->>Client: 404 Not Found (SessionNotFoundException, 50400)
-        end
-    else Session not found
-        API-->>Client: 404 Not Found (SessionNotFoundException)
+    API->>Database: withTransaction: revoke the session if not yet revoked,<br/>clear the push token of a live ownership
+    alt Revoke matched the session
+        Database-->>API: Committed (push token cleared when a live ownership of the caller exists)
+        API->>Queue: Add purgeLogins job for the session
+        API->>API: stage userLogout
+        API-->>Client: 200 OK (user.logout)
+    else No active session of the caller matched
+        Database-->>API: Transaction aborted
+        API-->>Client: 404 Not Found (SessionNotFoundException, 50400)
     end
 ```
 
@@ -541,7 +553,7 @@ A long-lived token used to obtain new access tokens without requiring the user t
 - **Algorithm**: ES512 (ECDSA using P-521 and SHA-512)
 - **Validity**: Configured in `auth.config.ts` (default: 30 days)
 - **Config**: `AUTH_JWT_REFRESH_TOKEN_EXPIRED` environment variable
-- **Redis TTL**: Session TTL in Redis follows this expiration time
+- **Session expiry**: The session row's `expiredAt` is login time plus this expiration, and a refresh never extends it
 - **Purpose**: Generate new access tokens without re-authentication
 - **jti**: Included for session tracking and validation
 
@@ -611,9 +623,9 @@ To protect an endpoint with JWT access token validation, use the `@AuthJwtAccess
 @Response('user.profile', { schema: UserProfileResponseSchema })
 @TermPolicyAcceptanceProtected()
 @UserProtected()
+@RequestThrottle({ user: true })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true })
 @Get('/profile/get')
 async profile(
     @AuthJwtPayload('userId') userId: string
@@ -622,7 +634,7 @@ async profile(
 }
 ```
 
-Decorators apply bottom-up, so the decorator written lower in the source runs earlier. In the stack above, `@ApiKeyProtected()` runs first, then `@AuthJwtAccessProtected()`, then `@UserProtected()`, then `@TermPolicyAcceptanceProtected()`. "Below" and "above" on this page mean position in the source: a guard written below another runs before it.
+Decorators apply bottom-up, so the decorator written lower in the source runs earlier. In the stack above, `@ApiKeyProtected()` runs first, then `@AuthJwtAccessProtected()`, then the per-user throttle of `@RequestThrottle`, then `@UserProtected()`, then `@TermPolicyAcceptanceProtected()`. The throttle sits above the JWT decorator because its per-user limiter reads the authenticated user. "Below" and "above" on this page mean position in the source: a guard written below another runs before it.
 
 Refresh uses `@AuthJwtRefreshProtected` on `POST /refresh`:
 
@@ -630,9 +642,9 @@ Refresh uses `@AuthJwtRefreshProtected` on `POST /refresh`:
 @Doc({ summary: 'refresh token' })
 @Response('user.refresh', { schema: AuthTokenResponseSchema })
 @UserProtected()
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
 @AuthJwtRefreshProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
 @HttpCode(HttpStatus.OK)
 @Post('/refresh')
 async refresh(
@@ -652,9 +664,9 @@ Shared profile reads `userId` from the payload:
 ```typescript
 @TermPolicyAcceptanceProtected()
 @UserProtected()
+@RequestThrottle({ user: true })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true })
 @Get('/profile/get')
 async profile(
     @AuthJwtPayload('userId') userId: string
@@ -687,9 +699,9 @@ Refresh is the call site:
 
 ```typescript
 @UserProtected()
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
 @AuthJwtRefreshProtected()
 @ApiKeyProtected()
-@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
 @HttpCode(HttpStatus.OK)
 @Post('/refresh')
 async refresh(
@@ -708,41 +720,40 @@ A unique identifier (32-character random string) generated during login and toke
 
 1. **During Login**
     - API generates a unique jti (32-character random string)
-    - jti is stored in Redis session
+    - The SHA-256 digest of the jti is stored in the Redis session, never the jti itself
     - jti is embedded in both access and refresh tokens as a standard JWT claim
 
 2. **During Every API Request (Access Token)**
     - Client sends request with access token
     - API extracts the jti from the access token payload
-    - API retrieves session from Redis using userId and sessionId
-    - API hashes both values with SHA-256 and compares the hashes with `HelperHashService.sha256Compare`, a constant-time comparison (`AuthDomain`)
-    - **If jti matches**: Request is allowed
-    - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential token reuse)
+    - API retrieves session from Redis using userId and sessionId (`AuthJwtAccessStrategy`)
+    - API hashes the token jti with SHA-256 and compares the digests with `HelperHashService.sha256Compare`, a constant-time comparison (`AuthUtil.isJtiMatch`)
+    - **If the digest matches**: Request is allowed
+    - **If the digest doesn't match**: Request is rejected (401 Unauthorized, potential token reuse)
     - **If the Redis read fails**: Request is rejected (503 when Redis is not connected, otherwise 500)
 
 3. **During Token Refresh (Refresh Token)**
     - Client sends the refresh token to the API
     - API extracts the jti from the refresh token payload
-    - API retrieves session from Redis using userId and sessionId
-    - API compares the hashed jti values the same way
-    - **If jti matches**: Token refresh proceeds with a new jti
-    - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential security breach)
+    - API rotates the session row only while its stored jti equals the presented one
+    - API then compares and rotates the Redis digest in one script
+    - **If the jti matches**: Token refresh proceeds with a new jti
+    - **If the jti doesn't match**: The session is revoked and the request is rejected (401 Unauthorized, token reuse)
 
 4. **jti Rotation**
     - Each successful token refresh generates a **new jti** (32-character random string)
     - Old jti is invalidated
     - New jti is stored in the database session record, then in Redis once the transaction has committed
-    - The Redis write happens only while the session key still exists
-    - A key purged by a revoke in the meantime makes the refresh answer `SessionRevokedException` (401, `50401`)
+    - The Redis script rotates the digest only while the entry holds the old digest, and resets the entry TTL to the access-token lifetime
     - New tokens contain the new jti
     - The session's absolute expiry is never pushed out
-    - The new refresh token and the Redis TTL both carry only the time still left on the presented refresh token
+    - The new refresh token carries only the time still left on the presented refresh token
     - A session cannot outlive `AUTH_JWT_REFRESH_TOKEN_EXPIRED` counted from login
 
 5. **What the check catches**
     - An access or refresh token presented after a refresh carries the old jti, which no longer matches
     - Each refresh writes a new jti, so a token maps to one point in the session's history
-    - Deleting the session key from Redis invalidates every token carrying that sessionId at once
+    - Deleting the session key from Redis invalidates every access token carrying that sessionId at once
     - An intercepted old token cannot be replayed
 
 ## Social Authentication
@@ -808,16 +819,16 @@ sequenceDiagram
         Note over API,Database: Created only when the flag's<br/>signUpAllowed metadata is true
         Database-->>API: User record
 
-        API->>AuthJwtDomain: createLoginIdentifiers()
-        Note over AuthJwtDomain: Mints sessionId through DatabaseUtil<br/>and a 32-char random jti through AuthUtil
+        API->>API: AuthUtil.createLoginIdentifiers()
+        Note over API: Mints sessionId through DatabaseUtil<br/>and a 32-char random jti
 
-        API->>Database: One transaction: upsert device, resolve device ownership,<br/>revoke prior active sessions on that ownership,<br/>create session record with jti, update last-login fields
+        API->>Database: One transaction: upsert device, resolve device ownership,<br/>revoke prior active sessions on that ownership and<br/>other users' sessions on the device,<br/>create session record with jti, update last-login fields
         Database-->>API: Committed, device ownership id returned
 
         API->>AuthJwtDomain: createTokens(user, { sessionId, jti, deviceOwnershipId, loginAt }, loginFrom, loginWith)
         AuthJwtDomain-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti and the device ownership id
-        API->>Redis: Store session with jti and TTL
-        Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
+        API->>Redis: Store session with the jti digest and TTL
+        Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jtiDigest}<br/>TTL: follows AUTH_JWT_ACCESS_TOKEN_EXPIRED
         Redis-->>API: Session cached
 
         API-->>Client: Response with tokens
@@ -832,11 +843,11 @@ sequenceDiagram
 
 Social login joins the credential login path once the user is resolved:
 
-- The two-factor branch and the device constraint apply exactly as they do for credential login.
-- The email-verification branch does not apply. A social user who is not yet verified is marked verified in place before the shared path runs, so `UserEmailNotVerifiedException` is never reached from a social login.
+- The two-factor branch and the device constraints apply exactly as they do for credential login.
+- The email-verification branch does not apply. A social user who is not yet verified is marked verified in place before the shared path runs, and the same write clears the stored password and its expiry, so the email owner is the only credential holder. `UserEmailNotVerifiedException` is never reached from a social login.
 - A user whose status is not `active` is rejected with `UserInactiveForbiddenException` at the same point, whether the record was just created or already existed.
 
-Both routes are also gated by `@FeatureFlagProtected('loginWithGoogle')` / `@FeatureFlagProtected('loginWithApple')` and `@ApiKeyProtected()`. The social guard sits above `@FeatureFlagProtected()` in source, so guards run in this order:
+Both routes are also gated by `@FeatureFlagProtected(EnumFeatureFlagKey.loginWithGoogle)` / `@FeatureFlagProtected(EnumFeatureFlagKey.loginWithApple)` and `@ApiKeyProtected()`. The social guard sits above `@FeatureFlagProtected()` in source, so guards run in this order:
 
 1. `@ApiKeyProtected()`
 2. `@FeatureFlagProtected()`, on its anonymous branch
@@ -851,19 +862,19 @@ A provider with no client id configured answers 404 before the token is verified
 - A provider whose key or certificate endpoint cannot be reached answers `AuthProviderUnavailableException` (503, `50819`): `AuthUtil.toProviderUnavailableException` recognizes a failed Google certificate fetch, a JWKS client error, an error flagged `isEndpointUnavailable`, and the network error codes of the JWKS paragraph above.
 - Every other verification failure becomes `AuthSocialGoogleInvalidException` / `AuthSocialAppleInvalidException` (401).
 
-Every social login first resolves the workspace context: from `inviteToken` when present, otherwise a personal workspace.
+When the account does not exist and the flag's `signUpAllowed` metadata is true, the user is created on this path:
 
-- Supplying an `inviteToken` requires the `workspace` flag's `invitationAllowed` metadata.
-- An invite token that resolves to nothing, or to an invite for another email, fails with `WorkspaceInviteInvalidException`.
+1. The workspace context resolves from `inviteToken` when present, otherwise a personal workspace.
+    - Supplying an `inviteToken` requires the `workspace` flag's `invitationAllowed` metadata.
+    - An invite token that resolves to nothing, or to an invite for another email, fails with `WorkspaceInviteInvalidException`.
+2. The default user role is resolved.
+3. The username is checked against the allowed pattern, the bad-word list, and existing usernames.
+4. The record is created already verified.
+5. Once the login has completed, the welcome notification is enqueued with a `welcomeSocial` recipient snapshot that `NotificationUtil.mapRecipient` builds from the written user values, with no device tokens and no stored settings (`NotificationQueue.sendWelcomeSocial`). A failed enqueue is logged and reported, and the login still succeeds.
 
-When the account does not exist:
+An existing account skips this block, and its login ignores any `inviteToken` in the body.
 
-- If the flag's `signUpAllowed` metadata is true, the user is created on this path:
-    1. The default user role is resolved.
-    2. The username is checked against the allowed pattern, the bad-word list, and existing usernames.
-    3. The record is created already verified.
-    4. Once the login has completed, the welcome notification is enqueued with a recipient snapshot built from the written user values (`NotificationRecipientDomain.buildNewUserRecipient`). A failed enqueue is logged and reported, and the login still succeeds.
-- If `signUpAllowed` is false, the login fails with `UserNotFoundException`.
+When the account does not exist and `signUpAllowed` is false, the login fails with `UserNotFoundException`.
 
 ### Google Authentication
 
@@ -913,9 +924,9 @@ Setup: [Google OAuth 2.0 Documentation][ref-google-client-secret]
 @Doc({ summary: 'login with social google' })
 @Response('user.loginWithSocialGoogle', { schema: UserLoginResponseSchema })
 @AuthSocialGoogleProtected()
-@FeatureFlagProtected('loginWithGoogle')
-@ApiKeyProtected()
+@FeatureFlagProtected(EnumFeatureFlagKey.loginWithGoogle)
 @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+@ApiKeyProtected()
 @HttpCode(HttpStatus.OK)
 @Post('/login/social/google')
 async loginWithGoogle(
@@ -981,9 +992,9 @@ Setup: [Apple Sign In Documentation](https://developer.apple.com/sign-in-with-ap
 @Doc({ summary: 'login with social apple' })
 @Response('user.loginWithSocialApple', { schema: UserLoginResponseSchema })
 @AuthSocialAppleProtected()
-@FeatureFlagProtected('loginWithApple')
-@ApiKeyProtected()
+@FeatureFlagProtected(EnumFeatureFlagKey.loginWithApple)
 @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+@ApiKeyProtected()
 @HttpCode(HttpStatus.OK)
 @Post('/login/social/apple')
 async loginWithApple(
@@ -1023,13 +1034,11 @@ export default registerAs('auth', (): IConfigAuth => ({
         secretLength: 32,
         challengeTtlInMs: ms('5m'),
         challengeKeyPattern: 'TwoFactor:Challenge:{token}',
-        lockKeyPattern: 'TwoFactor:Lock:{userId}',
         backupCodes: {
             count: 8,
             length: 10,
         },
         maxAttempt: 5,
-        lockAttemptDurationInMs: ms('2m'),
         encryption: {
             key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY!,
         },
@@ -1050,9 +1059,7 @@ export default registerAs('auth', (): IConfigAuth => ({
 - `secretLength`: Length of the generated secret (default: `32`)
 - `challengeTtlInMs`: TTL for the challenge token in cache (default: `5m`)
 - `challengeKeyPattern`: Cache key pattern for the challenge token (`TwoFactor:Challenge:{token}`)
-- `lockKeyPattern`: Cache key pattern for the lockout entry (`TwoFactor:Lock:{userId}`)
-- `maxAttempt`: Max failed TOTP attempts before lockout (default: `5`)
-- `lockAttemptDurationInMs`: Lockout duration after max attempts exceeded (default: `2m`)
+- `maxAttempt`: Attempts counted before the next one is refused and the lockout job inactivates the account (default: `5`)
 - `backupCodes.count`: Number of backup codes generated (default: `8`)
 - `backupCodes.length`: Length of each backup code (default: `10`)
 - `encryption.key`: Root secret for the stored TOTP secrets, from `AUTH_TWO_FACTOR_ENCRYPTION_KEY` (exactly 64 base64url characters)
@@ -1069,7 +1076,7 @@ sequenceDiagram
     API->>Cache: Store challenge token
     API->>User: Return challengeToken
     User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: code, code}
-    API->>Cache: Validate challenge
+    API->>Cache: Read challenge, then claim it after the code is valid
     API->>User: Return JWT tokens
 ```
 
@@ -1094,6 +1101,9 @@ API Key authentication is configured in `auth.config.ts`:
 export default registerAs('auth', (): IConfigAuth => ({
     xApiKey: {
         keyPattern: 'ApiKey:{key}',
+        cacheTtlInMs: ms('5m'),
+        leaseKeyPattern: 'ApiKey:Lease:{key}',
+        leaseTtlInMs: ms('10s'),
     },
 }));
 ```
@@ -1101,14 +1111,17 @@ export default registerAs('auth', (): IConfigAuth => ({
 **Configuration Options:**
 
 - `keyPattern`: Redis cache key pattern for API key caching (`{key}` is replaced with the key)
+- `cacheTtlInMs`: TTL of a cached key (default: `5m`)
+- `leaseKeyPattern`: Redis key pattern of the read-through lease (`ApiKey:Lease:{key}`)
+- `leaseTtlInMs`: TTL of the lease (default: `10s`)
 
 An admin write that changes or deletes a key runs in this order:
 
 1. The database write.
-2. The staged activity row.
-3. The delete of the key's cache entry.
+2. The delete of the key's cache entry.
+3. The staged activity row.
 
-A failed cache delete answers 500, or 503 (`52400`) when Redis is not connected, with the database change applied.
+A failed cache delete answers 500, or 503 (`52400`) when Redis is not connected, with the database change applied and no activity row staged.
 
 Details: [Cache][ref-doc-cache].
 
@@ -1135,9 +1148,9 @@ Default API keys are used for standard external integrations and third-party acc
 Public login stacks it:
 
 ```typescript
-@FeatureFlagProtected('loginWithCredential')
-@ApiKeyProtected()
+@FeatureFlagProtected(EnumFeatureFlagKey.loginWithCredential)
 @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+@ApiKeyProtected()
 @HttpCode(HttpStatus.OK)
 @Post('/login/credential')
 async loginWithCredential(
@@ -1203,9 +1216,9 @@ x-api-key: ${key}:${secret}
 **Default API Key Protection:**
 
 ```typescript
-@FeatureFlagProtected('loginWithCredential')
-@ApiKeyProtected()
+@FeatureFlagProtected(EnumFeatureFlagKey.loginWithCredential)
 @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+@ApiKeyProtected()
 @HttpCode(HttpStatus.OK)
 @Post('/login/credential')
 async loginWithCredential(
@@ -1266,9 +1279,10 @@ sequenceDiagram
         alt Cache Hit
             Cache-->>Guard: API Key data
         else Cache Miss
+            Guard->>Cache: Take the lease of the key (SET NX)
             Guard->>Database: Find API key by key
             Database-->>Guard: API Key data
-            Guard->>Cache: Store in cache
+            Guard->>Cache: Store in cache while the lease is held
         end
 
         alt API Key Not Found
@@ -1276,10 +1290,12 @@ sequenceDiagram
         else API Key Found
             Guard->>Guard: Validate secret against hash
             Guard->>Guard: Check isActive status
-            Guard->>Guard: Check startAt/endAt window
+            Guard->>Guard: Check startAt has passed
 
-            alt Invalid Credentials or Inactive
+            alt Invalid Credentials, Inactive, or not yet started
                 Guard-->>Client: 401 Unauthorized (ApiKeyXApiKeyInvalidException)
+            else Past endAt
+                Guard-->>Client: 400 Bad Request (ApiKeyExpiredException, 50703)
             else Valid
                 Guard->>API: Store apiKey via RequestStoreService.set(ApiKeyStoreKey, apiKey)
                 API->>Guard: ApiKeyXApiKeyTypeGuard
@@ -1297,11 +1313,13 @@ sequenceDiagram
     end
 ```
 
-- A key that does not exist answers `ApiKeyXApiKeyInvalidException` (401, `50701`), the same answer as a wrong secret, an inactive key, or a key outside its `startAt`/`endAt` window, so a caller cannot probe which keys exist.
+- A key that does not exist answers `ApiKeyXApiKeyInvalidException` (401, `50701`), the same answer as a wrong secret, an inactive key, or a key before its `startAt`, so a caller cannot probe which keys exist.
+- A key with the right secret and a passed `endAt` answers `ApiKeyExpiredException` (400, `50703`).
 - `@ApiKeyProtected()` and `@ApiKeySystemProtected()` install both guards in one `UseGuards` call, in the order `ApiKeyXApiKeyGuard`, then `ApiKeyXApiKeyTypeGuard`. The first writes the key under `ApiKeyStoreKey`, and the second reads it.
 - `ApiKeyXApiKeyTypeGuard` answers `ApiKeyGuardMissingException` (401, `50707`) for an empty store. Because one decorator installs both guards, a route reaches that answer only through `@ApiKeyPayload()` on a route without either decorator.
 - The cache is an optimization, and the database stays the authority:
     - A cache read that fails reads as a miss, so the lookup falls through to the database.
+    - A cache miss takes a short read-through lease before the database read, and only the lease holder writes the entry, so concurrent misses fill the cache once.
     - A cache write that fails after a database hit is logged at error level and ignored, so the request still authenticates.
     - A key that is not found in the database is not cached, so every request naming an unknown key reads the database.
 - `ApiKeyNotFoundException` (404, `50704`) belongs to the admin API key routes, which look a key up by id.
@@ -1314,12 +1332,12 @@ sequenceDiagram
 Sessions sit on `DeviceOwnership` (one user on one device):
 
 - That pair may hold only one active session.
-- A device can still be owned by more than one user.
+- A device can still be owned by more than one user, but only one of them holds a live session: a login revokes the others ([Device][ref-doc-device]).
 
 Storage:
 
-- **Redis:** validation and TTL, for both access and refresh tokens
-- **Database:** listing, management, and audit trail
+- **Redis:** access-token validation, with the access-token lifetime as TTL
+- **Database:** listing, management, refresh rotation, and audit trail
 
 ### Session Endpoints
 
@@ -1335,8 +1353,9 @@ Global prefix `/api` and version `v1` apply as elsewhere.
 
 List query:
 
-- Both list routes take `orderBy` as `field:direction`, repeatable.
-- Each route's request schema validates it against that route's allow-list, so an unlisted field answers a validation error (422, `50300`).
+- Both list routes take one `orderBy` as `field:direction`.
+- The shared cursor list accepts `createdAt`. The admin offset list accepts `createdAt` and `updatedAt`.
+- Each route's request schema validates it against that route's allow-list, so an unlisted field or direction answers a validation error (422, `50300`).
 - The allow-list also rides in the response metadata as `availableOrderBy`.
 
 Route guards:
@@ -1348,20 +1367,21 @@ Route guards:
 
 **Revoke one.** `DELETE /shared/user/session/revoke/:sessionId` and the admin `DELETE /admin/user/:userId/session/revoke/:sessionId`:
 
-1. check that the session is active.
-2. prepare their activity rows.
-3. revoke with a write that matches only a session that is not yet revoked.
+1. The admin route checks that the admin outranks the target user's role.
+2. The write revokes only a session that is not yet revoked and belongs to the user.
+3. The purge of the session's Redis key is enqueued.
+4. The activity rows are staged.
 
 Outcome:
 
-- When that write matches nothing (a concurrent revoke of the same session got there first), the request answers `SessionNotFoundException` (404, `50400`), and no purge is enqueued and nothing is written to the activity log.
-- Otherwise the purge of the session's Redis key is enqueued, then the rows are staged.
+- When the write matches nothing (the session does not exist, belongs to another user, or a concurrent revoke got there first), the request answers `SessionNotFoundException` (404, `50400`), and no purge is enqueued and nothing is written to the activity log.
 
 **Revoke all (admin).** `DELETE /admin/user/:userId/session/revoke-all`:
 
-1. revokes every active session of the user in one transaction (`SessionRepository.revokeActiveByUser`).
-2. enqueues the purge of the revoked session keys (`SessionDomain.finalizeRevokeAll`).
-3. stages its activity rows.
+1. checks that the user is not the admin and that the admin outranks the target user's role.
+2. revokes every active session of the user in one transaction (`SessionRepository.revokeActiveByUser`).
+3. enqueues the purge of the revoked session keys (`SessionQueue.purgeLogins`).
+4. stages its activity rows.
 
 It answers with the message `session.revokeAll`.
 
@@ -1376,6 +1396,7 @@ Activity rows:
 - A successful revoke-all writes `adminSessionRevokeAll` for the admin and `userRevokeAllSessionsByAdmin` for the user, each carrying `sessionCount`.
 - The single-session admin revoke writes `adminSessionRevoke` and `userRevokeSessionByAdmin`.
 - The single-session admin revoke writes only `adminSessionRevoke` when the admin revokes a session of their own account.
+- A user's own revoke writes `userRevokeSession`.
 
 See [Activity Log][ref-doc-activity-log] and [Status Codes][ref-doc-status-codes].
 
@@ -1383,10 +1404,11 @@ See [Activity Log][ref-doc-activity-log] and [Status Codes][ref-doc-status-codes
 
 #### Redis (Primary: Validation)
 
-Used to validate **both access and refresh tokens**.
+Used to validate **access tokens**.
 
 - Every API call carrying an access token checks Redis.
 - A session key that is missing, or a jti that does not match, rejects the request at once, even with a valid token signature.
+- A refresh request reads no Redis entry at its guard. The refresh rotation compares and rewrites the entry ([JWT Refresh Token Flow](#jwt-refresh-token-flow)).
 
 **Data Stored:**
 
@@ -1394,8 +1416,7 @@ Used to validate **both access and refresh tokens**.
 {
     sessionId: string;
     userId: string;
-    jti: string; // JWT ID for token validation
-    expiredAt: Date;
+    jtiDigest: string; // SHA-256 digest of the JWT ID
 }
 ```
 
@@ -1407,16 +1428,15 @@ User:{userId}:Session:{sessionId}
 
 **TTL Behavior:**
 
-- Initial TTL: `expiredAt - now`, where `expiredAt` is login time plus the refresh token expiration from `auth.config.ts` (default: 30 days)
-- TTL Source: `AUTH_JWT_REFRESH_TOKEN_EXPIRED` environment variable
-- On refresh: the entry is rewritten with the new jti and a TTL equal to the **remaining** lifetime of the presented refresh token, so the absolute expiry set at login is preserved and **never extended**
-- Auto Cleanup: Expired sessions are automatically removed by Redis when TTL expires
+- Initial TTL: `session.loginCacheTtlInMs`, the access-token lifetime from `AUTH_JWT_ACCESS_TOKEN_EXPIRED` (default: 1 hour)
+- On refresh: the entry is rewritten with the new digest and the TTL is reset to the same value
+- An entry that expired between refreshes is rewritten by the next refresh while the session row is still active
+- Auto Cleanup: Expired entries are removed by Redis when the TTL expires
 
 **Example:**
 
-- If `AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d`, the session expires 30 days after login
-- If `AUTH_JWT_REFRESH_TOKEN_EXPIRED=7d`, the session expires 7 days after login
-- Refreshing on day 20 of a 30-day session leaves 10 days, both on the new refresh token and on the Redis TTL
+- If `AUTH_JWT_ACCESS_TOKEN_EXPIRED=1h`, an access token stops validating one hour after the last login or refresh, even if its own expiry is later
+- The session row expires `AUTH_JWT_REFRESH_TOKEN_EXPIRED` after login, whatever the Redis entry does
 
 #### Database (Secondary: Management)
 
@@ -1424,7 +1444,7 @@ Used for session listing and management purposes.
 
 **Fields Stored:**
 
-- `jti`: JWT ID for session tracking
+- `jti`: JWT ID the refresh rotation compares
 - `ipAddress`: Client IP at login time
 - `userAgent`: Parsed user agent (browser, OS, device)
 - `geoLocation`: Geographic location derived from IP (optional): `latitude`, `longitude`, `country`, `region`, `city`
@@ -1440,7 +1460,7 @@ Used for session listing and management purposes.
 
 **Not Used For:**
 
-- Token validation (Redis handles this via jti matching)
+- Access-token validation (Redis handles this via the jti digest)
 - Real-time validation during API requests
 
 #### How They Work Together
@@ -1448,33 +1468,29 @@ Used for session listing and management purposes.
 ```mermaid
 graph TB
     A[User Login] --> B[Create Session in Database with jti]
-    A --> C[Create Session in Redis with jti and TTL 30d]
+    A --> C[Create Session in Redis with jti digest and TTL = access-token lifetime]
 
     D[API Request with Access Token] --> E{Check Redis}
-    E -->|Session Found| F{jti Match?}
+    E -->|Session Found| F{Digest Match?}
     E -->|Session Not Found| G[Reject 401]
 
     F -->|Yes| H[Allow Request]
     F -->|No| G
 
-    I[Token Refresh Request] --> J{Check Redis}
-    J -->|Session Found| K{jti Match?}
-    J -->|Session Not Found| L[Reject 401]
-
-    K -->|Yes| M[Generate new jti and new tokens<br/>Absolute expiry unchanged]
-    K -->|No| L
-
-    M --> N{Rotate jti in Database<br/>on a live session}
-    N -->|No live session| L
-    N -->|Committed| O{Rewrite Redis entry<br/>only if the key exists}
-    O -->|Key gone| L
-    O -->|Written| W[Return new tokens]
+    I[Token Refresh Request] --> J[Generate new jti and new tokens<br/>Absolute expiry unchanged]
+    J --> N{Rotate jti in Database<br/>on a live session with the old jti}
+    N -->|No live session| X[Revoke if active, purge, reject 401]
+    N -->|Committed| O{Compare and set<br/>the Redis digest}
+    O -->|Mismatch| X
+    O -->|Updated| W[Return new tokens]
+    O -->|Absent| Y[Rewrite the entry]
+    Y --> W
 
     P[View Sessions] --> Q[Query Database]
     Q --> R[Display Active Sessions List]
 
     T[Revoke Session] --> S[Mark Revoked in Database]
-    S --> U[Enqueue the purge after the commit:<br/>the exact revoked session ids]
+    S --> U[Enqueue the purge after the commit:<br/>the exact revoked session refs]
     U --> V[All Tokens Invalid When the Job Runs<br/>session lookup fails]
 ```
 
@@ -1486,13 +1502,13 @@ When a session is revoked:
     - `isRevoked = true`
     - `revokedAt = now`
     - `revokedById = userId` (who initiated the revocation)
-2. **Redis**: After the commit, `SessionDomain.purgeRevokedLogins(userId, sessions)` enqueues one `purgeLogins` job on the `session` queue.
+2. **Redis**: After the commit, `SessionQueue.purgeLogins(userId, sessions)` enqueues one `purgeLogins` job on the `session` queue.
     - The job carries the user id and the exact session refs the revoke returned, whether the path revoked one session, a subset, or every session of the user.
-    - `SessionProcessorService` runs it and `SessionCache.deleteLogins` deletes exactly those keys. A login made after the revoke keeps its key.
+    - `SessionProcessorService` runs it: `SessionCache.deleteLogins` deletes exactly those keys, and the push tokens of the user's ownerships without a live session are cleared. A login made after the revoke keeps its key.
     - An enqueue failure is logged and reported, and the request still succeeds. An unpurged key keeps passing the session check until its TTL expires.
 3. **Activity log**: The rows are staged after the enqueue.
-4. **Access Tokens**: All access tokens for this session become invalid once the purge job runs (jti validation fails)
-5. **Refresh Tokens**: All refresh tokens for this session become invalid once the purge job runs (jti validation fails). A refresh already running when the key is purged answers 401, because its Redis rewrite requires the key to exist
+4. **Access Tokens**: All access tokens for this session become invalid once the purge job runs (the Redis lookup fails)
+5. **Refresh Tokens**: A refresh with a token of this session fails at once, because the rotation matches no live session row
 6. **Active Requests**: Any subsequent API calls with tokens from this session are rejected with 401 Unauthorized once the job has run
 
 ### Session Lifecycle
@@ -1501,7 +1517,7 @@ When a session is revoked:
     - User logs in successfully
     - System generates unique sessionId and jti
     - Session linked to a `DeviceOwnership` (the specific user-device pair)
-    - **Device Constraint**: Only one active session per device-user pair is allowed
+    - **Device Constraints**: Only one active session per device-user pair is allowed, and the login revokes the active sessions of other users on the same device
     - Session stored in both Redis (with TTL) and Database (with jti and deviceOwnershipId)
     - Tokens issued containing sessionId and jti
 
@@ -1510,29 +1526,27 @@ When a session is revoked:
     - Token signature verified (ES256)
     - sessionId and jti extracted from token
     - Redis checked for session existence
-    - jti compared between token and Redis session
-    - Request allowed only if session exists AND jti matches
+    - jti digest compared between token and Redis session
+    - Request allowed only if session exists AND the digest matches
 
 3. **Refresh**
     - Refresh token received
     - Token signature verified (ES512)
     - sessionId and jti extracted from token
-    - Redis checked for session existence
-    - jti compared between token and Redis session
-    - If valid: new jti generated, session updated in the Database, then in Redis while its key still exists
-    - New tokens issued with new jti
-    - Old jti invalidated (old tokens won't work)
+    - New jti and tokens generated
+    - jti rotated in the Database only while it equals the presented jti on a live session, then compared and rotated in Redis
+    - Old jti invalidated (old tokens won't work); presenting one revokes the session
 
 4. **Expiration**
-    - Redis TTL expires (based on config)
-    - Session automatically removed from Redis
-    - All tokens become invalid (session not found in Redis)
-    - Database record remains for audit trail
+    - Redis TTL expires (access-token lifetime without a refresh)
+    - All access tokens become invalid (session not found in Redis)
+    - A refresh before the session row expires rewrites the entry
+    - The session row expires `AUTH_JWT_REFRESH_TOKEN_EXPIRED` after login, and the database record remains for audit trail
 
 5. **Revocation**
     - User or admin revokes session
     - Database record marked as revoked
-    - Revoked session id purge enqueued after the commit, then the activity row staged
+    - Revoked session purge enqueued after the commit, then the activity row staged
     - All tokens for this session become invalid when the purge job runs
 
 **What invalidates sessions.** Every trigger follows one order:
@@ -1549,7 +1563,7 @@ Around that order:
 - An enqueue failure is logged and reported, and does not fail the request.
 - The password change, forgot-password reset, admin temporary password, and admin two-factor reset enqueue their notification concurrently with the purge enqueue, after the commit and before the activity rows are staged. A notification enqueue failure is logged and reported, and the request still succeeds.
 - Each of those four reads the recipient snapshot (address, enabled channels, device tokens) before the transaction opens. The order commit, enqueue, stage is unchanged.
-- The admin two-factor reset also clears the user's two-factor attempt lock after the commit.
+- The admin two-factor reset also sets the user's two-factor attempt counter to 0 inside its transaction.
 
 | Trigger | Scope | Purge job carries |
 | --- | --- | --- |
@@ -1558,22 +1572,29 @@ Around that order:
 | Admin temporary password | All sessions of the target user | The revoked session refs |
 | Two-factor disable, and admin two-factor reset | All sessions of the user | The revoked session refs |
 | Self account deletion (`DELETE /user/user/self/delete`) | All sessions of the user, revoked in the same transaction as the soft-delete and the device-ownership revoke | The revoked session refs |
-| Credential login that reaches the password-attempt limit | All sessions of the user, revoked in the same transaction as the `inactive` status write and the device-ownership revoke | The revoked session refs |
+| A spent password or two-factor attempt budget (the `lockout` job) | All sessions of the user, revoked in the same transaction as the `inactive` status write and the device-ownership revoke | The revoked session refs |
 | Admin revoke-all (`DELETE /admin/user/:userId/session/revoke-all`) | All sessions of the target user | The revoked session refs |
 | Admin status change to `blocked` or `inactive` (`PATCH /admin/user/update/:userId/status`) | All sessions of the target user | The revoked session refs |
 | Device removal, by the user or an admin | All sessions bound to that device ownership | The revoked session refs |
 | Re-login from an already-owned device | Prior active sessions on that device-user pair | The revoked session refs |
+| Login on a device another user is signed in to | Every active session of the other users on that device, per user | Each user's revoked session refs |
+| Refresh-token reuse | The reused session only | That session's ref |
 | Logout (`POST /shared/user/logout`) | The current session only | That session's ref |
 | Session revoke, by the user or an admin | The named session only | That session's ref |
 
-**Self account deletion.** `UserDomain.deleteSelf`:
+**Self account deletion.** `UserHttpService.deleteSelf`:
 
-1. Prepares `userRevokeAllSessions` (with the user passed explicitly as `userId` and `createdBy`) and `userDeleteSelf`.
-2. Runs one transaction that soft-deletes the user and sets it `inactive`, revokes every active session, and revokes every live device ownership with its device's push token cleared ([Device][ref-doc-device]).
-3. After the commit, enqueues the purge of the revoked session keys and, when the user has a profile photo under their own profile photo path, the `user` queue job that deletes the photo from S3 (see [File Upload][ref-doc-file-upload]).
-4. Stages `userRevokeAllSessions`, then `userDeleteSelf`.
+1. Refuses an `admin` or `superAdmin` account, then prepares `userRevokeAllSessions` (with the user passed explicitly as `userId` and `createdBy`) and `userDeleteSelf`.
+2. Checks the current password of an account that holds one, under the password attempt counter.
+3. Runs one transaction that:
+    - refuses the deletion while the user owns a workspace with another member, and soft-deletes the workspaces the user owns alone
+    - cancels the user's pending join requests and invites, and removes their workspace, project, mobile-number, and two-factor rows
+    - revokes every active session, and every live device ownership with its push token cleared ([Device][ref-doc-device])
+    - rewrites the user's identity, sets it `inactive`, and soft-deletes it
+4. After the commit, enqueues the purge of the revoked session keys and, when the user has a profile photo under their own profile photo path, the `user` queue job that deletes the photo from S3 (see [File Upload][ref-doc-file-upload]).
+5. Stages `userRevokeAllSessions`, `userDeleteSelf`, and one `workspaceDeleted` row per deleted workspace.
 
-Both rows are written on every self-deletion, including one with no active session.
+Both user rows are written on every self-deletion, including one with no active session.
 
 **Status change by an admin.**
 
@@ -1584,11 +1605,11 @@ Both rows are written on every self-deletion, including one with no active sessi
 
 Account status is also enforced per request. `UserGuard`, applied through `@UserProtected()`, re-reads the user from the database on every call:
 
-- It rejects a valid token whose user row no longer exists (`UserAccountNotFoundException`, 401, `51024`). The lookup filters `deletedAt: null`, so a soft-deleted user counts as gone.
+- It rejects a valid token whose user row no longer exists (`UserAccountNotFoundException`, 401, `51020`). The lookup filters `deletedAt: null`, so a soft-deleted user counts as gone.
 - It rejects a request that carries no JWT payload (`AuthJwtGuardMissingException`, 401, `50820`).
 - It rejects a blocked account (`UserBlockedForbiddenException`).
 - It rejects any other non-active status (`UserInactiveForbiddenException`).
-- It rejects an expired password (`UserPasswordExpiredException`).
+- It rejects an expired password (`UserPasswordExpiredException`), except on a token whose `loginWith` is social.
 - It rejects an unverified email (`UserEmailNotVerifiedException`) unless the route opts out with `@UserProtected(false)`.
 
 The same re-read is why a password that expires mid-session locks the caller out without any session being revoked.
@@ -1629,9 +1650,9 @@ sequenceDiagram
             Redis-->>API: null
             API-->>Client: 401 Unauthorized (SessionRevokedException)
         else Session Found
-            Redis-->>API: {userId, sessionId, jti, expiredAt}
+            Redis-->>API: {userId, sessionId, jtiDigest}
 
-            API->>API: Compare token jti with Redis jti
+            API->>API: Compare the digest of the token jti with the Redis digest
 
             alt jti Mismatch
                 API-->>Client: 401 Unauthorized (SessionRevokedException)

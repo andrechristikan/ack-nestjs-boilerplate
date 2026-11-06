@@ -71,7 +71,7 @@ Pass the whole object or none of it.
 Each decorator also emits:
 
 - multipart OpenAPI (`ApiConsumes('multipart/form-data')` plus a binary `ApiBody` from the field name(s))
-- the upload error kit from `DocFileErrorResponses` in `src/common/doc/constants/doc.constant.ts`
+- the upload error kit from `FileUploadDocErrors` in `src/common/file/constants/file.constant.ts`
 
 Flow: [Doc Documentation][ref-doc-doc].
 
@@ -223,7 +223,7 @@ For each file:
 - Parses CSV (.csv) files into a structured data array with rows and columns.
 - The pipe converts the raw file buffer into JavaScript objects, using semicolon (;) as the delimiter.
 
-**Returns:** Array of parsed row objects `T[]`, or `undefined` when no file was uploaded
+**Returns:** Array of parsed row objects `T[]`, or `null` when no file was uploaded
 
 **Supports:**
 
@@ -333,11 +333,11 @@ The live example is `POST /shared/user/profile/photo/upload` on `UserSharedContr
 @Response('user.uploadPhotoProfile')
 @TermPolicyAcceptanceProtected()
 @UserProtected()
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
 @FileUploadSingle()
 @RequestTimeout('1m')
-@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
 @HttpCode(HttpStatus.OK)
 @Post('/profile/photo/upload')
 async uploadPhotoProfile(
@@ -356,7 +356,7 @@ async uploadPhotoProfile(
 }
 ```
 
-`UserProfileDomain.uploadPhotoProfile` derives the extension, builds the key, then loads the user and writes the object in parallel:
+`UserProfileDomain.uploadPhotoProfile` first rejects a file larger than `user.photo.maxSizeInBytes` (2 MB) with `UserPhotoSizeExceededException` (400, `51025`). It then derives the extension, builds the key, and loads the user and writes the object in parallel:
 
 ```typescript
 const extension: EnumFileExtensionImage =
@@ -389,10 +389,9 @@ const [user, aws] = await Promise.all([
 - returns `null` when S3 is not configured, and the domain answers `AwsS3NotConfiguredException` (404, `51406`) with no database write
 - raises `AwsS3ObjectExistException` (409, `51402`) when the generated key already holds an object, since this call leaves `forceUpdate` off
 - otherwise the domain:
-    1. prepares `userUpdatePhotoProfile`
-    2. stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction)
-    3. enqueues the delete of the previous photo (see [Replaced photo cleanup](#replaced-photo-cleanup))
-    4. stages the activity log
+    1. stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction)
+    2. enqueues the delete of the previous photo (see [Replaced photo cleanup](#replaced-photo-cleanup))
+- `UserProfileHttpService.uploadPhotoProfile` prepares the `userUpdatePhotoProfile` activity log before the domain call and stages it after.
 
 A missing user answers `UserNotFoundException`. Because the object and the user load run in parallel, the new object stays in S3 when the user is missing.
 
@@ -448,11 +447,11 @@ export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
+@RequestThrottle({ user: true })
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
 @FileUploadSingle()
 @RequestTimeout('1m')
-@RequestThrottle({ user: true })
 @HttpCode(HttpStatus.OK)
 @Post('/import')
 async import(
@@ -467,7 +466,7 @@ async import(
   )
   data: UserImportRequestDto[]
 ): Promise<IResponseReturn<void>> {
-  return this.userImportHttpService.importByAdmin(data, createdBy);
+  return this.userRegistrationHttpService.importByAdmin(data, createdBy);
 }
 ```
 
@@ -665,7 +664,7 @@ async presignGetItem(
 2. Backend generates a unique S3 key and time-limited presigned URL
 3. Client uploads the file **directly to S3** using the presigned URL via HTTP PUT
 4. Client notifies the backend of successful upload with the S3 key
-5. Backend rejects a key outside the user's own profile photo path, then saves the file reference to the database with audit trail
+5. Backend rejects a key outside the user's own profile photo path, confirms the object exists in S3 within the size limit, then saves the file reference to the database with audit trail
 6. Backend enqueues the delete of the replaced photo
 
 > [!NOTE] **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). A call overrides it via the `expiredInSeconds` option.
@@ -674,8 +673,8 @@ async presignGetItem(
 
 **Step 1: Request schemas**
 
-- Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`.
-- The update schema also reuses its `key` field (non-empty, matching `AwsS3ObjectKeyRegex`) with its own description.
+- The generate schema picks `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int().min(1)`.
+- The update schema picks only `key` (non-empty, matching `AwsS3ObjectKeyRegex`) and gives it its own description. It carries no `size`: the domain reads the size from the stored object.
 - `AwsS3ObjectKeyRegex` admits letters, digits, `.`, `_`, `-`, and `/`, and rejects a leading `/`, an empty segment (`//`), and `..`.
 - A key that fails it answers 422 (`50300`).
 
@@ -690,7 +689,7 @@ export const UserGeneratePhotoProfileRequestSchema =
     });
 
 export const UserUpdateProfilePhotoRequestSchema =
-    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+    AwsS3PresignRequestSchema.pick({ key: true }).extend({
         key: AwsS3PresignRequestSchema.shape.key.meta({
             description:
                 'Key of the uploaded profile photo, as returned by the presign step',
@@ -721,9 +720,9 @@ export class UserSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @HttpCode(HttpStatus.OK)
     @Post('/profile/photo/presign/generate')
     async generatePhotoProfilePresign(
@@ -741,9 +740,9 @@ export class UserSharedController {
     @Response('user.updatePhotoProfile')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/profile/photo/update')
     async updatePhotoProfile(
         @AuthJwtPayload('userId') userId: string,
@@ -760,6 +759,7 @@ export class UserSharedController {
 `UserProfileHttpService` is a thin hop:
 
 - It awaits the domain and wraps the presign in `{ data: presign }` for the response interceptor.
+- `updatePhotoProfile` and `uploadPhotoProfile` also prepare the `userUpdatePhotoProfile` activity log and stage it after the domain call.
 - The S3 work lives in `UserProfileDomain`.
 
 ```typescript
@@ -769,6 +769,11 @@ export class UserProfileDomain {
         userId: string,
         { extension, size }: IUserGeneratePhotoProfile
     ): Promise<IAwsS3Presign> {
+        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(size);
+        if (!isSizeAllowed) {
+            throw new UserPhotoSizeExceededException();
+        }
+
         const key: string = this.createRandomFilenamePhotoProfileWithPath(
             userId,
             {
@@ -791,43 +796,38 @@ export class UserProfileDomain {
 
     async updatePhotoProfile(
         userId: string,
-        { key, size }: IUserUpdatePhotoProfile
+        { key }: IUserUpdatePhotoProfile
     ): Promise<void> {
-        const isS3Initialized = this.awsS3Service.isInitialized();
-        if (!isS3Initialized) {
-            throw new AwsS3NotConfiguredException();
-        }
-
         const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, key);
         if (!isOwned) {
             throw new UserPhotoKeyInvalidException();
         }
 
         try {
-            const aws: IAwsS3 = this.awsS3Service.mapPresign(
-                { key, size },
-                { access: EnumAwsS3Accessibility.public }
-            );
+            const aws: IAwsS3 | null = await this.awsS3Service.checkItem(key, {
+                access: EnumAwsS3Accessibility.public,
+            });
+            if (!aws) {
+                throw new AwsS3NotConfiguredException();
+            }
+
+            const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(aws.size);
+            if (!isSizeAllowed) {
+                throw new UserPhotoSizeExceededException();
+            }
 
             const user = await this.userRepository.findOneById(userId);
             if (!user) {
                 throw new UserNotFoundException();
             }
 
-            const activityLogs = [
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userUpdatePhotoProfile,
-                }),
-            ];
             await this.userRepository.updatePhotoProfile(userId, aws);
-
             await this.deletePreviousPhoto(userId, user.photo, aws.key);
-            this.activityLogDomain.stagePrepared(activityLogs);
-
-            return;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            } else if (err instanceof NotFound) {
+                throw new UserPhotoKeyInvalidException();
             }
 
             throw new AppUnknownException(err);
@@ -838,20 +838,26 @@ export class UserProfileDomain {
 
 Two things follow from the options passed:
 
-- `presignPutItem` and `mapPresign` both name `EnumAwsS3Accessibility.public`, so the photo is signed against, and stored in, the public bucket. `access` is a required option on both, so the value a call means is always written at the call site.
+- `presignPutItem` and `checkItem` both name `EnumAwsS3Accessibility.public`, so the photo is signed against, and read from, the public bucket. `access` is a required option on both, so the value a call means is always written at the call site.
 - No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInSeconds`, which is 30 minutes.
 
 S3 not configured:
 
 - `presignPutItem` returns `null`, and the domain converts that into `AwsS3NotConfiguredException` (404, `51406`).
-- `updatePhotoProfile` checks `AwsS3Service.isInitialized()` first and throws the same exception, since `mapPresign` builds the reference without calling S3.
+- `updatePhotoProfile` throws the same exception when `checkItem` returns `null`.
+
+Object check:
+
+- `AwsS3Service.checkItem` sends a `HeadObject` request and returns the stored object as `IAwsS3`, so the size and URLs come from S3, not from the client.
+- A key with no object in the bucket raises S3 `NotFound`, which the domain maps to `UserPhotoKeyInvalidException`.
+- An object larger than `user.photo.maxSizeInBytes` (2 MB) throws `UserPhotoSizeExceededException` (400, `51025`). The generate step applies the same limit to the declared `size`.
 
 Key ownership:
 
 - `updatePhotoProfile` takes the `key` from the request body, so it checks the key before it stores anything.
 - `UserUtil.isPhotoProfileKeyOwned(userId, key)` is true only when the key starts with the user's own profile photo path (`user.uploadPhotoProfilePath` with `{userId}` filled) followed by `/`.
-- A key outside that path throws `UserPhotoKeyInvalidException` (400, `51028`, `user.error.photoKeyInvalid`). Nothing is written and nothing is enqueued.
-- The check runs after the S3 configuration check and before the user is loaded.
+- A key outside that path throws `UserPhotoKeyInvalidException` (400, `51024`, `user.error.photoKeyInvalid`). Nothing is written and nothing is enqueued.
+- The check runs first, before any S3 call.
 
 `createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileDomain`:
 
@@ -907,7 +913,6 @@ async function uploadPhotoSimple(file: File) {
             },
             body: JSON.stringify({
                 key: presignData.key,
-                size: file.size,
             }),
         });
 
@@ -975,12 +980,13 @@ sequenceDiagram
         S3->>S3: Encrypt file with AES256
         S3-->>Client: 200 OK
 
-        Client->>Backend: PUT /profile/photo/update<br/>{key, size}
-        Backend->>AwsS3Service: mapPresign({ key, size }, { access: public })
+        Client->>Backend: PUT /profile/photo/update<br/>{key}
+        Backend->>AwsS3Service: checkItem(key, { access: public })
+        AwsS3Service->>S3: HeadObject
+        S3-->>AwsS3Service: object size and metadata
         AwsS3Service-->>Backend: IAwsS3
 
         Backend->>Repository: updatePhotoProfile(userId, aws)
-        Repository->>Repository: Save S3 reference + audit trail (request log read from store)
         Repository-->>Backend: Success
         Backend->>Queue: user queue deletePhoto (previous photo, when one exists)
         Backend-->>Client: 200 OK
@@ -1012,11 +1018,11 @@ sequenceDiagram
     - Reduces server bandwidth and improves performance
 
 3. **Database Update Stage:**
-    - Client notifies backend with S3 key and file size
-    - `UserProfileDomain` rejects a key outside the user's own profile photo path with `UserPhotoKeyInvalidException` (400, `51028`)
-    - Backend maps presign data to `IAwsS3`
-    - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
-    - After the update the delete of the previous photo is enqueued, then the activity log is staged.
+    - Client notifies backend with the S3 key
+    - `UserProfileDomain` rejects a key outside the user's own profile photo path with `UserPhotoKeyInvalidException` (400, `51024`)
+    - `AwsS3Service.checkItem` reads the stored object as `IAwsS3`, and the domain rejects an object over the size limit with `UserPhotoSizeExceededException` (400, `51025`)
+    - `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
+    - After the update the delete of the previous photo is enqueued, then `UserProfileHttpService` stages the `userUpdatePhotoProfile` activity log.
     - `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
 
 ### Replaced photo cleanup
@@ -1032,7 +1038,7 @@ Both profile photo routes (`POST /shared/user/profile/photo/upload` and `PUT /sh
 - A stored `access` that names no S3 bucket fails the job as fatal, with no retry.
 - The path check keeps the cleanup from deleting an object another feature owns.
 - Self account deletion (`DELETE /user/user/self/delete`) enqueues the same `deletePhoto` job for the deleted user's photo through `UserQueue.deletePhoto`.
-    - `UserDomain.deleteSelf` enqueues it after the transaction commits, alongside the session cache purge, and only when the deleted user has a photo whose key sits under the user's own profile photo path (`UserUtil.isPhotoProfileKeyOwned`).
+    - `UserHttpService.deleteSelf` calls `UserProfileDomain.deleteOwnedPhoto` after the transaction commits, alongside the session purge job, and only when the deleted user has a photo whose key sits under the user's own profile photo path (`UserUtil.isPhotoProfileKeyOwned`).
     - The job carries the stored key and `access` of the photo being removed.
 - Queue settings for the `user` queue are in [Queue Documentation][ref-doc-queue].
 
@@ -1073,7 +1079,8 @@ async generate(
 ```
 
 - `TermPolicyContentPresignRequestSchema` carries `type` (from `TermPolicyAcceptRequestSchema`), `size` (picked from `AwsS3PresignRequestSchema`), `language` (`EnumMessageLanguage`), and `version` (integer).
-- `TermPolicyContentDomain.generateContentPresignByAdmin` rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
+- `TermPolicyContentDomain.generateContentPresignByAdmin` rejects a `size` above the content limit (`termPolicy.content.maxSizeInBytes`, 10 MB) with `TermPolicyContentSizeExceededException` (400, `51511`).
+- It rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type exists in any status other than `draft`.
 - The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` from `termPolicy.uploadContentPath` (`term-policies/{type}/v{version}`) plus `<language>.hbs`, so the same type, version and language always resolve to the same key.
 - `presignPutItem` is called with `{ forceUpdate: true, access: EnumAwsS3Accessibility.private }`, so term policy content is signed against the private bucket. Expiry is the 30 minute config default.
 - With S3 unconfigured, the route answers `AwsS3NotConfiguredException` (404, `51406`).

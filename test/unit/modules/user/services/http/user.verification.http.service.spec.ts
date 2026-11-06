@@ -4,21 +4,22 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type {
-    NotificationUserSetting,
-    User,
-    Verification,
-} from '@generated/prisma-client/client';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { DeviceDomain } from '@modules/device/domains/device.domain';
+import type { User, Verification } from '@generated/prisma-client/client';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationRecipient,
+    INotificationVerificationEmailPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
@@ -33,17 +34,12 @@ describe('UserVerificationHttpService', () => {
         mock<UserVerificationDomain>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
         mock<UserVerificationUtil>();
-    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const notificationDomain: MockProxy<NotificationDomain> =
         mock<NotificationDomain>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let service: UserVerificationHttpService;
 
@@ -72,14 +68,38 @@ describe('UserVerificationHttpService', () => {
         createdAt: new Date('2026-02-01T00:00:00.000Z'),
         createdBy: null,
     };
-    const notificationTokens = ['token-wren'];
-    const settings = [
-        { channel: 'push' },
-    ] as unknown as NotificationUserSetting[];
-    const user = {
+    const user: User = {
         id: 'user-wren',
+        name: 'Wren',
+        username: 'wren',
+        isVerified: false,
+        verifiedAt: null,
         email: 'wren@example.com',
-    } as User;
+        roleId: 'role-1',
+        password: null,
+        passwordExpired: null,
+        passwordCreated: null,
+        passwordAttempt: null,
+        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
+        signUpFrom: EnumUserSignUpFrom.website,
+        signUpWith: EnumUserSignUpWith.credential,
+        status: EnumUserStatus.active,
+        gender: null,
+        countryId: 'country-1',
+        lastLoginAt: null,
+        lastIPAddress: null,
+        lastLoginFrom: EnumUserLoginFrom.website,
+        lastLoginWith: EnumUserLoginWith.credential,
+        lastWorkspaceId: null,
+        lastWorkspaceChangedAt: null,
+        photo: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+    };
     const emailVerification: IUserVerificationEmailCreate = {
         type: 'email',
         reference: 'VRF-new',
@@ -90,24 +110,24 @@ describe('UserVerificationHttpService', () => {
         hashedToken: 'hashed-new',
         link: 'https://example.com/verify?token=random-token',
     };
+    const emailPayload: INotificationVerificationEmailPayload = {
+        link: 'https://example.com/verify?token=random-token',
+        expiredAt: '2026-03-05T00:00:00.000Z',
+        expiredInMinutes: 15,
+        reference: 'VRF-new',
+    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogDomain.prepare.mockReturnValue(activityLog);
-        deviceDomain.getNotificationTokens.mockResolvedValue(
-            notificationTokens
-        );
-        notificationDomain.getListUserSetting.mockResolvedValue(settings);
-        notificationUtil.mapRecipient.mockReturnValue(recipient);
+        notificationDomain.getRecipient.mockResolvedValue(recipient);
         userVerificationDomain.getOneActiveByEmailToken.mockResolvedValue({
             verification,
             user,
         });
         userVerificationDomain.getOneForResendByEmail.mockResolvedValue(user);
-        userVerificationUtil.createEmail.mockReturnValue(emailVerification);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T00:00:00.000Z'
-        );
+        userVerificationDomain.createEmail.mockResolvedValue(emailVerification);
+        userVerificationUtil.mapEmailPayload.mockReturnValue(emailPayload);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -120,15 +140,12 @@ describe('UserVerificationHttpService', () => {
                     provide: UserVerificationUtil,
                     useValue: userVerificationUtil,
                 },
-                { provide: DeviceDomain, useValue: deviceDomain },
                 {
                     provide: NotificationDomain,
                     useValue: notificationDomain,
                 },
-                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         service = module.get(UserVerificationHttpService);
@@ -149,17 +166,9 @@ describe('UserVerificationHttpService', () => {
                 userId: 'user-wren',
                 createdBy: 'user-wren',
             });
-            expect(deviceDomain.getNotificationTokens).toHaveBeenCalledWith(
-                'user-wren'
-            );
-            expect(notificationDomain.getListUserSetting).toHaveBeenCalledWith(
-                'user-wren'
-            );
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.verifiedEmail,
-                ['token-wren'],
-                settings
+                EnumNotificationKind.verifiedEmail
             );
             expect(userVerificationDomain.verifyEmail).toHaveBeenCalledWith(
                 verification
@@ -174,7 +183,7 @@ describe('UserVerificationHttpService', () => {
         });
 
         it('writes nothing when the recipient read rejects', async () => {
-            deviceDomain.getNotificationTokens.mockRejectedValue(
+            notificationDomain.getRecipient.mockRejectedValue(
                 new Error('recipient-unavailable')
             );
 
@@ -206,7 +215,7 @@ describe('UserVerificationHttpService', () => {
             email: 'wren@example.com',
         };
 
-        it('persists a fresh verification, stages the activity row, and notifies', async () => {
+        it('creates a fresh verification, stages the activity row, and notifies', async () => {
             const result = await service.sendVerificationEmail(dto);
 
             expect(result).toEqual({});
@@ -218,30 +227,62 @@ describe('UserVerificationHttpService', () => {
                 userId: 'user-wren',
                 createdBy: 'user-wren',
             });
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
+            expect(notificationDomain.getRecipient).toHaveBeenCalledWith(
                 user,
-                EnumNotificationKind.verificationEmail,
-                ['token-wren'],
-                settings
+                EnumNotificationKind.verificationEmail
             );
-            expect(
-                userVerificationDomain.persistVerificationEmail
-            ).toHaveBeenCalledWith(
+            expect(userVerificationDomain.createEmail).toHaveBeenCalledWith(
                 'user-wren',
-                'wren@example.com',
-                emailVerification
+                'wren@example.com'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
+            expect(userVerificationUtil.mapEmailPayload).toHaveBeenCalledWith(
+                emailVerification
+            );
             expect(
                 notificationQueue.sendVerificationEmail
-            ).toHaveBeenCalledWith(recipient, {
-                expiredAt: '2026-03-05T00:00:00.000Z',
-                reference: 'VRF-new',
-                link: 'https://example.com/verify?token=random-token',
-                expiredInMinutes: 15,
+            ).toHaveBeenCalledWith(recipient, emailPayload);
+        });
+
+        it('reads the gate, the recipient, writes, stages, then enqueues in order', async () => {
+            const callOrder: string[] = [];
+            userVerificationDomain.getOneForResendByEmail.mockImplementation(
+                async () => {
+                    callOrder.push('getOneForResendByEmail');
+
+                    return user;
+                }
+            );
+            notificationDomain.getRecipient.mockImplementation(async () => {
+                callOrder.push('getRecipient');
+
+                return recipient;
             });
+            userVerificationDomain.createEmail.mockImplementation(async () => {
+                callOrder.push('createEmail');
+
+                return emailVerification;
+            });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stagePrepared');
+            });
+            notificationQueue.sendVerificationEmail.mockImplementation(
+                async () => {
+                    callOrder.push('sendVerificationEmail');
+                }
+            );
+
+            await service.sendVerificationEmail(dto);
+
+            expect(callOrder).toEqual([
+                'getOneForResendByEmail',
+                'getRecipient',
+                'createEmail',
+                'stagePrepared',
+                'sendVerificationEmail',
+            ]);
         });
 
         it('answers empty and sends nothing when the account is missing, inactive, or already verified', async () => {
@@ -253,10 +294,8 @@ describe('UserVerificationHttpService', () => {
                 {}
             );
 
-            expect(
-                userVerificationDomain.persistVerificationEmail
-            ).not.toHaveBeenCalled();
-            expect(deviceDomain.getNotificationTokens).not.toHaveBeenCalled();
+            expect(userVerificationDomain.createEmail).not.toHaveBeenCalled();
+            expect(notificationDomain.getRecipient).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendVerificationEmail
@@ -264,7 +303,7 @@ describe('UserVerificationHttpService', () => {
         });
 
         it('writes nothing when the recipient read rejects', async () => {
-            deviceDomain.getNotificationTokens.mockRejectedValue(
+            notificationDomain.getRecipient.mockRejectedValue(
                 new Error('recipient-unavailable')
             );
 
@@ -272,9 +311,7 @@ describe('UserVerificationHttpService', () => {
                 'recipient-unavailable'
             );
 
-            expect(
-                userVerificationDomain.persistVerificationEmail
-            ).not.toHaveBeenCalled();
+            expect(userVerificationDomain.createEmail).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendVerificationEmail

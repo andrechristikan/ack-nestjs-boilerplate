@@ -754,6 +754,7 @@ describe('AnalyticDashboardDomain', () => {
                     EnumActivityLogAction.userRevokeSessionByAdmin,
                     EnumActivityLogAction.userRevokeAllSessions,
                     EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                    EnumActivityLogAction.userRevokeSessionByDeviceLogin,
                 ],
                 startDate,
                 endDate

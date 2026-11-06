@@ -23,6 +23,7 @@ import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.in
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
+    IUserTwoFactorAttempt,
     IUserTwoFactorChecked,
     IUserTwoFactorLoginSetup,
     IUserTwoFactorSetupSecret,
@@ -32,6 +33,7 @@ import type {
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -46,6 +48,7 @@ export class UserTwoFactorDomain {
         private readonly sentryService: SentryService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly userQueue: UserQueue,
+        private readonly userUtil: UserUtil,
         private readonly configService: ConfigService
     ) {
         this.maxAttempt = this.configService.get<number>(
@@ -168,17 +171,22 @@ export class UserTwoFactorDomain {
         return { user, pendingSecret };
     }
 
-    /** Counts one two-factor attempt before the code is checked and enqueues the lockout job when the budget is spent; false when the attempt budget is spent. */
-    async countAttempt(user: IUser): Promise<boolean> {
+    /** Counts one two-factor attempt before the code is checked and enqueues the lockout job when the budget is spent; isAttemptCounted false with the lockout activity stages on a spent budget, lockoutStages empty otherwise. */
+    async countAttempt(user: IUser): Promise<IUserTwoFactorAttempt> {
         const attempt = await this.userTwoFactorRepository.incrementAttempt(
             user.id,
             this.maxAttempt
         );
         if (attempt === null) {
             await this.userQueue.lockout(user.id);
+            const lockoutStages = this.userUtil.buildTwoFactorLockoutStages(
+                user.id
+            );
+
+            return { isAttemptCounted: false, lockoutStages };
         }
 
-        return attempt !== null;
+        return { isAttemptCounted: true, lockoutStages: [] };
     }
 
     assertAttemptCounted(isAttemptCounted: boolean): void {
