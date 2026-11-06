@@ -1,6 +1,7 @@
 {
     "list": "Terms and policies retrieved successfully.",
     "listAccepted": "Accepted terms and policies retrieved successfully.",
+    "listPending": "Pending terms and policies retrieved successfully.",
     "getContent": "Term policy content retrieved successfully.",
     "create": "New term policy created successfully.",
     "updateContent": "Term policy content updated successfully.",
@@ -30,7 +31,7 @@
         "contentEmpty": "Term policy content cannot be empty.",
         "contentInvalid": "Term policy content is invalid.",
         "contentsLanguageMustBeUnique": "Each language can only be used once in term policy contents.",
-        "requiredInvalid": "Required field value is invalid.",
+        "requiredInvalid": "Accept the latest terms or policies to continue.",
         "requiredNotPublished": "A required term policy is not published yet.",
         "statusInvalid": "Term policy status is invalid.",
         "contentSizeExceeded": "Term policy content is larger than the allowed size.",

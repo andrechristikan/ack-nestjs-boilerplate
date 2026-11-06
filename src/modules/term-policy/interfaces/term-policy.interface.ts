@@ -78,6 +78,10 @@ export interface ITermPolicyAcceptanceRow {
 
 export type ITermPolicyRef = Pick<TermPolicy, 'id' | 'type' | 'version'>;
 
+export interface ITermPolicyPending {
+    termPolicies: ITermPolicyRef[];
+}
+
 export type ITermPolicyActivityLogSubject = Pick<
     TermPolicy,
     'id' | 'type' | 'version'

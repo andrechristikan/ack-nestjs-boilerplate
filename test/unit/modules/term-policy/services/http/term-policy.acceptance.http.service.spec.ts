@@ -36,6 +36,7 @@ import {
     TermPolicyAcceptanceDefaultAvailableOrderBy,
     TermPolicyAcceptanceSharedListCursorScope,
 } from '@modules/term-policy/constants/term-policy.list.constant';
+import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('TermPolicyAcceptanceHttpService', () => {
@@ -170,6 +171,28 @@ describe('TermPolicyAcceptanceHttpService', () => {
             expect(
                 termPolicyAcceptanceDomain.getListUserAccepted
             ).toHaveBeenCalledWith('user-1', cursorParams);
+        });
+    });
+
+    describe('getListUserPending', () => {
+        it('passes the default required types and wraps the refs', async () => {
+            const termPolicies: ITermPolicyRef[] = [
+                {
+                    id: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                },
+            ];
+            termPolicyAcceptanceDomain.getPendingForUser.mockResolvedValue(
+                termPolicies
+            );
+
+            const result = await service.getListUserPending('user-1');
+
+            expect(result).toEqual({ data: { termPolicies } });
+            expect(
+                termPolicyAcceptanceDomain.getPendingForUser
+            ).toHaveBeenCalledWith('user-1', TermPolicyDefaultRequiredTypes);
         });
     });
 

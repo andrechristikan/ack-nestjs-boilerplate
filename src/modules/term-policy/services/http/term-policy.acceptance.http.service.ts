@@ -6,7 +6,11 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import type { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
-import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyPending,
+    ITermPolicyUserAcceptance,
+} from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -58,6 +62,17 @@ export class TermPolicyAcceptanceHttpService {
             data,
             ...others,
         };
+    }
+
+    async getListUserPending(
+        userId: string
+    ): Promise<IResponseReturn<ITermPolicyPending>> {
+        const termPolicies =
+            await this.termPolicyAcceptanceDomain.getPendingForUser(
+                userId,
+                TermPolicyDefaultRequiredTypes
+            );
+        return { data: { termPolicies } };
     }
 
     async userAccept(

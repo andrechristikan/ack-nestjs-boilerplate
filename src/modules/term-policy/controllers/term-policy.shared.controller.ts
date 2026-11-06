@@ -34,7 +34,11 @@ import { TermPolicyUserAcceptanceResponseSchema } from '@modules/term-policy/dto
 import { TermPolicyAcceptRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import type { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyPendingResponseSchema } from '@modules/term-policy/dtos/response/term-policy.pending.response.dto';
+import type {
+    ITermPolicyPending,
+    ITermPolicyUserAcceptance,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.shared.user.termPolicy')
@@ -66,6 +70,24 @@ export class TermPolicySharedController {
             userId,
             query
         );
+    }
+
+    @Doc({
+        summary:
+            'list of required terms or policies the user has not accepted yet',
+    })
+    @Response('termPolicy.listPending', {
+        schema: TermPolicyPendingResponseSchema,
+    })
+    @UserProtected()
+    @RequestThrottle({ user: true })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/pending/list')
+    async listPending(
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<ITermPolicyPending>> {
+        return this.termPolicyAcceptanceHttpService.getListUserPending(userId);
     }
 
     @Doc({ summary: 'user accepts term or policy' })
