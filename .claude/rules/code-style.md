@@ -45,6 +45,8 @@ A string with placeholders is a `{token}` pattern (`naming.md`): one token is `S
 
 Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) is not copy-paste logic, and logic stays single-source; duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`QueueBase.addSideEffect`). The one exception is `DatabaseService.withTransaction`, the kit adapter over Prisma's callback-taking `$transaction`. Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
 
+No signature declares `asserts x is T` or `asserts x`. An assert that narrows a nullable input returns the narrowed value, `(value: T | null): T`, and the caller uses the return; a plain assert returns `void`.
+
 Default zero comments; the one marker is `// Sequential by design: <case>` (`concurrency.md`). A comment states what the symbol is or does, present tense, no history. `TODO` and `FIXME` are work markers. Re-test every comment a change touched.
 
 JSDoc lives in four places only; a name, a signature, and `docs/` explain everything else:
@@ -55,20 +57,3 @@ JSDoc lives in four places only; a name, a signature, and `docs/` explain everyt
 4. Nothing else: no class line, constant, field, property, enum member, interface field, constructor, private method, or controller, repository, guard, or service method; no `@param`, `@returns`, `@throws`, `@example`.
 
 A JSDoc states what the body on disk does now: no history, no "now" or "new", no plan reference. A body change re-tests its JSDoc; one that no longer matches is a defect. `reviewer` reports a JSDoc outside the four places or one that does not match its body.
-
-## ESLint
-
-`eslint.config.mjs` is the source for rule names. Five blocks carry `files:`: `ts/default` (`src/**/*.ts`, the full project rule set), `ts/env-boundary` (on top of `ts/default`: `src/configs/**/*.ts`, `src/main.ts`, `src/instrument.ts`, `src/queues/decorators/queue.decorator.ts`), `ts/other` (`scripts/**/*.ts`, `vitest.config.ts`: typescript-eslint recommended only), `ts/test` (`test/**/*.ts`), and `ts/test-spec` (`test/**/*.spec.ts`, on top of `ts/test`).
-
-- `ts/env-boundary` (the environment boundary, `config.md`) re-declares `no-restricted-properties` with `mathRandomRestriction` alone.
-- A lint-clean env read outside the boundary (`Reflect.get(process, 'env')`) is a defect.
-- No other `files:` block narrows a rule. Every file a `files:` block matches runs under `noInlineConfig: true`, so `pnpm lint` (`--max-warnings 0`) fails on an inline directive.
-- A rule that fires is fixed in code; one that cannot hold everywhere is the owner's to remove, for every file.
-- `ts/default` throw selectors: `throwNewErrorRestriction` (`throw new Error(...)`) and `throwIdentifierRestriction` (`eslint.config.mjs:172`: `throw <identifier>` outside an `if` branch testing `instanceof` a name ending `Exception` or `UnrecoverableError`, alone or `||`-joined up to three, so `HttpException` passes); `exceptions.md` says what to throw.
-- `@typescript-eslint/promise-function-async` (`checkArrowFunctions: false`) makes every function and method returning a promise `async`.
-- `forEachRestriction` (`eslint.config.mjs:141`, joined to `codeStyleSyntaxRestrictions` and `testSyntaxRestrictions`) rejects `.forEach` in `src/` and `test/`: iterate with `for...of`, `for (const [index, item] of items.entries())` when the index is needed, and skip with `continue`.
-
-## Move to ESLint
-
-- `@typescript-eslint/parameter-properties` with `allow: ['readonly', 'private readonly', 'protected readonly']` and `@typescript-eslint/prefer-readonly` carry Constructors and fields; a `no-restricted-syntax` selector on the Utility types names outside `**/interfaces/**` carries Utility types.
-- `ts/test` gains what `ts/default` enforces in `src/`, and a spec holds to it now: `@typescript-eslint/no-explicit-any`, `@typescript-eslint/prefer-nullish-coalescing`, `prefer-template`, and the this-call selectors (`eslint.config.mjs:79`: a `this.` call, bare or under `await`, `as`, `!`, `satisfies`, or `?.`, as an argument, property value, `if`/`while` condition, ternary test or branch, operator or template operand, spread, member-access object, computed member access (`obj[this.x()]`), `throw` argument, or `for…of` right side goes in a `const`; an array element, a concise arrow body, and a `this.x.bind(this)` argument stay inline).

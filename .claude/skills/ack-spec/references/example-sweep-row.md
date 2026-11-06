@@ -33,6 +33,7 @@ Bar: 100% statements, branches, functions, and lines on every file in scope
 Source of truth: the code as it is on disk, including repairs this run landed
 Mode: cover
 Rules to read:
+.claude/rules/activity-log.md
 .claude/rules/code-style.md
 .claude/rules/concurrency.md
 .claude/rules/cross-module.md
@@ -40,6 +41,7 @@ Rules to read:
 .claude/rules/discipline.md
 .claude/rules/dto.md
 .claude/rules/enum.md
+.claude/rules/eslint.md
 .claude/rules/exceptions.md
 .claude/rules/guards.md
 .claude/rules/http.md

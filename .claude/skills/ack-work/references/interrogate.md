@@ -6,7 +6,7 @@ Ask only what the owner has not named and the code cannot answer. Each line name
 
 - Route scope: `/public`, `/system`, `/admin`, `/user`, or `/shared` (`src/router/http/router.http.<scope>.module.ts`; `.claude/rules/http.md`, `.claude/rules/layering.md`).
 - Workspace scoping: does the route resolve its subject from the `x-workspace-id` header through `@WorkspaceProtected()` or `@WorkspaceMemberProtected(...roles)` and carry `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)` (`.claude/rules/cross-module.md`, `.claude/rules/feature-flag.md`, `.claude/rules/guards.md`).
-- Who may call it: role (`@RoleProtected`), CASL policy ability (`@PolicyProtected`), term-policy gating (`@TermPolicyAcceptanceProtected`), API key (`@ApiKeyProtected`, `@ApiKeySystemProtected`) (`.claude/rules/security.md`, `.claude/rules/guards.md`).
+- Who may call it: role (`@RoleProtected`), CASL policy ability (`@PolicyProtected`), term-policy gating (`@TermPolicyAcceptanceProtected`), API key (`@ApiKeyProtected`, `@ApiKeySystemProtected`) (`.claude/rules/auth.md`, `.claude/rules/guards.md`).
 
 ## Shape
 
@@ -23,7 +23,7 @@ Ask only what the owner has not named and the code cannot answer. Each line name
 
 ## Side effects
 
-- Activity log row: which action, which subject (`.claude/rules/security.md` Activity log).
+- Activity log row: which action, which subject (`.claude/rules/activity-log.md`).
 - Notification kind and channel (`.claude/skills/ack-work/references/add-notification.md`, `.claude/rules/queue.md`).
 - Queue job: name, payload, retry (`.claude/skills/ack-work/references/add-queue.md`, `.claude/rules/queue.md`).
 - Cache key: what it caches and what invalidates it (`.claude/rules/cache.md`).

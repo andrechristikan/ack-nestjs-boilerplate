@@ -29,7 +29,7 @@ src/migration/
 
 ## Outside the layering
 
-`src/migration/` does not follow the `src/` architecture. `layering.md`, `cross-module.md` (repository ownership and the one `ActivityLog` writer included), and the activity-log contract and side-effect rules (`security.md` Activity log, `exceptions.md` Side effects) do not bind a seed; a seed writing a model directly is the convention, not a finding.
+`src/migration/` does not follow the `src/` architecture. `layering.md`, `cross-module.md` (repository ownership and the one `ActivityLog` writer included), and the activity-log contract and side-effect rules (`activity-log.md`, `exceptions.md` Side effects) do not bind a seed; a seed writing a model directly is the convention, not a finding.
 
 - A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature domain method that writes the database.
 - A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSESService`).
@@ -37,7 +37,7 @@ src/migration/
 - A seed may inject any module's util, pure by `layering.md`, and any cache, and read any contract (`ApiKeyCredentialUtil`, `ApiKeyCache`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
 - A seed injects no queue class and stages no request side effect.
 - `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature domain module only for an injection allowed above; it imports no feature repository module.
-- What binds a seed: `naming.md`, `code-style.md`, `null-safety.md`, `concurrency.md`, and this file.
+- What binds a seed: `naming.md`, `code-style.md`, `eslint.md`, `null-safety.md`, `concurrency.md`, and this file.
 
 ## Term policies
 

@@ -29,6 +29,7 @@ Schema: when prisma/schema.prisma changes, run `pnpm db:generate` and hand back 
   migration:*, db:studio, mongosh, or redis-cli.
 Seeds: a seed under src/migration/ follows `.claude/skills/ack-work/references/add-seed.md`.
 Rules to read:
+.claude/rules/activity-log.md
 .claude/rules/code-style.md
 .claude/rules/concurrency.md
 .claude/rules/cross-module.md
@@ -36,6 +37,7 @@ Rules to read:
 .claude/rules/discipline.md
 .claude/rules/dto.md
 .claude/rules/enum.md
+.claude/rules/eslint.md
 .claude/rules/exceptions.md
 .claude/rules/guards.md
 .claude/rules/http.md
@@ -100,6 +102,7 @@ Rules to read:
 .claude/rules/discipline.md
 .claude/rules/dto.md
 .claude/rules/enum.md
+.claude/rules/eslint.md
 .claude/rules/exceptions.md
 .claude/rules/i18n.md
 .claude/rules/layering.md

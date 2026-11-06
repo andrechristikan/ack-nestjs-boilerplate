@@ -17,7 +17,7 @@ An HTTP service and a processor service sequence domain calls for one entry poin
     1. a cross-module gate (`RoleDomain.assertActorOutranks`);
     2. the subject domain, or the cross-module write transaction it owns;
     3. another module's queue class for a post-commit side effect, awaited (`QueueBase.addSideEffect`, `queue.md`).
-- Prepares and stages activity-log rows around the subject call (`security.md`, Activity log).
+- Prepares and stages activity-log rows around the subject call (`activity-log.md`).
 - Injects no repository and holds no business rule.
 - Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `src/modules/user/services/http/user.registration.http.service.ts:241-259` shows the last two:
     - a mapped write conflict: `DatabaseWriteConflictCode` through `DatabaseUtil.toException` to the guard's own exception (`database.md`, Transactions);
@@ -42,6 +42,6 @@ An HTTP service and a processor service sequence domain calls for one entry poin
 ## Processor service
 
 - Path: `services/processor/<module>[.<concern>].processor.service.ts`.
-- Follows the HTTP service's sequencing, Transactions, and Branches on the queue side; it stages no activity-log row (`security.md`, Activity log).
+- Follows the HTTP service's sequencing, Transactions, and Branches on the queue side; it stages no activity-log row (`activity-log.md`).
 - Translates a job payload into domain calls and returns `IQueueResponse`.
 - Originates only `QueueException` (`queue.md`) and a mapped write conflict.

@@ -46,6 +46,7 @@ New names in this example, not in the checkout: the plan file, `Country.isActive
         .claude/rules/discipline.md
         .claude/rules/dto.md
         .claude/rules/enum.md
+        .claude/rules/eslint.md
         .claude/rules/layering.md
         .claude/rules/naming.md
         .claude/rules/null-safety.md
@@ -66,6 +67,7 @@ New names in this example, not in the checkout: the plan file, `Country.isActive
         .claude/rules/cross-module.md
         .claude/rules/database.md
         .claude/rules/discipline.md
+        .claude/rules/eslint.md
         .claude/rules/exceptions.md
         .claude/rules/i18n.md
         .claude/rules/layering.md

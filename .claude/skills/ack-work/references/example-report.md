@@ -18,7 +18,7 @@ New names in this example, not in the checkout: the plan in `example-plan.md`, t
 
 ## Rule files read
 
-`code-style.md`, `concurrency.md`, `cross-module.md`, `database.md`, `discipline.md`, `dto.md`, `enum.md`, `exceptions.md`, `guards.md`, `http.md`, `layering.md`, `naming.md`, `null-safety.md`, `pagination.md`, `service.md`, `testing.md`, all under `.claude/rules/`.
+`activity-log.md`, `code-style.md`, `concurrency.md`, `cross-module.md`, `database.md`, `discipline.md`, `dto.md`, `enum.md`, `eslint.md`, `exceptions.md`, `guards.md`, `http.md`, `layering.md`, `naming.md`, `null-safety.md`, `pagination.md`, `service.md`, `testing.md`, all under `.claude/rules/`.
 
 ## Specs watched fail, then pass
 
