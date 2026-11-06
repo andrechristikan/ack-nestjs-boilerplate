@@ -5,6 +5,7 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    NotificationReadStateSelect,
     NotificationTermPolicyRecipientSendSelect,
     NotificationTermPolicyRecipientSendWhere,
     NotificationTermPolicyRecipientStateSelect,
@@ -14,6 +15,7 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type {
     INotificationCreate,
     INotificationCreateEntry,
+    INotificationReadState,
     INotificationTermPolicyRecipientCreate,
     INotificationTermPolicyRecipientState,
 } from '@modules/notification/interfaces/notification.interface';
@@ -77,6 +79,21 @@ export class NotificationRepository implements INotificationRepository {
         };
     }
 
+    private buildVisibleWhere(
+        userId: string,
+        excludedTypes: EnumNotificationType[]
+    ): Prisma.NotificationWhereInput {
+        return {
+            userId,
+            deliveries: {
+                some: { channel: EnumNotificationChannel.inApp },
+            },
+            ...(excludedTypes.length > 0 && {
+                type: { notIn: excludedTypes },
+            }),
+        };
+    }
+
     async findWithPaginationCursor(
         userId: string,
         {
@@ -85,19 +102,15 @@ export class NotificationRepository implements INotificationRepository {
         }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
         excludedTypes: EnumNotificationType[]
     ): Promise<IResponsePaginationReturn<Notification>> {
+        const visibleWhere = this.buildVisibleWhere(userId, excludedTypes);
+
         return this.paginationService.cursor(
             this.databaseService.client.notification,
             {
                 ...params,
                 where: {
                     ...where,
-                    userId,
-                    deliveries: {
-                        some: { channel: EnumNotificationChannel.inApp },
-                    },
-                    ...(excludedTypes.length > 0 && {
-                        type: { notIn: excludedTypes },
-                    }),
+                    ...visibleWhere,
                 },
             }
         );
@@ -106,13 +119,13 @@ export class NotificationRepository implements INotificationRepository {
     async findIsReadById(
         userId: string,
         notificationId: string
-    ): Promise<{ isRead: boolean } | null> {
+    ): Promise<INotificationReadState | null> {
         return this.databaseService.client.notification.findFirst({
             where: {
                 id: notificationId,
                 userId,
             },
-            select: { isRead: true },
+            select: NotificationReadStateSelect,
         });
     }
 
@@ -279,12 +292,16 @@ export class NotificationRepository implements INotificationRepository {
         return count > 0;
     }
 
-    async markAllAsRead(userId: string): Promise<Prisma.BatchPayload> {
+    async markAllAsRead(
+        userId: string,
+        excludedTypes: EnumNotificationType[]
+    ): Promise<Prisma.BatchPayload> {
         const readAt = this.helperDateService.create();
+        const visibleWhere = this.buildVisibleWhere(userId, excludedTypes);
 
         return this.databaseService.client.notification.updateMany({
             where: {
-                userId,
+                ...visibleWhere,
                 isRead: false,
             },
             data: {

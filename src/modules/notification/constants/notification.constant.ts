@@ -4,6 +4,11 @@ import { Prisma } from '@generated/prisma-client/client';
 export const NotificationPayloadEncryptionPurpose = 'notification.payload';
 
 /** @public */
+export const NotificationReadStateSelect = {
+    isRead: true,
+} satisfies Prisma.NotificationSelect;
+
+/** @public */
 export const NotificationTermPolicyRecipientSendWhere = {
     sentAt: null,
     claimedAt: null,

@@ -15,7 +15,7 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     deletedBy: true,
 }).extend({
     deviceId: z.string().meta({
-        description: 'Device ownership ID',
+        description: 'Device ID',
         example: faker.database.mongodbObjectId(),
     }),
     device: DeviceResponseSchema.meta({

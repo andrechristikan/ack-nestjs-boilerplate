@@ -3,6 +3,7 @@ import {
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
+import type { NotificationUserSetting } from '@generated/prisma-client/client';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import {
     EnumNotificationKind,
@@ -17,6 +18,18 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 describe('NotificationUtil', () => {
+    const settingBase: NotificationUserSetting = {
+        id: 'setting-id',
+        userId: 'user-id',
+        channel: EnumNotificationChannel.email,
+        type: EnumNotificationType.userActivity,
+        isActive: true,
+        createdAt: new Date('2024-01-01T00:00:00.000Z'),
+        createdBy: 'user-id',
+        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
@@ -98,6 +111,59 @@ describe('NotificationUtil', () => {
                 message: 'done',
                 completedSteps: [EnumNotificationStep.createNotification],
             });
+        });
+    });
+
+    describe('listConfigurableSettings', () => {
+        it('keeps the contract pairs and drops every other pair', () => {
+            const kept = [
+                {
+                    ...settingBase,
+                    type: EnumNotificationType.userActivity,
+                    channel: EnumNotificationChannel.email,
+                },
+                {
+                    ...settingBase,
+                    type: EnumNotificationType.userActivity,
+                    channel: EnumNotificationChannel.inApp,
+                },
+                {
+                    ...settingBase,
+                    type: EnumNotificationType.userActivity,
+                    channel: EnumNotificationChannel.push,
+                },
+                {
+                    ...settingBase,
+                    type: EnumNotificationType.marketing,
+                    channel: EnumNotificationChannel.email,
+                },
+                {
+                    ...settingBase,
+                    type: EnumNotificationType.marketing,
+                    channel: EnumNotificationChannel.push,
+                },
+            ];
+            const dropped = [
+                {
+                    ...settingBase,
+                    type: EnumNotificationType.userActivity,
+                    channel: EnumNotificationChannel.silent,
+                },
+                {
+                    ...settingBase,
+                    type: EnumNotificationType.securityAlert,
+                    channel: EnumNotificationChannel.email,
+                },
+                {
+                    ...settingBase,
+                    type: EnumNotificationType.marketing,
+                    channel: EnumNotificationChannel.inApp,
+                },
+            ];
+
+            const result = util.listConfigurableSettings([...dropped, ...kept]);
+
+            expect(result).toEqual(kept);
         });
     });
 

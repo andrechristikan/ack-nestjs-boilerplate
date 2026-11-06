@@ -1,9 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -37,7 +34,6 @@ describe('NotificationDomain', () => {
         mock<NotificationUserSettingRepository>();
     const notificationUtil: MockProxy<NotificationUtil> =
         mock<NotificationUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let domain: NotificationDomain;
 
     const notification: Notification = {
@@ -84,7 +80,6 @@ describe('NotificationDomain', () => {
                     useValue: notificationUserSettingRepository,
                 },
                 { provide: NotificationUtil, useValue: notificationUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         domain = module.get(NotificationDomain);
@@ -178,7 +173,7 @@ describe('NotificationDomain', () => {
     });
 
     describe('getListUserSetting', () => {
-        it('returns the stored user settings from the repository', async () => {
+        it('returns the stored user settings filtered to the configurable pairs', async () => {
             const settings: NotificationUserSetting[] = [
                 {
                     id: 'setting-id',
@@ -196,9 +191,17 @@ describe('NotificationDomain', () => {
                 settings
             );
 
+            const configurable = [settings[0]!];
+            notificationUtil.listConfigurableSettings.mockReturnValue(
+                configurable
+            );
+
             const result = await domain.getListUserSetting('user-id');
 
-            expect(result).toBe(settings);
+            expect(result).toBe(configurable);
+            expect(
+                notificationUtil.listConfigurableSettings
+            ).toHaveBeenCalledWith(settings);
             expect(
                 notificationUserSettingRepository.findUserSetting
             ).toHaveBeenCalledWith('user-id');
@@ -206,22 +209,25 @@ describe('NotificationDomain', () => {
     });
 
     describe('markAsRead', () => {
-        it('marks the notification with one guarded write and re-reads nothing on success', async () => {
+        it('reads the row first, then marks it with one guarded write', async () => {
+            notificationRepository.findIsReadById.mockResolvedValue({
+                isRead: false,
+            });
             notificationRepository.markAsRead.mockResolvedValue(true);
 
             await domain.markAsRead('user-id', 'notification-id');
 
+            expect(notificationRepository.findIsReadById).toHaveBeenCalledWith(
+                'user-id',
+                'notification-id'
+            );
             expect(notificationRepository.markAsRead).toHaveBeenCalledWith(
                 'notification-id',
                 'user-id'
             );
-            expect(
-                notificationRepository.findIsReadById
-            ).not.toHaveBeenCalled();
         });
 
-        it('throws NotificationNotFoundException when the guarded write misses and the notification does not exist', async () => {
-            notificationRepository.markAsRead.mockResolvedValue(false);
+        it('throws NotificationNotFoundException when the notification does not exist and never writes', async () => {
             notificationRepository.findIsReadById.mockResolvedValue(null);
 
             await expect(
@@ -236,17 +242,34 @@ describe('NotificationDomain', () => {
                     ],
                 messagePath: 'notification.error.notFound',
             });
-            expect(notificationRepository.findIsReadById).toHaveBeenCalledWith(
-                'user-id',
-                'notification-id'
-            );
+            expect(notificationRepository.markAsRead).not.toHaveBeenCalled();
         });
 
-        it('throws NotificationAlreadyReadException when the guarded write misses and the notification exists', async () => {
-            notificationRepository.markAsRead.mockResolvedValue(false);
+        it('throws NotificationAlreadyReadException when the row is already read and never writes', async () => {
             notificationRepository.findIsReadById.mockResolvedValue({
                 isRead: true,
             });
+
+            await expect(
+                domain.markAsRead('user-id', 'notification-id')
+            ).rejects.toMatchObject({
+                constructor: NotificationAlreadyReadException,
+                module: 'notification',
+                statusCode: EnumNotificationStatusCodeError.alreadyRead,
+                statusCodeKey:
+                    EnumNotificationStatusCodeError[
+                        EnumNotificationStatusCodeError.alreadyRead
+                    ],
+                messagePath: 'notification.error.alreadyRead',
+            });
+            expect(notificationRepository.markAsRead).not.toHaveBeenCalled();
+        });
+
+        it('throws NotificationAlreadyReadException when the guarded write misses after the read', async () => {
+            notificationRepository.findIsReadById.mockResolvedValue({
+                isRead: false,
+            });
+            notificationRepository.markAsRead.mockResolvedValue(false);
 
             await expect(
                 domain.markAsRead('user-id', 'notification-id')
@@ -264,7 +287,26 @@ describe('NotificationDomain', () => {
     });
 
     describe('markAllAsRead', () => {
-        it('returns the count of notifications updated by the repository', async () => {
+        it('passes the muted in-app types to the repository and returns the count', async () => {
+            const settings = [
+                {
+                    id: 'setting-id',
+                    userId: 'user-id',
+                    channel: EnumNotificationChannel.inApp,
+                    type: EnumNotificationType.userActivity,
+                    isActive: false,
+                    createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                    createdBy: 'user-id',
+                    updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+                    updatedBy: null,
+                },
+            ];
+            notificationUserSettingRepository.findUserSetting.mockResolvedValue(
+                settings
+            );
+            notificationUtil.listMutedInAppTypes.mockReturnValue([
+                EnumNotificationType.userActivity,
+            ]);
             notificationRepository.markAllAsRead.mockResolvedValue({
                 count: 3,
             });
@@ -272,8 +314,15 @@ describe('NotificationDomain', () => {
             const result = await domain.markAllAsRead('user-id');
 
             expect(result).toBe(3);
+            expect(
+                notificationUserSettingRepository.findUserSetting
+            ).toHaveBeenCalledWith('user-id');
+            expect(notificationUtil.listMutedInAppTypes).toHaveBeenCalledWith(
+                settings
+            );
             expect(notificationRepository.markAllAsRead).toHaveBeenCalledWith(
-                'user-id'
+                'user-id',
+                [EnumNotificationType.userActivity]
             );
         });
     });
@@ -356,39 +405,6 @@ describe('NotificationDomain', () => {
                         EnumNotificationStatusCodeError.settingInvalid
                     ],
                 messagePath: 'notification.error.settingInvalid',
-            });
-        });
-
-        it('throws NotificationSettingInvalidException when the write loses a write conflict', async () => {
-            const conflict = new Error('conflict');
-            notificationUserSettingRepository.updateUserSetting.mockRejectedValue(
-                conflict
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            await expect(
-                domain.updateUserSetting('user-id', data)
-            ).rejects.toMatchObject({
-                constructor: NotificationSettingInvalidException,
-                messagePath: 'notification.error.settingInvalid',
-            });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-        });
-
-        it('wraps any other write failure in AppUnknownException', async () => {
-            const failure = new Error('down');
-            notificationUserSettingRepository.updateUserSetting.mockRejectedValue(
-                failure
-            );
-            databaseUtil.toException.mockReturnValue(null);
-
-            await expect(
-                domain.updateUserSetting('user-id', data)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: failure,
             });
         });
     });

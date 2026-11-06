@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -31,20 +27,25 @@ export class NotificationDomain {
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
-        private readonly notificationUtil: NotificationUtil,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly notificationUtil: NotificationUtil
     ) {}
+
+    private async findMutedInAppTypes(
+        userId: string
+    ): Promise<EnumNotificationType[]> {
+        const settings =
+            await this.notificationUserSettingRepository.findUserSetting(
+                userId
+            );
+
+        return this.notificationUtil.listMutedInAppTypes(settings);
+    }
 
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
     ): Promise<IResponsePaginationReturn<Notification>> {
-        const settings =
-            await this.notificationUserSettingRepository.findUserSetting(
-                userId
-            );
-        const excludedTypes =
-            this.notificationUtil.listMutedInAppTypes(settings);
+        const excludedTypes = await this.findMutedInAppTypes(userId);
 
         return this.notificationRepository.findWithPaginationCursor(
             userId,
@@ -56,18 +57,16 @@ export class NotificationDomain {
     async getListUserSetting(
         userId: string
     ): Promise<NotificationUserSetting[]> {
-        return this.notificationUserSettingRepository.findUserSetting(userId);
+        const settings =
+            await this.notificationUserSettingRepository.findUserSetting(
+                userId
+            );
+
+        return this.notificationUtil.listConfigurableSettings(settings);
     }
 
     async markAsRead(userId: string, notificationId: string): Promise<void> {
-        const marked = await this.notificationRepository.markAsRead(
-            notificationId,
-            userId
-        );
-        if (marked) {
-            return;
-        }
-
+        // Sequential by design: gate before the work it guards
         const notification = await this.notificationRepository.findIsReadById(
             userId,
             notificationId
@@ -75,13 +74,25 @@ export class NotificationDomain {
         if (!notification) {
             throw new NotificationNotFoundException();
         }
+        if (notification.isRead) {
+            throw new NotificationAlreadyReadException();
+        }
 
-        throw new NotificationAlreadyReadException();
+        const marked = await this.notificationRepository.markAsRead(
+            notificationId,
+            userId
+        );
+        if (!marked) {
+            throw new NotificationAlreadyReadException();
+        }
     }
 
     async markAllAsRead(userId: string): Promise<number> {
-        const batchUpdated =
-            await this.notificationRepository.markAllAsRead(userId);
+        const excludedTypes = await this.findMutedInAppTypes(userId);
+        const batchUpdated = await this.notificationRepository.markAllAsRead(
+            userId,
+            excludedTypes
+        );
 
         return batchUpdated.count;
     }
@@ -92,26 +103,13 @@ export class NotificationDomain {
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
-        try {
-            const updated =
-                await this.notificationUserSettingRepository.updateUserSetting(
-                    userId,
-                    data
-                );
-            if (!updated) {
-                throw new NotificationSettingInvalidException();
-            }
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new NotificationSettingInvalidException();
-            }
-
-            throw new AppUnknownException(err);
+        const updated =
+            await this.notificationUserSettingRepository.updateUserSetting(
+                userId,
+                data
+            );
+        if (!updated) {
+            throw new NotificationSettingInvalidException();
         }
     }
 

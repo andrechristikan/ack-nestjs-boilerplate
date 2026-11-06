@@ -29,11 +29,8 @@ import {
     Body,
     Controller,
     Get,
-    HttpCode,
-    HttpStatus,
     Param,
     Patch,
-    Post,
     Put,
     Query,
 } from '@nestjs/common';
@@ -106,8 +103,7 @@ export class NotificationSharedController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/update/read')
+    @Patch('/read-all')
     async markAllAsRead(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {

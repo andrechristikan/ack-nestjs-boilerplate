@@ -5,7 +5,10 @@ import {
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
+import type {
+    NotificationUserSetting,
+    Prisma,
+} from '@generated/prisma-client/client';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
@@ -73,6 +76,18 @@ export class NotificationUtil {
         return this.messageService.setMessage(
             'notification.queue.error.stepsFailed',
             { properties: { steps: steps.join(', ') } }
+        );
+    }
+
+    listConfigurableSettings(
+        settings: NotificationUserSetting[]
+    ): NotificationUserSetting[] {
+        return settings.filter(setting =>
+            NotificationSettingContract.some(
+                contract =>
+                    contract.type === setting.type &&
+                    contract.channels.includes(setting.channel)
+            )
         );
     }
 

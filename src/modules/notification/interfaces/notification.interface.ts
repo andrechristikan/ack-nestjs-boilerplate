@@ -15,10 +15,15 @@ import {
     EnumNotificationProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
+import type { NotificationReadStateSelect } from '@modules/notification/constants/notification.constant';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import type { BulkJobOptions } from 'bullmq';
 import type { NotificationUserSetting } from '@generated/prisma-client/client';
 import type { SendTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
+
+export type INotificationReadState = Prisma.NotificationGetPayload<{
+    select: typeof NotificationReadStateSelect;
+}>;
 
 export interface INotificationKindContract {
     type: EnumNotificationType;

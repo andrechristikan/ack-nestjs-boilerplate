@@ -2,6 +2,7 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     INotificationCreateEntry,
+    INotificationReadState,
     INotificationTermPolicyRecipientCreate,
     INotificationTermPolicyRecipientState,
 } from '@modules/notification/interfaces/notification.interface';
@@ -24,7 +25,7 @@ export interface INotificationRepository {
     findIsReadById(
         userId: string,
         notificationId: string
-    ): Promise<{ isRead: boolean } | null>;
+    ): Promise<INotificationReadState | null>;
     createMany(entries: INotificationCreateEntry[]): Promise<Notification[]>;
     findTermPolicyRecipients(
         termPolicyId: string,
@@ -62,7 +63,10 @@ export interface INotificationRepository {
         updatedBy: string
     ): Promise<void>;
     markAsRead(notificationId: string, userId: string): Promise<boolean>;
-    markAllAsRead(userId: string): Promise<Prisma.BatchPayload>;
+    markAllAsRead(
+        userId: string,
+        excludedTypes: EnumNotificationType[]
+    ): Promise<Prisma.BatchPayload>;
     updateDeliveryProcessedAt(
         notificationId: string,
         channel: EnumNotificationChannel,
