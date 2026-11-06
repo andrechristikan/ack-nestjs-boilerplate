@@ -30,7 +30,6 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
-import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceInviteDefaultAvailableOrderBy,
@@ -71,7 +70,6 @@ export class WorkspaceInviteHttpService {
         private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
-        private readonly projectUtil: ProjectUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService,
@@ -240,20 +238,6 @@ export class WorkspaceInviteHttpService {
         };
         // Sequential by design: gate before the work it guards
         await this.workspaceInviteDomain.assertProjectRolePaired(create);
-
-        if (create.projectRole !== null) {
-            // Sequential by design: gate before the work it guards
-            const actorMember =
-                await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
-                    workspace.id,
-                    actorId
-                );
-            const actor = this.projectUtil.mapMemberActor(actorMember);
-            this.projectMemberDomain.assertPeerAllowed(
-                actor,
-                create.projectRole
-            );
-        }
 
         let projectLookup: Promise<Project | null> | null = null;
         if (create.projectId !== null) {

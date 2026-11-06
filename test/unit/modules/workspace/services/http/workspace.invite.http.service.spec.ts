@@ -49,9 +49,6 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
-import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
-import type { IProjectMemberActor } from '@modules/project/interfaces/project.interface';
-import { ProjectUtil } from '@modules/project/utils/project.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import {
     WorkspaceInviteDefaultAvailableOrderBy,
@@ -90,7 +87,6 @@ describe('WorkspaceInviteHttpService', () => {
     const projectMemberDomain: MockProxy<ProjectMemberDomain> =
         mock<ProjectMemberDomain>();
     const projectDomain: MockProxy<ProjectDomain> = mock<ProjectDomain>();
-    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
     const notificationDomain: MockProxy<NotificationDomain> =
@@ -235,17 +231,6 @@ describe('WorkspaceInviteHttpService', () => {
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
-    const actorMember: WorkspaceMember = {
-        ...existingMember,
-        id: 'member-actor',
-        userId: 'user-1',
-        role: EnumWorkspaceMemberRole.admin,
-    };
-    const projectActor: IProjectMemberActor = {
-        userId: 'user-1',
-        hasWorkspaceBypass: true,
-    };
-
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const now = new Date('2026-01-01T00:00:00.000Z');
 
@@ -293,7 +278,6 @@ describe('WorkspaceInviteHttpService', () => {
                 },
                 { provide: ProjectMemberDomain, useValue: projectMemberDomain },
                 { provide: ProjectDomain, useValue: projectDomain },
-                { provide: ProjectUtil, useValue: projectUtil },
                 { provide: UserDomain, useValue: userDomain },
                 { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: NotificationDomain, useValue: notificationDomain },
@@ -401,10 +385,6 @@ describe('WorkspaceInviteHttpService', () => {
                 tokenData,
             });
             notificationUtil.mapRecipient.mockReturnValue(recipient);
-            workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue(
-                actorMember
-            );
-            projectUtil.mapMemberActor.mockReturnValue(projectActor);
         });
 
         it('checks, reads the inviter and invitee, writes, stages, and emails an unregistered invitee in order', async () => {
@@ -604,68 +584,6 @@ describe('WorkspaceInviteHttpService', () => {
                 'user-1',
                 expect.objectContaining({ expiryDuration: 14 })
             );
-        });
-
-        it('asserts the project role peer rule for the actor workspace member before reading the project when a project role is given', async () => {
-            const callOrder: string[] = [];
-            projectMemberDomain.assertPeerAllowed.mockImplementation(() => {
-                callOrder.push('peer');
-            });
-            projectDomain.getActiveByIdAndWorkspace.mockImplementation(
-                async () => {
-                    callOrder.push('project');
-
-                    return project;
-                }
-            );
-
-            await service.createInvite(workspace, 'user-1', {
-                ...body,
-                projectId: 'project-1',
-                projectRole: EnumProjectMemberRole.admin,
-            } as WorkspaceInviteCreateRequestDto);
-
-            expect(
-                workspaceMemberDomain.validateWorkspaceMemberGuard
-            ).toHaveBeenCalledWith('workspace-1', 'user-1');
-            expect(projectUtil.mapMemberActor).toHaveBeenCalledWith(
-                actorMember
-            );
-            expect(projectMemberDomain.assertPeerAllowed).toHaveBeenCalledWith(
-                projectActor,
-                EnumProjectMemberRole.admin
-            );
-            expect(callOrder).toEqual(['peer', 'project']);
-        });
-
-        it('asserts no peer rule when no project role is given', async () => {
-            await service.createInvite(workspace, 'user-1', body);
-
-            expect(
-                workspaceMemberDomain.validateWorkspaceMemberGuard
-            ).not.toHaveBeenCalled();
-            expect(
-                projectMemberDomain.assertPeerAllowed
-            ).not.toHaveBeenCalled();
-        });
-
-        it('reads nothing and writes nothing when the peer rule rejects', async () => {
-            projectMemberDomain.assertPeerAllowed.mockImplementation(() => {
-                throw new ProjectMemberPeerForbiddenException();
-            });
-
-            await expect(
-                service.createInvite(workspace, 'user-1', {
-                    ...body,
-                    projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.admin,
-                } as WorkspaceInviteCreateRequestDto)
-            ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
-            expect(
-                projectDomain.getActiveByIdAndWorkspace
-            ).not.toHaveBeenCalled();
-            expect(userDomain.getOneActiveByEmail).not.toHaveBeenCalled();
-            expect(workspaceInviteDomain.createInvite).not.toHaveBeenCalled();
         });
 
         it('reads the project and the invitee together after the pairing gate', async () => {

@@ -105,8 +105,8 @@ export class WorkspaceAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/get/:workspaceId/members')
-    async membersList(
+    @Get('/member/:workspaceId/list')
+    async memberList(
         @Query({ schema: WorkspaceAdminMemberListRequestSchema })
         query: WorkspaceAdminMemberListRequestDto,
         @Param('workspaceId', { schema: RequestMongoIdSchema })
