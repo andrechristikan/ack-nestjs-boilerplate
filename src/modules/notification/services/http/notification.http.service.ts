@@ -1,7 +1,6 @@
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { MessageService } from '@common/message/services/message.service';
-import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
@@ -15,6 +14,7 @@ import type { NotificationUserSettingRequestDto } from '@modules/notification/dt
 import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import {
     NotificationDefaultAvailableOrderBy,
@@ -28,53 +28,9 @@ export class NotificationHttpService {
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
         private readonly messageService: MessageService,
-        private readonly activityLogDomain: ActivityLogDomain
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly notificationUtil: NotificationUtil
     ) {}
-
-    private toMessageProperties(
-        metadata: Prisma.JsonValue
-    ): IMessageProperties {
-        const properties: IMessageProperties = {};
-        if (
-            metadata === null ||
-            typeof metadata !== 'object' ||
-            Array.isArray(metadata)
-        ) {
-            return properties;
-        }
-
-        for (const [key, value] of Object.entries(metadata)) {
-            if (
-                typeof value === 'string' ||
-                typeof value === 'number' ||
-                typeof value === 'boolean'
-            ) {
-                properties[key] = value;
-            }
-        }
-
-        return properties;
-    }
-
-    private resolveRejectReasonLabel(
-        properties: IMessageProperties,
-        language: string | null
-    ): IMessageProperties {
-        const code = properties.rejectReasonCode;
-        if (typeof code !== 'string') {
-            return properties;
-        }
-
-        const options = {
-            ...(language !== null && { customLanguage: language }),
-        };
-        const rejectReasonLabel = this.messageService.setMessage(
-            `notification.rejectReason.${code}`,
-            options
-        );
-
-        return { ...properties, rejectReasonLabel };
-    }
 
     async getListCursor(
         userId: string,
@@ -99,10 +55,11 @@ export class NotificationHttpService {
         );
 
         const translated = data.map(notification => {
-            const metadataProperties = this.toMessageProperties(
-                notification.metadata
-            );
-            const properties = this.resolveRejectReasonLabel(
+            const metadataProperties =
+                this.notificationUtil.toMessageProperties(
+                    notification.metadata
+                );
+            const properties = this.notificationUtil.toRejectReasonProperties(
                 metadataProperties,
                 language
             );

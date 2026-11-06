@@ -1,5 +1,6 @@
 import type { Job } from 'bullmq';
 import type { Mock } from 'vitest';
+import type { MessageService } from '@common/message/services/message.service';
 import type { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 
@@ -27,11 +28,12 @@ export interface IQueueProcessorDoubles {
 }
 
 export function buildQueueProcessor(
-    sentryService: SentryService
+    sentryService: SentryService,
+    messageService: MessageService
 ): IQueueProcessorDoubles {
     const handle = vi.fn();
     const processor = Object.assign(
-        Reflect.construct(QueueProcessorBase, [sentryService]),
+        Reflect.construct(QueueProcessorBase, [sentryService, messageService]),
         { handle }
     );
 

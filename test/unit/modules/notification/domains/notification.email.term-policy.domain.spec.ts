@@ -465,9 +465,14 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 NotificationEmailDeliveryUnknownException
             );
             await expect(attempt).rejects.toMatchObject({
-                message: expect.stringMatching(/batch-id.* 2 recipients/),
+                message: 'notification.queue.email.error.deliveryUnknown',
+                isFatal: true,
                 rawError: error,
             });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.email.error.deliveryUnknown',
+                { properties: { batchId, unknownCount: 2 } }
+            );
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
             ).not.toHaveBeenCalled();
@@ -508,8 +513,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
                     NotificationEmailDeliveryUnknownException
                 );
                 await expect(attempt).rejects.toMatchObject({
-                    message: expect.stringContaining(' 2 recipients'),
+                    message: 'notification.queue.email.error.deliveryUnknown',
+                    unknownCount: 2,
                 });
+                expect(messageService.setMessage).toHaveBeenCalledWith(
+                    'notification.queue.email.error.deliveryUnknown',
+                    { properties: { batchId, unknownCount: 2 } }
+                );
                 expect(
                     notificationRepository.markTermPolicyRecipientsSent
                 ).not.toHaveBeenCalled();
@@ -540,8 +550,13 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 NotificationEmailDeliveryUnknownException
             );
             await expect(attempt).rejects.toMatchObject({
-                message: expect.stringContaining(' 1 recipients'),
+                message: 'notification.queue.email.error.deliveryUnknown',
+                unknownCount: 1,
             });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.email.error.deliveryUnknown',
+                { properties: { batchId, unknownCount: 1 } }
+            );
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
             ).toHaveBeenCalledWith(
@@ -608,10 +623,15 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 )
             ).rejects.toMatchObject({
                 constructor: NotificationEmailDeliveryUnknownException,
+                message: 'notification.queue.email.error.deliveryUnknown',
                 batchId,
                 unknownCount: 1,
                 rawError: error,
             });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.email.error.deliveryUnknown',
+                { properties: { batchId, unknownCount: 1 } }
+            );
             expect(
                 notificationRepository.releaseTermPolicyRecipients
             ).toHaveBeenCalledWith(claimNonce, ['user-2'], proceedBy);
@@ -643,10 +663,15 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 )
             ).rejects.toMatchObject({
                 constructor: NotificationEmailDeliveryUnknownException,
+                message: 'notification.queue.email.error.deliveryUnknown',
                 batchId,
                 unknownCount: 1,
                 rawError: error,
             });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.email.error.deliveryUnknown',
+                { properties: { batchId, unknownCount: 1 } }
+            );
             expect(
                 notificationRepository.markTermPolicyRecipientsSent
             ).toHaveBeenCalledWith(

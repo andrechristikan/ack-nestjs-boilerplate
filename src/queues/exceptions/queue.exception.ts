@@ -9,5 +9,9 @@ export class QueueException extends Error {
         readonly rawError: unknown = null
     ) {
         super(message);
+
+        if (rawError !== null) {
+            this.cause = rawError;
+        }
     }
 }

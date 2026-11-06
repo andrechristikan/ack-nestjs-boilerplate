@@ -8,12 +8,12 @@ export class WorkspaceInviteAnalyticDomain {
         private readonly workspaceInviteAnalyticRepository: WorkspaceInviteAnalyticRepository
     ) {}
 
-    getFunnel(
+    async getFunnel(
         startDate: Date,
         endDate: Date,
         workspaceId: string | null
     ): Promise<IAnalyticStatusCount[]> {
-        return this.workspaceInviteAnalyticRepository.groupByStatus(
+        return await this.workspaceInviteAnalyticRepository.groupByStatus(
             startDate,
             endDate,
             workspaceId

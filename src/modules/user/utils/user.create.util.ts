@@ -2,13 +2,17 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
+    EnumTermPolicyType,
     EnumUserLoginWith,
+    EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
@@ -17,6 +21,8 @@ import type {
     IUser,
     IUserCreateContract,
     IUserCreateWithWorkspaceInput,
+    IUserLoginSocial,
+    IUserSignUpResolved,
     IUserSignUpWorkspaceContext,
     IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
@@ -166,6 +172,58 @@ export class UserCreateUtil {
         };
     }
 
+    buildAcceptedTermPolicyTypes(
+        cookies: boolean,
+        marketing: boolean
+    ): EnumTermPolicyType[] {
+        return [
+            ...UserTermPolicyContract.requiredTypes,
+            ...(cookies ? [EnumTermPolicyType.cookies] : []),
+            ...(marketing ? [EnumTermPolicyType.marketing] : []),
+        ];
+    }
+
+    buildSocialCreate(
+        email: string,
+        loginWith: EnumUserLoginWith,
+        {
+            from,
+            username,
+            name,
+            countryId,
+            cookies,
+            marketing,
+        }: IUserLoginSocial,
+        { roleId, workspaceContext }: IUserSignUpResolved
+    ): IUserCreateWithWorkspaceInput {
+        const userId = this.databaseUtil.createId();
+        const acceptedTermPolicyTypes = this.buildAcceptedTermPolicyTypes(
+            cookies,
+            marketing
+        );
+
+        return {
+            userId,
+            email: email.trim().toLowerCase(),
+            name,
+            username,
+            countryId,
+            roleId,
+            signUpFrom: from,
+            signUpWith:
+                loginWith === EnumUserLoginWith.socialApple
+                    ? EnumUserSignUpWith.socialApple
+                    : EnumUserSignUpWith.socialGoogle,
+            isVerified: true,
+            acceptedTermPolicyTypes,
+            password: null,
+            passwordHistoryType: UserCreateContract.social.passwordHistoryType,
+            verification: null,
+            workspaceContext,
+            createdBy: userId,
+        };
+    }
+
     /** Lists the activity stage inputs of every created user under one contract row, in input order. */
     buildStages(
         contract: IUserCreateContract,
@@ -282,10 +340,12 @@ export class UserCreateUtil {
     }
 
     /** Maps the social provider onto the feature-flag key that gates its sign-up. */
-    resolveSocialFeatureFlagKey(loginWith: EnumUserLoginWith): string {
+    resolveSocialFeatureFlagKey(
+        loginWith: EnumUserLoginWith
+    ): EnumFeatureFlagKey {
         return loginWith === EnumUserLoginWith.socialGoogle
-            ? 'loginWithGoogle'
-            : 'loginWithApple';
+            ? EnumFeatureFlagKey.loginWithGoogle
+            : EnumFeatureFlagKey.loginWithApple;
     }
 
     /** Translates a unique collision raised by the create into its user exception, returning anything else untouched. */

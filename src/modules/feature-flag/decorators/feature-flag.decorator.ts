@@ -6,12 +6,15 @@ import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guar
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 import { FeatureFlagKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.key-empty.exception';
 import { FeatureFlagKeyNestedException } from '@modules/feature-flag/exceptions/feature-flag.key-nested.exception';
+import type { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 
 /**
  * Guards a route behind a feature flag; `keyPath` is a bare flag key.
  * @public
  */
-export function FeatureFlagProtected(keyPath: string): MethodDecorator {
+export function FeatureFlagProtected(
+    keyPath: EnumFeatureFlagKey
+): MethodDecorator {
     const segments = keyPath.split('.');
     if (segments.some(segment => segment.length === 0)) {
         throw new FeatureFlagKeyEmptyException();

@@ -22,6 +22,10 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
@@ -69,8 +73,8 @@ export class WorkspaceInviteDomain {
     async validateInviteToken(token: string): Promise<WorkspaceInvite> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'invitationAllowed'
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.invitationAllowed
         );
         const hashedToken = this.helperHashService.sha256Hash(token);
         const invite =
@@ -167,8 +171,8 @@ export class WorkspaceInviteDomain {
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'invitationAllowed'
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.invitationAllowed
         );
 
         return this.workspaceInviteRepository.findWithPaginationCursor(
@@ -185,8 +189,8 @@ export class WorkspaceInviteDomain {
     }: IWorkspaceInviteCreate): Promise<void> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'invitationAllowed'
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.invitationAllowed
         );
         const hasProjectId = projectId !== null;
         const hasProjectRole = projectRole !== null;
@@ -280,8 +284,8 @@ export class WorkspaceInviteDomain {
     ): Promise<WorkspaceInvite> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'invitationAllowed'
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.invitationAllowed
         );
         const existing =
             await this.workspaceInviteRepository.findByIdAndWorkspace(

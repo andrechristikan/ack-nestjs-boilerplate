@@ -31,6 +31,10 @@ import type {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -749,7 +753,10 @@ describe('WorkspaceHttpService', () => {
             expect(result).toEqual({ data: workspace });
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'joinRequestAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.joinRequestAllowed
+            );
             expect(workspaceDomain.previewWorkspace).toHaveBeenCalledWith(
                 'acme-team'
             );

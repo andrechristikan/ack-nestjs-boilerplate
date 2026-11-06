@@ -1,15 +1,19 @@
 import type { IAwsSESSendBulkRecipient } from '@common/aws/interfaces/aws.ses.interface';
+import type { IFirebasePushResult } from '@common/firebase/interfaces/firebase.interface';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import type {
     INotificationPushCleanupStaleTokensResult,
     INotificationPushCleanupTokensResult,
+    INotificationPushSendOutcome,
+    INotificationPushTokenPair,
     INotificationRecipient,
     INotificationStepFailure,
     INotificationStepOutcomes,
@@ -28,6 +32,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { MessageService } from '@common/message/services/message.service';
+import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 
 @Injectable()
 export class NotificationUtil {
@@ -41,6 +46,15 @@ export class NotificationUtil {
         this.encryptionSecretKey = this.configService.get<string>(
             'app.encryptionSecretKey'
         )!;
+    }
+
+    private toEncryptedTokens(
+        pairs: INotificationPushTokenPair[],
+        tokens: string[]
+    ): string[] {
+        return pairs
+            .filter(pair => tokens.includes(pair.token))
+            .map(pair => pair.encrypted);
     }
 
     toStepFailure(
@@ -141,6 +155,44 @@ export class NotificationUtil {
         );
     }
 
+    toTokenPairs(
+        userId: string,
+        encryptedTokens: string[]
+    ): INotificationPushTokenPair[] {
+        return encryptedTokens.map(encrypted => {
+            const token = this.decryptPayload(encrypted, userId);
+
+            return { encrypted, token };
+        });
+    }
+
+    toMulticastOutcome(
+        pairs: INotificationPushTokenPair[],
+        { failureTokens, retryTokens }: IFirebasePushResult,
+        encryptedFailureTokens: string[] | null
+    ): INotificationPushSendOutcome {
+        const failed = this.toEncryptedTokens(pairs, failureTokens);
+        const merged = [...(encryptedFailureTokens ?? []), ...failed];
+        const pending = this.toEncryptedTokens(pairs, retryTokens);
+        let failure: INotificationStepFailure | null = null;
+        if (pending.length > 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.tokensPending',
+                { properties: { count: pending.length } }
+            );
+            failure = {
+                step: EnumNotificationStep.sendMulticast,
+                rawError: new Error(message),
+            };
+        }
+
+        return {
+            encryptedFailureTokens: [...new Set(merged)],
+            encryptedPendingTokens: pending,
+            failure,
+        };
+    }
+
     toCleanupTokensResult(
         countRequestedTokens: number,
         countRemovedTokens: number
@@ -182,6 +234,13 @@ export class NotificationUtil {
         );
 
         return { message, completedSteps, failedSteps: [] };
+    }
+
+    toDeliveryUnknownMessage(batchId: string, unknownCount: number): string {
+        return this.messageService.setMessage(
+            'notification.queue.email.error.deliveryUnknown',
+            { properties: { batchId, unknownCount } }
+        );
     }
 
     listPendingBatchIds(
@@ -230,5 +289,52 @@ export class NotificationUtil {
                     !setting.isActive
             )
             .map(setting => setting.type);
+    }
+
+    toMessageProperties(metadata: Prisma.JsonValue): IMessageProperties {
+        const properties: IMessageProperties = {};
+        if (
+            metadata === null ||
+            typeof metadata !== 'object' ||
+            Array.isArray(metadata)
+        ) {
+            return properties;
+        }
+
+        for (const [key, value] of Object.entries(metadata)) {
+            if (
+                typeof value === 'string' ||
+                typeof value === 'number' ||
+                typeof value === 'boolean'
+            ) {
+                properties[key] = value;
+            }
+        }
+
+        return properties;
+    }
+
+    toRejectReasonProperties(
+        properties: IMessageProperties,
+        language: string | null
+    ): IMessageProperties {
+        const code = properties.rejectReasonCode;
+        if (typeof code !== 'string') {
+            return properties;
+        }
+
+        const options = {
+            ...(language !== null && { customLanguage: language }),
+        };
+        const rejectReasonLabel = this.messageService.setMessage(
+            `notification.rejectReason.${code}`,
+            options
+        );
+
+        return { ...properties, rejectReasonLabel };
+    }
+
+    toTemplateLabel(process: EnumNotificationProcess): string {
+        return process.replace(/[A-Z]/g, letter => ` ${letter.toLowerCase()}`);
     }
 }

@@ -4,7 +4,7 @@ import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.do
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { Global, Module } from '@nestjs/common';
 
-/** Global so the feature flag guard reaches the domain service and the cache helpers app-wide. */
+/** Shared module: FeatureFlagDomain for the feature-flag guard, the HTTP services, and the workspace domain's own-flag asserts. */
 @Global()
 @Module({
     controllers: [],

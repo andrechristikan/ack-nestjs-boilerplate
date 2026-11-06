@@ -1,3 +1,4 @@
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
@@ -32,7 +33,7 @@ export class HealthJwksIndicator {
      * Down when the URI is empty or not a valid URL, or when fetching it within the timeout does not yield a key set.
      */
     private async checkUri(
-        key: string,
+        key: EnumHealthIndicatorKey,
         uri?: string
     ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
@@ -74,14 +75,18 @@ export class HealthJwksIndicator {
     /**
      * Down when the access-token JWKS endpoint is not configured or does not answer with a key set.
      */
-    async isHealthyAccessToken(key: string): Promise<HealthIndicatorResult> {
+    async isHealthyAccessToken(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         return this.checkUri(key, this.accessTokenJwksUri);
     }
 
     /**
      * Down when the refresh-token JWKS endpoint is not configured or does not answer with a key set.
      */
-    async isHealthyRefreshToken(key: string): Promise<HealthIndicatorResult> {
+    async isHealthyRefreshToken(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         return this.checkUri(key, this.refreshTokenJwksUri);
     }
 }

@@ -19,14 +19,11 @@ import type { IUserCreateVerification } from '@modules/user/interfaces/user.crea
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import ms from 'ms';
 
 @Injectable()
 export class UserVerificationDomain {
-    private readonly verificationResendInMinutes: number;
-
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userRepository: UserRepository,
@@ -34,14 +31,9 @@ export class UserVerificationDomain {
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService,
-        private readonly userUtil: UserUtil
-    ) {
-        const verificationResendInMs = this.configService.get<number>(
-            'verification.resendInMs'
-        )!;
-        this.verificationResendInMinutes = verificationResendInMs / ms('1m');
-    }
+        private readonly userUtil: UserUtil,
+        private readonly userVerificationUtil: UserVerificationUtil
+    ) {}
 
     /** Resolves the active email verification of a raw token with its user, whatever the user status. */
     async getOneActiveByEmailToken(
@@ -116,7 +108,7 @@ export class UserVerificationDomain {
         if (lastVerification) {
             const waitInMinutes = this.userUtil.getResendWaitInMinutes(
                 lastVerification.createdAt,
-                this.verificationResendInMinutes
+                this.userVerificationUtil.verificationResendInMinutes
             );
             if (waitInMinutes !== null) {
                 throw new UserVerificationEmailResendLimitExceededException(

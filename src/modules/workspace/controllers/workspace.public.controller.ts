@@ -7,6 +7,7 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { WorkspaceInvitePreviewRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
@@ -43,7 +44,7 @@ export class WorkspacePublicController {
     @Response('workspace.invite.preview', {
         schema: WorkspaceInvitePreviewResponseSchema,
     })
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -62,7 +63,7 @@ export class WorkspacePublicController {
     @Response('workspace.preview', {
         schema: WorkspacePreviewResponseSchema,
     })
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
     @ApiKeyProtected()
     @Get('/preview/:slug')

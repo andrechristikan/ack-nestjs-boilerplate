@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { createHealthAppleIndicator } from '@test/unit/helpers/test.unit.health.helper';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthAppleIndicator', () => {
     const healthIndicatorService: MockProxy<HealthIndicatorService> =
@@ -24,7 +25,9 @@ describe('HealthAppleIndicator', () => {
             );
             session.down.mockReturnValue({ apple: { status: 'down' } });
 
-            const result = await indicator.isHealthy('apple');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.apple
+            );
 
             expect(result).toEqual({ apple: { status: 'down' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith('apple');
@@ -43,7 +46,9 @@ describe('HealthAppleIndicator', () => {
             );
             session.up.mockReturnValue({ apple: { status: 'up' } });
 
-            const result = await indicator.isHealthy('apple');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.apple
+            );
 
             expect(result).toEqual({ apple: { status: 'up' } });
             expect(session.up).toHaveBeenCalledWith();
@@ -59,7 +64,9 @@ describe('HealthAppleIndicator', () => {
             );
             session.up.mockReturnValue({ apple: { status: 'up' } });
 
-            const result = await indicator.isHealthy('apple');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.apple
+            );
 
             expect(result).toEqual({ apple: { status: 'up' } });
             expect(session.up).toHaveBeenCalledWith();

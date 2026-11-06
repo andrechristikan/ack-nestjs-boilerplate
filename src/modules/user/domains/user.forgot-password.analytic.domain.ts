@@ -29,12 +29,12 @@ export class UserForgotPasswordAnalyticDomain {
         return { created, used, rate };
     }
 
-    getUnusedTokenCountsByUser(
+    async getUnusedTokenCountsByUser(
         startDate: Date,
         endDate: Date,
         min: number
     ): Promise<IUserForgotPasswordAnalyticUserCount[]> {
-        return this.userForgotPasswordAnalyticRepository.groupUnusedTokenByUser(
+        return await this.userForgotPasswordAnalyticRepository.groupUnusedTokenByUser(
             startDate,
             endDate,
             min

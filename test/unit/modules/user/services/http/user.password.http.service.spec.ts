@@ -32,6 +32,10 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -861,7 +865,10 @@ describe('UserPasswordHttpService', () => {
 
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('changePassword', 'forgotAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.changePassword,
+                EnumFeatureFlagMetadataKey.forgotAllowed
+            );
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
             ).toHaveBeenCalledBefore(userPasswordDomain.prepareForgotPassword);
@@ -988,7 +995,10 @@ describe('UserPasswordHttpService', () => {
 
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('changePassword', 'forgotAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.changePassword,
+                EnumFeatureFlagMetadataKey.forgotAllowed
+            );
             expect(userPasswordDomain.getOneActiveReset).toHaveBeenCalledWith(
                 'raw-token'
             );

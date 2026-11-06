@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { createHealthGoogleIndicator } from '@test/unit/helpers/test.unit.health.helper';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthGoogleIndicator', () => {
     const healthIndicatorService: MockProxy<HealthIndicatorService> =
@@ -24,7 +25,9 @@ describe('HealthGoogleIndicator', () => {
             );
             session.down.mockReturnValue({ google: { status: 'down' } });
 
-            const result = await indicator.isHealthy('google');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.google
+            );
 
             expect(result).toEqual({ google: { status: 'down' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith('google');
@@ -43,7 +46,9 @@ describe('HealthGoogleIndicator', () => {
             );
             session.up.mockReturnValue({ google: { status: 'up' } });
 
-            const result = await indicator.isHealthy('google');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.google
+            );
 
             expect(result).toEqual({ google: { status: 'up' } });
             expect(session.up).toHaveBeenCalledWith();

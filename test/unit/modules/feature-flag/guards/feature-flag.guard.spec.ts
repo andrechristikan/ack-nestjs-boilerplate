@@ -13,6 +13,7 @@ import {
     FeatureFlagAnonymousIdHeaderName,
     FeatureFlagKeyPathMetaKey,
 } from '@modules/feature-flag/constants/feature-flag.constant';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guard';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
@@ -60,7 +61,7 @@ describe('FeatureFlagGuard', () => {
 
     describe('canActivate', () => {
         it("resolves true and validates with the caller's userId when no anonymous header is sent", async () => {
-            reflector.get.mockReturnValue('changePassword');
+            reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {};
             request.user = {
@@ -85,14 +86,14 @@ describe('FeatureFlagGuard', () => {
                 executionContext.getHandler()
             );
             expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
-                'changePassword',
+                EnumFeatureFlagKey.changePassword,
                 '507f1f77bcf86cd799439011',
                 null
             );
         });
 
         it('validates with a null userId when the caller carries no user', async () => {
-            reflector.get.mockReturnValue('changePassword');
+            reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {};
             delete request.user;
@@ -102,14 +103,14 @@ describe('FeatureFlagGuard', () => {
             await guard.canActivate(executionContext);
 
             expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
-                'changePassword',
+                EnumFeatureFlagKey.changePassword,
                 null,
                 null
             );
         });
 
         it('passes a valid anonymous header through as the anonymousId', async () => {
-            reflector.get.mockReturnValue('changePassword');
+            reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'anon-user-1',
@@ -121,14 +122,14 @@ describe('FeatureFlagGuard', () => {
             await guard.canActivate(executionContext);
 
             expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
-                'changePassword',
+                EnumFeatureFlagKey.changePassword,
                 null,
                 'anon-user-1'
             );
         });
 
         it('drops an anonymous header that is not a string', async () => {
-            reflector.get.mockReturnValue('changePassword');
+            reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: ['anon-user-1'],
@@ -140,14 +141,14 @@ describe('FeatureFlagGuard', () => {
             await guard.canActivate(executionContext);
 
             expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
-                'changePassword',
+                EnumFeatureFlagKey.changePassword,
                 null,
                 null
             );
         });
 
         it('drops an empty anonymous header', async () => {
-            reflector.get.mockReturnValue('changePassword');
+            reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = { [FeatureFlagAnonymousIdHeaderName]: '' };
             delete request.user;
@@ -157,14 +158,14 @@ describe('FeatureFlagGuard', () => {
             await guard.canActivate(executionContext);
 
             expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
-                'changePassword',
+                EnumFeatureFlagKey.changePassword,
                 null,
                 null
             );
         });
 
         it('drops an anonymous header longer than the configured maximum length', async () => {
-            reflector.get.mockReturnValue('changePassword');
+            reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'a'.repeat(21),
@@ -176,14 +177,14 @@ describe('FeatureFlagGuard', () => {
             await guard.canActivate(executionContext);
 
             expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
-                'changePassword',
+                EnumFeatureFlagKey.changePassword,
                 null,
                 null
             );
         });
 
         it('drops an anonymous header failing the configured pattern', async () => {
-            reflector.get.mockReturnValue('changePassword');
+            reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'invalid id!',
@@ -195,7 +196,7 @@ describe('FeatureFlagGuard', () => {
             await guard.canActivate(executionContext);
 
             expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
-                'changePassword',
+                EnumFeatureFlagKey.changePassword,
                 null,
                 null
             );

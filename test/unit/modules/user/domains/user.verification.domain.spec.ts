@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -29,6 +28,7 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 
 describe('UserVerificationDomain', () => {
     const userVerificationRepository: MockProxy<UserVerificationRepository> =
@@ -41,19 +41,13 @@ describe('UserVerificationDomain', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    const userVerificationUtil: MockProxy<UserVerificationUtil> =
+        mock<UserVerificationUtil>({ verificationResendInMinutes: 7 });
 
     let domain: UserVerificationDomain;
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
-
-    const configValues: Record<string, number> = {
-        'verification.resendInMs': 5 * 60 * 1000,
-    };
 
     const baseUser: IUser = {
         id: 'user-flint',
@@ -122,7 +116,6 @@ describe('UserVerificationDomain', () => {
         userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
         userVerificationRepository.markUsedInTx.mockResolvedValue(true);
 
-        configGet.mockImplementation(key => configValues[key]);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -140,8 +133,11 @@ describe('UserVerificationDomain', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: ConfigService, useValue: configService },
                 { provide: UserUtil, useValue: userUtil },
+                {
+                    provide: UserVerificationUtil,
+                    useValue: userVerificationUtil,
+                },
             ],
         }).compile();
         domain = module.get(UserVerificationDomain);
@@ -338,7 +334,7 @@ describe('UserVerificationDomain', () => {
 
             expect(userUtil.getResendWaitInMinutes).toHaveBeenCalledWith(
                 verification.createdAt,
-                5
+                7
             );
         });
 

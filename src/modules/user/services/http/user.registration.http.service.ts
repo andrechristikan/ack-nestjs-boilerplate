@@ -291,11 +291,11 @@ export class UserRegistrationHttpService {
                 invite,
                 signUp.username
             );
-        const [role, , emailExist, usernameCheck] = await Promise.all([
+        const [role, emailExist, usernameCheck] = await Promise.all([
             this.roleDomain.getByName(this.userRoleName),
-            this.countryDomain.getOne(signUp.countryId),
             this.userDomain.existsByEmail(signUp.email),
             this.userDomain.checkUsername(signUp.username),
+            this.countryDomain.getOne(signUp.countryId),
         ]);
         this.userDomain.assertEmailAvailable(emailExist);
         this.userDomain.assertUsernameAvailable(usernameCheck);
@@ -340,10 +340,10 @@ export class UserRegistrationHttpService {
         const role = await this.roleDomain.getById(roleId);
         this.roleDomain.assertActorOutranks(actor.role.type, role.type);
 
-        const [, emailExist, usernameCheck] = await Promise.all([
-            this.countryDomain.getOne(countryId),
+        const [emailExist, usernameCheck] = await Promise.all([
             this.userDomain.existsByEmail(email),
             this.userDomain.checkUsername(username),
+            this.countryDomain.getOne(countryId),
         ]);
         this.userDomain.assertEmailAvailable(emailExist);
         this.userDomain.assertUsernameAvailable(usernameCheck);

@@ -1,13 +1,19 @@
 import { Injectable } from '@nestjs/common';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtPayloadIdentified,
     IAuthJwtRefreshTokenPayload,
+    IAuthLoginIdentifiers,
+    IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
+    AuthBearerScheme,
     AuthGoogleCertificateErrorPrefix,
     AuthJwksErrorName,
     AuthProviderNetworkErrorCodes,
@@ -18,14 +24,16 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 
-/** Auth utility: shapes the JWT payloads and the jti. See docs/authentication.md. */
+/** Auth utility: shapes the JWT payloads, the token pair, the login identifiers, and the guard exceptions. See docs/authentication.md. */
 @Injectable()
 export class AuthUtil {
     constructor(
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     /** Assembles the access token payload from the user and login context. */
@@ -69,9 +77,32 @@ export class AuthUtil {
         };
     }
 
+    toToken(
+        user: IUser,
+        accessToken: string,
+        refreshToken: string,
+        expiresIn: number
+    ): IAuthToken {
+        return {
+            tokenType: AuthBearerScheme,
+            roleType: user.role.type,
+            expiresIn,
+            accessToken,
+            refreshToken,
+        };
+    }
+
     /** Generates a random 32-character jti used to bind a token to its session. */
     generateJti(): string {
         return this.helperStringService.random(32);
+    }
+
+    /** Mints a new session id and a new jti. */
+    createLoginIdentifiers(): IAuthLoginIdentifiers {
+        const sessionId = this.databaseUtil.createId();
+        const jti = this.generateJti();
+
+        return { sessionId, jti };
     }
 
     /** True when the payload carries string `sub` and `jti` claims and a `sessionId`. */
@@ -142,5 +173,27 @@ export class AuthUtil {
         }
 
         return null;
+    }
+
+    /** Maps a failed Passport JWT result to the exception the guard throws: a typed strategy exception as is, any other strategy error wrapped, a provider outage in `info`, otherwise the fallback. */
+    toJwtGuardException(
+        err: Error | null,
+        info: Error,
+        fallback: AppBaseException
+    ): AppBaseException {
+        if (err instanceof AppBaseException) {
+            return err;
+        }
+
+        if (err) {
+            return new AppUnknownException(
+                err,
+                'Validating the JWT session failed'
+            );
+        }
+
+        const unavailable = this.toProviderUnavailableException(info);
+
+        return unavailable ?? fallback;
     }
 }

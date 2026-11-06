@@ -1,5 +1,4 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
@@ -59,22 +58,15 @@ export class AuthDomain {
         user: IAuthJwtAccessTokenPayload,
         info: Error
     ): IAuthJwtAccessTokenPayload {
-        if (err instanceof AppBaseException) {
-            throw err;
-        }
-
-        if (err) {
-            throw new AppUnknownException(
+        if (err || !user) {
+            const exception = this.authUtil.toJwtGuardException(
                 err,
-                'Validating the JWT access token session failed'
+                info,
+                new AuthJwtAccessTokenInvalidException(info)
             );
-        }
-
-        if (!user) {
-            const unavailable =
-                this.authUtil.toProviderUnavailableException(info);
-
-            throw unavailable ?? new AuthJwtAccessTokenInvalidException(info);
+            if (exception instanceof AppBaseException) {
+                throw exception;
+            }
         }
 
         return user;
@@ -96,22 +88,15 @@ export class AuthDomain {
         user: IAuthJwtRefreshTokenPayload,
         info: Error
     ): IAuthJwtRefreshTokenPayload {
-        if (err instanceof AppBaseException) {
-            throw err;
-        }
-
-        if (err) {
-            throw new AppUnknownException(
+        if (err || !user) {
+            const exception = this.authUtil.toJwtGuardException(
                 err,
-                'Validating the JWT refresh token session failed'
+                info,
+                new AuthJwtRefreshTokenInvalidException(info)
             );
-        }
-
-        if (!user) {
-            const unavailable =
-                this.authUtil.toProviderUnavailableException(info);
-
-            throw unavailable ?? new AuthJwtRefreshTokenInvalidException(info);
+            if (exception instanceof AppBaseException) {
+                throw exception;
+            }
         }
 
         return user;

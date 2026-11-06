@@ -5,6 +5,7 @@ import { DiskHealthIndicator, MemoryHealthIndicator } from '@nestjs/terminus';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HealthInstanceIndicator } from '@modules/health/indicators/health.instance.indicator';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthInstanceIndicator', () => {
     const configGet = vi.fn<(key: string) => number | string | undefined>();
@@ -53,7 +54,9 @@ describe('HealthInstanceIndicator', () => {
                 memoryRss: { status: 'up' },
             });
 
-            const result = await indicator.isHealthyMemoryRss('memoryRss');
+            const result = await indicator.isHealthyMemoryRss(
+                EnumHealthIndicatorKey.memoryRss
+            );
 
             expect(result).toEqual({ memoryRss: { status: 'up' } });
             expect(memoryHealthIndicator.checkRSS).toHaveBeenCalledWith(
@@ -69,7 +72,9 @@ describe('HealthInstanceIndicator', () => {
                 memoryHeap: { status: 'up' },
             });
 
-            const result = await indicator.isHealthyMemoryHeap('memoryHeap');
+            const result = await indicator.isHealthyMemoryHeap(
+                EnumHealthIndicatorKey.memoryHeap
+            );
 
             expect(result).toEqual({ memoryHeap: { status: 'up' } });
             expect(memoryHealthIndicator.checkHeap).toHaveBeenCalledWith(
@@ -85,7 +90,9 @@ describe('HealthInstanceIndicator', () => {
                 storage: { status: 'up' },
             });
 
-            const result = await indicator.isHealthyStorage('storage');
+            const result = await indicator.isHealthyStorage(
+                EnumHealthIndicatorKey.storage
+            );
 
             expect(result).toEqual({ storage: { status: 'up' } });
             expect(diskHealthIndicator.checkStorage).toHaveBeenCalledWith(

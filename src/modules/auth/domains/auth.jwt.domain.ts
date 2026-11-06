@@ -8,11 +8,9 @@ import type {
     IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
-    IAuthLoginIdentifiers,
     IAuthToken,
     IAuthTokenSignInput,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthBearerScheme } from '@modules/auth/constants/auth.constant';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import {
@@ -20,7 +18,6 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt-config-invalid.exception';
 import { AuthJwtConfigMissingException } from '@modules/auth/exceptions/auth.jwt-config-missing.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
@@ -44,7 +41,6 @@ export class AuthJwtDomain {
     private readonly jwtIssuer: string;
 
     constructor(
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
@@ -115,20 +111,6 @@ export class AuthJwtDomain {
         } catch (error) {
             throw new AuthJwtConfigInvalidException(configKey, expected, error);
         }
-    }
-
-    private buildTokens(
-        user: IUser,
-        accessToken: string,
-        refreshToken: string
-    ): IAuthToken {
-        return {
-            tokenType: AuthBearerScheme,
-            roleType: user.role.type,
-            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
-            accessToken,
-            refreshToken,
-        };
     }
 
     createAccessToken(
@@ -214,14 +196,6 @@ export class AuthJwtDomain {
         return jti;
     }
 
-    /** Mints a new session id and a new jti. */
-    createLoginIdentifiers(): IAuthLoginIdentifiers {
-        const sessionId = this.databaseUtil.createId();
-        const jti = this.authUtil.generateJti();
-
-        return { sessionId, jti };
-    }
-
     /** Signs the access and refresh token pair for the user. */
     createTokens(
         user: IUser,
@@ -252,7 +226,12 @@ export class AuthJwtDomain {
             payloadRefreshToken
         );
 
-        return this.buildTokens(user, accessToken, refreshToken);
+        return this.authUtil.toToken(
+            user,
+            accessToken,
+            refreshToken,
+            this.jwtAccessTokenExpirationTimeInSeconds
+        );
     }
 
     /** Rotates the token pair with a new jti, reusing the session and capping the refresh expiry at the old token's remaining lifetime. */
@@ -301,7 +280,12 @@ export class AuthJwtDomain {
             newRefreshTokenExpireInSeconds
         );
 
-        const tokens = this.buildTokens(user, accessToken, newRefreshToken);
+        const tokens = this.authUtil.toToken(
+            user,
+            accessToken,
+            newRefreshToken,
+            this.jwtAccessTokenExpirationTimeInSeconds
+        );
 
         return {
             tokens,

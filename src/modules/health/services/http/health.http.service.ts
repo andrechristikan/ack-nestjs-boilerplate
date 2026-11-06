@@ -2,12 +2,10 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
 import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
 import type { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
-import type { HealthResponseDto } from '@modules/health/dtos/response/health.response.dto';
 import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
 import { HealthDomain } from '@modules/health/domains/health.domain';
 import { HealthUtil } from '@modules/health/utils/health.util';
 import { Injectable } from '@nestjs/common';
-import type { HealthCheckResult } from '@nestjs/terminus';
 
 @Injectable()
 export class HealthHttpService {
@@ -16,27 +14,16 @@ export class HealthHttpService {
         private readonly healthUtil: HealthUtil
     ) {}
 
-    private mapResponse(result: HealthCheckResult): HealthResponseDto {
-        const status = this.healthUtil.mapStatus(result.status);
-
-        return {
-            status,
-            info: result.info,
-            error: result.error,
-            details: result.details,
-        };
-    }
-
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
         const result = await this.healthDomain.checkAws();
-        const data = this.mapResponse(result);
+        const data = this.healthUtil.toResponse(result);
 
         return { data };
     }
 
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
         const result = await this.healthDomain.checkDatabase();
-        const data = this.mapResponse(result);
+        const data = this.healthUtil.toResponse(result);
 
         return { data };
     }
@@ -45,14 +32,14 @@ export class HealthHttpService {
         IResponseReturn<HealthThirdPartyResponseDto>
     > {
         const result = await this.healthDomain.checkThirdParty();
-        const data = this.mapResponse(result);
+        const data = this.healthUtil.toResponse(result);
 
         return { data };
     }
 
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
         const result = await this.healthDomain.checkInstance();
-        const data = this.mapResponse(result);
+        const data = this.healthUtil.toResponse(result);
 
         return { data };
     }

@@ -1,4 +1,5 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
@@ -20,7 +21,9 @@ export class HealthRedisIndicator {
     /**
      * Down when a probe read against the cache fails or throws.
      */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         try {

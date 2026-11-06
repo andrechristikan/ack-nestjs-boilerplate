@@ -16,6 +16,10 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import {
@@ -314,8 +318,8 @@ export class WorkspaceHttpService {
     async previewWorkspace(slug: string): Promise<IResponseReturn<Workspace>> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'joinRequestAllowed'
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.joinRequestAllowed
         );
         const workspace = await this.workspaceDomain.previewWorkspace(slug);
 

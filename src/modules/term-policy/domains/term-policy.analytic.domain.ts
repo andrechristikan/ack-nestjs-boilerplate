@@ -9,10 +9,10 @@ export class TermPolicyAnalyticDomain {
         private readonly termPolicyAnalyticRepository: TermPolicyAnalyticRepository
     ) {}
 
-    getLatestPublishedByTypes(
+    async getLatestPublishedByTypes(
         types: EnumTermPolicyType[]
     ): Promise<ITermPolicyAnalyticLatest[]> {
-        return this.termPolicyAnalyticRepository.groupLatestPublishedByTypes(
+        return await this.termPolicyAnalyticRepository.groupLatestPublishedByTypes(
             types
         );
     }

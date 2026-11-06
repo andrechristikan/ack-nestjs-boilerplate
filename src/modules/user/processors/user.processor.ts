@@ -1,5 +1,4 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type {
     IUserDeletePhotoPayload,
@@ -9,6 +8,7 @@ import { UserProcessorService } from '@modules/user/services/processor/user.proc
 import { Job, UnrecoverableError } from 'bullmq';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
@@ -21,9 +21,10 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 export class UserProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
+        protected readonly messageService: MessageService,
         private readonly userProcessorService: UserProcessorService
     ) {
-        super(sentryService);
+        super(sentryService, messageService);
     }
 
     /** Dispatches each job to its handler by job name. */
@@ -58,7 +59,7 @@ export class UserProcessor extends QueueProcessorBase {
                         throw error;
                     }
 
-                    throw new AppUnknownException(error);
+                    this.throwUnknownException(error);
                 }
             case EnumUserProcess.lockout: {
                 const { userId } = (

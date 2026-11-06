@@ -13,8 +13,8 @@ export class UserTwoFactorAnalyticDomain {
         private readonly helperNumberService: HelperNumberService
     ) {}
 
-    getEnabledCount(): Promise<number> {
-        return this.userTwoFactorAnalyticRepository.countEnabled();
+    async getEnabledCount(): Promise<number> {
+        return await this.userTwoFactorAnalyticRepository.countEnabled();
     }
 
     mapAdoption(
@@ -25,7 +25,7 @@ export class UserTwoFactorAnalyticDomain {
         return { enabled, total: activeUserCount, rate };
     }
 
-    getAttemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
-        return this.userTwoFactorAnalyticRepository.findAttemptSnapshot();
+    async getAttemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
+        return await this.userTwoFactorAnalyticRepository.findAttemptSnapshot();
     }
 }

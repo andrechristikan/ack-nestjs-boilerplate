@@ -5,6 +5,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthAwsSESIndicator', () => {
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
@@ -38,7 +39,9 @@ describe('HealthAwsSESIndicator', () => {
             awsSESService.isInitialized.mockReturnValue(false);
             session.down.mockReturnValue({ ses: { status: 'down' } });
 
-            const result = await indicator.isHealthy('ses');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.ses
+            );
 
             expect(result).toEqual({ ses: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -52,7 +55,9 @@ describe('HealthAwsSESIndicator', () => {
             awsSESService.checkConnection.mockResolvedValue(true);
             session.up.mockReturnValue({ ses: { status: 'up' } });
 
-            const result = await indicator.isHealthy('ses');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.ses
+            );
 
             expect(result).toEqual({ ses: { status: 'up' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith('ses');
@@ -64,7 +69,9 @@ describe('HealthAwsSESIndicator', () => {
             awsSESService.checkConnection.mockResolvedValue(false);
             session.down.mockReturnValue({ ses: { status: 'down' } });
 
-            const result = await indicator.isHealthy('ses');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.ses
+            );
 
             expect(result).toEqual({ ses: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -79,7 +86,9 @@ describe('HealthAwsSESIndicator', () => {
             );
             session.down.mockReturnValue({ ses: { status: 'down' } });
 
-            const result = await indicator.isHealthy('ses');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.ses
+            );
 
             expect(result).toEqual({ ses: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -92,7 +101,9 @@ describe('HealthAwsSESIndicator', () => {
             awsSESService.checkConnection.mockRejectedValue('not-an-error');
             session.down.mockReturnValue({ ses: { status: 'down' } });
 
-            const result = await indicator.isHealthy('ses');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.ses
+            );
 
             expect(result).toEqual({ ses: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(

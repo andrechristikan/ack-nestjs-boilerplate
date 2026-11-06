@@ -1,5 +1,6 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
@@ -21,7 +22,7 @@ export class HealthAwsS3BucketIndicator {
      * fails or throws.
      */
     async isHealthy(
-        key: string,
+        key: EnumHealthIndicatorKey,
         access: EnumAwsS3Accessibility
     ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);

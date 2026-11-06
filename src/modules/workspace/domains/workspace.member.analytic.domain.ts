@@ -14,20 +14,22 @@ export class WorkspaceMemberAnalyticDomain {
         private readonly workspaceMemberAnalyticRepository: WorkspaceMemberAnalyticRepository
     ) {}
 
-    getRoles(workspaceId: string | null): Promise<IAnalyticRoleCount[]> {
-        return this.workspaceMemberAnalyticRepository.groupByRole(workspaceId);
-    }
-
-    getCountByWorkspace(workspaceId: string): Promise<number> {
-        return this.workspaceMemberAnalyticRepository.countByWorkspace(
+    async getRoles(workspaceId: string | null): Promise<IAnalyticRoleCount[]> {
+        return await this.workspaceMemberAnalyticRepository.groupByRole(
             workspaceId
         );
     }
 
-    getMembershipDistributionOffset(
+    async getCountByWorkspace(workspaceId: string): Promise<number> {
+        return await this.workspaceMemberAnalyticRepository.countByWorkspace(
+            workspaceId
+        );
+    }
+
+    async getMembershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        return this.workspaceMemberAnalyticRepository.groupMembershipDistributionOffset(
+        return await this.workspaceMemberAnalyticRepository.groupMembershipDistributionOffset(
             params
         );
     }

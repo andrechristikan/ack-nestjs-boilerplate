@@ -35,14 +35,12 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
     async countByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
-        endDate: Date,
-        workspaceId?: string
+        endDate: Date
     ): Promise<number> {
         return this.databaseService.client.activityLog.count({
             where: {
                 action: { in: actions },
                 createdAt: { gte: startDate, lt: endDate },
-                ...(workspaceId ? { workspaceId } : {}),
             },
         });
     }

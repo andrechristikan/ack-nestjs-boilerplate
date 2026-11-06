@@ -36,7 +36,7 @@ describe('UserPasswordDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userPasswordUtil: MockProxy<UserPasswordUtil> =
-        mock<UserPasswordUtil>();
+        mock<UserPasswordUtil>({ forgotResendInMinutes: 7 });
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
@@ -137,7 +137,6 @@ describe('UserPasswordDomain', () => {
         vi.resetAllMocks();
         configGet.mockImplementation(key => {
             const values: Record<string, boolean | number> = {
-                'forgotPassword.resendInMs': 5 * 60 * 1000,
                 'auth.password.attempt': true,
                 'auth.password.maxAttempt': 5,
             };
@@ -340,7 +339,7 @@ describe('UserPasswordDomain', () => {
 
             expect(userUtil.getResendWaitInMinutes).toHaveBeenCalledWith(
                 lastForgot!.createdAt,
-                5
+                7
             );
         });
 

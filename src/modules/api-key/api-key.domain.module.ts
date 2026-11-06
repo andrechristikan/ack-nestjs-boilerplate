@@ -6,10 +6,7 @@ import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { Global, Module } from '@nestjs/common';
 import { ApiKeyAnalyticDomain } from '@modules/api-key/domains/api-key.analytic.domain';
 
-/**
- * Global so the x-api-key guards and the seeds reach the API key domain service and util
- * app-wide.
- */
+/** Shared module: ApiKeyDomain for the x-api-key guards, ApiKeyAnalyticDomain for the aggregation domain, ApiKeyCredentialUtil and ApiKeyCache for the API key seed. */
 @Global()
 @Module({
     controllers: [],

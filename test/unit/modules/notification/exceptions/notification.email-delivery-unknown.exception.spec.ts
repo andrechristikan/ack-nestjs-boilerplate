@@ -1,33 +1,31 @@
-import { HttpStatus } from '@nestjs/common';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
+import { QueueException } from '@queues/exceptions/queue.exception';
 
 describe('NotificationEmailDeliveryUnknownException', () => {
+    const message = 'notification.queue.email.error.deliveryUnknown';
+
     describe('constructor', () => {
-        it('declares the app unknown contract naming the batch and the unknown count', () => {
+        it('declares a fatal QueueException naming the batch and the unknown count', () => {
             const exception = new NotificationEmailDeliveryUnknownException(
+                message,
                 'batch-id',
                 2
             );
 
-            expect(exception).toBeInstanceOf(AppUnknownException);
+            expect(exception).toBeInstanceOf(QueueException);
             expect(exception).toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'http.serverError.internalServerError',
-                message:
-                    'Email batch batch-id has 2 recipients with an unknown delivery outcome',
+                message,
+                isFatal: true,
                 rawError: null,
+                batchId: 'batch-id',
+                unknownCount: 2,
             });
         });
 
-        it('chains the error that made the outcome unknown', () => {
+        it('chains the error that made the outcome unknown as rawError and cause', () => {
             const cause = new Error('socket hang up');
             const exception = new NotificationEmailDeliveryUnknownException(
+                message,
                 'batch-id',
                 2,
                 cause

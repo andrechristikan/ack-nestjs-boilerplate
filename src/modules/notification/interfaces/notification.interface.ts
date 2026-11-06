@@ -346,6 +346,11 @@ export interface INotificationStepResult {
     failedSteps: INotificationStepFailure[];
 }
 
+export interface INotificationPushTokenPair {
+    encrypted: string;
+    token: string;
+}
+
 export interface INotificationPushSendOutcome {
     encryptedFailureTokens: string[] | null;
     encryptedPendingTokens: string[] | null;
@@ -390,4 +395,34 @@ export type INotificationPushCleanupTokensResult = {
 export type INotificationPushCleanupStaleTokensResult = {
     message: string;
     countRemovedTokens: number;
+};
+
+export type INotificationTemplateAccountProcess =
+    | EnumNotificationProcess.welcome
+    | EnumNotificationProcess.welcomeSocial
+    | EnumNotificationProcess.welcomeByAdmin
+    | EnumNotificationProcess.verificationEmail
+    | EnumNotificationProcess.verifiedEmail
+    | EnumNotificationProcess.verifiedMobileNumber;
+
+export type INotificationTemplateSecurityProcess =
+    | EnumNotificationProcess.changePassword
+    | EnumNotificationProcess.temporaryPasswordByAdmin
+    | EnumNotificationProcess.resetPassword
+    | EnumNotificationProcess.forgotPassword
+    | EnumNotificationProcess.resetTwoFactorByAdmin
+    | EnumNotificationProcess.newDeviceLogin;
+
+export type INotificationTemplateTermPolicyProcess =
+    EnumNotificationProcess.publishTermPolicy;
+
+export type INotificationTemplateWorkspaceProcess =
+    | EnumNotificationProcess.workspaceInvite
+    | EnumNotificationProcess.workspaceJoinRequest
+    | EnumNotificationProcess.workspaceJoinAccepted
+    | EnumNotificationProcess.workspaceJoinRejected;
+
+export type INotificationTemplateEmail = {
+    subject: string;
+    htmlBody: string;
 };

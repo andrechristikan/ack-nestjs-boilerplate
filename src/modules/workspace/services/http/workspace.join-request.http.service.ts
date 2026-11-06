@@ -14,6 +14,10 @@ import type {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -55,8 +59,8 @@ export class WorkspaceJoinRequestHttpService {
 
     private async assertJoinRequestAllowed(): Promise<void> {
         await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'workspace',
-            'joinRequestAllowed'
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.joinRequestAllowed
         );
     }
 

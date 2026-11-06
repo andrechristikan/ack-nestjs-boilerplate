@@ -3,6 +3,7 @@ import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { HttpStatus } from '@nestjs/common';
 import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/feature-flag.constant';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guard';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
@@ -20,7 +21,11 @@ describe('feature-flag.decorator', () => {
         };
 
         beforeAll(() => {
-            FeatureFlagProtected('changePassword')({}, 'handler', descriptor);
+            FeatureFlagProtected(EnumFeatureFlagKey.changePassword)(
+                {},
+                'handler',
+                descriptor
+            );
         });
 
         it('mounts FeatureFlagGuard and stores the bare key on the metadata key', () => {
@@ -29,7 +34,7 @@ describe('feature-flag.decorator', () => {
             ]);
             expect(
                 Reflect.getMetadata(FeatureFlagKeyPathMetaKey, handler)
-            ).toBe('changePassword');
+            ).toBe(EnumFeatureFlagKey.changePassword);
         });
 
         it('documents the disabled error at 404 and the notConfigured error at 500', () => {
@@ -53,15 +58,15 @@ describe('feature-flag.decorator', () => {
         });
 
         it('throws at evaluation on an empty key', () => {
-            expect(() => FeatureFlagProtected('')).toThrow(
-                FeatureFlagKeyEmptyException
-            );
+            expect(() =>
+                FeatureFlagProtected('' as EnumFeatureFlagKey)
+            ).toThrow(FeatureFlagKeyEmptyException);
         });
 
         it('throws at evaluation on a dotted key', () => {
-            expect(() => FeatureFlagProtected('login.google')).toThrow(
-                FeatureFlagKeyNestedException
-            );
+            expect(() =>
+                FeatureFlagProtected('login.google' as EnumFeatureFlagKey)
+            ).toThrow(FeatureFlagKeyNestedException);
         });
     });
 });

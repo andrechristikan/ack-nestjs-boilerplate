@@ -1,3 +1,4 @@
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
@@ -25,7 +26,9 @@ export class HealthSentryIndicator {
     /**
      * Down when no DSN is configured, or unless the client is initialized and enabled.
      */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         if (!this.dsn) {

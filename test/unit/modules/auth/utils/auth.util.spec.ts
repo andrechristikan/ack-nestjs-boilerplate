@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -11,12 +12,17 @@ import {
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
+import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('AuthUtil', () => {
     const helperStringService: MockProxy<HelperStringService> =
@@ -25,6 +31,7 @@ describe('AuthUtil', () => {
         mock<HelperHashService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let util: AuthUtil;
 
     beforeEach(async () => {
@@ -38,6 +45,7 @@ describe('AuthUtil', () => {
                 },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         util = module.get(AuthUtil);
@@ -130,6 +138,72 @@ describe('AuthUtil', () => {
         });
     });
 
+    describe('toToken', () => {
+        it('shapes the bearer token pair with the role type and the access expiry', () => {
+            const createdAt = new Date('2026-01-01T00:00:00.000Z');
+            const user: IUser = {
+                id: 'user-1',
+                name: 'Jane Doe',
+                username: 'jane',
+                isVerified: true,
+                verifiedAt: null,
+                email: 'jane@example.com',
+                roleId: 'role-1',
+                password: 'hashed',
+                passwordExpired: null,
+                passwordCreated: null,
+                passwordAttempt: null,
+                signUpAt: createdAt,
+                signUpFrom: EnumUserSignUpFrom.website,
+                signUpWith: EnumUserSignUpWith.credential,
+                status: EnumUserStatus.active,
+                gender: null,
+                countryId: 'country-1',
+                lastLoginAt: null,
+                lastIPAddress: null,
+                lastLoginFrom: null,
+                lastLoginWith: null,
+                lastWorkspaceId: null,
+                lastWorkspaceChangedAt: null,
+                photo: null,
+                createdAt,
+                createdBy: null,
+                updatedAt: createdAt,
+                updatedBy: null,
+                deletedAt: null,
+                deletedBy: null,
+                role: {
+                    id: 'role-1',
+                    name: 'user',
+                    description: null,
+                    type: EnumRoleType.user,
+                    isImmutable: false,
+                    createdAt,
+                    createdBy: null,
+                    updatedAt: createdAt,
+                    updatedBy: null,
+                    policies: [],
+                },
+                twoFactor: null,
+            };
+
+            const result = util.toToken(
+                user,
+                'signed-access-token',
+                'signed-refresh-token',
+                900
+            );
+
+            expect(result).toEqual({
+                tokenType: 'Bearer',
+                roleType: EnumRoleType.user,
+                expiresIn: 900,
+                accessToken: 'signed-access-token',
+                refreshToken: 'signed-refresh-token',
+            });
+        });
+    });
+
     describe('generateJti', () => {
         it('generates a random 32-character jti', () => {
             helperStringService.random.mockReturnValue('random-jti-value');
@@ -137,6 +211,22 @@ describe('AuthUtil', () => {
             const result = util.generateJti();
 
             expect(result).toBe('random-jti-value');
+            expect(helperStringService.random).toHaveBeenCalledWith(32);
+        });
+    });
+
+    describe('createLoginIdentifiers', () => {
+        it('mints a session id and a jti', () => {
+            databaseUtil.createId.mockReturnValue('session-1');
+            helperStringService.random.mockReturnValue('jti-value');
+
+            const result = util.createLoginIdentifiers();
+
+            expect(result).toEqual({
+                sessionId: 'session-1',
+                jti: 'jti-value',
+            });
+            expect(databaseUtil.createId).toHaveBeenCalledTimes(1);
             expect(helperStringService.random).toHaveBeenCalledWith(32);
         });
     });
@@ -368,6 +458,70 @@ describe('AuthUtil', () => {
             const result = util.toProviderUnavailableException(null);
 
             expect(result).toBeNull();
+        });
+    });
+
+    describe('toJwtGuardException', () => {
+        const fallback = new AuthJwtAccessTokenInvalidException(
+            new Error('info')
+        );
+
+        it('returns a typed exception from the strategy unchanged', () => {
+            const err = new SessionRevokedException();
+
+            const result = util.toJwtGuardException(
+                err,
+                new Error('info'),
+                fallback
+            );
+
+            expect(result).toBe(err);
+        });
+
+        it('wraps an unknown strategy error in AppUnknownException with the raw error, even when info is an outage', () => {
+            const err = new Error('redis down');
+            const info = Object.assign(new Error('network'), {
+                code: 'ECONNREFUSED',
+            });
+
+            const result = util.toJwtGuardException(err, info, fallback);
+
+            expect(result).toBeInstanceOf(AppUnknownException);
+            expect(result).toMatchObject({
+                rawError: err,
+                message: 'Validating the JWT session failed',
+            });
+        });
+
+        it('returns AuthProviderUnavailableException when passport info is a key endpoint outage', () => {
+            const info = Object.assign(new Error('jwks endpoint down'), {
+                isEndpointUnavailable: true,
+            });
+
+            const result = util.toJwtGuardException(null, info, fallback);
+
+            expect(result).toBeInstanceOf(AuthProviderUnavailableException);
+            expect(result).toMatchObject({ rawError: info });
+        });
+
+        it('returns the fallback for a signing key miss or a bad token', () => {
+            const info = Object.assign(new Error('no matching kid'), {
+                name: 'SigningKeyNotFoundError',
+            });
+
+            const result = util.toJwtGuardException(null, info, fallback);
+
+            expect(result).toBe(fallback);
+        });
+
+        it('returns the fallback when passport reports no user and no error', () => {
+            const result = util.toJwtGuardException(
+                null,
+                new Error('no auth header'),
+                fallback
+            );
+
+            expect(result).toBe(fallback);
         });
     });
 });

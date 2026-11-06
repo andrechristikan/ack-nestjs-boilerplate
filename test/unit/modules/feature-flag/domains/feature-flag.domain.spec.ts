@@ -12,6 +12,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
@@ -33,7 +37,7 @@ describe('FeatureFlagDomain', () => {
 
     const baseFlag: FeatureFlag = {
         id: '507f1f77bcf86cd799439011',
-        key: 'loginWithGoogle',
+        key: EnumFeatureFlagKey.loginWithGoogle,
         description: 'Enables Google sign-in',
         isEnable: true,
         rolloutPercent: 100,
@@ -65,7 +69,9 @@ describe('FeatureFlagDomain', () => {
         it('returns the cached flag without reading the repository', async () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
 
-            const result = await domain.getByKey('loginWithGoogle');
+            const result = await domain.getByKey(
+                EnumFeatureFlagKey.loginWithGoogle
+            );
 
             expect(result).toEqual(baseFlag);
             expect(featureFlagRepository.findOneByKey).not.toHaveBeenCalled();
@@ -78,20 +84,22 @@ describe('FeatureFlagDomain', () => {
             );
             featureFlagRepository.findOneByKey.mockResolvedValue(baseFlag);
 
-            const result = await domain.getByKey('loginWithGoogle');
+            const result = await domain.getByKey(
+                EnumFeatureFlagKey.loginWithGoogle
+            );
 
             expect(result).toEqual(baseFlag);
             expect(featureFlagRepository.findOneByKey).toHaveBeenCalledWith(
-                'loginWithGoogle'
+                EnumFeatureFlagKey.loginWithGoogle
             );
             expect(featureFlagCache.takeFeatureFlagLease).toHaveBeenCalledWith(
-                'loginWithGoogle'
+                EnumFeatureFlagKey.loginWithGoogle
             );
             expect(
                 featureFlagCache.takeFeatureFlagLease
             ).toHaveBeenCalledBefore(featureFlagRepository.findOneByKey);
             expect(featureFlagCache.setFeatureFlag).toHaveBeenCalledWith(
-                'loginWithGoogle',
+                EnumFeatureFlagKey.loginWithGoogle,
                 baseFlag,
                 'lease-token'
             );
@@ -102,7 +110,9 @@ describe('FeatureFlagDomain', () => {
             featureFlagCache.takeFeatureFlagLease.mockResolvedValue(null);
             featureFlagRepository.findOneByKey.mockResolvedValue(baseFlag);
 
-            const result = await domain.getByKey('loginWithGoogle');
+            const result = await domain.getByKey(
+                EnumFeatureFlagKey.loginWithGoogle
+            );
 
             expect(result).toEqual(baseFlag);
             expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
@@ -111,7 +121,7 @@ describe('FeatureFlagDomain', () => {
         it('takes no lease on a cache hit', async () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
 
-            await domain.getByKey('loginWithGoogle');
+            await domain.getByKey(EnumFeatureFlagKey.loginWithGoogle);
 
             expect(
                 featureFlagCache.takeFeatureFlagLease
@@ -125,7 +135,9 @@ describe('FeatureFlagDomain', () => {
             );
             featureFlagRepository.findOneByKey.mockResolvedValue(null);
 
-            const result = await domain.getByKey('loginWithGoogle');
+            const result = await domain.getByKey(
+                EnumFeatureFlagKey.loginWithGoogle
+            );
 
             expect(result).toBeNull();
             expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
@@ -141,7 +153,7 @@ describe('FeatureFlagDomain', () => {
 
             const result = await domain.getMetadataByKey<{
                 newFeature: boolean;
-            }>('loginWithGoogle');
+            }>(EnumFeatureFlagKey.loginWithGoogle);
 
             expect(result).toEqual({ newFeature: true });
         });
@@ -150,7 +162,9 @@ describe('FeatureFlagDomain', () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue(null);
             featureFlagRepository.findOneByKey.mockResolvedValue(null);
 
-            const result = await domain.getMetadataByKey('loginWithGoogle');
+            const result = await domain.getMetadataByKey(
+                EnumFeatureFlagKey.loginWithGoogle
+            );
 
             expect(result).toBeNull();
         });
@@ -158,7 +172,9 @@ describe('FeatureFlagDomain', () => {
         it('returns null when the flag carries no metadata', async () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
 
-            const result = await domain.getMetadataByKey('loginWithGoogle');
+            const result = await domain.getMetadataByKey(
+                EnumFeatureFlagKey.loginWithGoogle
+            );
 
             expect(result).toBeNull();
         });
@@ -169,7 +185,11 @@ describe('FeatureFlagDomain', () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue(null);
 
             await expect(
-                domain.validateFeatureFlag('unknownFlag', null, null)
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.workspace,
+                    null,
+                    null
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagNotConfiguredException,
                 module: 'featureFlag',
@@ -182,11 +202,11 @@ describe('FeatureFlagDomain', () => {
                 messagePath: 'featureFlag.error.notConfigured',
                 rawError: expect.objectContaining({
                     message:
-                        'FeatureFlagNotConfiguredException: no feature flag row for "unknownFlag"',
+                        'FeatureFlagNotConfiguredException: no feature flag row for "workspace"',
                 }),
             });
             expect(featureFlagCache.getFeatureFlag).toHaveBeenCalledWith(
-                'unknownFlag'
+                EnumFeatureFlagKey.workspace
             );
         });
 
@@ -197,7 +217,11 @@ describe('FeatureFlagDomain', () => {
             });
 
             await expect(
-                domain.validateFeatureFlag('loginWithGoogle', null, null)
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    null,
+                    null
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
@@ -218,7 +242,11 @@ describe('FeatureFlagDomain', () => {
             });
 
             await expect(
-                domain.validateFeatureFlag('loginWithGoogle', 'user-1', null)
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    'user-1',
+                    null
+                )
             ).resolves.toBeUndefined();
             expect(featureFlagUtil.isInRollout).not.toHaveBeenCalled();
         });
@@ -232,11 +260,15 @@ describe('FeatureFlagDomain', () => {
             featureFlagUtil.isInRollout.mockReturnValue(true);
 
             await expect(
-                domain.validateFeatureFlag('loginWithGoogle', 'user-1', null)
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    'user-1',
+                    null
+                )
             ).resolves.toBeUndefined();
             expect(featureFlagUtil.isInRollout).toHaveBeenCalledWith(
                 50,
-                'loginWithGoogle',
+                EnumFeatureFlagKey.loginWithGoogle,
                 'user-1'
             );
         });
@@ -250,7 +282,11 @@ describe('FeatureFlagDomain', () => {
             featureFlagUtil.isInRollout.mockReturnValue(false);
 
             await expect(
-                domain.validateFeatureFlag('loginWithGoogle', 'user-1', null)
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    'user-1',
+                    null
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
@@ -270,7 +306,11 @@ describe('FeatureFlagDomain', () => {
             });
 
             await expect(
-                domain.validateFeatureFlag('loginWithGoogle', null, null)
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    null,
+                    null
+                )
             ).resolves.toBeUndefined();
             expect(featureFlagUtil.isInRollout).not.toHaveBeenCalled();
         });
@@ -282,7 +322,11 @@ describe('FeatureFlagDomain', () => {
             });
 
             await expect(
-                domain.validateFeatureFlag('loginWithGoogle', null, null)
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    null,
+                    null
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
@@ -303,11 +347,15 @@ describe('FeatureFlagDomain', () => {
             featureFlagUtil.isInRollout.mockReturnValue(true);
 
             await expect(
-                domain.validateFeatureFlag('loginWithGoogle', null, 'anon-1')
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    null,
+                    'anon-1'
+                )
             ).resolves.toBeUndefined();
             expect(featureFlagUtil.isInRollout).toHaveBeenCalledWith(
                 50,
-                'loginWithGoogle',
+                EnumFeatureFlagKey.loginWithGoogle,
                 'anon-1'
             );
         });
@@ -320,7 +368,11 @@ describe('FeatureFlagDomain', () => {
             featureFlagUtil.isInRollout.mockReturnValue(false);
 
             await expect(
-                domain.validateFeatureFlag('loginWithGoogle', null, 'anon-1')
+                domain.validateFeatureFlag(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    null,
+                    'anon-1'
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
@@ -339,7 +391,10 @@ describe('FeatureFlagDomain', () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue(null);
 
             await expect(
-                domain.validateFeatureFlagMetadata('unknownFlag', 'enabled')
+                domain.validateFeatureFlagMetadata(
+                    EnumFeatureFlagKey.workspace,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagNotConfiguredException,
                 module: 'featureFlag',
@@ -352,7 +407,7 @@ describe('FeatureFlagDomain', () => {
                 messagePath: 'featureFlag.error.notConfigured',
                 rawError: expect.objectContaining({
                     message:
-                        'FeatureFlagNotConfiguredException: no feature flag row for "unknownFlag"',
+                        'FeatureFlagNotConfiguredException: no feature flag row for "workspace"',
                 }),
             });
         });
@@ -364,7 +419,10 @@ describe('FeatureFlagDomain', () => {
             });
 
             await expect(
-                domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
+                domain.validateFeatureFlagMetadata(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
@@ -380,22 +438,28 @@ describe('FeatureFlagDomain', () => {
         it('resolves when the metadata sub-key holds true', async () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
-                metadata: { enabled: true },
+                metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: true },
             });
 
             await expect(
-                domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
+                domain.validateFeatureFlagMetadata(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
             ).resolves.toBeUndefined();
         });
 
         it('throws FeatureFlagDisabledException when the metadata sub-key holds false', async () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
-                metadata: { enabled: false },
+                metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: false },
             });
 
             await expect(
-                domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
+                domain.validateFeatureFlagMetadata(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
@@ -411,11 +475,14 @@ describe('FeatureFlagDomain', () => {
         it('throws FeatureFlagDisabledException (404) when the metadata sub-key is not boolean', async () => {
             featureFlagCache.getFeatureFlag.mockResolvedValue({
                 ...baseFlag,
-                metadata: { enabled: 'yes' },
+                metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: 'yes' },
             });
 
             await expect(
-                domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
+                domain.validateFeatureFlagMetadata(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 httpStatus: HttpStatus.NOT_FOUND,
@@ -436,7 +503,10 @@ describe('FeatureFlagDomain', () => {
             });
 
             await expect(
-                domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
+                domain.validateFeatureFlagMetadata(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 httpStatus: HttpStatus.NOT_FOUND,
@@ -457,7 +527,10 @@ describe('FeatureFlagDomain', () => {
             });
 
             await expect(
-                domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
+                domain.validateFeatureFlagMetadata(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
                 httpStatus: HttpStatus.NOT_FOUND,
@@ -687,7 +760,11 @@ describe('FeatureFlagDomain', () => {
             featureFlagUtil.isInRollout.mockReturnValue(true);
 
             expect(() =>
-                domain['assertRollout'](50, 'loginWithGoogle', 'user-1')
+                domain['assertRollout'](
+                    50,
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    'user-1'
+                )
             ).not.toThrow();
         });
 
@@ -696,7 +773,11 @@ describe('FeatureFlagDomain', () => {
 
             let captured: unknown;
             try {
-                domain['assertRollout'](10, 'loginWithGoogle', 'user-1');
+                domain['assertRollout'](
+                    10,
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    'user-1'
+                );
             } catch (error) {
                 captured = error;
             }

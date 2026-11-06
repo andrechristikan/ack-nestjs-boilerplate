@@ -174,6 +174,7 @@ export class AnalyticAnomalyDomain {
         const anomalous: IAnalyticLoginTimeAnomaly[] = [];
         const batches = this.helperArrayService.chunk(users, this.concurrency);
         for (const batch of batches) {
+            // Sequential by design: bounded chunks, concurrent within a chunk
             const historyPromises = batch.map(user =>
                 this.activityLogAnalyticDomain.getCreatedAtByUserActionsInRange(
                     user.userId,
@@ -183,7 +184,6 @@ export class AnalyticAnomalyDomain {
                     this.loginTimeAnomalyHistoryLimit
                 )
             );
-            // Sequential by design: bounded chunks, concurrent within a chunk
             const historyPerUser = await Promise.all(historyPromises);
             for (const [index, user] of batch.entries()) {
                 const anomaly = this.analyticAnomalyUtil.findLoginTimeAnomaly(

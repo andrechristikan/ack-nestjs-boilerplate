@@ -5,6 +5,7 @@ import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthDatabaseIndicator', () => {
     const databaseService: DeepMockProxy<DatabaseService> =
@@ -41,7 +42,9 @@ describe('HealthDatabaseIndicator', () => {
             });
             session.up.mockReturnValue({ database: { status: 'up' } });
 
-            const result = await indicator.isHealthy('database');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.database
+            );
 
             expect(result).toEqual({ database: { status: 'up' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith(
@@ -59,7 +62,9 @@ describe('HealthDatabaseIndicator', () => {
             );
             session.down.mockReturnValue({ database: { status: 'down' } });
 
-            const result = await indicator.isHealthy('database');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.database
+            );
 
             expect(result).toEqual({ database: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -73,7 +78,9 @@ describe('HealthDatabaseIndicator', () => {
             );
             session.down.mockReturnValue({ database: { status: 'down' } });
 
-            const result = await indicator.isHealthy('database');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.database
+            );
 
             expect(result).toEqual({ database: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(

@@ -144,7 +144,13 @@ export class NotificationEmailTermPolicyDomain {
             });
             statuses = result.Status ?? [];
         } catch (err: unknown) {
+            const message = this.notificationUtil.toDeliveryUnknownMessage(
+                batchId,
+                claimedUserIds.length
+            );
+
             throw new NotificationEmailDeliveryUnknownException(
+                message,
                 batchId,
                 claimedUserIds.length,
                 err
@@ -152,7 +158,13 @@ export class NotificationEmailTermPolicyDomain {
         }
 
         if (statuses.length !== claimedUserIds.length) {
+            const message = this.notificationUtil.toDeliveryUnknownMessage(
+                batchId,
+                claimedUserIds.length
+            );
+
             throw new NotificationEmailDeliveryUnknownException(
+                message,
                 batchId,
                 claimedUserIds.length
             );
@@ -187,14 +199,26 @@ export class NotificationEmailTermPolicyDomain {
             this.releaseFailed(claimNonce, failedUserIds, proceedBy),
         ]);
         if (markOutcome.status === 'rejected') {
+            const message = this.notificationUtil.toDeliveryUnknownMessage(
+                batchId,
+                sentUserIds.length
+            );
+
             throw new NotificationEmailDeliveryUnknownException(
+                message,
                 batchId,
                 sentUserIds.length,
                 markOutcome.reason
             );
         }
         if (releaseOutcome.status === 'rejected') {
+            const message = this.notificationUtil.toDeliveryUnknownMessage(
+                batchId,
+                failedUserIds.length
+            );
+
             throw new NotificationEmailDeliveryUnknownException(
+                message,
                 batchId,
                 failedUserIds.length,
                 releaseOutcome.reason
@@ -217,7 +241,13 @@ export class NotificationEmailTermPolicyDomain {
         }
 
         if (unknownCount > 0) {
+            const message = this.notificationUtil.toDeliveryUnknownMessage(
+                batchId,
+                unknownCount
+            );
+
             throw new NotificationEmailDeliveryUnknownException(
+                message,
                 batchId,
                 unknownCount
             );

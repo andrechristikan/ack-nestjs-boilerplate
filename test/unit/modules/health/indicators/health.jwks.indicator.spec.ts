@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { createHealthJwksIndicator } from '@test/unit/helpers/test.unit.health.helper';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthJwksIndicator', () => {
     const healthIndicatorService: MockProxy<HealthIndicatorService> =
@@ -40,8 +41,9 @@ describe('HealthJwksIndicator', () => {
                 jwksAccessToken: { status: 'up' },
             });
 
-            const result =
-                await indicator.isHealthyAccessToken('jwksAccessToken');
+            const result = await indicator.isHealthyAccessToken(
+                EnumHealthIndicatorKey.jwksAccessToken
+            );
 
             expect(result).toEqual({ jwksAccessToken: { status: 'up' } });
             expect(configService.get).toHaveBeenCalledWith(
@@ -67,8 +69,9 @@ describe('HealthJwksIndicator', () => {
                 jwksAccessToken: { status: 'down' },
             });
 
-            const result =
-                await indicator.isHealthyAccessToken('jwksAccessToken');
+            const result = await indicator.isHealthyAccessToken(
+                EnumHealthIndicatorKey.jwksAccessToken
+            );
 
             expect(result).toEqual({ jwksAccessToken: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -92,8 +95,9 @@ describe('HealthJwksIndicator', () => {
                 jwksRefreshToken: { status: 'up' },
             });
 
-            const result =
-                await indicator.isHealthyRefreshToken('jwksRefreshToken');
+            const result = await indicator.isHealthyRefreshToken(
+                EnumHealthIndicatorKey.jwksRefreshToken
+            );
 
             expect(result).toEqual({ jwksRefreshToken: { status: 'up' } });
             expect(configService.get).toHaveBeenCalledWith(
@@ -117,8 +121,9 @@ describe('HealthJwksIndicator', () => {
                 jwksRefreshToken: { status: 'down' },
             });
 
-            const result =
-                await indicator.isHealthyRefreshToken('jwksRefreshToken');
+            const result = await indicator.isHealthyRefreshToken(
+                EnumHealthIndicatorKey.jwksRefreshToken
+            );
 
             expect(result).toEqual({ jwksRefreshToken: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -139,7 +144,10 @@ describe('HealthJwksIndicator', () => {
             );
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
-            const result = await indicator['checkUri']('jwks', undefined);
+            const result = await indicator['checkUri'](
+                EnumHealthIndicatorKey.jwksAccessToken,
+                undefined
+            );
 
             expect(result).toEqual({ jwks: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -155,7 +163,10 @@ describe('HealthJwksIndicator', () => {
             );
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
-            const result = await indicator['checkUri']('jwks', 'not-a-url');
+            const result = await indicator['checkUri'](
+                EnumHealthIndicatorKey.jwksAccessToken,
+                'not-a-url'
+            );
 
             expect(result).toEqual({ jwks: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -171,7 +182,10 @@ describe('HealthJwksIndicator', () => {
             );
             session.up.mockReturnValue({ jwks: { status: 'up' } });
 
-            const result = await indicator['checkUri']('jwks', accessUri);
+            const result = await indicator['checkUri'](
+                EnumHealthIndicatorKey.jwksAccessToken,
+                accessUri
+            );
 
             expect(result).toEqual({ jwks: { status: 'up' } });
             expect(session.up).toHaveBeenCalledWith();
@@ -186,7 +200,10 @@ describe('HealthJwksIndicator', () => {
             fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
-            const result = await indicator['checkUri']('jwks', accessUri);
+            const result = await indicator['checkUri'](
+                EnumHealthIndicatorKey.jwksAccessToken,
+                accessUri
+            );
 
             expect(result).toEqual({ jwks: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -203,7 +220,10 @@ describe('HealthJwksIndicator', () => {
             fetchMock.mockResolvedValue(Response.json({ keys: 'none' }));
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
-            const result = await indicator['checkUri']('jwks', accessUri);
+            const result = await indicator['checkUri'](
+                EnumHealthIndicatorKey.jwksAccessToken,
+                accessUri
+            );
 
             expect(result).toEqual({ jwks: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -220,7 +240,10 @@ describe('HealthJwksIndicator', () => {
             fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
-            const result = await indicator['checkUri']('jwks', accessUri);
+            const result = await indicator['checkUri'](
+                EnumHealthIndicatorKey.jwksAccessToken,
+                accessUri
+            );
 
             expect(result).toEqual({ jwks: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(

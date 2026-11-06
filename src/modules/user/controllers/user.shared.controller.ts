@@ -27,6 +27,7 @@ import type {
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserCurrent,
@@ -221,7 +222,7 @@ export class UserSharedController {
     @Response('user.changePassword')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @FeatureFlagProtected('changePassword')
+    @FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

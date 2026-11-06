@@ -11,6 +11,7 @@ import { NotificationEmailAccountDomain } from '@modules/notification/domains/no
 import { NotificationEmailSecurityDomain } from '@modules/notification/domains/notification.email.security.domain';
 import { NotificationEmailTermPolicyDomain } from '@modules/notification/domains/notification.email.term-policy.domain';
 import { NotificationEmailWorkspaceDomain } from '@modules/notification/domains/notification.email.workspace.domain';
+import { NotificationPushDeliveryDomain } from '@modules/notification/domains/notification.push.delivery.domain';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
 import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
 import { NotificationSecurityDomain } from '@modules/notification/domains/notification.security.domain';
@@ -27,6 +28,7 @@ import { Global, Module } from '@nestjs/common';
 import { QueueConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
 
+/** Shared module: NotificationDomain, NotificationQueue, NotificationEmailQueue, and NotificationUtil for the user, workspace, and term-policy HTTP services; the template domains for the notification template seed. */
 @Global()
 @Module({
     controllers: [],
@@ -44,6 +46,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationEmailSecurityDomain,
         NotificationEmailTermPolicyDomain,
         NotificationEmailWorkspaceDomain,
+        NotificationPushDeliveryDomain,
         NotificationPushSecurityDomain,
         NotificationPushWorkspaceDomain,
         NotificationQueue,

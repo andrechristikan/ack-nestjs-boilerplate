@@ -3,7 +3,7 @@ import { QueueSideEffectFailedException } from '@queues/exceptions/queue.side-ef
 
 describe('QueueSideEffectFailedException', () => {
     describe('constructor', () => {
-        it('carries the description as message, the raw error, and is fatal', () => {
+        it('carries the description as message, chains the raw error as the cause, and is fatal', () => {
             const rawError = new Error('redis down');
 
             const exception = new QueueSideEffectFailedException(
@@ -14,6 +14,7 @@ describe('QueueSideEffectFailedException', () => {
             expect(exception).toBeInstanceOf(QueueException);
             expect(exception.message).toBe('enqueue welcome');
             expect(exception.rawError).toBe(rawError);
+            expect(exception.cause).toBe(rawError);
             expect(exception.isFatal).toBe(true);
         });
     });

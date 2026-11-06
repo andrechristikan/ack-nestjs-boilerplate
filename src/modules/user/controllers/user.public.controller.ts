@@ -12,6 +12,7 @@ import {
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
 import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { DocTermPolicyErrorResponses } from '@modules/term-policy/constants/term-policy.constant';
 import { UserCreateSocialRequestSchema } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
@@ -66,7 +67,7 @@ export class UserPublicController {
 
     @Doc({ summary: 'login with credential' })
     @Response('user.loginCredential', { schema: UserLoginResponseSchema })
-    @FeatureFlagProtected('loginWithCredential')
+    @FeatureFlagProtected(EnumFeatureFlagKey.loginWithCredential)
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -84,7 +85,7 @@ export class UserPublicController {
         schema: UserLoginResponseSchema,
     })
     @AuthSocialGoogleProtected()
-    @FeatureFlagProtected('loginWithGoogle')
+    @FeatureFlagProtected(EnumFeatureFlagKey.loginWithGoogle)
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -108,7 +109,7 @@ export class UserPublicController {
         schema: UserLoginResponseSchema,
     })
     @AuthSocialAppleProtected()
-    @FeatureFlagProtected('loginWithApple')
+    @FeatureFlagProtected(EnumFeatureFlagKey.loginWithApple)
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -129,7 +130,7 @@ export class UserPublicController {
     @Doc({ summary: 'user sign up' })
     @DocTermPolicyErrorResponses.requiredNotPublished
     @Response('user.signUp')
-    @FeatureFlagProtected('signUp')
+    @FeatureFlagProtected(EnumFeatureFlagKey.signUp)
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @Post('/sign-up')
@@ -167,7 +168,7 @@ export class UserPublicController {
 
     @Doc({ summary: 'user forgot password' })
     @Response('user.forgotPassword')
-    @FeatureFlagProtected('changePassword')
+    @FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -181,7 +182,7 @@ export class UserPublicController {
 
     @Doc({ summary: 'user reset password' })
     @Response('user.resetPassword')
-    @FeatureFlagProtected('changePassword')
+    @FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @Patch('/password/reset')

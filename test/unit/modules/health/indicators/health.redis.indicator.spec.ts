@@ -7,6 +7,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { HealthRedisProbeKey } from '@modules/health/constants/health.constant';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import type { Cache } from 'cache-manager';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthRedisIndicator', () => {
     const cacheManager: MockProxy<Cache> = mock<Cache>();
@@ -40,7 +41,9 @@ describe('HealthRedisIndicator', () => {
             cacheManager.get.mockResolvedValue(undefined);
             session.up.mockReturnValue({ redis: { status: 'up' } });
 
-            const result = await indicator.isHealthy('redis');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.redis
+            );
 
             expect(result).toEqual({ redis: { status: 'up' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith('redis');
@@ -52,7 +55,9 @@ describe('HealthRedisIndicator', () => {
             cacheManager.get.mockRejectedValue(new Error('redis down'));
             session.down.mockReturnValue({ redis: { status: 'down' } });
 
-            const result = await indicator.isHealthy('redis');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.redis
+            );
 
             expect(result).toEqual({ redis: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith('Redis is unreachable');
@@ -62,7 +67,9 @@ describe('HealthRedisIndicator', () => {
             cacheManager.get.mockRejectedValue('not-an-error');
             session.down.mockReturnValue({ redis: { status: 'down' } });
 
-            const result = await indicator.isHealthy('redis');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.redis
+            );
 
             expect(result).toEqual({ redis: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith('Redis is unreachable');

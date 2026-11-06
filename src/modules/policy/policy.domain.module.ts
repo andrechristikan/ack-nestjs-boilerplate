@@ -4,6 +4,7 @@ import { PolicyRepositoryModule } from '@modules/policy/policy.repository.module
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
 
+/** Shared module: PolicyDomain for the policy guard. */
 @Global()
 @Module({
     controllers: [],

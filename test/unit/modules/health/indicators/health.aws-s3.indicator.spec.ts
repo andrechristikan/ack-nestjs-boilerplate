@@ -6,6 +6,7 @@ import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthAwsS3BucketIndicator', () => {
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
@@ -42,7 +43,7 @@ describe('HealthAwsS3BucketIndicator', () => {
             });
 
             const result = await indicator.isHealthy(
-                's3PublicBucket',
+                EnumHealthIndicatorKey.s3PublicBucket,
                 EnumAwsS3Accessibility.public
             );
 
@@ -60,7 +61,7 @@ describe('HealthAwsS3BucketIndicator', () => {
             session.up.mockReturnValue({ s3PublicBucket: { status: 'up' } });
 
             const result = await indicator.isHealthy(
-                's3PublicBucket',
+                EnumHealthIndicatorKey.s3PublicBucket,
                 EnumAwsS3Accessibility.public
             );
 
@@ -84,7 +85,7 @@ describe('HealthAwsS3BucketIndicator', () => {
             });
 
             const result = await indicator.isHealthy(
-                's3PrivateBucket',
+                EnumHealthIndicatorKey.s3PrivateBucket,
                 EnumAwsS3Accessibility.private
             );
 
@@ -102,7 +103,7 @@ describe('HealthAwsS3BucketIndicator', () => {
             });
 
             const result = await indicator.isHealthy(
-                's3PrivateBucket',
+                EnumHealthIndicatorKey.s3PrivateBucket,
                 EnumAwsS3Accessibility.private
             );
 

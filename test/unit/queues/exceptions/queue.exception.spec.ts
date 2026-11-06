@@ -9,6 +9,7 @@ describe('QueueException', () => {
             expect(exception.message).toBe('job failed');
             expect(exception.isFatal).toBe(false);
             expect(exception.rawError).toBeNull();
+            expect(exception.cause).toBeUndefined();
         });
 
         it('sets isFatal to true when given true', () => {
@@ -25,19 +26,21 @@ describe('QueueException', () => {
             expect(exception.isFatal).toBe(false);
         });
 
-        it('carries the rawError when given', () => {
+        it('carries the rawError and chains it as the standard cause when given', () => {
             const rawError = new Error('redis down');
 
             const exception = new QueueException('job failed', false, rawError);
 
             expect(exception.rawError).toBe(rawError);
+            expect(exception.cause).toBe(rawError);
             expect(exception.isFatal).toBe(false);
         });
 
-        it('defaults rawError to null when given null', () => {
+        it('defaults rawError to null and sets no cause when given null', () => {
             const exception = new QueueException('job failed', false, null);
 
             expect(exception.rawError).toBeNull();
+            expect(exception.cause).toBeUndefined();
         });
     });
 });

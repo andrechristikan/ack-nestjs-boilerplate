@@ -13,7 +13,7 @@ import { Global, Module } from '@nestjs/common';
 import { TermPolicyAnalyticDomain } from '@modules/term-policy/domains/term-policy.analytic.domain';
 import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains/term-policy.acceptance.analytic.domain';
 
-/** Global module exposing term-policy domain services for acceptance guards and seeding. */
+/** Shared module: TermPolicyAcceptanceDomain for the term-policy guard and the user HTTP services, TermPolicyAcceptanceAnalyticDomain for the aggregation domain, TermPolicyUtil for the term-policy seed. */
 @Global()
 @Module({
     controllers: [],

@@ -23,6 +23,7 @@ import type {
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -30,6 +31,8 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserLoginSocial,
+    IUserSignUpResolved,
     IUserSignUpWorkspaceInvite,
     IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
@@ -290,6 +293,140 @@ describe('UserCreateUtil', () => {
         });
     });
 
+    describe('buildSocialCreate', () => {
+        const socialInput: IUserLoginSocial = {
+            from: EnumUserSignUpFrom.mobile,
+            username: 'harborFinch',
+            name: 'Harbor Quill',
+            inviteToken: null,
+            countryId: 'country-harbor',
+            cookies: true,
+            marketing: false,
+            device: {
+                fingerprint: 'device-harbor',
+                name: null,
+                platform: null,
+                notificationToken: null,
+            },
+        };
+        const resolved: IUserSignUpResolved = {
+            roleId: role.id,
+            workspaceContext: personalContext,
+        };
+
+        beforeEach(() => {
+            databaseUtil.createId.mockReturnValue('user-id-harbor');
+        });
+
+        it('stores the email trimmed and lowercased', () => {
+            const result = util.buildSocialCreate(
+                '  Harbor@Example.COM ',
+                EnumUserLoginWith.socialGoogle,
+                socialInput,
+                resolved
+            );
+
+            expect(result.email).toBe('harbor@example.com');
+        });
+
+        it('builds a Google social create input from the resolved ids', () => {
+            const result = util.buildSocialCreate(
+                'harbor@example.com',
+                EnumUserLoginWith.socialGoogle,
+                socialInput,
+                resolved
+            );
+
+            expect(result).toMatchObject({
+                userId: 'user-id-harbor',
+                email: 'harbor@example.com',
+                username: 'harborFinch',
+                roleId: role.id,
+                countryId: 'country-harbor',
+                signUpFrom: EnumUserSignUpFrom.mobile,
+                signUpWith: EnumUserSignUpWith.socialGoogle,
+                isVerified: true,
+                password: null,
+                passwordHistoryType:
+                    UserCreateContract.social.passwordHistoryType,
+                verification: null,
+                workspaceContext: personalContext,
+                createdBy: 'user-id-harbor',
+                acceptedTermPolicyTypes: expect.arrayContaining([
+                    EnumTermPolicyType.cookies,
+                ]),
+            });
+            expect(result).not.toHaveProperty('termPolicy');
+        });
+
+        it('builds an Apple social create input with no optional term policy accepted', () => {
+            const result = util.buildSocialCreate(
+                'harbor@example.com',
+                EnumUserLoginWith.socialApple,
+                { ...socialInput, cookies: false, marketing: false },
+                resolved
+            );
+
+            expect(result).toMatchObject({
+                signUpWith: EnumUserSignUpWith.socialApple,
+                acceptedTermPolicyTypes: [
+                    EnumTermPolicyType.termsOfService,
+                    EnumTermPolicyType.privacy,
+                ],
+            });
+        });
+
+        it('keeps a null name and accepts marketing when no name is given', () => {
+            const result = util.buildSocialCreate(
+                'harbor@example.com',
+                EnumUserLoginWith.socialGoogle,
+                { ...socialInput, name: null, marketing: true },
+                resolved
+            );
+
+            expect(result).toMatchObject({
+                name: null,
+                acceptedTermPolicyTypes: expect.arrayContaining([
+                    EnumTermPolicyType.marketing,
+                ]),
+            });
+        });
+    });
+
+    describe('buildAcceptedTermPolicyTypes', () => {
+        it('returns the required types followed by cookies and marketing when both are accepted', () => {
+            expect(util.buildAcceptedTermPolicyTypes(true, true)).toEqual([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+                EnumTermPolicyType.cookies,
+                EnumTermPolicyType.marketing,
+            ]);
+        });
+
+        it('returns the required types alone when neither is accepted', () => {
+            expect(util.buildAcceptedTermPolicyTypes(false, false)).toEqual([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+            ]);
+        });
+
+        it('adds cookies alone when only cookies is accepted', () => {
+            expect(util.buildAcceptedTermPolicyTypes(true, false)).toEqual([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+                EnumTermPolicyType.cookies,
+            ]);
+        });
+
+        it('adds marketing alone when only marketing is accepted', () => {
+            expect(util.buildAcceptedTermPolicyTypes(false, true)).toEqual([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+                EnumTermPolicyType.marketing,
+            ]);
+        });
+    });
+
     describe('buildStages', () => {
         it('builds the stage inputs of every input, omitting a null workspace id', () => {
             const result = util.buildStages(
@@ -432,13 +569,13 @@ describe('UserCreateUtil', () => {
         it('returns the google flag key for a google sign-in', () => {
             expect(
                 util.resolveSocialFeatureFlagKey(EnumUserLoginWith.socialGoogle)
-            ).toBe('loginWithGoogle');
+            ).toBe(EnumFeatureFlagKey.loginWithGoogle);
         });
 
         it('returns the apple flag key for an apple sign-in', () => {
             expect(
                 util.resolveSocialFeatureFlagKey(EnumUserLoginWith.socialApple)
-            ).toBe('loginWithApple');
+            ).toBe(EnumFeatureFlagKey.loginWithApple);
         });
     });
 

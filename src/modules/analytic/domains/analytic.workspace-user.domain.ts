@@ -71,32 +71,32 @@ export class AnalyticWorkspaceUserDomain {
         return value;
     }
 
-    inviteFunnel(
+    async inviteFunnel(
         workspaceId: string,
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.workspaceInviteAnalyticDomain.getFunnel(
+        return await this.workspaceInviteAnalyticDomain.getFunnel(
             startDate,
             endDate,
             workspaceId
         );
     }
 
-    joinOutcomes(
+    async joinOutcomes(
         workspaceId: string,
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.workspaceJoinRequestAnalyticDomain.getOutcomes(
+        return await this.workspaceJoinRequestAnalyticDomain.getOutcomes(
             startDate,
             endDate,
             workspaceId
         );
     }
 
-    memberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]> {
-        return this.workspaceMemberAnalyticDomain.getRoles(workspaceId);
+    async memberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]> {
+        return await this.workspaceMemberAnalyticDomain.getRoles(workspaceId);
     }
 
     async activity(

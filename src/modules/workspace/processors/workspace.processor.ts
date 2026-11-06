@@ -2,6 +2,7 @@ import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceProcessorService } from '@modules/workspace/services/processor/workspace.processor.service';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
@@ -14,9 +15,10 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 export class WorkspaceProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
+        protected readonly messageService: MessageService,
         private readonly workspaceProcessorService: WorkspaceProcessorService
     ) {
-        super(sentryService);
+        super(sentryService, messageService);
     }
 
     /** Dispatches each job to its handler by job name. */

@@ -1,3 +1,4 @@
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DiskHealthIndicator, MemoryHealthIndicator } from '@nestjs/terminus';
@@ -30,8 +31,10 @@ export class HealthInstanceIndicator {
     /**
      * Checks resident set size against `health.memoryRssThresholdInBytes`.
      */
-    isHealthyMemoryRss(key: string): Promise<HealthIndicatorResult> {
-        return this.memoryHealthIndicator.checkRSS(
+    async isHealthyMemoryRss(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
+        return await this.memoryHealthIndicator.checkRSS(
             key,
             this.memoryRssThresholdInBytes
         );
@@ -40,8 +43,10 @@ export class HealthInstanceIndicator {
     /**
      * Checks used heap against `health.memoryHeapThresholdInBytes`.
      */
-    isHealthyMemoryHeap(key: string): Promise<HealthIndicatorResult> {
-        return this.memoryHealthIndicator.checkHeap(
+    async isHealthyMemoryHeap(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
+        return await this.memoryHealthIndicator.checkHeap(
             key,
             this.memoryHeapThresholdInBytes
         );
@@ -50,8 +55,10 @@ export class HealthInstanceIndicator {
     /**
      * Checks disk usage of `health.diskPath` against `health.diskThresholdPercent`.
      */
-    isHealthyStorage(key: string): Promise<HealthIndicatorResult> {
-        return this.diskHealthIndicator.checkStorage(key, {
+    async isHealthyStorage(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
+        return await this.diskHealthIndicator.checkStorage(key, {
             thresholdPercent: this.diskThresholdPercent,
             path: this.diskPath,
         });

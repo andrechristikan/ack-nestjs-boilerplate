@@ -1,3 +1,4 @@
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
@@ -29,7 +30,9 @@ export class HealthAppleIndicator {
     /**
      * Down when neither the Apple client id nor the sign-in client id is set.
      */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         if (!this.clientId && !this.signInClientId) {

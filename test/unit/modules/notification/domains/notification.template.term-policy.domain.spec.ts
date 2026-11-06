@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -6,120 +8,172 @@ import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import type { INotificationTemplateTermPolicyProcess } from '@modules/notification/interfaces/notification.interface';
 import { NotificationTemplateTermPolicyDomain } from '@modules/notification/domains/notification.template.term-policy.domain';
-import { MessageService } from '@common/message/services/message.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 
 describe('NotificationTemplateTermPolicyDomain', () => {
-    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
+    const templateDir = join(
+        import.meta.dirname,
+        '../../../../../src/modules/notification/templates'
+    );
+    const templates: {
+        process: INotificationTemplateTermPolicyProcess;
+        file: string;
+        subject: string;
+        label: string;
+    }[] = [
+        {
+            process: EnumNotificationProcess.publishTermPolicy,
+            file: 'notification.publish-term-policy.template.hbs',
+            subject: 'Publish Term Policy',
+            label: 'publish term policy',
+        },
+    ];
     let domain: NotificationTemplateTermPolicyDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        messageService.setMessage.mockImplementation((path: string) => path);
         const module = await Test.createTestingModule({
             providers: [
-                { provide: MessageService, useValue: messageService },
                 NotificationTemplateTermPolicyDomain,
                 { provide: AwsSESService, useValue: awsSESService },
+                { provide: NotificationUtil, useValue: notificationUtil },
             ],
         }).compile();
         domain = module.get(NotificationTemplateTermPolicyDomain);
     });
 
-    describe('emailImportPublishTermPolicy', () => {
-        it('creates the template from the on-disk hbs file', async () => {
-            awsSESService.createTemplate.mockResolvedValue({
-                $metadata: {},
-            });
-
-            await expect(
-                domain.emailImportPublishTermPolicy()
-            ).resolves.toBeUndefined();
-            expect(awsSESService.createTemplate).toHaveBeenCalledWith({
-                name: EnumNotificationProcess.publishTermPolicy,
-                subject: 'Publish Term Policy',
-                htmlBody: expect.any(String),
-            });
-        });
-
-        it('throws an AppUnknownException chaining the rejection when the create call rejects', async () => {
-            const error = new Error('ses down');
-            awsSESService.createTemplate.mockRejectedValue(error);
-
-            await expect(
-                domain.emailImportPublishTermPolicy()
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: error,
-            });
-        });
-    });
-
-    describe('emailGetPublishTermPolicy', () => {
-        it('returns the template from SES', async () => {
-            const template: GetTemplateCommandOutput = {
-                $metadata: {},
-                Template: { TemplateName: 'publishTermPolicy' },
-            };
-            awsSESService.getTemplate.mockResolvedValue(template);
-
-            const result = await domain.emailGetPublishTermPolicy();
-
-            expect(result).toBe(template);
-            expect(awsSESService.getTemplate).toHaveBeenCalledWith({
-                name: EnumNotificationProcess.publishTermPolicy,
-            });
-        });
-
-        it('returns null for the template-not-found answer', async () => {
-            awsSESService.getTemplate.mockRejectedValue(
-                new TemplateDoesNotExistException({
-                    message: 'missing',
+    describe('emailImport', () => {
+        it.each(templates)(
+            'creates the $process template from $file',
+            async ({ process, file, subject }) => {
+                awsSESService.createTemplate.mockResolvedValue({
                     $metadata: {},
-                })
-            );
+                });
 
-            await expect(
-                domain.emailGetPublishTermPolicy()
-            ).resolves.toBeNull();
-        });
+                await expect(
+                    domain.emailImport(process)
+                ).resolves.toBeUndefined();
+                expect(awsSESService.createTemplate).toHaveBeenCalledWith({
+                    name: process,
+                    subject,
+                    htmlBody: readFileSync(join(templateDir, file), 'utf8'),
+                });
+            }
+        );
 
-        it('throws an AppUnknownException chaining the rejection for any other error', async () => {
-            const error = new Error('ses down');
-            awsSESService.getTemplate.mockRejectedValue(error);
+        it.each(templates)(
+            'throws an AppUnknownException naming the $process import when the create call rejects',
+            async ({ process, label }) => {
+                const error = new Error('ses down');
+                awsSESService.createTemplate.mockRejectedValue(error);
+                notificationUtil.toTemplateLabel.mockReturnValue(label);
 
-            await expect(
-                domain.emailGetPublishTermPolicy()
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: error,
-            });
-        });
+                await expect(domain.emailImport(process)).rejects.toMatchObject(
+                    {
+                        constructor: AppUnknownException,
+                        rawError: error,
+                        description: `Failed to import ${label} template`,
+                    }
+                );
+                expect(notificationUtil.toTemplateLabel).toHaveBeenCalledWith(
+                    process
+                );
+            }
+        );
     });
 
-    describe('emailDeletePublishTermPolicy', () => {
-        it('deletes the template', async () => {
-            awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
+    describe('emailGet', () => {
+        it.each(templates)(
+            'returns the $process template from SES',
+            async ({ process }) => {
+                const template: GetTemplateCommandOutput = {
+                    $metadata: {},
+                    Template: { TemplateName: process },
+                };
+                awsSESService.getTemplate.mockResolvedValue(template);
 
-            await expect(
-                domain.emailDeletePublishTermPolicy()
-            ).resolves.toBeUndefined();
-            expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
-                name: EnumNotificationProcess.publishTermPolicy,
-            });
-        });
+                const result = await domain.emailGet(process);
 
-        it('throws an AppUnknownException chaining the rejection when the delete call rejects', async () => {
-            const error = new Error('ses down');
-            awsSESService.deleteTemplate.mockRejectedValue(error);
+                expect(result).toBe(template);
+                expect(awsSESService.getTemplate).toHaveBeenCalledWith({
+                    name: process,
+                });
+            }
+        );
 
-            await expect(
-                domain.emailDeletePublishTermPolicy()
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: error,
-            });
-        });
+        it.each(templates)(
+            'returns null for the $process template-not-found answer',
+            async ({ process }) => {
+                awsSESService.getTemplate.mockRejectedValue(
+                    new TemplateDoesNotExistException({
+                        message: 'missing',
+                        $metadata: {},
+                    })
+                );
+
+                await expect(domain.emailGet(process)).resolves.toBeNull();
+            }
+        );
+
+        it.each(templates)(
+            'throws an AppUnknownException naming the $process get for any other error',
+            async ({ process, label }) => {
+                const error = new Error('ses down');
+                awsSESService.getTemplate.mockRejectedValue(error);
+                notificationUtil.toTemplateLabel.mockReturnValue(label);
+
+                await expect(domain.emailGet(process)).rejects.toMatchObject({
+                    constructor: AppUnknownException,
+                    rawError: error,
+                    description: `Failed to get ${label} template`,
+                });
+                expect(notificationUtil.toTemplateLabel).toHaveBeenCalledWith(
+                    process
+                );
+            }
+        );
+    });
+
+    describe('emailDelete', () => {
+        it.each(templates)(
+            'deletes the $process template',
+            async ({ process }) => {
+                awsSESService.deleteTemplate.mockResolvedValue({
+                    $metadata: {},
+                });
+
+                await expect(
+                    domain.emailDelete(process)
+                ).resolves.toBeUndefined();
+                expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
+                    name: process,
+                });
+            }
+        );
+
+        it.each(templates)(
+            'throws an AppUnknownException naming the $process delete when the delete call rejects',
+            async ({ process, label }) => {
+                const error = new Error('ses down');
+                awsSESService.deleteTemplate.mockRejectedValue(error);
+                notificationUtil.toTemplateLabel.mockReturnValue(label);
+
+                await expect(domain.emailDelete(process)).rejects.toMatchObject(
+                    {
+                        constructor: AppUnknownException,
+                        rawError: error,
+                        description: `Failed to delete ${label} template`,
+                    }
+                );
+                expect(notificationUtil.toTemplateLabel).toHaveBeenCalledWith(
+                    process
+                );
+            }
+        );
     });
 });

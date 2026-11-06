@@ -8,18 +8,18 @@ export class WorkspaceAnalyticDomain {
         private readonly workspaceAnalyticRepository: WorkspaceAnalyticRepository
     ) {}
 
-    getCountCreated(startDate: Date, endDate: Date): Promise<number> {
-        return this.workspaceAnalyticRepository.countCreated(
+    async getCountCreated(startDate: Date, endDate: Date): Promise<number> {
+        return await this.workspaceAnalyticRepository.countCreated(
             startDate,
             endDate
         );
     }
 
-    getGroupByVisibility(): Promise<IAnalyticCountBucket[]> {
-        return this.workspaceAnalyticRepository.groupByVisibility();
+    async getGroupByVisibility(): Promise<IAnalyticCountBucket[]> {
+        return await this.workspaceAnalyticRepository.groupByVisibility();
     }
 
-    getCountActive(): Promise<number> {
-        return this.workspaceAnalyticRepository.countActive();
+    async getCountActive(): Promise<number> {
+        return await this.workspaceAnalyticRepository.countActive();
     }
 }

@@ -20,11 +20,9 @@ import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import ms from 'ms';
 
 @Injectable()
 export class UserPasswordDomain {
-    private readonly forgotResendInMinutes: number;
     private readonly passwordAttemptEnabled: boolean;
     private readonly passwordMaxAttempt: number;
 
@@ -38,10 +36,6 @@ export class UserPasswordDomain {
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly configService: ConfigService
     ) {
-        const forgotResendInMs = this.configService.get<number>(
-            'forgotPassword.resendInMs'
-        )!;
-        this.forgotResendInMinutes = forgotResendInMs / ms('1m');
         this.passwordAttemptEnabled = this.configService.get<boolean>(
             'auth.password.attempt'
         )!;
@@ -115,7 +109,7 @@ export class UserPasswordDomain {
         if (lastForgotPassword) {
             const waitInMinutes = this.userUtil.getResendWaitInMinutes(
                 lastForgotPassword.createdAt,
-                this.forgotResendInMinutes
+                this.userPasswordUtil.forgotResendInMinutes
             );
             if (waitInMinutes !== null) {
                 throw new UserForgotPasswordRequestLimitExceededException(

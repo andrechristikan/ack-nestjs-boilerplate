@@ -10,6 +10,7 @@ import {
     DatabaseWriteConflictCode,
 } from '@common/database/constants/database.constant';
 import type { AppBaseException } from '@app/exceptions/app.base.exception';
+import type { IDatabaseScalarField } from '@common/database/interfaces/database.interface';
 import { DatabaseIdInvalidException } from '@common/database/exceptions/database.id-invalid.exception';
 import { DatabaseTransactionExpiredException } from '@common/database/exceptions/database.transaction-expired.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
@@ -70,7 +71,7 @@ export class DatabaseUtil {
      * True when `error` is a Prisma unique-constraint violation naming `field`, so a caller can tell
      * its own generated value apart from any other unique key on the same table.
      */
-    isUniqueCollision(error: unknown, field: string): boolean {
+    isUniqueCollision(error: unknown, field: IDatabaseScalarField): boolean {
         if (
             !(error instanceof Prisma.PrismaClientKnownRequestError) ||
             error.code !== DatabaseUniqueConstraintCode

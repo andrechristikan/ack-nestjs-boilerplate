@@ -15,7 +15,7 @@ export class UserPasswordUtil {
     private readonly forgotPasswordReferenceLength: number;
     private readonly forgotExpiredInMinutes: number;
     private readonly forgotTokenLength: number;
-    private readonly forgotResendInMinutes: number;
+    readonly forgotResendInMinutes: number;
     private readonly forgotLinkPattern: string;
 
     constructor(

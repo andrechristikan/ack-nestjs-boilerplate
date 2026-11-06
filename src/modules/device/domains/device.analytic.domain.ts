@@ -20,15 +20,18 @@ export class DeviceAnalyticDomain {
         private readonly helperNumberService: HelperNumberService
     ) {}
 
-    getCountRegistrations(startDate: Date, endDate: Date): Promise<number> {
-        return this.deviceAnalyticRepository.countRegistrations(
+    async getCountRegistrations(
+        startDate: Date,
+        endDate: Date
+    ): Promise<number> {
+        return await this.deviceAnalyticRepository.countRegistrations(
             startDate,
             endDate
         );
     }
 
-    getGroupByPlatform(): Promise<IAnalyticCountBucket[]> {
-        return this.deviceAnalyticRepository.groupByPlatform();
+    async getGroupByPlatform(): Promise<IAnalyticCountBucket[]> {
+        return await this.deviceAnalyticRepository.groupByPlatform();
     }
 
     async getPushTokenRate(): Promise<IAnalyticMetricRate> {
@@ -40,38 +43,40 @@ export class DeviceAnalyticDomain {
         return { count: withToken, total, rate };
     }
 
-    getCountOwnerships(): Promise<number> {
-        return this.deviceOwnershipAnalyticRepository.countOwnerships();
+    async getCountOwnerships(): Promise<number> {
+        return await this.deviceOwnershipAnalyticRepository.countOwnerships();
     }
 
-    getCountDevices(): Promise<number> {
-        return this.deviceAnalyticRepository.countDevices();
+    async getCountDevices(): Promise<number> {
+        return await this.deviceAnalyticRepository.countDevices();
     }
 
-    getCountPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]> {
-        return this.deviceOwnershipAnalyticRepository.countPerUser();
+    async getCountPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]> {
+        return await this.deviceOwnershipAnalyticRepository.countPerUser();
     }
 
-    getCountInactive(before: Date): Promise<number> {
-        return this.deviceOwnershipAnalyticRepository.countInactive(before);
+    async getCountInactive(before: Date): Promise<number> {
+        return await this.deviceOwnershipAnalyticRepository.countInactive(
+            before
+        );
     }
 
-    existsCreatedInRangeByUser(
+    async existsCreatedInRangeByUser(
         userId: string,
         startDate: Date,
         endDate: Date
     ): Promise<boolean> {
-        return this.deviceOwnershipAnalyticRepository.existsCreatedInRangeByUser(
+        return await this.deviceOwnershipAnalyticRepository.existsCreatedInRangeByUser(
             userId,
             startDate,
             endDate
         );
     }
 
-    getSharedFingerprints(
+    async getSharedFingerprints(
         minUsers: number
     ): Promise<IAnalyticSharedFingerprint[]> {
-        return this.deviceOwnershipAnalyticRepository.findSharedFingerprints(
+        return await this.deviceOwnershipAnalyticRepository.findSharedFingerprints(
             minUsers
         );
     }

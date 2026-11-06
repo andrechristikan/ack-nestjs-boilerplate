@@ -18,12 +18,13 @@ import type {
     IAuthJwtRefreshTokenPayload,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
-import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { EnumFeatureFlagMetadataKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -94,6 +95,7 @@ export class UserAuthHttpService {
         private readonly sessionDomain: SessionDomain,
         private readonly authJwtDomain: AuthJwtDomain,
         private readonly authTwoFactorDomain: AuthTwoFactorDomain,
+        private readonly authUtil: AuthUtil,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly sessionQueue: SessionQueue,
         private readonly userQueue: UserQueue,
@@ -113,15 +115,6 @@ export class UserAuthHttpService {
         this.createTimeoutInMs = this.configService.get<number>(
             'user.create.timeoutInMs'
         )!;
-    }
-
-    private toDeviceIdentity(device: DeviceRequestDto): IDeviceIdentity {
-        return {
-            fingerprint: device.fingerprint,
-            name: device.name ?? null,
-            platform: device.platform ?? null,
-            notificationToken: device.notificationToken ?? null,
-        };
     }
 
     private async getRecipient(
@@ -147,12 +140,15 @@ export class UserAuthHttpService {
             this.userCreateUtil.resolveSocialFeatureFlagKey(loginWith);
         const [featureFlag, existing] = await Promise.all([
             this.featureFlagDomain.getMetadataByKey<{
-                signUpAllowed: boolean;
+                [EnumFeatureFlagMetadataKey.signUpAllowed]: boolean;
             }>(featureFlagKey),
             this.userAuthDomain.getOneByEmail(normalizedEmail),
         ]);
         // Sequential by design: gate before the work it guards
-        if (existing || !featureFlag?.signUpAllowed) {
+        if (
+            existing ||
+            !featureFlag?.[EnumFeatureFlagMetadataKey.signUpAllowed]
+        ) {
             return null;
         }
 
@@ -166,14 +162,14 @@ export class UserAuthHttpService {
                 invite,
                 loginSocial.username
             );
-        const [role, , usernameCheck] = await Promise.all([
+        const [role, usernameCheck] = await Promise.all([
             this.roleDomain.getByName(this.userRoleName),
-            this.countryDomain.getOne(loginSocial.countryId),
             this.userDomain.checkUsername(loginSocial.username),
+            this.countryDomain.getOne(loginSocial.countryId),
         ]);
         this.userDomain.assertUsernameAvailable(usernameCheck);
 
-        const input = this.userAuthDomain.prepareSocialCreate(
+        const input = this.userCreateUtil.buildSocialCreate(
             normalizedEmail,
             loginWith,
             loginSocial,
@@ -284,7 +280,7 @@ export class UserAuthHttpService {
         loginAt: Date
     ): Promise<IAuthToken> {
         const requestLog = this.sessionDomain.getRequestLog();
-        const { sessionId, jti } = this.authJwtDomain.createLoginIdentifiers();
+        const { sessionId, jti } = this.authUtil.createLoginIdentifiers();
         const expiredAt = this.helperDateService.forward(
             loginAt,
             Duration.fromObject({
@@ -649,7 +645,7 @@ export class UserAuthHttpService {
             marketing,
         }: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
-        const deviceIdentity = this.toDeviceIdentity(device);
+        const deviceIdentity = this.deviceUtil.toIdentity(device);
         const loginSocial: IUserLoginSocial = {
             from,
             device: deviceIdentity,
@@ -719,7 +715,7 @@ export class UserAuthHttpService {
         from,
         device,
     }: UserLoginRequestDto): Promise<IResponseReturn<IUserLoginOutcome>> {
-        const deviceIdentity = this.toDeviceIdentity(device);
+        const deviceIdentity = this.deviceUtil.toIdentity(device);
         const attempt =
             await this.userAuthDomain.incrementCredentialAttempt(email);
         if (!attempt.isAttemptCounted) {

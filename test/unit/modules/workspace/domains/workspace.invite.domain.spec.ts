@@ -27,6 +27,10 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
@@ -198,7 +202,10 @@ describe('WorkspaceInviteDomain', () => {
             });
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
             expect(
                 workspaceInviteRepository.findPendingByHashedToken
             ).not.toHaveBeenCalled();
@@ -238,7 +245,10 @@ describe('WorkspaceInviteDomain', () => {
             expect(result).toBe(baseInvite);
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
             expect(
                 workspaceInviteRepository.findPendingByHashedToken
             ).toHaveBeenCalledWith('hashed-token');
@@ -260,7 +270,10 @@ describe('WorkspaceInviteDomain', () => {
             });
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
             expect(
                 workspaceInviteRepository.findPendingByHashedToken
             ).not.toHaveBeenCalled();
@@ -354,7 +367,10 @@ describe('WorkspaceInviteDomain', () => {
             expect(result).toBe(baseInvite);
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
             expect(workspaceUtil.isInviteEmailMatch).toHaveBeenCalledWith(
                 'invitee@example.com',
                 'invitee@example.com'
@@ -486,7 +502,10 @@ describe('WorkspaceInviteDomain', () => {
             });
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
             expect(
                 workspaceInviteRepository.findWithPaginationCursor
             ).not.toHaveBeenCalled();
@@ -505,7 +524,10 @@ describe('WorkspaceInviteDomain', () => {
             expect(result).toBe(page);
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
             expect(
                 workspaceInviteRepository.findWithPaginationCursor
             ).toHaveBeenCalledWith('workspace-1', pagination, null);
@@ -548,7 +570,10 @@ describe('WorkspaceInviteDomain', () => {
             });
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
         });
 
         it('throws WorkspaceInviteRoleRequiredException when only projectId is given', async () => {
@@ -593,7 +618,10 @@ describe('WorkspaceInviteDomain', () => {
             ).resolves.toBeUndefined();
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
         });
     });
 
@@ -849,7 +877,10 @@ describe('WorkspaceInviteDomain', () => {
             });
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
             expect(
                 workspaceInviteRepository.findByIdAndWorkspace
             ).not.toHaveBeenCalled();

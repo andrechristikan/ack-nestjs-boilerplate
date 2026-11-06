@@ -13,10 +13,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { JwtModuleOptions } from '@nestjs/jwt';
 
-/**
- * Global auth module: registers the strategies, the auth domain, and the token
- * signing, password hashing and two-factor helpers.
- */
+/** Shared module: AuthDomain for the JWT and social guards; AuthJwtDomain, AuthTwoFactorDomain, AuthUtil, AuthPasswordUtil, and AuthTwoFactorUtil for the user and password-history modules and the user seed. */
 @Global()
 @Module({
     controllers: [],
@@ -38,6 +35,7 @@ import type { JwtModuleOptions } from '@nestjs/jwt';
         AuthPasswordUtil,
         AuthTwoFactorDomain,
         AuthTwoFactorUtil,
+        AuthUtil,
     ],
     imports: [
         JwtModule.registerAsync({

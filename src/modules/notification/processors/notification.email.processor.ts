@@ -1,9 +1,9 @@
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
@@ -46,9 +46,10 @@ import {
 export class NotificationEmailProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
+        protected readonly messageService: MessageService,
         private readonly notificationEmailProcessorService: NotificationEmailProcessorService
     ) {
-        super(sentryService);
+        super(sentryService, messageService);
     }
 
     /** Dispatches each job to its handler by job name. */
@@ -243,7 +244,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 throw error;
             }
 
-            throw new AppUnknownException(error);
+            this.throwUnknownException(error);
         }
     }
 }

@@ -17,8 +17,7 @@ export interface IActivityLogAnalyticRepository {
     countByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
-        endDate: Date,
-        workspaceId?: string
+        endDate: Date
     ): Promise<number>;
     groupByActionInRange(
         actions: EnumActivityLogAction[],

@@ -28,6 +28,10 @@ import type {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
@@ -299,7 +303,10 @@ describe('WorkspaceJoinRequestHttpService', () => {
             expect(callOrder.slice(-3)).toEqual(['create', 'stage', 'notify']);
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'joinRequestAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.joinRequestAllowed
+            );
             expect(
                 workspaceJoinRequestDomain.getJoinableWorkspace
             ).toHaveBeenCalledWith('user-2', 'workspace-1');
@@ -580,7 +587,10 @@ describe('WorkspaceJoinRequestHttpService', () => {
             ]);
             expect(
                 featureFlagDomain.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith('workspace', 'joinRequestAllowed');
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.joinRequestAllowed
+            );
             expect(
                 workspaceJoinRequestDomain.getPendingById
             ).toHaveBeenCalledWith('join-request-1', 'workspace-1');

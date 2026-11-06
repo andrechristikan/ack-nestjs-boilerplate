@@ -4,6 +4,7 @@ import {
     FeatureFlagKeyPathMetaKey,
 } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import type { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -31,7 +32,7 @@ export class FeatureFlagGuard implements CanActivate {
     }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const featureFlagKeyPath = this.reflector.get<string>(
+        const featureFlagKeyPath = this.reflector.get<EnumFeatureFlagKey>(
             FeatureFlagKeyPathMetaKey,
             context.getHandler()
         );

@@ -31,6 +31,9 @@ export interface IActivityLogActionContract {
     metadata: z.ZodType<IActivityLogMetadata>;
 }
 
+export type IActivityLogMetadataParseResult =
+    z.ZodSafeParseResult<IActivityLogMetadata>;
+
 export interface IActivityLogFlushOptions {
     payloadUserId: string | null;
 }

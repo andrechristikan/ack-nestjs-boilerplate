@@ -9,24 +9,24 @@ export class PasswordHistoryAnalyticDomain {
         private readonly passwordHistoryAnalyticRepository: PasswordHistoryAnalyticRepository
     ) {}
 
-    getCountByTypeInRange(
+    async getCountByTypeInRange(
         type: EnumPasswordHistoryType,
         startDate: Date,
         endDate: Date
     ): Promise<number> {
-        return this.passwordHistoryAnalyticRepository.countByTypeInRange(
+        return await this.passwordHistoryAnalyticRepository.countByTypeInRange(
             type,
             startDate,
             endDate
         );
     }
 
-    getByTypeInRange(
+    async getByTypeInRange(
         type: EnumPasswordHistoryType,
         startDate: Date,
         endDate: Date
     ): Promise<IPasswordHistoryAnalytic[]> {
-        return this.passwordHistoryAnalyticRepository.findByTypeInRange(
+        return await this.passwordHistoryAnalyticRepository.findByTypeInRange(
             type,
             startDate,
             endDate

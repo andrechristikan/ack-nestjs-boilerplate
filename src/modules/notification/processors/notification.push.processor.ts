@@ -16,10 +16,10 @@ import type {
 import { NotificationPushProcessorService } from '@modules/notification/services/processor/notification.push.processor.service';
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
@@ -37,9 +37,10 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 export class NotificationPushProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
+        protected readonly messageService: MessageService,
         private readonly notificationPushProcessorService: NotificationPushProcessorService
     ) {
-        super(sentryService);
+        super(sentryService, messageService);
     }
 
     /** Dispatches each job to its handler by job name. */
@@ -148,7 +149,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 throw error;
             }
 
-            throw new AppUnknownException(error);
+            this.throwUnknownException(error);
         }
     }
 }

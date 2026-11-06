@@ -20,6 +20,7 @@ import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/htt
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -50,7 +51,7 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -74,7 +75,7 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -100,7 +101,7 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -124,7 +125,7 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -143,7 +144,7 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

@@ -33,7 +33,7 @@ describe('HealthHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.ok);
+        healthUtil.toResponse.mockReturnValue(envelope.data);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -74,19 +74,17 @@ describe('HealthHttpService', () => {
             expect(healthDomain.checkDatabase).toHaveBeenCalledWith();
         });
 
-        it('maps an error status through HealthUtil', async () => {
-            healthDomain.checkDatabase.mockResolvedValue({
+        it('maps the result through HealthUtil', async () => {
+            const result: HealthCheckResult = {
                 ...healthCheckResult,
                 status: 'error',
-            });
-            healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.error);
+            };
+            const data = { ...envelope.data, status: EnumHealthStatus.error };
+            healthDomain.checkDatabase.mockResolvedValue(result);
+            healthUtil.toResponse.mockReturnValue(data);
 
-            const result = await service.checkDatabase();
-
-            expect(result).toEqual({
-                data: { ...envelope.data, status: EnumHealthStatus.error },
-            });
-            expect(healthUtil.mapStatus).toHaveBeenCalledWith('error');
+            await expect(service.checkDatabase()).resolves.toEqual({ data });
+            expect(healthUtil.toResponse).toHaveBeenCalledWith(result);
         });
     });
 
@@ -109,22 +107,6 @@ describe('HealthHttpService', () => {
 
             expect(result).toEqual(envelope);
             expect(healthDomain.checkInstance).toHaveBeenCalledWith();
-        });
-    });
-
-    describe('mapResponse', () => {
-        it('maps the Terminus status through HealthUtil and passes info, error, and details through', () => {
-            healthUtil.mapStatus.mockReturnValue(EnumHealthStatus.degraded);
-
-            const result = service['mapResponse'](healthCheckResult);
-
-            expect(result).toEqual({
-                status: EnumHealthStatus.degraded,
-                info: healthCheckResult.info,
-                error: healthCheckResult.error,
-                details: healthCheckResult.details,
-            });
-            expect(healthUtil.mapStatus).toHaveBeenCalledWith('ok');
         });
     });
 });

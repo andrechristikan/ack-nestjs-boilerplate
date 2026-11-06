@@ -4,11 +4,9 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import {
-    EnumNotificationChannel,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
@@ -27,7 +25,7 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { UnrecoverableError } from 'bullmq';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
-import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationPushDeliveryDomain } from '@modules/notification/domains/notification.push.delivery.domain';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import {
     expectPushAllStepsSkipped,
@@ -41,22 +39,19 @@ import {
     PushAllSteps,
     PushRecordedSteps,
     stubCipherDecryption,
-    TestPushStampedAt,
 } from '@test/unit/helpers/test.unit.notification-push.helper';
 import type { INotificationPushDoubles } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationPushWorkspaceDomain', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
-    const notificationRepository: MockProxy<NotificationRepository> =
-        mock<NotificationRepository>();
+    const notificationPushDeliveryDomain: MockProxy<NotificationPushDeliveryDomain> =
+        mock<NotificationPushDeliveryDomain>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationPushQueue: MockProxy<NotificationPushQueue> =
         mock<NotificationPushQueue>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     let domain: NotificationPushWorkspaceDomain;
 
     const send: INotificationSendPushEncryptedPayload = {
@@ -86,7 +81,7 @@ describe('NotificationPushWorkspaceDomain', () => {
     const recorded = PushRecordedSteps;
     const doubles: INotificationPushDoubles = {
         firebaseService,
-        notificationRepository,
+        notificationPushDeliveryDomain,
         notificationPushQueue,
         helperEncryptionService,
     };
@@ -102,8 +97,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 NotificationUtil,
                 { provide: FirebaseService, useValue: firebaseService },
                 {
-                    provide: NotificationRepository,
-                    useValue: notificationRepository,
+                    provide: NotificationPushDeliveryDomain,
+                    useValue: notificationPushDeliveryDomain,
                 },
                 { provide: MessageService, useValue: messageService },
                 {
@@ -115,16 +110,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                     useValue: helperEncryptionService,
                 },
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         domain = module.get(NotificationPushWorkspaceDomain);
         firebaseService.isInitialized.mockReturnValue(true);
-        notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
-            true
-        );
-        notificationRepository.updateDeliverySentAt.mockResolvedValue(true);
-        helperDateService.create.mockReturnValue(TestPushStampedAt);
+        notificationPushDeliveryDomain.stampProcessed.mockResolvedValue();
+        notificationPushDeliveryDomain.stampSent.mockResolvedValue();
     });
 
     describe('processWorkspaceInvite', () => {
@@ -148,8 +139,10 @@ describe('NotificationPushWorkspaceDomain', () => {
         });
 
         it('throws an UnrecoverableError before sending when the push delivery row is missing', async () => {
-            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
-                false
+            notificationPushDeliveryDomain.stampProcessed.mockRejectedValue(
+                new UnrecoverableError(
+                    'notification.queue.push.error.deliveryNotFound'
+                )
             );
 
             await expect(
@@ -158,21 +151,21 @@ describe('NotificationPushWorkspaceDomain', () => {
                 constructor: UnrecoverableError,
                 message: 'notification.queue.push.error.deliveryNotFound',
             });
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.queue.push.error.deliveryNotFound',
-                {
-                    properties: {
-                        process: EnumNotificationPushProcess.workspaceInvite,
-                    },
-                }
+            expect(
+                notificationPushDeliveryDomain.stampProcessed
+            ).toHaveBeenCalledWith(
+                send.notificationId,
+                EnumNotificationPushProcess.workspaceInvite
             );
             expect(firebaseService.sendMulticast).not.toHaveBeenCalled();
         });
 
         it('names the sentAt step as failed when the stamp matches no delivery row', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockResolvedValue(
-                false
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
+                new UnrecoverableError(
+                    'notification.queue.push.error.deliveryNotFound'
+                )
             );
 
             const result = await domain.processWorkspaceInvite(
@@ -223,14 +216,13 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.workspaceInvite
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -251,7 +243,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.workspaceInvite'
+                'notification.queue.push.workspaceInvite',
+                EnumNotificationPushProcess.workspaceInvite
             );
         });
 
@@ -284,7 +277,7 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -306,7 +299,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceInvite
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -323,7 +321,7 @@ describe('NotificationPushWorkspaceDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -381,7 +379,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceInvite
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -395,7 +398,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceInvite
+            );
         });
     });
 
@@ -448,14 +456,13 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.workspaceJoinRequest
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -472,7 +479,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.workspaceJoinRequest'
+                'notification.queue.push.workspaceJoinRequest',
+                EnumNotificationPushProcess.workspaceJoinRequest
             );
         });
 
@@ -488,7 +496,7 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -510,7 +518,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinRequest
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -527,7 +540,7 @@ describe('NotificationPushWorkspaceDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -581,7 +594,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinRequest
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -595,7 +613,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinRequest
+            );
         });
     });
 
@@ -647,14 +670,13 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.workspaceJoinAccepted
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -670,7 +692,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.workspaceJoinAccepted'
+                'notification.queue.push.workspaceJoinAccepted',
+                EnumNotificationPushProcess.workspaceJoinAccepted
             );
         });
 
@@ -686,7 +709,7 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -708,7 +731,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinAccepted
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -725,7 +753,7 @@ describe('NotificationPushWorkspaceDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -779,7 +807,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinAccepted
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -793,7 +826,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinAccepted
+            );
         });
     });
 
@@ -848,14 +886,13 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.workspaceJoinRejected
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -876,7 +913,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.workspaceJoinRejected'
+                'notification.queue.push.workspaceJoinRejected',
+                EnumNotificationPushProcess.workspaceJoinRejected
             );
         });
 
@@ -892,7 +930,7 @@ describe('NotificationPushWorkspaceDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -914,7 +952,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinRejected
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -931,7 +974,7 @@ describe('NotificationPushWorkspaceDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -985,7 +1028,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinRejected
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -999,7 +1047,12 @@ describe('NotificationPushWorkspaceDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.workspaceJoinRejected
+            );
         });
     });
 });

@@ -4,6 +4,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { createHealthSentryIndicator } from '@test/unit/helpers/test.unit.health.helper';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 vi.mock('@sentry/nestjs', () => ({
     getClient: vi.fn(),
@@ -40,7 +41,7 @@ describe('HealthSentryIndicator', () => {
             );
             session.down.mockReturnValue({ sentry: { status: 'down' } });
 
-            const result = await bare.isHealthy('sentry');
+            const result = await bare.isHealthy(EnumHealthIndicatorKey.sentry);
 
             expect(result).toEqual({ sentry: { status: 'down' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith('sentry');
@@ -54,7 +55,9 @@ describe('HealthSentryIndicator', () => {
             vi.mocked(Sentry.getClient).mockReturnValue(undefined);
             session.down.mockReturnValue({ sentry: { status: 'down' } });
 
-            const result = await indicator.isHealthy('sentry');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.sentry
+            );
 
             expect(result).toEqual({ sentry: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -71,7 +74,9 @@ describe('HealthSentryIndicator', () => {
             } as never);
             session.down.mockReturnValue({ sentry: { status: 'down' } });
 
-            const result = await indicator.isHealthy('sentry');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.sentry
+            );
 
             expect(result).toEqual({ sentry: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith('Sentry is disabled');
@@ -86,7 +91,9 @@ describe('HealthSentryIndicator', () => {
             } as never);
             session.up.mockReturnValue({ sentry: { status: 'up' } });
 
-            const result = await indicator.isHealthy('sentry');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.sentry
+            );
 
             expect(result).toEqual({ sentry: { status: 'up' } });
             expect(session.up).toHaveBeenCalledWith();
@@ -98,7 +105,9 @@ describe('HealthSentryIndicator', () => {
             });
             session.down.mockReturnValue({ sentry: { status: 'down' } });
 
-            const result = await indicator.isHealthy('sentry');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.sentry
+            );
 
             expect(result).toEqual({ sentry: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith('Sentry check failed');
@@ -110,7 +119,9 @@ describe('HealthSentryIndicator', () => {
             });
             session.down.mockReturnValue({ sentry: { status: 'down' } });
 
-            const result = await indicator.isHealthy('sentry');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.sentry
+            );
 
             expect(result).toEqual({ sentry: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith('Sentry check failed');

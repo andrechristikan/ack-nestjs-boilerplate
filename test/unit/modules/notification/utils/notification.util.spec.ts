@@ -260,6 +260,115 @@ describe('NotificationUtil', () => {
         });
     });
 
+    describe('toTokenPairs', () => {
+        it('pairs each encrypted token with its plain token decrypted for the user', () => {
+            helperEncryptionService.aes256Decrypt.mockImplementation(
+                (encrypted: string) =>
+                    encrypted.replace(/^cipher\((.*)\)$/, '$1')
+            );
+
+            expect(
+                util.toTokenPairs('user-id', [
+                    'cipher(token-1)',
+                    'cipher(token-2)',
+                ])
+            ).toEqual([
+                { encrypted: 'cipher(token-1)', token: 'token-1' },
+                { encrypted: 'cipher(token-2)', token: 'token-2' },
+            ]);
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                'cipher(token-1)',
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+        });
+
+        it('rethrows a decryption failure', () => {
+            const failure = new Error('decrypt');
+            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
+                throw failure;
+            });
+
+            expect(() =>
+                util.toTokenPairs('user-id', ['cipher(token-1)'])
+            ).toThrow(failure);
+        });
+    });
+
+    describe('toMulticastOutcome', () => {
+        const pairs = [
+            { encrypted: 'cipher(token-1)', token: 'token-1' },
+            { encrypted: 'cipher(token-2)', token: 'token-2' },
+        ];
+
+        it('maps the failure tokens back to their ciphertexts with no failure when none is pending', () => {
+            const outcome = util.toMulticastOutcome(
+                pairs,
+                {
+                    successCount: 1,
+                    failureCount: 1,
+                    failureTokens: ['token-1'],
+                    retryTokens: [],
+                },
+                null
+            );
+
+            expect(outcome).toEqual({
+                encryptedFailureTokens: ['cipher(token-1)'],
+                encryptedPendingTokens: [],
+                failure: null,
+            });
+            expect(messageService.setMessage).not.toHaveBeenCalled();
+        });
+
+        it('merges the recorded failure tokens and drops duplicates', () => {
+            const outcome = util.toMulticastOutcome(
+                pairs,
+                {
+                    successCount: 1,
+                    failureCount: 1,
+                    failureTokens: ['token-1'],
+                    retryTokens: [],
+                },
+                ['cipher(old)', 'cipher(token-1)']
+            );
+
+            expect(outcome.encryptedFailureTokens).toEqual([
+                'cipher(old)',
+                'cipher(token-1)',
+            ]);
+        });
+
+        it('keeps the retry tokens as pending and fails the multicast step', () => {
+            const outcome = util.toMulticastOutcome(
+                pairs,
+                {
+                    successCount: 0,
+                    failureCount: 2,
+                    failureTokens: [],
+                    retryTokens: ['token-1', 'token-2'],
+                },
+                null
+            );
+
+            expect(outcome).toEqual({
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: ['cipher(token-1)', 'cipher(token-2)'],
+                failure: {
+                    step: EnumNotificationStep.sendMulticast,
+                    rawError: new Error(
+                        'notification.queue.push.error.tokensPending'
+                    ),
+                },
+            });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.push.error.tokensPending',
+                { properties: { count: 2 } }
+            );
+        });
+    });
+
     describe('toCleanupTokensResult', () => {
         it('reports the requested and removed counts', () => {
             expect(util.toCleanupTokensResult(2, 1)).toEqual({
@@ -324,6 +433,25 @@ describe('NotificationUtil', () => {
                         process: EnumNotificationProcess.welcomeByAdmin,
                     },
                 }
+            );
+        });
+    });
+
+    describe('toDeliveryUnknownMessage', () => {
+        it('names the batch and the unknown count in the delivery-unknown message', () => {
+            messageService.setMessage.mockImplementation(
+                (path: string, options) =>
+                    `${path}|${String(options?.properties?.batchId)}|${String(options?.properties?.unknownCount)}`
+            );
+
+            const message = util.toDeliveryUnknownMessage('batch-id', 2);
+
+            expect(message).toBe(
+                'notification.queue.email.error.deliveryUnknown|batch-id|2'
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.email.error.deliveryUnknown',
+                { properties: { batchId: 'batch-id', unknownCount: 2 } }
             );
         });
     });
@@ -424,6 +552,116 @@ describe('NotificationUtil', () => {
                     },
                 ])
             ).toEqual([EnumNotificationType.userActivity]);
+        });
+    });
+
+    describe('toMessageProperties', () => {
+        it('keeps only the primitive metadata values', () => {
+            expect(
+                util.toMessageProperties({
+                    username: 'ana',
+                    age: 3,
+                    isNew: true,
+                    nested: { a: 1 },
+                    list: [1],
+                    missing: null,
+                })
+            ).toEqual({ username: 'ana', age: 3, isNew: true });
+        });
+
+        it('returns empty properties for null metadata', () => {
+            expect(util.toMessageProperties(null)).toEqual({});
+        });
+
+        it('returns empty properties for array metadata', () => {
+            expect(util.toMessageProperties(['ana'])).toEqual({});
+        });
+
+        it('returns empty properties for primitive metadata', () => {
+            expect(util.toMessageProperties('ana')).toEqual({});
+        });
+    });
+
+    describe('toRejectReasonProperties', () => {
+        it('adds the reject reason label translated in the request language', () => {
+            messageService.setMessage.mockImplementation(
+                (path: string) => `translated:${path}`
+            );
+
+            expect(
+                util.toRejectReasonProperties(
+                    { username: 'ana', rejectReasonCode: 'spam' },
+                    'en'
+                )
+            ).toEqual({
+                username: 'ana',
+                rejectReasonCode: 'spam',
+                rejectReasonLabel: 'translated:notification.rejectReason.spam',
+            });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.rejectReason.spam',
+                { customLanguage: 'en' }
+            );
+        });
+
+        it('translates the label with no custom language when none is given', () => {
+            util.toRejectReasonProperties({ rejectReasonCode: 'spam' }, null);
+
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.rejectReason.spam',
+                {}
+            );
+        });
+
+        it('returns the properties untouched when no reject reason code is a string', () => {
+            const properties = { username: 'ana', rejectReasonCode: 3 };
+
+            expect(util.toRejectReasonProperties(properties, 'en')).toBe(
+                properties
+            );
+            expect(messageService.setMessage).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('toTemplateLabel', () => {
+        it.each([
+            [EnumNotificationProcess.welcome, 'welcome'],
+            [EnumNotificationProcess.welcomeSocial, 'welcome social'],
+            [EnumNotificationProcess.welcomeByAdmin, 'welcome by admin'],
+            [EnumNotificationProcess.verificationEmail, 'verification email'],
+            [EnumNotificationProcess.verifiedEmail, 'verified email'],
+            [
+                EnumNotificationProcess.verifiedMobileNumber,
+                'verified mobile number',
+            ],
+            [EnumNotificationProcess.changePassword, 'change password'],
+            [
+                EnumNotificationProcess.temporaryPasswordByAdmin,
+                'temporary password by admin',
+            ],
+            [EnumNotificationProcess.resetPassword, 'reset password'],
+            [EnumNotificationProcess.forgotPassword, 'forgot password'],
+            [
+                EnumNotificationProcess.resetTwoFactorByAdmin,
+                'reset two factor by admin',
+            ],
+            [EnumNotificationProcess.newDeviceLogin, 'new device login'],
+            [EnumNotificationProcess.publishTermPolicy, 'publish term policy'],
+            [EnumNotificationProcess.workspaceInvite, 'workspace invite'],
+            [
+                EnumNotificationProcess.workspaceJoinRequest,
+                'workspace join request',
+            ],
+            [
+                EnumNotificationProcess.workspaceJoinAccepted,
+                'workspace join accepted',
+            ],
+            [
+                EnumNotificationProcess.workspaceJoinRejected,
+                'workspace join rejected',
+            ],
+        ])('returns the lowercase words of %s', (process, label) => {
+            expect(util.toTemplateLabel(process)).toBe(label);
         });
     });
 });

@@ -17,6 +17,10 @@ import type {
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
+import type {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -29,7 +33,7 @@ export class FeatureFlagDomain {
 
     private assertRollout(
         rolloutPercent: number,
-        key: string,
+        key: EnumFeatureFlagKey,
         identifier: string
     ): void {
         const isInRollout = this.featureFlagUtil.isInRollout(
@@ -43,7 +47,7 @@ export class FeatureFlagDomain {
     }
 
     /** Read-through: the cached flag, or the row loaded from the database and cached while this reader holds the lease. */
-    async getByKey(key: string): Promise<FeatureFlag | null> {
+    async getByKey(key: EnumFeatureFlagKey): Promise<FeatureFlag | null> {
         const cached = await this.featureFlagCache.getFeatureFlag(key);
         if (cached) {
             return cached;
@@ -64,7 +68,7 @@ export class FeatureFlagDomain {
         return featureFlag;
     }
 
-    async getMetadataByKey<T>(key: string): Promise<T | null> {
+    async getMetadataByKey<T>(key: EnumFeatureFlagKey): Promise<T | null> {
         const featureFlag = await this.getByKey(key);
         if (featureFlag && featureFlag.metadata) {
             return featureFlag.metadata as T;
@@ -74,7 +78,7 @@ export class FeatureFlagDomain {
     }
 
     async validateFeatureFlag(
-        key: string,
+        key: EnumFeatureFlagKey,
         userId: string | null,
         anonymousId: string | null
     ): Promise<void> {
@@ -107,8 +111,8 @@ export class FeatureFlagDomain {
     }
 
     async validateFeatureFlagMetadata(
-        key: string,
-        metadataKey: string
+        key: EnumFeatureFlagKey,
+        metadataKey: EnumFeatureFlagMetadataKey
     ): Promise<void> {
         const featureFlag = await this.getByKey(key);
         if (!featureFlag) {

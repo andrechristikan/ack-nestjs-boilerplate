@@ -23,6 +23,7 @@ import { NotificationDomain } from '@modules/notification/domains/notification.d
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationHttpService } from '@modules/notification/services/http/notification.http.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import {
     NotificationDefaultAvailableOrderBy,
     NotificationSharedListCursorScope,
@@ -38,6 +39,8 @@ describe('NotificationHttpService', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
+    const notificationUtil: MockProxy<NotificationUtil> =
+        mock<NotificationUtil>();
     let service: NotificationHttpService;
 
     const cursorParams = {
@@ -68,6 +71,7 @@ describe('NotificationHttpService', () => {
                 },
                 { provide: MessageService, useValue: messageService },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: NotificationUtil, useValue: notificationUtil },
             ],
         }).compile();
         service = module.get(NotificationHttpService);
@@ -100,21 +104,29 @@ describe('NotificationHttpService', () => {
             expect(result).toEqual(cursorPage);
         });
 
-        it('translates title and body in the request language with the primitive metadata values', async () => {
+        it('translates title and body in the request language with the properties NotificationUtil shapes from the metadata', async () => {
             const stored: Notification = {
                 id: 'notification-id',
                 userId: 'user-id',
                 type: EnumNotificationType.userActivity,
                 priority: EnumNotificationPriority.normal,
-                title: 'notification.notify.welcome.title',
-                body: 'notification.notify.welcome.body',
-                metadata: { username: 'ana', age: 3, nested: { a: 1 } },
+                title: 'notification.notify.workspaceJoinRejected.title',
+                body: 'notification.notify.workspaceJoinRejected.body',
+                metadata: { username: 'ana', rejectReasonCode: 'spam' },
                 isRead: false,
                 readAt: null,
                 createdAt: new Date('2024-01-01T00:00:00.000Z'),
                 createdBy: null,
                 updatedAt: new Date('2024-01-01T00:00:00.000Z'),
                 updatedBy: null,
+            };
+            const metadataProperties = {
+                username: 'ana',
+                rejectReasonCode: 'spam',
+            };
+            const properties = {
+                ...metadataProperties,
+                rejectReasonLabel: 'Spam',
             };
             paginationQueryUtil.cursor.mockReturnValue({
                 params: cursorParams,
@@ -125,6 +137,12 @@ describe('NotificationHttpService', () => {
                 data: [stored],
             });
             requestStoreService.get.mockReturnValue('en');
+            notificationUtil.toMessageProperties.mockReturnValue(
+                metadataProperties
+            );
+            notificationUtil.toRejectReasonProperties.mockReturnValue(
+                properties
+            );
             messageService.setMessage.mockImplementation(
                 (path: string) => `translated:${path}`
             );
@@ -134,84 +152,30 @@ describe('NotificationHttpService', () => {
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 RequestLanguageStoreKey
             );
+            expect(notificationUtil.toMessageProperties).toHaveBeenCalledWith(
+                stored.metadata
+            );
+            expect(
+                notificationUtil.toRejectReasonProperties
+            ).toHaveBeenCalledWith(metadataProperties, 'en');
             expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.notify.welcome.title',
-                {
-                    customLanguage: 'en',
-                    properties: { username: 'ana', age: 3 },
-                }
+                'notification.notify.workspaceJoinRejected.title',
+                { customLanguage: 'en', properties }
             );
             expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.notify.welcome.body',
-                {
-                    customLanguage: 'en',
-                    properties: { username: 'ana', age: 3 },
-                }
+                'notification.notify.workspaceJoinRejected.body',
+                { customLanguage: 'en', properties }
             );
             expect(result.data).toEqual([
                 {
                     ...stored,
-                    title: 'translated:notification.notify.welcome.title',
-                    body: 'translated:notification.notify.welcome.body',
+                    title: 'translated:notification.notify.workspaceJoinRejected.title',
+                    body: 'translated:notification.notify.workspaceJoinRejected.body',
                 },
             ]);
         });
 
-        it('translates the stored reject reason code into the label the body placeholder reads', async () => {
-            const stored: Notification = {
-                id: 'notification-id',
-                userId: 'user-id',
-                type: EnumNotificationType.userActivity,
-                priority: EnumNotificationPriority.normal,
-                title: 'notification.notify.workspaceJoinRejected.title',
-                body: 'notification.notify.workspaceJoinRejected.body',
-                metadata: {
-                    username: 'ana',
-                    workspaceName: 'Acme',
-                    rejectReasonCode: 'spam',
-                },
-                isRead: false,
-                readAt: null,
-                createdAt: new Date('2024-01-01T00:00:00.000Z'),
-                createdBy: null,
-                updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-                updatedBy: null,
-            };
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: cursorParams,
-                storePatch: {},
-            });
-            notificationDomain.getListCursor.mockResolvedValue({
-                ...cursorPage,
-                data: [stored],
-            });
-            requestStoreService.get.mockReturnValue('en');
-            messageService.setMessage.mockImplementation(
-                (path: string) => `translated:${path}`
-            );
-
-            await service.getListCursor('user-id', query);
-
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.rejectReason.spam',
-                { customLanguage: 'en' }
-            );
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.notify.workspaceJoinRejected.body',
-                {
-                    customLanguage: 'en',
-                    properties: {
-                        username: 'ana',
-                        workspaceName: 'Acme',
-                        rejectReasonCode: 'spam',
-                        rejectReasonLabel:
-                            'translated:notification.rejectReason.spam',
-                    },
-                }
-            );
-        });
-
-        it('translates with no custom language and empty properties when none is stored and the metadata is null', async () => {
+        it('translates with no custom language when none is stored', async () => {
             const stored: Notification = {
                 id: 'notification-id',
                 userId: 'user-id',
@@ -236,12 +200,17 @@ describe('NotificationHttpService', () => {
                 data: [stored],
             });
             requestStoreService.get.mockReturnValue(null);
+            notificationUtil.toMessageProperties.mockReturnValue({});
+            notificationUtil.toRejectReasonProperties.mockReturnValue({});
             messageService.setMessage.mockImplementation(
                 (path: string) => path
             );
 
             await service.getListCursor('user-id', query);
 
+            expect(
+                notificationUtil.toRejectReasonProperties
+            ).toHaveBeenCalledWith({}, null);
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.notify.changePassword.title',
                 { properties: {} }

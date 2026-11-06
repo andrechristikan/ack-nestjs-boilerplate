@@ -1,55 +1,59 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 
 const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
     {
-        key: 'loginWithGoogle',
+        key: EnumFeatureFlagKey.loginWithGoogle,
         description: 'Enable login with Google',
         isEnable: true,
         rolloutPercent: 100,
         metadata: {
-            signUpAllowed: true,
+            [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
         },
     },
     {
-        key: 'loginWithApple',
+        key: EnumFeatureFlagKey.loginWithApple,
         description: 'Enable login with Apple',
         isEnable: true,
         rolloutPercent: 100,
         metadata: {
-            signUpAllowed: true,
+            [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
         },
     },
     {
-        key: 'loginWithCredential',
+        key: EnumFeatureFlagKey.loginWithCredential,
         description: 'Enable login with Credential',
         rolloutPercent: 100,
         isEnable: true,
     },
     {
-        key: 'signUp',
+        key: EnumFeatureFlagKey.signUp,
         description: 'Enable user sign up',
         rolloutPercent: 100,
         isEnable: true,
     },
     {
-        key: 'changePassword',
+        key: EnumFeatureFlagKey.changePassword,
         description: 'Enable change password feature',
         rolloutPercent: 100,
         isEnable: true,
         metadata: {
-            forgotAllowed: true,
+            [EnumFeatureFlagMetadataKey.forgotAllowed]: true,
         },
     },
     {
-        key: 'workspace',
+        key: EnumFeatureFlagKey.workspace,
         description:
             'Enable the workspace and project router surface, including invitation and join request',
         rolloutPercent: 100,
         isEnable: true,
         metadata: {
-            invitationAllowed: true,
-            joinRequestAllowed: true,
+            [EnumFeatureFlagMetadataKey.invitationAllowed]: true,
+            [EnumFeatureFlagMetadataKey.joinRequestAllowed]: true,
         },
     },
 ];

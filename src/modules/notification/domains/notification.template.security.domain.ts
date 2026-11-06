@@ -3,6 +3,11 @@ import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import type {
+    INotificationTemplateEmail,
+    INotificationTemplateSecurityProcess,
+} from '@modules/notification/interfaces/notification.interface';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -10,33 +15,112 @@ import { join } from 'path';
 /** Manages the SES templates for the password, two-factor and new-device login emails. */
 @Injectable()
 export class NotificationTemplateSecurityDomain {
-    constructor(private readonly awsSESService: AwsSESService) {}
+    constructor(
+        private readonly awsSESService: AwsSESService,
+        private readonly notificationUtil: NotificationUtil
+    ) {}
 
-    async emailImportChangePassword(): Promise<void> {
+    private getTemplateEmail(
+        process: INotificationTemplateSecurityProcess
+    ): INotificationTemplateEmail {
+        const templateDir = join(import.meta.dirname, '../templates');
+
+        switch (process) {
+            case EnumNotificationProcess.changePassword:
+                return {
+                    subject: `Change Password`,
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.change-password.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
+            case EnumNotificationProcess.temporaryPasswordByAdmin:
+                return {
+                    subject: `Temporary Password By Admin`,
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.temporary-password-by-admin.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
+            case EnumNotificationProcess.resetPassword:
+                return {
+                    subject: `Reset Password`,
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.reset-password.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
+            case EnumNotificationProcess.forgotPassword:
+                return {
+                    subject: `Forgot Password`,
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.forgot-password.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
+            case EnumNotificationProcess.resetTwoFactorByAdmin:
+                return {
+                    subject: `Reset Two Factor By Admin`,
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.reset-two-factor-by-admin.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
+            case EnumNotificationProcess.newDeviceLogin:
+                return {
+                    subject: `Device Login`,
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.new-device-login.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
+        }
+    }
+
+    async emailImport(
+        process: INotificationTemplateSecurityProcess
+    ): Promise<void> {
         try {
-            const templatePath = join(
-                import.meta.dirname,
-                '../templates',
-                'notification.change-password.template.hbs'
-            );
+            const template = this.getTemplateEmail(process);
 
             await this.awsSESService.createTemplate({
-                name: EnumNotificationProcess.changePassword,
-                subject: `Change Password`,
-                htmlBody: readFileSync(templatePath, 'utf8'),
+                name: process,
+                subject: template.subject,
+                htmlBody: template.htmlBody,
             });
         } catch (err: unknown) {
+            const label = this.notificationUtil.toTemplateLabel(process);
             throw new AppUnknownException(
                 err,
-                'Failed to import change password template'
+                `Failed to import ${label} template`
             );
         }
     }
 
-    async emailGetChangePassword(): Promise<GetTemplateCommandOutput | null> {
+    async emailGet(
+        process: INotificationTemplateSecurityProcess
+    ): Promise<GetTemplateCommandOutput | null> {
         try {
             const template = await this.awsSESService.getTemplate({
-                name: EnumNotificationProcess.changePassword,
+                name: process,
             });
             return template;
         } catch (err: unknown) {
@@ -44,282 +128,26 @@ export class NotificationTemplateSecurityDomain {
                 return null;
             }
 
+            const label = this.notificationUtil.toTemplateLabel(process);
             throw new AppUnknownException(
                 err,
-                'Failed to get change password template'
+                `Failed to get ${label} template`
             );
         }
     }
 
-    async emailDeleteChangePassword(): Promise<void> {
+    async emailDelete(
+        process: INotificationTemplateSecurityProcess
+    ): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: EnumNotificationProcess.changePassword,
+                name: process,
             });
         } catch (err: unknown) {
+            const label = this.notificationUtil.toTemplateLabel(process);
             throw new AppUnknownException(
                 err,
-                'Failed to delete change password template'
-            );
-        }
-    }
-
-    async emailImportTemporaryPasswordByAdmin(): Promise<void> {
-        try {
-            const templatePath = join(
-                import.meta.dirname,
-                '../templates',
-                'notification.temporary-password-by-admin.template.hbs'
-            );
-
-            await this.awsSESService.createTemplate({
-                name: EnumNotificationProcess.temporaryPasswordByAdmin,
-                subject: `Temporary Password By Admin`,
-                htmlBody: readFileSync(templatePath, 'utf8'),
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to import temporary password by admin template'
-            );
-        }
-    }
-
-    async emailGetTemporaryPasswordByAdmin(): Promise<GetTemplateCommandOutput | null> {
-        try {
-            const template = await this.awsSESService.getTemplate({
-                name: EnumNotificationProcess.temporaryPasswordByAdmin,
-            });
-            return template;
-        } catch (err: unknown) {
-            if (err instanceof TemplateDoesNotExistException) {
-                return null;
-            }
-
-            throw new AppUnknownException(
-                err,
-                'Failed to get temporary password by admin template'
-            );
-        }
-    }
-
-    async emailDeleteTemporaryPasswordByAdmin(): Promise<void> {
-        try {
-            await this.awsSESService.deleteTemplate({
-                name: EnumNotificationProcess.temporaryPasswordByAdmin,
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to delete temporary password by admin template'
-            );
-        }
-    }
-
-    async emailImportResetPassword(): Promise<void> {
-        try {
-            const templatePath = join(
-                import.meta.dirname,
-                '../templates',
-                'notification.reset-password.template.hbs'
-            );
-
-            await this.awsSESService.createTemplate({
-                name: EnumNotificationProcess.resetPassword,
-                subject: `Reset Password`,
-                htmlBody: readFileSync(templatePath, 'utf8'),
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to import reset password template'
-            );
-        }
-    }
-
-    async emailGetResetPassword(): Promise<GetTemplateCommandOutput | null> {
-        try {
-            const template = await this.awsSESService.getTemplate({
-                name: EnumNotificationProcess.resetPassword,
-            });
-            return template;
-        } catch (err: unknown) {
-            if (err instanceof TemplateDoesNotExistException) {
-                return null;
-            }
-
-            throw new AppUnknownException(
-                err,
-                'Failed to get reset password template'
-            );
-        }
-    }
-
-    async emailDeleteResetPassword(): Promise<void> {
-        try {
-            await this.awsSESService.deleteTemplate({
-                name: EnumNotificationProcess.resetPassword,
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to delete reset password template'
-            );
-        }
-    }
-
-    async emailImportForgotPassword(): Promise<void> {
-        try {
-            const templatePath = join(
-                import.meta.dirname,
-                '../templates',
-                'notification.forgot-password.template.hbs'
-            );
-
-            await this.awsSESService.createTemplate({
-                name: EnumNotificationProcess.forgotPassword,
-                subject: `Forgot Password`,
-                htmlBody: readFileSync(templatePath, 'utf8'),
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to import forgot password template'
-            );
-        }
-    }
-
-    async emailGetForgotPassword(): Promise<GetTemplateCommandOutput | null> {
-        try {
-            const template = await this.awsSESService.getTemplate({
-                name: EnumNotificationProcess.forgotPassword,
-            });
-            return template;
-        } catch (err: unknown) {
-            if (err instanceof TemplateDoesNotExistException) {
-                return null;
-            }
-
-            throw new AppUnknownException(
-                err,
-                'Failed to get forgot password template'
-            );
-        }
-    }
-
-    async emailDeleteForgotPassword(): Promise<void> {
-        try {
-            await this.awsSESService.deleteTemplate({
-                name: EnumNotificationProcess.forgotPassword,
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to delete forgot password template'
-            );
-        }
-    }
-
-    async emailImportResetTwoFactorByAdmin(): Promise<void> {
-        try {
-            const templatePath = join(
-                import.meta.dirname,
-                '../templates',
-                'notification.reset-two-factor-by-admin.template.hbs'
-            );
-
-            await this.awsSESService.createTemplate({
-                name: EnumNotificationProcess.resetTwoFactorByAdmin,
-                subject: `Reset Two Factor By Admin`,
-                htmlBody: readFileSync(templatePath, 'utf8'),
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to import reset two factor by admin template'
-            );
-        }
-    }
-
-    async emailGetResetTwoFactorByAdmin(): Promise<GetTemplateCommandOutput | null> {
-        try {
-            const template = await this.awsSESService.getTemplate({
-                name: EnumNotificationProcess.resetTwoFactorByAdmin,
-            });
-            return template;
-        } catch (err: unknown) {
-            if (err instanceof TemplateDoesNotExistException) {
-                return null;
-            }
-
-            throw new AppUnknownException(
-                err,
-                'Failed to get reset two factor by admin template'
-            );
-        }
-    }
-
-    async emailDeleteResetTwoFactorByAdmin(): Promise<void> {
-        try {
-            await this.awsSESService.deleteTemplate({
-                name: EnumNotificationProcess.resetTwoFactorByAdmin,
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to delete reset two factor by admin template'
-            );
-        }
-    }
-
-    async emailImportNewDeviceLogin(): Promise<void> {
-        try {
-            const templatePath = join(
-                import.meta.dirname,
-                '../templates',
-                'notification.new-device-login.template.hbs'
-            );
-
-            await this.awsSESService.createTemplate({
-                name: EnumNotificationProcess.newDeviceLogin,
-                subject: `Device Login`,
-                htmlBody: readFileSync(templatePath, 'utf8'),
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to import new device login template'
-            );
-        }
-    }
-
-    async emailGetNewDeviceLogin(): Promise<GetTemplateCommandOutput | null> {
-        try {
-            const template = await this.awsSESService.getTemplate({
-                name: EnumNotificationProcess.newDeviceLogin,
-            });
-            return template;
-        } catch (err: unknown) {
-            if (err instanceof TemplateDoesNotExistException) {
-                return null;
-            }
-
-            throw new AppUnknownException(
-                err,
-                'Failed to get new device login template'
-            );
-        }
-    }
-
-    async emailDeleteNewDeviceLogin(): Promise<void> {
-        try {
-            await this.awsSESService.deleteTemplate({
-                name: EnumNotificationProcess.newDeviceLogin,
-            });
-        } catch (err: unknown) {
-            throw new AppUnknownException(
-                err,
-                'Failed to delete new device login template'
+                `Failed to delete ${label} template`
             );
         }
     }

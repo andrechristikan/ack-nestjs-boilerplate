@@ -7,6 +7,8 @@ import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 import { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
 import { RedisErrorMessages } from '@keyv/redis';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
@@ -18,9 +20,7 @@ import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.s
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
-import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import { HttpStatus } from '@nestjs/common';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import {
@@ -169,111 +169,34 @@ describe('AuthDomain', () => {
     });
 
     describe('validateJwtAccessGuard', () => {
-        it('rethrows a typed exception from the strategy unchanged', () => {
-            const err = new SessionRevokedException();
-
-            let thrown: unknown;
-            try {
-                domain.validateJwtAccessGuard(
-                    err,
-                    accessPayload,
-                    new Error('info')
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toBe(err);
-            expect(thrown).toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
-        });
-
-        it('wraps an unknown strategy error in AppUnknownException with the raw error', () => {
+        it('throws the exception AuthUtil maps from a strategy error', () => {
             const err = new Error(
                 RedisErrorMessages.RedisClientNotConnectedThrown
             );
+            const info = new Error('info');
+            const mapped = new AppUnknownException(err);
+            authUtil.toJwtGuardException.mockReturnValue(mapped);
 
             let thrown: unknown;
             try {
-                domain.validateJwtAccessGuard(
-                    err,
-                    accessPayload,
-                    new Error('info')
-                );
+                domain.validateJwtAccessGuard(err, accessPayload, info);
             } catch (error) {
                 thrown = error;
             }
 
-            expect(thrown).toBeInstanceOf(AppUnknownException);
-            expect(thrown).toMatchObject({
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: err,
-            });
-            expect(
-                authUtil.toProviderUnavailableException
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws AuthProviderUnavailableException when passport info is a key endpoint outage', () => {
-            const info = new Error('jwks endpoint down');
-            const unavailable = new AuthProviderUnavailableException(info);
-            authUtil.toProviderUnavailableException.mockReturnValue(
-                unavailable
+            expect(thrown).toBe(mapped);
+            expect(authUtil.toJwtGuardException).toHaveBeenCalledWith(
+                err,
+                info,
+                expect.any(AuthJwtAccessTokenInvalidException)
             );
-
-            let thrown: unknown;
-            try {
-                domain.validateJwtAccessGuard(
-                    null as unknown as Error,
-                    undefined as unknown as IAuthJwtAccessTokenPayload,
-                    info
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toBe(unavailable);
-            expect(
-                authUtil.toProviderUnavailableException
-            ).toHaveBeenCalledWith(info);
         });
 
-        it('keeps a signing key miss or a bad token as AuthJwtAccessTokenInvalidException', () => {
-            const info = Object.assign(new Error('no matching kid'), {
-                name: 'SigningKeyNotFoundError',
-            });
-            authUtil.toProviderUnavailableException.mockReturnValue(null);
-
-            let thrown: unknown;
-            try {
-                domain.validateJwtAccessGuard(
-                    null as unknown as Error,
-                    undefined as unknown as IAuthJwtAccessTokenPayload,
-                    info
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                messagePath: 'auth.error.accessTokenUnauthorized',
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                rawError: info,
-            });
-        });
-
-        it('throws AuthJwtAccessTokenInvalidException with the passport info when no user and no error', () => {
+        it('throws the AuthJwtAccessTokenInvalidException fallback carrying the passport info when no user and no error', () => {
             const info = new Error('no auth header');
-            authUtil.toProviderUnavailableException.mockReturnValue(null);
+            authUtil.toJwtGuardException.mockImplementation(
+                (_err, _info, fallback) => fallback
+            );
 
             let thrown: unknown;
             try {
@@ -286,6 +209,7 @@ describe('AuthDomain', () => {
                 thrown = error;
             }
 
+            expect(thrown).toBeInstanceOf(AuthJwtAccessTokenInvalidException);
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
@@ -294,6 +218,7 @@ describe('AuthDomain', () => {
                         EnumAuthStatusCodeError.jwtAccessTokenInvalid
                     ],
                 messagePath: 'auth.error.accessTokenUnauthorized',
+                httpStatus: HttpStatus.UNAUTHORIZED,
                 rawError: info,
             });
         });
@@ -306,6 +231,7 @@ describe('AuthDomain', () => {
             );
 
             expect(result).toBe(accessPayload);
+            expect(authUtil.toJwtGuardException).not.toHaveBeenCalled();
         });
     });
 
@@ -340,111 +266,34 @@ describe('AuthDomain', () => {
     });
 
     describe('validateJwtRefreshGuard', () => {
-        it('rethrows a typed exception from the strategy unchanged', () => {
-            const err = new SessionRevokedException();
-
-            let thrown: unknown;
-            try {
-                domain.validateJwtRefreshGuard(
-                    err,
-                    refreshPayload,
-                    new Error('info')
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toBe(err);
-            expect(thrown).toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
-        });
-
-        it('wraps an unknown strategy error in AppUnknownException with the raw error', () => {
+        it('throws the exception AuthUtil maps from a strategy error', () => {
             const err = new Error(
                 RedisErrorMessages.RedisClientNotConnectedThrown
             );
+            const info = new Error('info');
+            const mapped = new AppUnknownException(err);
+            authUtil.toJwtGuardException.mockReturnValue(mapped);
 
             let thrown: unknown;
             try {
-                domain.validateJwtRefreshGuard(
-                    err,
-                    refreshPayload,
-                    new Error('info')
-                );
+                domain.validateJwtRefreshGuard(err, refreshPayload, info);
             } catch (error) {
                 thrown = error;
             }
 
-            expect(thrown).toBeInstanceOf(AppUnknownException);
-            expect(thrown).toMatchObject({
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: err,
-            });
-            expect(
-                authUtil.toProviderUnavailableException
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws AuthProviderUnavailableException when passport info is a key endpoint outage', () => {
-            const info = new Error('jwks endpoint down');
-            const unavailable = new AuthProviderUnavailableException(info);
-            authUtil.toProviderUnavailableException.mockReturnValue(
-                unavailable
+            expect(thrown).toBe(mapped);
+            expect(authUtil.toJwtGuardException).toHaveBeenCalledWith(
+                err,
+                info,
+                expect.any(AuthJwtRefreshTokenInvalidException)
             );
-
-            let thrown: unknown;
-            try {
-                domain.validateJwtRefreshGuard(
-                    null as unknown as Error,
-                    undefined as unknown as IAuthJwtRefreshTokenPayload,
-                    info
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toBe(unavailable);
-            expect(
-                authUtil.toProviderUnavailableException
-            ).toHaveBeenCalledWith(info);
         });
 
-        it('keeps a signing key miss or a bad token as AuthJwtRefreshTokenInvalidException', () => {
-            const info = Object.assign(new Error('no matching kid'), {
-                name: 'SigningKeyNotFoundError',
-            });
-            authUtil.toProviderUnavailableException.mockReturnValue(null);
-
-            let thrown: unknown;
-            try {
-                domain.validateJwtRefreshGuard(
-                    null as unknown as Error,
-                    undefined as unknown as IAuthJwtRefreshTokenPayload,
-                    info
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                messagePath: 'auth.error.refreshTokenUnauthorized',
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                rawError: info,
-            });
-        });
-
-        it('throws AuthJwtRefreshTokenInvalidException with the passport info when no user and no error', () => {
+        it('throws the AuthJwtRefreshTokenInvalidException fallback carrying the passport info when no user and no error', () => {
             const info = new Error('no auth header');
-            authUtil.toProviderUnavailableException.mockReturnValue(null);
+            authUtil.toJwtGuardException.mockImplementation(
+                (_err, _info, fallback) => fallback
+            );
 
             let thrown: unknown;
             try {
@@ -457,6 +306,7 @@ describe('AuthDomain', () => {
                 thrown = error;
             }
 
+            expect(thrown).toBeInstanceOf(AuthJwtRefreshTokenInvalidException);
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
@@ -465,6 +315,7 @@ describe('AuthDomain', () => {
                         EnumAuthStatusCodeError.jwtRefreshTokenInvalid
                     ],
                 messagePath: 'auth.error.refreshTokenUnauthorized',
+                httpStatus: HttpStatus.UNAUTHORIZED,
                 rawError: info,
             });
         });
@@ -477,6 +328,7 @@ describe('AuthDomain', () => {
             );
 
             expect(result).toBe(refreshPayload);
+            expect(authUtil.toJwtGuardException).not.toHaveBeenCalled();
         });
     });
 

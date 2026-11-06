@@ -2,8 +2,7 @@ import { UnrecoverableError } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Mock } from 'vitest';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
@@ -15,14 +14,19 @@ import {
 
 describe('QueueProcessorBase', () => {
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     let handle: Mock;
     const jobName = 'testJob';
     let processor: QueueProcessorBase;
 
     beforeEach(() => {
         vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
 
-        ({ processor, handle } = buildQueueProcessor(sentryService));
+        ({ processor, handle } = buildQueueProcessor(
+            sentryService,
+            messageService
+        ));
     });
 
     describe('process', () => {
@@ -60,15 +64,17 @@ describe('QueueProcessorBase', () => {
             );
         });
 
-        it('logs the failure line and wraps an Error raised by the handler in AppUnknownException', async () => {
+        it('logs the failure line and wraps an Error raised by the handler in a fatal QueueException', async () => {
             const job = buildProcessorJob({});
             const error = new Error('handle failed');
             handle.mockRejectedValue(error);
 
             await expect(processor.process(job)).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                statusCode: EnumAppStatusCodeError.unknown,
+                constructor: QueueException,
+                message: 'queue.error.unknown',
+                isFatal: true,
                 rawError: error,
+                cause: error,
             });
 
             expect(job.log).toHaveBeenNthCalledWith(
@@ -82,8 +88,9 @@ describe('QueueProcessorBase', () => {
             handle.mockRejectedValue('raw failure reason');
 
             await expect(processor.process(job)).rejects.toMatchObject({
-                constructor: AppUnknownException,
+                constructor: QueueException,
                 rawError: 'raw failure reason',
+                cause: 'raw failure reason',
             });
 
             expect(job.log).toHaveBeenNthCalledWith(
@@ -214,6 +221,25 @@ describe('QueueProcessorBase', () => {
             processor.onFailed(job, error);
 
             expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('throwUnknownException', () => {
+        it('throws a fatal QueueException carrying the queue.error.unknown message and the error', () => {
+            const error = new Error('boom');
+
+            expect(() => processor['throwUnknownException'](error)).toThrow(
+                expect.objectContaining({
+                    constructor: QueueException,
+                    message: 'queue.error.unknown',
+                    isFatal: true,
+                    rawError: error,
+                    cause: error,
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'queue.error.unknown'
+            );
         });
     });
 

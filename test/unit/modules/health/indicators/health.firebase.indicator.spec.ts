@@ -5,6 +5,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthFirebaseIndicator', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
@@ -38,7 +39,9 @@ describe('HealthFirebaseIndicator', () => {
             firebaseService.isInitialized.mockReturnValue(true);
             session.up.mockReturnValue({ firebase: { status: 'up' } });
 
-            const result = await indicator.isHealthy('firebase');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.firebase
+            );
 
             expect(result).toEqual({ firebase: { status: 'up' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith(
@@ -51,7 +54,9 @@ describe('HealthFirebaseIndicator', () => {
             firebaseService.isInitialized.mockReturnValue(false);
             session.down.mockReturnValue({ firebase: { status: 'down' } });
 
-            const result = await indicator.isHealthy('firebase');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.firebase
+            );
 
             expect(result).toEqual({ firebase: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -65,7 +70,9 @@ describe('HealthFirebaseIndicator', () => {
             });
             session.down.mockReturnValue({ firebase: { status: 'down' } });
 
-            const result = await indicator.isHealthy('firebase');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.firebase
+            );
 
             expect(result).toEqual({ firebase: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith('Firebase check failed');
@@ -77,7 +84,9 @@ describe('HealthFirebaseIndicator', () => {
             });
             session.down.mockReturnValue({ firebase: { status: 'down' } });
 
-            const result = await indicator.isHealthy('firebase');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.firebase
+            );
 
             expect(result).toEqual({ firebase: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith('Firebase check failed');

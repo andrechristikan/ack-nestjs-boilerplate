@@ -90,6 +90,37 @@ describe('DeviceUtil', () => {
         });
     });
 
+    describe('toIdentity', () => {
+        it('maps every absent optional field to null', () => {
+            expect(
+                util.toIdentity({
+                    fingerprint: 'abc123def456ghi789jkl012mno345pq',
+                })
+            ).toEqual({
+                fingerprint: 'abc123def456ghi789jkl012mno345pq',
+                name: null,
+                platform: null,
+                notificationToken: null,
+            });
+        });
+
+        it('forwards the optional device fields when present', () => {
+            expect(
+                util.toIdentity({
+                    fingerprint: 'abc123def456ghi789jkl012mno345pq',
+                    name: 'iPhone 12',
+                    platform: EnumDevicePlatform.ios,
+                    notificationToken: 'token-1',
+                })
+            ).toEqual({
+                fingerprint: 'abc123def456ghi789jkl012mno345pq',
+                name: 'iPhone 12',
+                platform: EnumDevicePlatform.ios,
+                notificationToken: 'token-1',
+            });
+        });
+    });
+
     describe('mapActivityLogMetadata', () => {
         it('projects the ownership id, device id, and session count', () => {
             const result = util.mapActivityLogMetadata(deviceOwnership, 3);

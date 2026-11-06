@@ -27,8 +27,11 @@ export class UserAnalyticDomain {
         private readonly helperNumberService: HelperNumberService
     ) {}
 
-    getCountRegistrations(startDate: Date, endDate: Date): Promise<number> {
-        return this.userAnalyticRepository.countRegistrations(
+    async getCountRegistrations(
+        startDate: Date,
+        endDate: Date
+    ): Promise<number> {
+        return await this.userAnalyticRepository.countRegistrations(
             startDate,
             endDate
         );
@@ -46,47 +49,52 @@ export class UserAnalyticDomain {
         return { count: deleted, total, rate };
     }
 
-    getCountByStatus(status: EnumUserStatus): Promise<number> {
-        return this.userAnalyticRepository.countByStatus(status);
+    async getCountByStatus(status: EnumUserStatus): Promise<number> {
+        return await this.userAnalyticRepository.countByStatus(status);
     }
 
-    getGroupBySignUpWith(
+    async getGroupBySignUpWith(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpWith>[]> {
-        return this.userAnalyticRepository.groupBySignUpWith(
+        return await this.userAnalyticRepository.groupBySignUpWith(
             startDate,
             endDate
         );
     }
 
-    getGroupBySignUpFrom(
+    async getGroupBySignUpFrom(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpFrom>[]> {
-        return this.userAnalyticRepository.groupBySignUpFrom(
+        return await this.userAnalyticRepository.groupBySignUpFrom(
             startDate,
             endDate
         );
     }
 
-    getGroupLoginSource(
+    async getGroupLoginSource(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserLoginFrom>[]> {
-        return this.userAnalyticRepository.groupLoginSource(startDate, endDate);
+        return await this.userAnalyticRepository.groupLoginSource(
+            startDate,
+            endDate
+        );
     }
 
-    getGroupByStatus(): Promise<IUserAnalyticGroupCount<EnumUserStatus>[]> {
-        return this.userAnalyticRepository.groupByStatus();
+    async getGroupByStatus(): Promise<
+        IUserAnalyticGroupCount<EnumUserStatus>[]
+    > {
+        return await this.userAnalyticRepository.groupByStatus();
     }
 
-    getGroupByCountry(): Promise<IAnalyticCountBucket[]> {
-        return this.userAnalyticRepository.groupByCountry();
+    async getGroupByCountry(): Promise<IAnalyticCountBucket[]> {
+        return await this.userAnalyticRepository.groupByCountry();
     }
 
-    getGroupByRole(): Promise<IAnalyticCountBucket[]> {
-        return this.userAnalyticRepository.groupByRole();
+    async getGroupByRole(): Promise<IAnalyticCountBucket[]> {
+        return await this.userAnalyticRepository.groupByRole();
     }
 
     async getEmailVerificationRate(
@@ -101,42 +109,45 @@ export class UserAnalyticDomain {
         return { count: verified, total, rate };
     }
 
-    getCountPasswordExpired(now: Date): Promise<number> {
-        return this.userAnalyticRepository.countPasswordExpired(now);
+    async getCountPasswordExpired(now: Date): Promise<number> {
+        return await this.userAnalyticRepository.countPasswordExpired(now);
     }
 
-    getCountActive(): Promise<number> {
-        return this.userAnalyticRepository.countActive();
+    async getCountActive(): Promise<number> {
+        return await this.userAnalyticRepository.countActive();
     }
 
-    getNearLockout(
+    async getNearLockout(
         minAttempt: number,
         limit: number
     ): Promise<IAnalyticNearLockout[]> {
-        return this.userAnalyticRepository.findNearLockout(minAttempt, limit);
+        return await this.userAnalyticRepository.findNearLockout(
+            minAttempt,
+            limit
+        );
     }
 
-    getCountNearLockout(minAttempt: number): Promise<number> {
-        return this.userAnalyticRepository.countNearLockout(minAttempt);
+    async getCountNearLockout(minAttempt: number): Promise<number> {
+        return await this.userAnalyticRepository.countNearLockout(minAttempt);
     }
 
-    getGroupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]> {
-        return this.userAnalyticRepository.groupPasswordAttemptBuckets();
+    async getGroupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]> {
+        return await this.userAnalyticRepository.groupPasswordAttemptBuckets();
     }
 
-    getOneById(id: string): Promise<IUserAnalyticRef | null> {
-        return this.userAnalyticRepository.findOneById(id);
+    async getOneById(id: string): Promise<IUserAnalyticRef | null> {
+        return await this.userAnalyticRepository.findOneById(id);
     }
 
-    getManyByIds(ids: string[]): Promise<IUserAnalyticRef[]> {
-        return this.userAnalyticRepository.findManyByIds(ids);
+    async getManyByIds(ids: string[]): Promise<IUserAnalyticRef[]> {
+        return await this.userAnalyticRepository.findManyByIds(ids);
     }
 
-    getListNearLockoutOffset(
+    async getListNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
-        return this.userAnalyticRepository.findNearLockoutOffset(
+        return await this.userAnalyticRepository.findNearLockoutOffset(
             minAttempt,
             params
         );

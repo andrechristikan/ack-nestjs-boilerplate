@@ -12,51 +12,53 @@ export class SessionAnalyticDomain {
         private readonly sessionAnalyticRepository: SessionAnalyticRepository
     ) {}
 
-    getActiveInRange(
+    async getActiveInRange(
         startDate: Date | null,
         endDate: Date | null,
         now: Date
     ): Promise<ISessionAnalyticSession[]> {
-        return this.sessionAnalyticRepository.findActiveInRange(
+        return await this.sessionAnalyticRepository.findActiveInRange(
             startDate,
             endDate,
             now
         );
     }
 
-    getActiveWithGeoInRange(
+    async getActiveWithGeoInRange(
         startDate: Date | null,
         endDate: Date | null,
         now: Date
     ): Promise<ISessionAnalyticSession[]> {
-        return this.sessionAnalyticRepository.findActiveWithGeoInRange(
+        return await this.sessionAnalyticRepository.findActiveWithGeoInRange(
             startDate,
             endDate,
             now
         );
     }
 
-    getCountActiveByUser(now: Date): Promise<ISessionAnalyticUserCount[]> {
-        return this.sessionAnalyticRepository.countActiveByUser(now);
+    async getCountActiveByUser(
+        now: Date
+    ): Promise<ISessionAnalyticUserCount[]> {
+        return await this.sessionAnalyticRepository.countActiveByUser(now);
     }
 
-    getGroupByCountry(
+    async getGroupByCountry(
         startDate: Date | null,
         endDate: Date | null,
         now: Date
     ): Promise<IAnalyticCountBucket[]> {
-        return this.sessionAnalyticRepository.groupByCountry(
+        return await this.sessionAnalyticRepository.groupByCountry(
             startDate,
             endDate,
             now
         );
     }
 
-    getCountAll(): Promise<number> {
-        return this.sessionAnalyticRepository.countAll();
+    async getCountAll(): Promise<number> {
+        return await this.sessionAnalyticRepository.countAll();
     }
 
-    getCountActive(now: Date): Promise<number> {
-        return this.sessionAnalyticRepository.countActive(now);
+    async getCountActive(now: Date): Promise<number> {
+        return await this.sessionAnalyticRepository.countActive(now);
     }
 }

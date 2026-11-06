@@ -237,6 +237,7 @@ export class AnalyticFraudDomain {
             this.concurrency
         );
         for (const batch of batches) {
+            // Sequential by design: bounded chunks, concurrent within a chunk
             const devicePromises = batch.map(change => {
                 const windowEnd = this.helperDateService.forward(
                     change.createdAt,
@@ -250,7 +251,6 @@ export class AnalyticFraudDomain {
                     windowEnd
                 );
             });
-            // Sequential by design: bounded chunks, concurrent within a chunk
             const hasDevicePerChange = await Promise.all(devicePromises);
             for (const [index, change] of batch.entries()) {
                 if (hasDevicePerChange[index]) {
@@ -335,6 +335,7 @@ export class AnalyticFraudDomain {
                 this.concurrency
             );
             for (const batch of batches) {
+                // Sequential by design: bounded chunks, concurrent within a chunk
                 const loginPromises = batch.map(revoke => {
                     const windowEnd = this.helperDateService.forward(
                         revoke.createdAt,
@@ -347,7 +348,6 @@ export class AnalyticFraudDomain {
                         windowEnd
                     );
                 });
-                // Sequential by design: bounded chunks, concurrent within a chunk
                 const loginPerRevoke = await Promise.all(loginPromises);
                 for (const [index, revoke] of batch.entries()) {
                     const hit = loginPerRevoke[index]!;
@@ -415,6 +415,7 @@ export class AnalyticFraudDomain {
                 this.concurrency
             );
             for (const batch of batches) {
+                // Sequential by design: bounded chunks, concurrent within a chunk
                 const devicePromises = batch.map(regeneration => {
                     const windowEnd = this.helperDateService.forward(
                         regeneration.createdAt,
@@ -426,7 +427,6 @@ export class AnalyticFraudDomain {
                         windowEnd
                     );
                 });
-                // Sequential by design: bounded chunks, concurrent within a chunk
                 const hasDevicePerRegeneration =
                     await Promise.all(devicePromises);
                 for (const [index, regeneration] of batch.entries()) {

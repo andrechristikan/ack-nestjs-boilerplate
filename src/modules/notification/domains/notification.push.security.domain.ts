@@ -3,7 +3,7 @@ import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
-import { EnumNotificationChannel } from '@generated/prisma-client/client';
+import { NotificationPushDeliveryDomain } from '@modules/notification/domains/notification.push.delivery.domain';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import {
     EnumNotificationPushProcess,
@@ -14,69 +14,24 @@ import type {
     INotificationPushSendOutcome,
     INotificationPushStepResult,
     INotificationSendPushEncryptedPayload,
-    INotificationStepFailure,
     INotificationTemporaryPasswordPushPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
-import { UnrecoverableError } from 'bullmq';
 
 /** Renders and delivers the password, two-factor and new-device login push messages. */
 @Injectable()
 export class NotificationPushSecurityDomain {
     constructor(
         private readonly firebaseService: FirebaseService,
-        private readonly notificationRepository: NotificationRepository,
+        private readonly notificationPushDeliveryDomain: NotificationPushDeliveryDomain,
         private readonly messageService: MessageService,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
         private readonly notificationPushQueue: NotificationPushQueue,
         private readonly notificationUtil: NotificationUtil
     ) {}
-
-    private throwDeliveryNotFound(process: EnumNotificationPushProcess): never {
-        const message = this.messageService.setMessage(
-            'notification.queue.push.error.deliveryNotFound',
-            { properties: { process } }
-        );
-
-        throw new UnrecoverableError(message);
-    }
-
-    private async stampProcessed(
-        notificationId: string,
-        process: EnumNotificationPushProcess
-    ): Promise<void> {
-        const processedAt = this.helperDateService.create();
-        const stamped =
-            await this.notificationRepository.updateDeliveryProcessedAt(
-                notificationId,
-                EnumNotificationChannel.push,
-                processedAt
-            );
-        if (!stamped) {
-            this.throwDeliveryNotFound(process);
-        }
-    }
-
-    private async stampSent(
-        notificationId: string,
-        failureTokens: string[],
-        process: EnumNotificationPushProcess
-    ): Promise<void> {
-        const sentAt = this.helperDateService.create();
-        const stamped = await this.notificationRepository.updateDeliverySentAt(
-            notificationId,
-            EnumNotificationChannel.push,
-            sentAt,
-            failureTokens
-        );
-        if (!stamped) {
-            this.throwDeliveryNotFound(process);
-        }
-    }
 
     private async sendMulticastStep(
         userId: string,
@@ -85,47 +40,21 @@ export class NotificationPushSecurityDomain {
         encryptedFailureTokens: string[] | null,
         encryptedPendingTokens: string[] | null
     ): Promise<INotificationPushSendOutcome> {
-        const pairs = (
+        const pairs = this.notificationUtil.toTokenPairs(
+            userId,
             encryptedPendingTokens ?? encryptedNotificationTokens
-        ).map(encrypted => {
-            const token = this.notificationUtil.decryptPayload(
-                encrypted,
-                userId
-            );
-
-            return { encrypted, token };
-        });
-        const toEncrypted = (tokens: string[]): string[] =>
-            pairs
-                .filter(pair => tokens.includes(pair.token))
-                .map(pair => pair.encrypted);
+        );
         try {
             const result = await this.firebaseService.sendMulticast(
                 pairs.map(pair => pair.token),
                 payload
             );
-            const merged = [
-                ...(encryptedFailureTokens ?? []),
-                ...toEncrypted(result.failureTokens),
-            ];
-            const pending = toEncrypted(result.retryTokens);
-            let failure: INotificationStepFailure | null = null;
-            if (pending.length > 0) {
-                const message = this.messageService.setMessage(
-                    'notification.queue.push.error.tokensPending',
-                    { properties: { count: pending.length } }
-                );
-                failure = {
-                    step: EnumNotificationStep.sendMulticast,
-                    rawError: new Error(message),
-                };
-            }
 
-            return {
-                encryptedFailureTokens: [...new Set(merged)],
-                encryptedPendingTokens: pending,
-                failure,
-            };
+            return this.notificationUtil.toMulticastOutcome(
+                pairs,
+                result,
+                encryptedFailureTokens
+            );
         } catch (error: unknown) {
             const failure = this.notificationUtil.toStepFailure(
                 EnumNotificationStep.sendMulticast,
@@ -171,7 +100,7 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.stampProcessed(
+            await this.notificationPushDeliveryDomain.stampProcessed(
                 notificationId,
                 EnumNotificationPushProcess.newDeviceLogin
             );
@@ -247,7 +176,7 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.stampSent(
+            const sentAtUpdated = this.notificationPushDeliveryDomain.stampSent(
                 notificationId,
                 plainFailureTokens,
                 EnumNotificationPushProcess.newDeviceLogin
@@ -309,7 +238,7 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.stampProcessed(
+            await this.notificationPushDeliveryDomain.stampProcessed(
                 notificationId,
                 EnumNotificationPushProcess.resetTwoFactorByAdmin
             );
@@ -376,7 +305,7 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.stampSent(
+            const sentAtUpdated = this.notificationPushDeliveryDomain.stampSent(
                 notificationId,
                 plainFailureTokens,
                 EnumNotificationPushProcess.resetTwoFactorByAdmin
@@ -439,7 +368,7 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.stampProcessed(
+            await this.notificationPushDeliveryDomain.stampProcessed(
                 notificationId,
                 EnumNotificationPushProcess.temporaryPasswordByAdmin
             );
@@ -512,7 +441,7 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.stampSent(
+            const sentAtUpdated = this.notificationPushDeliveryDomain.stampSent(
                 notificationId,
                 plainFailureTokens,
                 EnumNotificationPushProcess.temporaryPasswordByAdmin
@@ -573,7 +502,7 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.stampProcessed(
+            await this.notificationPushDeliveryDomain.stampProcessed(
                 notificationId,
                 EnumNotificationPushProcess.resetPassword
             );
@@ -639,7 +568,7 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.stampSent(
+            const sentAtUpdated = this.notificationPushDeliveryDomain.stampSent(
                 notificationId,
                 plainFailureTokens,
                 EnumNotificationPushProcess.resetPassword
@@ -700,7 +629,7 @@ export class NotificationPushSecurityDomain {
         const done = [...completedSteps];
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: write must not run if an earlier step throws
-            await this.stampProcessed(
+            await this.notificationPushDeliveryDomain.stampProcessed(
                 notificationId,
                 EnumNotificationPushProcess.forgotPassword
             );
@@ -766,7 +695,7 @@ export class NotificationPushSecurityDomain {
             promises.push(cleanupSent);
         }
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
-            const sentAtUpdated = this.stampSent(
+            const sentAtUpdated = this.notificationPushDeliveryDomain.stampSent(
                 notificationId,
                 plainFailureTokens,
                 EnumNotificationPushProcess.forgotPassword

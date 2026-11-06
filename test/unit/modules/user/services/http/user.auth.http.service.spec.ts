@@ -40,6 +40,7 @@ import type {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -61,7 +62,12 @@ import type {
     IDeviceLoginUpsert,
 } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
+import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -159,6 +165,7 @@ describe('UserAuthHttpService', () => {
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const authJwtDomain: MockProxy<AuthJwtDomain> = mock<AuthJwtDomain>();
+    const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
     const authTwoFactorDomain: MockProxy<AuthTwoFactorDomain> =
         mock<AuthTwoFactorDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -475,7 +482,8 @@ describe('UserAuthHttpService', () => {
         notificationDomain.getListUserSetting.mockResolvedValue([]);
         deviceDomain.upsertForLoginInTx.mockResolvedValue(upsert);
         deviceUtil.resolveNotificationProvider.mockReturnValue(null);
-        authJwtDomain.createLoginIdentifiers.mockReturnValue({
+        deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
+        authUtil.createLoginIdentifiers.mockReturnValue({
             sessionId: 'session-bramble',
             jti: 'jti-bramble',
         });
@@ -545,6 +553,7 @@ describe('UserAuthHttpService', () => {
                 { provide: SessionQueue, useValue: sessionQueue },
                 { provide: UserQueue, useValue: userQueue },
                 { provide: AuthJwtDomain, useValue: authJwtDomain },
+                { provide: AuthUtil, useValue: authUtil },
                 {
                     provide: AuthTwoFactorDomain,
                     useValue: authTwoFactorDomain,
@@ -589,10 +598,10 @@ describe('UserAuthHttpService', () => {
                 personalContext
             );
             featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
+                [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
             });
             userAuthDomain.getOneByEmail.mockResolvedValue(null);
-            userAuthDomain.prepareSocialCreate.mockReturnValue(input);
+            userCreateUtil.buildSocialCreate.mockReturnValue(input);
             userDomain.checkUsername.mockResolvedValue(clearUsername);
             userAuthDomain.getOneForSocialLogin.mockResolvedValue(baseUser);
             userUtil.resolveLoginActivityLogAction.mockReturnValue(
@@ -600,7 +609,7 @@ describe('UserAuthHttpService', () => {
             );
             userCreateUtil.buildStages.mockReturnValue([stageInput]);
             userCreateUtil.resolveSocialFeatureFlagKey.mockReturnValue(
-                'loginWithGoogle'
+                EnumFeatureFlagKey.loginWithGoogle
             );
         });
 
@@ -628,9 +637,10 @@ describe('UserAuthHttpService', () => {
             ).resolves.toEqual({ data: tokenOutcome });
 
             expect(featureFlagDomain.getMetadataByKey).toHaveBeenCalledWith(
-                'loginWithGoogle'
+                EnumFeatureFlagKey.loginWithGoogle
             );
-            expect(userAuthDomain.prepareSocialCreate).toHaveBeenCalledWith(
+            expect(deviceUtil.toIdentity).toHaveBeenCalledWith(device);
+            expect(userCreateUtil.buildSocialCreate).toHaveBeenCalledWith(
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 social,
@@ -684,7 +694,7 @@ describe('UserAuthHttpService', () => {
 
         it('reads the apple flag for an apple sign-in', async () => {
             userCreateUtil.resolveSocialFeatureFlagKey.mockReturnValue(
-                'loginWithApple'
+                EnumFeatureFlagKey.loginWithApple
             );
 
             await service.loginWithSocial(
@@ -697,7 +707,7 @@ describe('UserAuthHttpService', () => {
                 userCreateUtil.resolveSocialFeatureFlagKey
             ).toHaveBeenCalledWith(EnumUserLoginWith.socialApple);
             expect(featureFlagDomain.getMetadataByKey).toHaveBeenCalledWith(
-                'loginWithApple'
+                EnumFeatureFlagKey.loginWithApple
             );
         });
 
@@ -706,7 +716,7 @@ describe('UserAuthHttpService', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
-            userAuthDomain.prepareSocialCreate.mockReturnValue(inviteInput);
+            userCreateUtil.buildSocialCreate.mockReturnValue(inviteInput);
             userAuthDomain.getOneForSocialLogin.mockResolvedValue(
                 committedUser
             );
@@ -742,7 +752,7 @@ describe('UserAuthHttpService', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
-            userAuthDomain.prepareSocialCreate.mockReturnValue(inviteInput);
+            userCreateUtil.buildSocialCreate.mockReturnValue(inviteInput);
             workspaceInviteDomain.acceptOnSignUpInTx.mockRejectedValue(failure);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             userCreateUtil.mapCreateCollision.mockReturnValue(failure);
@@ -788,7 +798,7 @@ describe('UserAuthHttpService', () => {
                 dtoWithoutName
             );
 
-            expect(userAuthDomain.prepareSocialCreate).toHaveBeenCalledWith(
+            expect(userCreateUtil.buildSocialCreate).toHaveBeenCalledWith(
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 expect.objectContaining({
@@ -819,7 +829,7 @@ describe('UserAuthHttpService', () => {
             expect(
                 userCreateUtil.buildSignUpWorkspaceContext
             ).not.toHaveBeenCalled();
-            expect(userAuthDomain.prepareSocialCreate).not.toHaveBeenCalled();
+            expect(userCreateUtil.buildSocialCreate).not.toHaveBeenCalled();
         });
 
         it('resolves the invite once the user is known to be new', async () => {
@@ -871,7 +881,7 @@ describe('UserAuthHttpService', () => {
             ).toHaveBeenCalledWith(invite, dto.username);
         });
 
-        it.each([null, { signUpAllowed: false }])(
+        it.each([null, { [EnumFeatureFlagMetadataKey.signUpAllowed]: false }])(
             'creates no user when the flag metadata is %j',
             async metadata => {
                 featureFlagDomain.getMetadataByKey.mockResolvedValue(metadata);
@@ -883,9 +893,7 @@ describe('UserAuthHttpService', () => {
                 );
 
                 expect(roleDomain.getByName).not.toHaveBeenCalled();
-                expect(
-                    userAuthDomain.prepareSocialCreate
-                ).not.toHaveBeenCalled();
+                expect(userCreateUtil.buildSocialCreate).not.toHaveBeenCalled();
                 expect(
                     notificationQueue.sendWelcomeSocial
                 ).not.toHaveBeenCalled();
@@ -923,7 +931,7 @@ describe('UserAuthHttpService', () => {
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
             });
-            expect(userAuthDomain.prepareSocialCreate).not.toHaveBeenCalled();
+            expect(userCreateUtil.buildSocialCreate).not.toHaveBeenCalled();
         });
 
         it('marks an unverified user verified and stages the row before logging in', async () => {
@@ -1079,26 +1087,28 @@ describe('UserAuthHttpService', () => {
             ]);
         });
 
-        it('forwards the optional device fields when present', async () => {
-            await service.loginCredential({
-                ...dto,
-                device: {
-                    fingerprint: 'device-bramble',
-                    name: 'Bramble phone',
-                    platform: EnumDevicePlatform.ios,
-                    notificationToken: 'token-bramble',
-                },
-            });
+        it('logs in on the device identity DeviceUtil shapes from the request device', async () => {
+            const requestDevice: DeviceRequestDto = {
+                fingerprint: 'device-bramble',
+                name: 'Bramble phone',
+                platform: EnumDevicePlatform.ios,
+                notificationToken: 'token-bramble',
+            };
+            const fullDevice: IDeviceIdentity = {
+                fingerprint: 'device-bramble',
+                name: 'Bramble phone',
+                platform: EnumDevicePlatform.ios,
+                notificationToken: 'token-bramble',
+            };
+            deviceUtil.toIdentity.mockReturnValue(fullDevice);
 
+            await service.loginCredential({ ...dto, device: requestDevice });
+
+            expect(deviceUtil.toIdentity).toHaveBeenCalledWith(requestDevice);
             expect(deviceDomain.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
-                {
-                    fingerprint: 'device-bramble',
-                    name: 'Bramble phone',
-                    platform: EnumDevicePlatform.ios,
-                    notificationToken: 'token-bramble',
-                },
+                fullDevice,
                 null,
                 now
             );
@@ -2001,7 +2011,7 @@ describe('UserAuthHttpService', () => {
             });
         });
 
-        it('answers revoked without a purge when the jti compare-and-set matches no row of an already revoked session', async () => {
+        it('enqueues an empty purge and answers revoked when the jti compare-and-set matches no row of an already revoked session', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -2353,13 +2363,13 @@ describe('UserAuthHttpService', () => {
                 inviteContext
             );
             userCreateUtil.resolveSocialFeatureFlagKey.mockReturnValue(
-                'loginWithGoogle'
+                EnumFeatureFlagKey.loginWithGoogle
             );
             featureFlagDomain.getMetadataByKey.mockResolvedValue({
-                signUpAllowed: true,
+                [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
             });
             userAuthDomain.getOneByEmail.mockResolvedValue(null);
-            userAuthDomain.prepareSocialCreate.mockReturnValue(inviteInput);
+            userCreateUtil.buildSocialCreate.mockReturnValue(inviteInput);
             userDomain.checkUsername.mockResolvedValue(clearUsername);
         });
 
@@ -2448,7 +2458,7 @@ describe('UserAuthHttpService', () => {
         });
 
         it('creates the project membership only when the invite carries a project and role', async () => {
-            userAuthDomain.prepareSocialCreate.mockReturnValue({
+            userCreateUtil.buildSocialCreate.mockReturnValue({
                 ...inviteInput,
                 workspaceContext: {
                     ...inviteContext,
@@ -2473,7 +2483,7 @@ describe('UserAuthHttpService', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 personalContext
             );
-            userAuthDomain.prepareSocialCreate.mockReturnValue({
+            userCreateUtil.buildSocialCreate.mockReturnValue({
                 ...input,
                 password: null,
                 passwordHistoryType: null,

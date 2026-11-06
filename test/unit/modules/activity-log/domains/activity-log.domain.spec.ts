@@ -12,6 +12,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { UserAgent, Workspace } from '@generated/prisma-client/client';
 import { ActivityLogStageStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { ActivityLogActionContract } from '@modules/activity-log/contracts/activity-log.action.contract';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import {
     EnumActivityLogUser,
@@ -70,6 +71,18 @@ describe('ActivityLogDomain', () => {
         description: null,
         isPublic: false,
     };
+    const targetContract =
+        ActivityLogActionContract[EnumActivityLogAction.userLoginCredential];
+    const contractInvalid = {
+        constructor: ActivityLogContractInvalidException,
+        module: 'activityLog',
+        statusCode: EnumActivityLogStatusCodeError.contractInvalid,
+        statusCodeKey:
+            EnumActivityLogStatusCodeError[
+                EnumActivityLogStatusCodeError.contractInvalid
+            ],
+        messagePath: 'activityLog.error.contractInvalid',
+    };
 
     let domain: ActivityLogDomain;
 
@@ -99,7 +112,17 @@ describe('ActivityLogDomain', () => {
     });
 
     describe('prepare', () => {
-        it('stages a target-user activity log with the staged user, createdBy, and no workspace', () => {
+        beforeEach(() => {
+            activityLogUtil.getContract.mockReturnValue(targetContract);
+            activityLogUtil.parseMetadata.mockReturnValue({
+                success: true,
+                data: {},
+            });
+            activityLogUtil.isTargetOnlyFieldValid.mockReturnValue(true);
+            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(true);
+        });
+
+        it('stages the entry with the parsed metadata and its fields checked against the contract', () => {
             const input: IActivityLogStageInput<EnumActivityLogAction> = {
                 action: EnumActivityLogAction.userLoginCredential,
                 userId: 'user-1',
@@ -115,9 +138,25 @@ describe('ActivityLogDomain', () => {
                 createdBy: 'creator-1',
                 workspaceId: null,
             });
+            expect(activityLogUtil.parseMetadata).toHaveBeenCalledWith(
+                targetContract,
+                {}
+            );
+            expect(activityLogUtil.isTargetOnlyFieldValid).toHaveBeenCalledWith(
+                targetContract.user,
+                'user-1'
+            );
+            expect(activityLogUtil.isTargetOnlyFieldValid).toHaveBeenCalledWith(
+                targetContract.user,
+                'creator-1'
+            );
+            expect(activityLogUtil.isWorkspaceFieldValid).toHaveBeenCalledWith(
+                targetContract.workspace,
+                null
+            );
         });
 
-        it('stages null userId, createdBy, and workspaceId for a payload-user, no-workspace action', () => {
+        it('stages null userId, createdBy, and workspaceId when the input omits them', () => {
             const result = domain.prepare({
                 action: EnumActivityLogAction.userUpdateProfile,
             });
@@ -131,7 +170,7 @@ describe('ActivityLogDomain', () => {
             });
         });
 
-        it('stages a target-workspace activity log with its workspaceId', () => {
+        it('stages the given workspaceId', () => {
             const result = domain.prepare({
                 action: EnumActivityLogAction.workspaceCreated,
                 userId: 'user-1',
@@ -139,16 +178,16 @@ describe('ActivityLogDomain', () => {
                 workspaceId: 'workspace-1',
             });
 
-            expect(result).toEqual({
-                action: EnumActivityLogAction.workspaceCreated,
-                metadata: {},
-                userId: 'user-1',
-                createdBy: 'creator-1',
-                workspaceId: 'workspace-1',
-            });
+            expect(result.workspaceId).toBe('workspace-1');
+            expect(activityLogUtil.isWorkspaceFieldValid).toHaveBeenCalledWith(
+                targetContract.workspace,
+                'workspace-1'
+            );
         });
 
         it('throws when the action carries no contract', () => {
+            activityLogUtil.getContract.mockReturnValue(null);
+
             let thrown: unknown;
             try {
                 domain.prepare({
@@ -158,22 +197,14 @@ describe('ActivityLogDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
+            expect(thrown).toMatchObject(contractInvalid);
         });
 
-        it('throws when metadata breaks the action contract', () => {
-            const expectedRawError = ActivityLogEmptyMetadataSchema.safeParse({
+        it('throws with the zod error as the raw error when metadata breaks the action contract', () => {
+            const failedParse = ActivityLogEmptyMetadataSchema.safeParse({
                 unexpected: 'value',
-            }).error;
+            });
+            activityLogUtil.parseMetadata.mockReturnValue(failedParse);
 
             let thrown: unknown;
             try {
@@ -188,19 +219,14 @@ describe('ActivityLogDomain', () => {
             }
 
             expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-                rawError: expectedRawError,
+                ...contractInvalid,
+                rawError: failedParse.error,
             });
         });
 
-        it('throws when a target-user action carries no userId', () => {
+        it('throws when a user field breaks the contract', () => {
+            activityLogUtil.isTargetOnlyFieldValid.mockReturnValueOnce(false);
+
             let thrown: unknown;
             try {
                 domain.prepare({
@@ -211,19 +237,12 @@ describe('ActivityLogDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
+            expect(thrown).toMatchObject(contractInvalid);
         });
 
-        it('throws when a target-workspace action carries no workspaceId', () => {
+        it('throws when the workspace field breaks the contract', () => {
+            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(false);
+
             let thrown: unknown;
             try {
                 domain.prepare({
@@ -235,19 +254,9 @@ describe('ActivityLogDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
+            expect(thrown).toMatchObject(contractInvalid);
         });
     });
-
     describe('stagePrepared', () => {
         it('does nothing when given no activity logs', () => {
             domain.stagePrepared([]);
@@ -305,6 +314,17 @@ describe('ActivityLogDomain', () => {
     });
 
     describe('flushStaged', () => {
+        beforeEach(() => {
+            activityLogUtil.getContract.mockReturnValue(targetContract);
+            activityLogUtil.parseMetadata.mockReturnValue({
+                success: true,
+                data: {},
+            });
+            activityLogUtil.resolveWorkspaceId.mockReturnValue(null);
+            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(true);
+            activityLogUtil.getDescription.mockReturnValue('Description');
+        });
+
         it('does nothing when nothing is staged', async () => {
             requestStoreService.get.mockReturnValue(null);
 
@@ -389,14 +409,24 @@ describe('ActivityLogDomain', () => {
                     return null;
                 }
             );
+            activityLogUtil.resolveUserId
+                .mockReturnValueOnce('user-1')
+                .mockReturnValueOnce('payload-user-1');
+            activityLogUtil.resolveCreatedBy
+                .mockReturnValueOnce('creator-1')
+                .mockReturnValueOnce('payload-user-1');
             databaseUtil.createId
                 .mockReturnValueOnce('aaaaaaaaaaaaaaaaaaaaaaaa')
                 .mockReturnValueOnce('bbbbbbbbbbbbbbbbbbbbbbbb');
             helperDateService.create.mockReturnValue(createdAt);
-            activityLogUtil.getDescription.mockReturnValue('Description');
 
             await domain.flushStaged({ payloadUserId: 'payload-user-1' });
 
+            expect(activityLogUtil.resolveUserId).toHaveBeenCalledWith(
+                targetContract.user,
+                null,
+                'payload-user-1'
+            );
             expect(activityLogQueue.createMany).toHaveBeenCalledTimes(1);
             expect(activityLogQueue.createMany).toHaveBeenCalledWith([
                 {
@@ -456,9 +486,12 @@ describe('ActivityLogDomain', () => {
                     return null;
                 }
             );
+            activityLogUtil.resolveUserId
+                .mockReturnValueOnce(null)
+                .mockReturnValueOnce('user-1');
+            activityLogUtil.resolveCreatedBy.mockReturnValue('creator-1');
             databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
             helperDateService.create.mockReturnValue(createdAt);
-            activityLogUtil.getDescription.mockReturnValue('Description');
 
             await domain.flushStaged({ payloadUserId: null });
 
@@ -499,6 +532,7 @@ describe('ActivityLogDomain', () => {
                     return null;
                 }
             );
+            activityLogUtil.resolveUserId.mockReturnValue(null);
             helperDateService.create.mockReturnValue(createdAt);
 
             await domain.flushStaged({ payloadUserId: null });
@@ -533,9 +567,10 @@ describe('ActivityLogDomain', () => {
                     return null;
                 }
             );
+            activityLogUtil.resolveUserId.mockReturnValue('user-1');
+            activityLogUtil.resolveCreatedBy.mockReturnValue('creator-1');
             databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
             helperDateService.create.mockReturnValue(createdAt);
-            activityLogUtil.getDescription.mockReturnValue('Description');
             activityLogQueue.createMany.mockRejectedValue(failure);
 
             const rejection = domain.flushStaged({ payloadUserId: null });
@@ -547,7 +582,6 @@ describe('ActivityLogDomain', () => {
             );
         });
     });
-
     describe('createMany', () => {
         it('writes the rows through the repository', async () => {
             const rows: IActivityLogCreate[] = [
@@ -689,18 +723,22 @@ describe('ActivityLogDomain', () => {
     });
 
     describe('getContract', () => {
-        it('returns the contract for a known action', () => {
+        it('returns the contract the util resolves', () => {
+            activityLogUtil.getContract.mockReturnValue(targetContract);
+
             const result = domain['getContract'](
                 EnumActivityLogAction.userLoginCredential
             );
 
-            expect(result).toMatchObject({
-                user: EnumActivityLogUser.target,
-                workspace: EnumActivityLogWorkspace.none,
-            });
+            expect(result).toBe(targetContract);
+            expect(activityLogUtil.getContract).toHaveBeenCalledWith(
+                EnumActivityLogAction.userLoginCredential
+            );
         });
 
         it('throws when the action carries no contract', () => {
+            activityLogUtil.getContract.mockReturnValue(null);
+
             let thrown: unknown;
             try {
                 domain['getContract']('notAnAction' as EnumActivityLogAction);
@@ -708,33 +746,38 @@ describe('ActivityLogDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
+            expect(thrown).toMatchObject(contractInvalid);
         });
     });
 
     describe('validateMetadata', () => {
+        beforeEach(() => {
+            activityLogUtil.getContract.mockReturnValue(targetContract);
+        });
+
         it('returns the parsed metadata when it matches the contract', () => {
+            activityLogUtil.parseMetadata.mockReturnValue({
+                success: true,
+                data: { targetUserId: 'user-1' },
+            });
+
             const result = domain['validateMetadata'](
                 EnumActivityLogAction.userLoginCredential,
-                {}
+                { targetUserId: 'user-1' }
             );
 
-            expect(result).toEqual({});
+            expect(result).toEqual({ targetUserId: 'user-1' });
+            expect(activityLogUtil.parseMetadata).toHaveBeenCalledWith(
+                targetContract,
+                { targetUserId: 'user-1' }
+            );
         });
 
         it('throws with the zod error as the raw error when metadata breaks the contract', () => {
-            const expectedRawError = ActivityLogEmptyMetadataSchema.safeParse({
+            const failedParse = ActivityLogEmptyMetadataSchema.safeParse({
                 unexpected: 'value',
-            }).error;
+            });
+            activityLogUtil.parseMetadata.mockReturnValue(failedParse);
 
             let thrown: unknown;
             try {
@@ -747,185 +790,16 @@ describe('ActivityLogDomain', () => {
             }
 
             expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-                rawError: expectedRawError,
-            });
-        });
-    });
-
-    describe('assertTargetOnlyField', () => {
-        it('accepts a target resolution with a value', () => {
-            expect(() =>
-                domain['assertTargetOnlyField'](
-                    EnumActivityLogUser.target,
-                    'user-1'
-                )
-            ).not.toThrow();
-        });
-
-        it('throws for a target resolution with no value', () => {
-            let thrown: unknown;
-            try {
-                domain['assertTargetOnlyField'](
-                    EnumActivityLogUser.target,
-                    null
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
-        });
-
-        it('accepts a payload resolution with no value', () => {
-            expect(() =>
-                domain['assertTargetOnlyField'](
-                    EnumActivityLogUser.payload,
-                    null
-                )
-            ).not.toThrow();
-        });
-
-        it('throws for a payload resolution carrying a value', () => {
-            let thrown: unknown;
-            try {
-                domain['assertTargetOnlyField'](
-                    EnumActivityLogUser.payload,
-                    'user-1'
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
-        });
-    });
-
-    describe('assertWorkspaceFields', () => {
-        it('accepts a target resolution with a workspaceId', () => {
-            expect(() =>
-                domain['assertWorkspaceFields'](
-                    EnumActivityLogWorkspace.target,
-                    'workspace-1'
-                )
-            ).not.toThrow();
-        });
-
-        it('throws for a target resolution with no workspaceId', () => {
-            let thrown: unknown;
-            try {
-                domain['assertWorkspaceFields'](
-                    EnumActivityLogWorkspace.target,
-                    null
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
-        });
-
-        it('accepts a none resolution with an null workspaceId', () => {
-            expect(() =>
-                domain['assertWorkspaceFields'](
-                    EnumActivityLogWorkspace.none,
-                    null
-                )
-            ).not.toThrow();
-        });
-
-        it('throws for a none resolution carrying a workspaceId', () => {
-            let thrown: unknown;
-            try {
-                domain['assertWorkspaceFields'](
-                    EnumActivityLogWorkspace.none,
-                    'workspace-1'
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
-        });
-
-        it('accepts a payload resolution with an null workspaceId', () => {
-            expect(() =>
-                domain['assertWorkspaceFields'](
-                    EnumActivityLogWorkspace.payload,
-                    null
-                )
-            ).not.toThrow();
-        });
-
-        it('throws for a payload resolution carrying a workspaceId', () => {
-            let thrown: unknown;
-            try {
-                domain['assertWorkspaceFields'](
-                    EnumActivityLogWorkspace.payload,
-                    'workspace-1'
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
+                ...contractInvalid,
+                rawError: failedParse.error,
             });
         });
     });
 
     describe('resolveUserId', () => {
-        it('returns the staged userId for a target resolution', () => {
+        it('returns the userId the util resolves', () => {
+            activityLogUtil.resolveUserId.mockReturnValue('user-1');
+
             const result = domain['resolveUserId'](
                 EnumActivityLogUser.target,
                 'user-1',
@@ -933,9 +807,16 @@ describe('ActivityLogDomain', () => {
             );
 
             expect(result).toBe('user-1');
+            expect(activityLogUtil.resolveUserId).toHaveBeenCalledWith(
+                EnumActivityLogUser.target,
+                'user-1',
+                null
+            );
         });
 
-        it('throws for a target resolution with no staged userId', () => {
+        it('throws when the util resolves no userId', () => {
+            activityLogUtil.resolveUserId.mockReturnValue(null);
+
             let thrown: unknown;
             try {
                 domain['resolveUserId'](EnumActivityLogUser.target, null, null);
@@ -943,55 +824,14 @@ describe('ActivityLogDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
-        });
-
-        it('returns the payload userId for a payload resolution', () => {
-            const result = domain['resolveUserId'](
-                EnumActivityLogUser.payload,
-                null,
-                'payload-user-1'
-            );
-
-            expect(result).toBe('payload-user-1');
-        });
-
-        it('throws for a payload resolution with no payload userId', () => {
-            let thrown: unknown;
-            try {
-                domain['resolveUserId'](
-                    EnumActivityLogUser.payload,
-                    null,
-                    null
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
+            expect(thrown).toMatchObject(contractInvalid);
         });
     });
 
     describe('resolveCreatedBy', () => {
-        it('returns the staged createdBy for a target resolution', () => {
+        it('returns the createdBy the util resolves', () => {
+            activityLogUtil.resolveCreatedBy.mockReturnValue('creator-1');
+
             const result = domain['resolveCreatedBy'](
                 EnumActivityLogUser.target,
                 'creator-1',
@@ -999,9 +839,16 @@ describe('ActivityLogDomain', () => {
             );
 
             expect(result).toBe('creator-1');
+            expect(activityLogUtil.resolveCreatedBy).toHaveBeenCalledWith(
+                EnumActivityLogUser.target,
+                'creator-1',
+                'user-1'
+            );
         });
 
-        it('throws for a target resolution with no staged createdBy', () => {
+        it('throws when the util resolves no createdBy', () => {
+            activityLogUtil.resolveCreatedBy.mockReturnValue(null);
+
             let thrown: unknown;
             try {
                 domain['resolveCreatedBy'](
@@ -1013,49 +860,36 @@ describe('ActivityLogDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
-        });
-
-        it('returns the resolved userId for a payload resolution', () => {
-            const result = domain['resolveCreatedBy'](
-                EnumActivityLogUser.payload,
-                null,
-                'user-1'
-            );
-
-            expect(result).toBe('user-1');
+            expect(thrown).toMatchObject(contractInvalid);
         });
     });
 
     describe('resolveWorkspaceId', () => {
-        it('returns null for a none resolution', () => {
-            const result = domain['resolveWorkspaceId'](
-                EnumActivityLogWorkspace.none,
-                'workspace-1'
-            );
+        it('returns the workspaceId the util resolves once it passes the contract check', () => {
+            activityLogUtil.resolveWorkspaceId.mockReturnValue('workspace-1');
+            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(true);
 
-            expect(result).toBeNull();
-        });
-
-        it('returns the staged workspaceId for a target resolution', () => {
             const result = domain['resolveWorkspaceId'](
                 EnumActivityLogWorkspace.target,
                 'workspace-1'
             );
 
             expect(result).toBe('workspace-1');
+            expect(activityLogUtil.resolveWorkspaceId).toHaveBeenCalledWith(
+                EnumActivityLogWorkspace.target,
+                'workspace-1'
+            );
+            expect(activityLogUtil.isWorkspaceFieldValid).toHaveBeenCalledWith(
+                EnumActivityLogWorkspace.target,
+                'workspace-1'
+            );
+            expect(requestStoreService.get).not.toHaveBeenCalled();
         });
 
-        it('throws for a target resolution with no staged workspaceId', () => {
+        it('throws when the resolved workspaceId fails the contract check', () => {
+            activityLogUtil.resolveWorkspaceId.mockReturnValue(null);
+            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(false);
+
             let thrown: unknown;
             try {
                 domain['resolveWorkspaceId'](
@@ -1066,16 +900,7 @@ describe('ActivityLogDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
+            expect(thrown).toMatchObject(contractInvalid);
         });
 
         it('returns the id of the workspace store for a payload resolution', () => {
@@ -1090,6 +915,7 @@ describe('ActivityLogDomain', () => {
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 WorkspaceStoreKey
             );
+            expect(activityLogUtil.resolveWorkspaceId).not.toHaveBeenCalled();
         });
 
         it('throws for a payload resolution with no workspace in the store', () => {
@@ -1105,16 +931,7 @@ describe('ActivityLogDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: ActivityLogContractInvalidException,
-                module: 'activityLog',
-                statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-                statusCodeKey:
-                    EnumActivityLogStatusCodeError[
-                        EnumActivityLogStatusCodeError.contractInvalid
-                    ],
-                messagePath: 'activityLog.error.contractInvalid',
-            });
+            expect(thrown).toMatchObject(contractInvalid);
         });
     });
 
@@ -1127,10 +944,18 @@ describe('ActivityLogDomain', () => {
                 createdBy: 'creator-1',
                 workspaceId: null,
             };
+            activityLogUtil.getContract.mockReturnValue(targetContract);
+            activityLogUtil.parseMetadata.mockReturnValue({
+                success: true,
+                data: {},
+            });
+            activityLogUtil.resolveUserId.mockReturnValue('user-1');
+            activityLogUtil.resolveCreatedBy.mockReturnValue('creator-1');
+            activityLogUtil.resolveWorkspaceId.mockReturnValue(null);
+            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(true);
             activityLogUtil.getDescription.mockReturnValue(
                 'User login with credential'
             );
-
             databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
 
             const result = domain['buildFlushCreate'](
@@ -1151,6 +976,15 @@ describe('ActivityLogDomain', () => {
                 metadata: {},
                 createdAt,
             });
+            expect(activityLogUtil.resolveCreatedBy).toHaveBeenCalledWith(
+                targetContract.user,
+                'creator-1',
+                'user-1'
+            );
+            expect(activityLogUtil.getDescription).toHaveBeenCalledWith(
+                EnumActivityLogAction.userLoginCredential,
+                {}
+            );
         });
     });
 });

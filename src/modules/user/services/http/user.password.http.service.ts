@@ -13,6 +13,10 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -322,8 +326,8 @@ export class UserPasswordHttpService {
     }: UserForgotPasswordRequestDto): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'changePassword',
-            'forgotAllowed'
+            EnumFeatureFlagKey.changePassword,
+            EnumFeatureFlagMetadataKey.forgotAllowed
         );
 
         const prepared =
@@ -375,8 +379,8 @@ export class UserPasswordHttpService {
     }: UserForgotPasswordResetRequestDto): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagDomain.validateFeatureFlagMetadata(
-            'changePassword',
-            'forgotAllowed'
+            EnumFeatureFlagKey.changePassword,
+            EnumFeatureFlagMetadataKey.forgotAllowed
         );
 
         const reset = await this.userPasswordDomain.getOneActiveReset(token);

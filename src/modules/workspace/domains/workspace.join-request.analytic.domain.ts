@@ -8,12 +8,12 @@ export class WorkspaceJoinRequestAnalyticDomain {
         private readonly workspaceJoinRequestAnalyticRepository: WorkspaceJoinRequestAnalyticRepository
     ) {}
 
-    getOutcomes(
+    async getOutcomes(
         startDate: Date,
         endDate: Date,
         workspaceId: string | null
     ): Promise<IAnalyticStatusCount[]> {
-        return this.workspaceJoinRequestAnalyticRepository.groupByStatus(
+        return await this.workspaceJoinRequestAnalyticRepository.groupByStatus(
             startDate,
             endDate,
             workspaceId

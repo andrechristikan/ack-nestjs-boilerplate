@@ -1,3 +1,4 @@
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
@@ -19,7 +20,9 @@ export class HealthQueueIndicator {
     /**
      * Down unless the notification queue Redis client status is ready.
      */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         try {

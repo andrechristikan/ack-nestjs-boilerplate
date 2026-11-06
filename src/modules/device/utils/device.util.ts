@@ -4,7 +4,9 @@ import {
 } from '@generated/prisma-client/client';
 import type { IAnalyticDeviceProliferationResult } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import type {
+    IDeviceIdentity,
     IDeviceOwnership,
     IDeviceOwnershipAnalyticUserCount,
 } from '@modules/device/interfaces/device.interface';
@@ -25,6 +27,15 @@ export class DeviceUtil {
             default:
                 return null;
         }
+    }
+
+    toIdentity(device: DeviceRequestDto): IDeviceIdentity {
+        return {
+            fingerprint: device.fingerprint,
+            name: device.name ?? null,
+            platform: device.platform ?? null,
+            notificationToken: device.notificationToken ?? null,
+        };
     }
 
     /** Projects an ownership and the number of sessions its removal revoked into device activity metadata. */

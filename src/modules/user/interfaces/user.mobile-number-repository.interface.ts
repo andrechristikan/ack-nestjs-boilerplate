@@ -1,8 +1,4 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type {
-    Country,
-    UserMobileNumber,
-} from '@generated/prisma-client/client';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type {
     IUserMobileNumber,
@@ -23,13 +19,13 @@ export interface IUserMobileNumberRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
-    ): Promise<UserMobileNumber & { country: Country }>;
+    ): Promise<IUserMobileNumber>;
     updateInTx(
         tx: IDatabaseTransactionClient,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         isVerified: boolean
-    ): Promise<UserMobileNumber & { country: Country }>;
+    ): Promise<IUserMobileNumber>;
     deleteInTx(
         tx: IDatabaseTransactionClient,
         mobileNumberId: string

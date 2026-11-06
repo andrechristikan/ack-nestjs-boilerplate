@@ -22,7 +22,7 @@ export class UserVerificationUtil {
     private readonly verificationOtpLength: number;
     private readonly verificationExpiredInMinutes: number;
     private readonly verificationTokenLength: number;
-    private readonly verificationResendInMinutes: number;
+    readonly verificationResendInMinutes: number;
     private readonly verificationLinkPattern: string;
 
     constructor(

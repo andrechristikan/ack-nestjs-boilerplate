@@ -30,39 +30,37 @@ export class ActivityLogAnalyticDomain {
         )!;
     }
 
-    getCountByActionsInRange(
+    async getCountByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
-        endDate: Date,
-        workspaceId?: string
+        endDate: Date
     ): Promise<number> {
-        return this.activityLogAnalyticRepository.countByActionsInRange(
-            actions,
-            startDate,
-            endDate,
-            workspaceId
-        );
-    }
-
-    getGroupByActionInRange(
-        actions: EnumActivityLogAction[],
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IActivityLogAnalyticActionCount[]> {
-        return this.activityLogAnalyticRepository.groupByActionInRange(
+        return await this.activityLogAnalyticRepository.countByActionsInRange(
             actions,
             startDate,
             endDate
         );
     }
 
-    getPageByActionsInRange(
+    async getGroupByActionInRange(
+        actions: EnumActivityLogAction[],
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IActivityLogAnalyticActionCount[]> {
+        return await this.activityLogAnalyticRepository.groupByActionInRange(
+            actions,
+            startDate,
+            endDate
+        );
+    }
+
+    async getPageByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
         cursor: string | null
     ): Promise<IPaginationCursorReturn<IActivityLogAnalyticList>> {
-        return this.activityLogAnalyticRepository.findPageByActionsInRange(
+        return await this.activityLogAnalyticRepository.findPageByActionsInRange(
             actions,
             startDate,
             endDate,
@@ -71,13 +69,13 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    getOneByUserActionsInRange(
+    async getOneByUserActionsInRange(
         userId: string,
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
     ): Promise<IActivityLogAnalyticList | null> {
-        return this.activityLogAnalyticRepository.findOneByUserActionsInRange(
+        return await this.activityLogAnalyticRepository.findOneByUserActionsInRange(
             userId,
             actions,
             startDate,
@@ -103,13 +101,13 @@ export class ActivityLogAnalyticDomain {
         return rows.toReversed();
     }
 
-    getGroupUserByActions(
+    async getGroupUserByActions(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
         min: number
     ): Promise<IActivityLogUserGroup[]> {
-        return this.activityLogAnalyticRepository.groupUserByActions(
+        return await this.activityLogAnalyticRepository.groupUserByActions(
             actions,
             startDate,
             endDate,
@@ -117,13 +115,13 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    getGroupUserIdByIps(
+    async getGroupUserIdByIps(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
         ips: string[]
     ): Promise<string[]> {
-        return this.activityLogAnalyticRepository.groupUserIdByIps(
+        return await this.activityLogAnalyticRepository.groupUserIdByIps(
             actions,
             startDate,
             endDate,
@@ -131,25 +129,25 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    getGroupIpUserByActions(
+    async getGroupIpUserByActions(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
     ): Promise<IActivityLogIpUserGroup[]> {
-        return this.activityLogAnalyticRepository.groupIpUserByActions(
+        return await this.activityLogAnalyticRepository.groupIpUserByActions(
             actions,
             startDate,
             endDate
         );
     }
 
-    getGroupIpByActions(
+    async getGroupIpByActions(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
         min: number
     ): Promise<IActivityLogIpGroup[]> {
-        return this.activityLogAnalyticRepository.groupIpByActions(
+        return await this.activityLogAnalyticRepository.groupIpByActions(
             actions,
             startDate,
             endDate,
@@ -157,12 +155,12 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    getCountByWorkspaceInRange(
+    async getCountByWorkspaceInRange(
         workspaceId: string,
         startDate: Date | null,
         endDate: Date | null
     ): Promise<number> {
-        return this.activityLogAnalyticRepository.countByWorkspaceInRange(
+        return await this.activityLogAnalyticRepository.countByWorkspaceInRange(
             [...ActivityLogWorkspaceVolumeContract],
             workspaceId,
             startDate,
@@ -170,12 +168,12 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    getGroupActivityByWorkspaceOffset(
+    async getGroupActivityByWorkspaceOffset(
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        return this.activityLogAnalyticRepository.groupActivityByWorkspaceOffset(
+        return await this.activityLogAnalyticRepository.groupActivityByWorkspaceOffset(
             [...ActivityLogWorkspaceVolumeContract],
             startDate,
             endDate,

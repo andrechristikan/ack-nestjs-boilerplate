@@ -2,7 +2,7 @@ import { OnWorkerEvent, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -13,7 +13,10 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 export abstract class QueueProcessorBase extends WorkerHost {
     private readonly logger = new Logger(QueueProcessorBase.name);
 
-    constructor(protected readonly sentryService: SentryService) {
+    constructor(
+        protected readonly sentryService: SentryService,
+        protected readonly messageService: MessageService
+    ) {
         super();
     }
 
@@ -28,6 +31,12 @@ export abstract class QueueProcessorBase extends WorkerHost {
     }
 
     protected abstract handle(job: Job): Promise<IQueueResponse>;
+
+    protected throwUnknownException(error: unknown): never {
+        const message = this.messageService.setMessage('queue.error.unknown');
+
+        throw new QueueException(message, true, error);
+    }
 
     async process(job: Job): Promise<IQueueResponse> {
         const maxAttempts = job.opts.attempts ?? 1;
@@ -64,7 +73,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
                 throw error;
             }
 
-            throw new AppUnknownException(error);
+            this.throwUnknownException(error);
         }
     }
 

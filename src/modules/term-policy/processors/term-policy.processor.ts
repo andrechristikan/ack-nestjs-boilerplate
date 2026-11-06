@@ -6,6 +6,7 @@ import type {
 import { TermPolicyProcessorService } from '@modules/term-policy/services/processor/term-policy.processor.service';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
@@ -18,9 +19,10 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 export class TermPolicyProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
+        protected readonly messageService: MessageService,
         private readonly termPolicyProcessorService: TermPolicyProcessorService
     ) {
-        super(sentryService);
+        super(sentryService, messageService);
     }
 
     /** Dispatches each job to its handler by job name. */

@@ -31,7 +31,9 @@ export class ProjectAnalyticDomain {
         return { created, perWorkspace };
     }
 
-    getCountByWorkspace(workspaceId: string): Promise<number> {
-        return this.projectAnalyticRepository.countByWorkspace(workspaceId);
+    async getCountByWorkspace(workspaceId: string): Promise<number> {
+        return await this.projectAnalyticRepository.countByWorkspace(
+            workspaceId
+        );
     }
 }

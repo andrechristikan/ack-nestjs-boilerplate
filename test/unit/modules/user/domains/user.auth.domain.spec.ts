@@ -25,6 +25,7 @@ import type {
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
+import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
@@ -36,6 +37,7 @@ describe('UserAuthDomain', () => {
         mock<UserVerificationDomain>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
         mock<UserVerificationUtil>();
+    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -100,13 +102,6 @@ describe('UserAuthDomain', () => {
         twoFactor: null,
     };
 
-    const device = {
-        fingerprint: 'device-halcyon',
-        name: null,
-        platform: null,
-        notificationToken: null,
-    };
-
     beforeEach(async () => {
         vi.resetAllMocks();
 
@@ -126,6 +121,7 @@ describe('UserAuthDomain', () => {
                     provide: UserVerificationUtil,
                     useValue: userVerificationUtil,
                 },
+                { provide: UserCreateUtil, useValue: userCreateUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
@@ -333,96 +329,6 @@ describe('UserAuthDomain', () => {
         });
     });
 
-    describe('prepareSocialCreate', () => {
-        const socialInput = {
-            from: EnumUserSignUpFrom.mobile,
-            username: 'halcyonVane',
-            name: 'Halcyon Vane',
-            inviteToken: null,
-            countryId: 'country-halcyon',
-            cookies: true,
-            marketing: false,
-            device,
-        };
-
-        beforeEach(() => {
-            databaseUtil.createId.mockReturnValue('user-id-halcyon');
-        });
-
-        it('stores the email trimmed and lowercased', () => {
-            const result = domain.prepareSocialCreate(
-                '  Halcyon@Example.COM ',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                resolved
-            );
-
-            expect(result.email).toBe('halcyon@example.com');
-        });
-
-        it('prepares a Google social create input from the resolved ids without re-reading the username', () => {
-            const result = domain.prepareSocialCreate(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                resolved
-            );
-
-            expect(result).toMatchObject({
-                userId: 'user-id-halcyon',
-                email: 'halcyon@example.com',
-                username: 'halcyonVane',
-                roleId: 'role-halcyon',
-                countryId: 'country-halcyon',
-                signUpFrom: EnumUserSignUpFrom.mobile,
-                signUpWith: EnumUserSignUpWith.socialGoogle,
-                isVerified: true,
-                password: null,
-                verification: null,
-                workspaceContext,
-                createdBy: 'user-id-halcyon',
-                acceptedTermPolicyTypes: expect.arrayContaining([
-                    EnumTermPolicyType.cookies,
-                ]),
-            });
-            expect(result).not.toHaveProperty('termPolicy');
-            expect(userRepository.existsByUsername).not.toHaveBeenCalled();
-        });
-
-        it('prepares an Apple social create input with no optional term policy accepted', () => {
-            const result = domain.prepareSocialCreate(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialApple,
-                { ...socialInput, cookies: false, marketing: false },
-                resolved
-            );
-
-            expect(result).toMatchObject({
-                signUpWith: EnumUserSignUpWith.socialApple,
-                acceptedTermPolicyTypes: [
-                    EnumTermPolicyType.termsOfService,
-                    EnumTermPolicyType.privacy,
-                ],
-            });
-        });
-
-        it('defaults name to null and accepts marketing when no name is given', () => {
-            const result = domain.prepareSocialCreate(
-                'halcyon@example.com',
-                EnumUserLoginWith.socialGoogle,
-                { ...socialInput, name: null, marketing: true },
-                resolved
-            );
-
-            expect(result).toMatchObject({
-                name: null,
-                acceptedTermPolicyTypes: expect.arrayContaining([
-                    EnumTermPolicyType.marketing,
-                ]),
-            });
-        });
-    });
-
     describe('getOneForSocialLogin', () => {
         it('returns the active user of the email', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
@@ -530,6 +436,12 @@ describe('UserAuthDomain', () => {
             hashedToken: 'hashed-token',
             link: 'https://example.com/verify?token=raw-token',
         };
+        const acceptedTermPolicyTypes = [
+            EnumTermPolicyType.termsOfService,
+            EnumTermPolicyType.privacy,
+            EnumTermPolicyType.cookies,
+            EnumTermPolicyType.marketing,
+        ];
 
         beforeEach(() => {
             databaseUtil.createId.mockReturnValue('user-id-halcyon');
@@ -540,6 +452,9 @@ describe('UserAuthDomain', () => {
                 passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
             });
             userVerificationUtil.createEmail.mockReturnValue(emailVerification);
+            userCreateUtil.buildAcceptedTermPolicyTypes.mockReturnValue(
+                acceptedTermPolicyTypes
+            );
         });
 
         it('prepares the sign-up input and the email verification', async () => {
@@ -556,6 +471,7 @@ describe('UserAuthDomain', () => {
                 signUpFrom: EnumUserSignUpFrom.website,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
+                acceptedTermPolicyTypes,
                 createdBy: 'user-id-halcyon',
                 verification: {
                     reference: emailVerification.reference,
@@ -567,6 +483,9 @@ describe('UserAuthDomain', () => {
                     isUsed: false,
                 },
             });
+            expect(
+                userCreateUtil.buildAcceptedTermPolicyTypes
+            ).toHaveBeenCalledWith(true, true);
         });
 
         it('defaults name to null and skips cookies and marketing when neither is accepted', async () => {
@@ -581,10 +500,9 @@ describe('UserAuthDomain', () => {
             );
 
             expect(result.input.name).toBeNull();
-            expect(result.input.acceptedTermPolicyTypes).toEqual([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-            ]);
+            expect(
+                userCreateUtil.buildAcceptedTermPolicyTypes
+            ).toHaveBeenCalledWith(false, false);
             expect(result.input).not.toHaveProperty('termPolicy');
         });
     });

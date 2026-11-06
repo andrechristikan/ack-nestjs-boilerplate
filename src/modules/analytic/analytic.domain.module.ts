@@ -9,13 +9,9 @@ import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
-import { ActivityLogDomainModule } from '@modules/activity-log/activity-log.domain.module';
-import { ApiKeyDomainModule } from '@modules/api-key/api-key.domain.module';
 import { DeviceDomainModule } from '@modules/device/device.domain.module';
 import { PasswordHistoryDomainModule } from '@modules/password-history/password-history.domain.module';
 import { ProjectDomainModule } from '@modules/project/project.domain.module';
-import { SessionDomainModule } from '@modules/session/session.domain.module';
-import { TermPolicyDomainModule } from '@modules/term-policy/term-policy.domain.module';
 import { UserDomainModule } from '@modules/user/user.domain.module';
 import { WorkspaceDomainModule } from '@modules/workspace/workspace.domain.module';
 import { Module } from '@nestjs/common';
@@ -44,13 +40,9 @@ import { Module } from '@nestjs/common';
         AnalyticWorkspaceUserDomain,
     ],
     imports: [
-        ActivityLogDomainModule,
-        SessionDomainModule,
         UserDomainModule,
         DeviceDomainModule,
         PasswordHistoryDomainModule,
-        ApiKeyDomainModule,
-        TermPolicyDomainModule,
         WorkspaceDomainModule,
         ProjectDomainModule,
     ],

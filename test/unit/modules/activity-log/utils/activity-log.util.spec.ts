@@ -7,6 +7,12 @@ import { MessageService } from '@common/message/services/message.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+import { ActivityLogActionContract } from '@modules/activity-log/contracts/activity-log.action.contract';
+import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activity-log.empty-metadata.dto';
+import {
+    EnumActivityLogUser,
+    EnumActivityLogWorkspace,
+} from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 describe('ActivityLogUtil', () => {
@@ -152,6 +158,237 @@ describe('ActivityLogUtil', () => {
                 geoLocation: null,
                 createdBy: 'user-1',
             });
+        });
+    });
+
+    describe('getContract', () => {
+        it('returns the contract for a known action', () => {
+            const result = util.getContract(
+                EnumActivityLogAction.userLoginCredential
+            );
+
+            expect(result).toBe(
+                ActivityLogActionContract[
+                    EnumActivityLogAction.userLoginCredential
+                ]
+            );
+        });
+
+        it('returns null when the action carries no contract', () => {
+            const result = util.getContract(
+                'notAnAction' as EnumActivityLogAction
+            );
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('parseMetadata', () => {
+        const contract =
+            ActivityLogActionContract[
+                EnumActivityLogAction.userLoginCredential
+            ];
+
+        it('returns a successful parse when metadata matches the contract', () => {
+            const result = util.parseMetadata(contract, {});
+
+            expect(result).toEqual({ success: true, data: {} });
+        });
+
+        it('returns the failed parse with the zod error when metadata breaks the contract', () => {
+            const expectedError = ActivityLogEmptyMetadataSchema.safeParse({
+                unexpected: 'value',
+            }).error;
+
+            const result = util.parseMetadata(contract, {
+                unexpected: 'value',
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error).toEqual(expectedError);
+        });
+    });
+
+    describe('isTargetOnlyFieldValid', () => {
+        it('accepts a target resolution with a value', () => {
+            expect(
+                util.isTargetOnlyFieldValid(
+                    EnumActivityLogUser.target,
+                    'user-1'
+                )
+            ).toBe(true);
+        });
+
+        it('rejects a target resolution with no value', () => {
+            expect(
+                util.isTargetOnlyFieldValid(EnumActivityLogUser.target, null)
+            ).toBe(false);
+        });
+
+        it('rejects a target resolution with an empty value', () => {
+            expect(
+                util.isTargetOnlyFieldValid(EnumActivityLogUser.target, '')
+            ).toBe(false);
+        });
+
+        it('accepts a payload resolution with no value', () => {
+            expect(
+                util.isTargetOnlyFieldValid(EnumActivityLogUser.payload, null)
+            ).toBe(true);
+        });
+
+        it('rejects a payload resolution carrying a value', () => {
+            expect(
+                util.isTargetOnlyFieldValid(
+                    EnumActivityLogUser.payload,
+                    'user-1'
+                )
+            ).toBe(false);
+        });
+    });
+
+    describe('isWorkspaceFieldValid', () => {
+        it('accepts a target resolution with a workspaceId', () => {
+            expect(
+                util.isWorkspaceFieldValid(
+                    EnumActivityLogWorkspace.target,
+                    'workspace-1'
+                )
+            ).toBe(true);
+        });
+
+        it('rejects a target resolution with no workspaceId', () => {
+            expect(
+                util.isWorkspaceFieldValid(
+                    EnumActivityLogWorkspace.target,
+                    null
+                )
+            ).toBe(false);
+        });
+
+        it('accepts a none resolution with a null workspaceId', () => {
+            expect(
+                util.isWorkspaceFieldValid(EnumActivityLogWorkspace.none, null)
+            ).toBe(true);
+        });
+
+        it('rejects a none resolution carrying a workspaceId', () => {
+            expect(
+                util.isWorkspaceFieldValid(
+                    EnumActivityLogWorkspace.none,
+                    'workspace-1'
+                )
+            ).toBe(false);
+        });
+
+        it('accepts a payload resolution with a null workspaceId', () => {
+            expect(
+                util.isWorkspaceFieldValid(
+                    EnumActivityLogWorkspace.payload,
+                    null
+                )
+            ).toBe(true);
+        });
+
+        it('rejects a payload resolution carrying a workspaceId', () => {
+            expect(
+                util.isWorkspaceFieldValid(
+                    EnumActivityLogWorkspace.payload,
+                    'workspace-1'
+                )
+            ).toBe(false);
+        });
+    });
+
+    describe('resolveUserId', () => {
+        it('returns the staged userId for a target resolution', () => {
+            expect(
+                util.resolveUserId(EnumActivityLogUser.target, 'user-1', null)
+            ).toBe('user-1');
+        });
+
+        it('returns null for a target resolution with no staged userId', () => {
+            expect(
+                util.resolveUserId(
+                    EnumActivityLogUser.target,
+                    null,
+                    'payload-user-1'
+                )
+            ).toBeNull();
+        });
+
+        it('returns the payload userId for a payload resolution', () => {
+            expect(
+                util.resolveUserId(
+                    EnumActivityLogUser.payload,
+                    null,
+                    'payload-user-1'
+                )
+            ).toBe('payload-user-1');
+        });
+
+        it('returns null for a payload resolution with an empty payload userId', () => {
+            expect(
+                util.resolveUserId(EnumActivityLogUser.payload, null, '')
+            ).toBeNull();
+        });
+    });
+
+    describe('resolveCreatedBy', () => {
+        it('returns the staged createdBy for a target resolution', () => {
+            expect(
+                util.resolveCreatedBy(
+                    EnumActivityLogUser.target,
+                    'creator-1',
+                    'user-1'
+                )
+            ).toBe('creator-1');
+        });
+
+        it('returns null for a target resolution with no staged createdBy', () => {
+            expect(
+                util.resolveCreatedBy(
+                    EnumActivityLogUser.target,
+                    null,
+                    'user-1'
+                )
+            ).toBeNull();
+        });
+
+        it('returns the resolved userId for a payload resolution', () => {
+            expect(
+                util.resolveCreatedBy(
+                    EnumActivityLogUser.payload,
+                    null,
+                    'user-1'
+                )
+            ).toBe('user-1');
+        });
+    });
+
+    describe('resolveWorkspaceId', () => {
+        it('returns null for a none resolution', () => {
+            expect(
+                util.resolveWorkspaceId(
+                    EnumActivityLogWorkspace.none,
+                    'workspace-1'
+                )
+            ).toBeNull();
+        });
+
+        it('returns the staged workspaceId for a target resolution', () => {
+            expect(
+                util.resolveWorkspaceId(
+                    EnumActivityLogWorkspace.target,
+                    'workspace-1'
+                )
+            ).toBe('workspace-1');
+        });
+
+        it('returns null for a target resolution with an empty staged workspaceId', () => {
+            expect(
+                util.resolveWorkspaceId(EnumActivityLogWorkspace.target, '')
+            ).toBeNull();
         });
     });
 });

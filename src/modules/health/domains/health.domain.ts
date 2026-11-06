@@ -1,5 +1,6 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
@@ -65,43 +66,63 @@ export class HealthDomain {
         return this.check([
             () =>
                 this.awsS3BucketIndicator.isHealthy(
-                    's3PublicBucket',
+                    EnumHealthIndicatorKey.s3PublicBucket,
                     EnumAwsS3Accessibility.public
                 ),
             () =>
                 this.awsS3BucketIndicator.isHealthy(
-                    's3PrivateBucket',
+                    EnumHealthIndicatorKey.s3PrivateBucket,
                     EnumAwsS3Accessibility.private
                 ),
-            () => this.awsSESIndicator.isHealthy('ses'),
+            () => this.awsSESIndicator.isHealthy(EnumHealthIndicatorKey.ses),
         ]);
     }
 
     async checkDatabase(): Promise<HealthCheckResult> {
         return this.check([
-            () => this.databaseIndicator.isHealthy('database'),
-            () => this.redisIndicator.isHealthy('redis'),
-            () => this.queueIndicator.isHealthy('queue'),
+            () =>
+                this.databaseIndicator.isHealthy(
+                    EnumHealthIndicatorKey.database
+                ),
+            () => this.redisIndicator.isHealthy(EnumHealthIndicatorKey.redis),
+            () => this.queueIndicator.isHealthy(EnumHealthIndicatorKey.queue),
         ]);
     }
 
     async checkThirdParty(): Promise<HealthCheckResult> {
         return this.check([
-            () => this.sentryIndicator.isHealthy('sentry'),
-            () => this.firebaseIndicator.isHealthy('firebase'),
-            () => this.googleIndicator.isHealthy('google'),
-            () => this.appleIndicator.isHealthy('apple'),
-            () => this.jwksIndicator.isHealthyAccessToken('jwksAccessToken'),
-            () => this.jwksIndicator.isHealthyRefreshToken('jwksRefreshToken'),
+            () => this.sentryIndicator.isHealthy(EnumHealthIndicatorKey.sentry),
+            () =>
+                this.firebaseIndicator.isHealthy(
+                    EnumHealthIndicatorKey.firebase
+                ),
+            () => this.googleIndicator.isHealthy(EnumHealthIndicatorKey.google),
+            () => this.appleIndicator.isHealthy(EnumHealthIndicatorKey.apple),
+            () =>
+                this.jwksIndicator.isHealthyAccessToken(
+                    EnumHealthIndicatorKey.jwksAccessToken
+                ),
+            () =>
+                this.jwksIndicator.isHealthyRefreshToken(
+                    EnumHealthIndicatorKey.jwksRefreshToken
+                ),
         ]);
     }
 
     async checkInstance(): Promise<HealthCheckResult> {
         return this.check([
-            () => this.healthInstanceIndicator.isHealthyMemoryRss('memoryRss'),
             () =>
-                this.healthInstanceIndicator.isHealthyMemoryHeap('memoryHeap'),
-            () => this.healthInstanceIndicator.isHealthyStorage('storage'),
+                this.healthInstanceIndicator.isHealthyMemoryRss(
+                    EnumHealthIndicatorKey.memoryRss
+                ),
+            () =>
+                this.healthInstanceIndicator.isHealthyMemoryHeap(
+                    EnumHealthIndicatorKey.memoryHeap
+                ),
+            () =>
+                this.healthInstanceIndicator.isHealthyStorage(
+                    EnumHealthIndicatorKey.storage
+                ),
         ]);
     }
 }

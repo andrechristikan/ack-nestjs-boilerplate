@@ -14,7 +14,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -22,6 +21,7 @@ import { AuthUtil } from '@modules/auth/utils/auth.util';
 import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
+    IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt-config-invalid.exception';
@@ -43,7 +43,6 @@ const refreshPublicKeyBase64 = refreshKeyPair.publicKey
     .toString('base64');
 
 describe('AuthJwtDomain', () => {
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
     const jwtService: MockProxy<JwtService> = mock<JwtService>();
@@ -101,6 +100,14 @@ describe('AuthJwtDomain', () => {
         twoFactor: null,
     };
 
+    const tokens: IAuthToken = {
+        tokenType: 'Bearer',
+        roleType: EnumRoleType.user,
+        expiresIn: 900,
+        accessToken: 'signed-access-token',
+        refreshToken: 'signed-refresh-token',
+    };
+
     const configValues: Record<string, string | number> = {
         'auth.jwt.accessToken.kid': 'access-kid',
         'auth.jwt.accessToken.expirationTimeInSeconds': 900,
@@ -126,7 +133,6 @@ describe('AuthJwtDomain', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtDomain,
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 {
                     provide: HelperEncryptionService,
                     useValue: helperEncryptionService,
@@ -323,21 +329,6 @@ describe('AuthJwtDomain', () => {
         });
     });
 
-    describe('createLoginIdentifiers', () => {
-        it('mints a session id and a jti', () => {
-            databaseUtil.createId.mockReturnValue('session-1');
-            authUtil.generateJti.mockReturnValue('jti-value');
-
-            const result = domain.createLoginIdentifiers();
-
-            expect(result).toEqual({
-                sessionId: 'session-1',
-                jti: 'jti-value',
-            });
-            expect(databaseUtil.createId).toHaveBeenCalledTimes(1);
-        });
-    });
-
     describe('createTokens', () => {
         it('signs the pair with the persisted ownership id and the caller login time', () => {
             const loginAt = new Date('2026-01-01T00:00:00.000Z');
@@ -362,6 +353,7 @@ describe('AuthJwtDomain', () => {
             };
             authUtil.createPayloadAccessToken.mockReturnValue(accessPayload);
             authUtil.createPayloadRefreshToken.mockReturnValue(refreshPayload);
+            authUtil.toToken.mockReturnValue(tokens);
             jwtService.sign
                 .mockReturnValueOnce('signed-access-token')
                 .mockReturnValueOnce('signed-refresh-token');
@@ -378,13 +370,13 @@ describe('AuthJwtDomain', () => {
                 EnumUserLoginWith.credential
             );
 
-            expect(result).toEqual({
-                tokenType: 'Bearer',
-                roleType: EnumRoleType.user,
-                expiresIn: 900,
-                accessToken: 'signed-access-token',
-                refreshToken: 'signed-refresh-token',
-            });
+            expect(result).toBe(tokens);
+            expect(authUtil.toToken).toHaveBeenCalledWith(
+                user,
+                'signed-access-token',
+                'signed-refresh-token',
+                900
+            );
             expect(authUtil.createPayloadAccessToken).toHaveBeenCalledWith(
                 user,
                 'session-1',
@@ -412,7 +404,6 @@ describe('AuthJwtDomain', () => {
                     subject: user.id,
                 })
             );
-            expect(databaseUtil.createId).not.toHaveBeenCalled();
             expect(authUtil.remainingSeconds).not.toHaveBeenCalled();
         });
     });
@@ -458,6 +449,7 @@ describe('AuthJwtDomain', () => {
                 newRefreshPayload
             );
             authUtil.remainingSeconds.mockReturnValue(518400);
+            authUtil.toToken.mockReturnValue(tokens);
             jwtService.sign
                 .mockReturnValueOnce('signed-access-token')
                 .mockReturnValueOnce('signed-refresh-token');
@@ -465,16 +457,16 @@ describe('AuthJwtDomain', () => {
             const result = domain.refreshToken(user, 'old-refresh-token');
 
             expect(result).toEqual({
-                tokens: {
-                    tokenType: 'Bearer',
-                    roleType: EnumRoleType.user,
-                    expiresIn: 900,
-                    accessToken: 'signed-access-token',
-                    refreshToken: 'signed-refresh-token',
-                },
+                tokens,
                 jti: 'new-jti',
                 sessionId: 'session-1',
             });
+            expect(authUtil.toToken).toHaveBeenCalledWith(
+                user,
+                'signed-access-token',
+                'signed-refresh-token',
+                900
+            );
             expect(authUtil.remainingSeconds).toHaveBeenCalledWith(
                 oldExpSeconds
             );

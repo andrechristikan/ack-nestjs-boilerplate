@@ -10,7 +10,6 @@ import { MessageService } from '@common/message/services/message.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
-    EnumNotificationChannel,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
@@ -27,7 +26,7 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { UnrecoverableError } from 'bullmq';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
-import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationPushDeliveryDomain } from '@modules/notification/domains/notification.push.delivery.domain';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import {
     expectPushAllStepsSkipped,
@@ -41,14 +40,13 @@ import {
     PushAllSteps,
     PushRecordedSteps,
     stubCipherDecryption,
-    TestPushStampedAt,
 } from '@test/unit/helpers/test.unit.notification-push.helper';
 import type { INotificationPushDoubles } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationPushSecurityDomain', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
-    const notificationRepository: MockProxy<NotificationRepository> =
-        mock<NotificationRepository>();
+    const notificationPushDeliveryDomain: MockProxy<NotificationPushDeliveryDomain> =
+        mock<NotificationPushDeliveryDomain>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -88,7 +86,7 @@ describe('NotificationPushSecurityDomain', () => {
     const recorded = PushRecordedSteps;
     const doubles: INotificationPushDoubles = {
         firebaseService,
-        notificationRepository,
+        notificationPushDeliveryDomain,
         notificationPushQueue,
         helperEncryptionService,
     };
@@ -104,8 +102,8 @@ describe('NotificationPushSecurityDomain', () => {
                 NotificationUtil,
                 { provide: FirebaseService, useValue: firebaseService },
                 {
-                    provide: NotificationRepository,
-                    useValue: notificationRepository,
+                    provide: NotificationPushDeliveryDomain,
+                    useValue: notificationPushDeliveryDomain,
                 },
                 { provide: MessageService, useValue: messageService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -126,11 +124,8 @@ describe('NotificationPushSecurityDomain', () => {
         }).compile();
         domain = module.get(NotificationPushSecurityDomain);
         firebaseService.isInitialized.mockReturnValue(true);
-        notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
-            true
-        );
-        notificationRepository.updateDeliverySentAt.mockResolvedValue(true);
-        helperDateService.create.mockReturnValue(TestPushStampedAt);
+        notificationPushDeliveryDomain.stampProcessed.mockResolvedValue();
+        notificationPushDeliveryDomain.stampSent.mockResolvedValue();
     });
 
     describe('processNewDeviceLogin', () => {
@@ -180,8 +175,10 @@ describe('NotificationPushSecurityDomain', () => {
         });
 
         it('throws an UnrecoverableError before sending when the push delivery row is missing', async () => {
-            notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
-                false
+            notificationPushDeliveryDomain.stampProcessed.mockRejectedValue(
+                new UnrecoverableError(
+                    'notification.queue.push.error.deliveryNotFound'
+                )
             );
 
             await expect(
@@ -190,21 +187,21 @@ describe('NotificationPushSecurityDomain', () => {
                 constructor: UnrecoverableError,
                 message: 'notification.queue.push.error.deliveryNotFound',
             });
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.queue.push.error.deliveryNotFound',
-                {
-                    properties: {
-                        process: EnumNotificationPushProcess.newDeviceLogin,
-                    },
-                }
+            expect(
+                notificationPushDeliveryDomain.stampProcessed
+            ).toHaveBeenCalledWith(
+                send.notificationId,
+                EnumNotificationPushProcess.newDeviceLogin
             );
             expect(firebaseService.sendMulticast).not.toHaveBeenCalled();
         });
 
         it('names the sentAt step as failed when the stamp matches no delivery row', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockResolvedValue(
-                false
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
+                new UnrecoverableError(
+                    'notification.queue.push.error.deliveryNotFound'
+                )
             );
 
             const result = await domain.processNewDeviceLogin(
@@ -242,7 +239,7 @@ describe('NotificationPushSecurityDomain', () => {
                 encryptedPendingTokens: ['t1'],
             });
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
         });
 
@@ -258,14 +255,13 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.newDeviceLogin
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -287,7 +283,8 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.newDeviceLogin'
+                'notification.queue.push.newDeviceLogin',
+                EnumNotificationPushProcess.newDeviceLogin
             );
         });
 
@@ -320,7 +317,7 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -342,7 +339,12 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.newDeviceLogin
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -359,7 +361,7 @@ describe('NotificationPushSecurityDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -417,7 +419,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.newDeviceLogin
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -431,7 +438,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.newDeviceLogin
+            );
         });
     });
 
@@ -476,14 +488,13 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.resetTwoFactorByAdmin
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -494,7 +505,8 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.resetTwoFactorByAdmin'
+                'notification.queue.push.resetTwoFactorByAdmin',
+                EnumNotificationPushProcess.resetTwoFactorByAdmin
             );
         });
 
@@ -509,7 +521,7 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -530,7 +542,12 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.resetTwoFactorByAdmin
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -546,7 +563,7 @@ describe('NotificationPushSecurityDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -596,7 +613,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.resetTwoFactorByAdmin
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -609,7 +631,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.resetTwoFactorByAdmin
+            );
         });
     });
 
@@ -667,14 +694,13 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.temporaryPasswordByAdmin
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -690,7 +716,8 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.temporaryPasswordByAdmin'
+                'notification.queue.push.temporaryPasswordByAdmin',
+                EnumNotificationPushProcess.temporaryPasswordByAdmin
             );
         });
 
@@ -706,7 +733,7 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -728,7 +755,12 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.temporaryPasswordByAdmin
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -745,7 +777,7 @@ describe('NotificationPushSecurityDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -799,7 +831,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.temporaryPasswordByAdmin
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -813,7 +850,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.temporaryPasswordByAdmin
+            );
         });
     });
 
@@ -855,14 +897,13 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.resetPassword
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -873,7 +914,8 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.resetPassword'
+                'notification.queue.push.resetPassword',
+                EnumNotificationPushProcess.resetPassword
             );
         });
 
@@ -888,7 +930,7 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -909,7 +951,12 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.resetPassword
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -925,7 +972,7 @@ describe('NotificationPushSecurityDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -975,7 +1022,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.resetPassword
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -988,7 +1040,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.resetPassword
+            );
         });
     });
 
@@ -1030,14 +1087,13 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).toHaveBeenCalledWith(
                 send.notificationId,
-                EnumNotificationChannel.push,
-                TestPushStampedAt
+                EnumNotificationPushProcess.forgotPassword
             );
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -1048,7 +1104,8 @@ describe('NotificationPushSecurityDomain', () => {
                 doubles,
                 send,
                 result,
-                'notification.queue.push.forgotPassword'
+                'notification.queue.push.forgotPassword',
+                EnumNotificationPushProcess.forgotPassword
             );
         });
 
@@ -1063,7 +1120,7 @@ describe('NotificationPushSecurityDomain', () => {
             );
 
             expect(
-                notificationRepository.updateDeliveryProcessedAt
+                notificationPushDeliveryDomain.stampProcessed
             ).not.toHaveBeenCalled();
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 1,
@@ -1084,7 +1141,12 @@ describe('NotificationPushSecurityDomain', () => {
                 null
             );
 
-            expectPushRetrySkipsSend(doubles, send, result);
+            expectPushRetrySkipsSend(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.forgotPassword
+            );
         });
 
         it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
@@ -1100,7 +1162,7 @@ describe('NotificationPushSecurityDomain', () => {
 
         it('names a rejected updateSentAt and still runs the cleanup', async () => {
             firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
-            notificationRepository.updateDeliverySentAt.mockRejectedValue(
+            notificationPushDeliveryDomain.stampSent.mockRejectedValue(
                 new Error('mongo')
             );
 
@@ -1150,7 +1212,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-2)']
             );
 
-            expectPushRetrySendsPending(doubles, send, result);
+            expectPushRetrySendsPending(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.forgotPassword
+            );
         });
 
         it('deduplicates the failure tokens merged across attempts', async () => {
@@ -1163,7 +1230,12 @@ describe('NotificationPushSecurityDomain', () => {
                 ['cipher(token-1)', 'cipher(token-2)']
             );
 
-            expectPushFailureTokensMerged(doubles, send, result);
+            expectPushFailureTokensMerged(
+                doubles,
+                send,
+                result,
+                EnumNotificationPushProcess.forgotPassword
+            );
         });
     });
 });

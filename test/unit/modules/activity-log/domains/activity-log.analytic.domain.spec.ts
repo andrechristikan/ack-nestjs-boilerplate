@@ -41,30 +41,7 @@ describe('ActivityLogAnalyticDomain', () => {
     });
 
     describe('getCountByActionsInRange', () => {
-        it('delegates to the repository with the given workspace', async () => {
-            activityLogAnalyticRepository.countByActionsInRange.mockResolvedValue(
-                3
-            );
-
-            const result = await domain.getCountByActionsInRange(
-                [EnumActivityLogAction.userLoginCredential],
-                startDate,
-                endDate,
-                'workspace-1'
-            );
-
-            expect(result).toBe(3);
-            expect(
-                activityLogAnalyticRepository.countByActionsInRange
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userLoginCredential],
-                startDate,
-                endDate,
-                'workspace-1'
-            );
-        });
-
-        it('delegates to the repository with no workspace', async () => {
+        it('delegates to the repository with the actions and the range', async () => {
             activityLogAnalyticRepository.countByActionsInRange.mockResolvedValue(
                 7
             );
@@ -81,8 +58,7 @@ describe('ActivityLogAnalyticDomain', () => {
             ).toHaveBeenCalledWith(
                 [EnumActivityLogAction.userLogout],
                 startDate,
-                endDate,
-                undefined
+                endDate
             );
         });
     });

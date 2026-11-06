@@ -11,10 +11,7 @@ import { QueueConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 
-/**
- * Global so the activity log domain, util, and always-on flush interceptor are
- * injectable across the HTTP stack.
- */
+/** Shared module: ActivityLogDomain for the HTTP services, ActivityLogAnalyticDomain for the aggregation domain, ActivityLogUtil for the user seed. */
 @Global()
 @Module({
     controllers: [],

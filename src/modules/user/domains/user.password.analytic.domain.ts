@@ -12,10 +12,10 @@ export class UserPasswordAnalyticDomain {
         private readonly helperNumberService: HelperNumberService
     ) {}
 
-    getExpiredCount(): Promise<number> {
+    async getExpiredCount(): Promise<number> {
         const now = this.helperDateService.create();
 
-        return this.userAnalyticDomain.getCountPasswordExpired(now);
+        return await this.userAnalyticDomain.getCountPasswordExpired(now);
     }
 
     mapExpiryCompliance(

@@ -20,7 +20,7 @@ export class ApiKeyAnalyticDomain {
         return { active, expired, inactive };
     }
 
-    getTypeMix(): Promise<IAnalyticCountBucket[]> {
-        return this.apiKeyAnalyticRepository.groupByType();
+    async getTypeMix(): Promise<IAnalyticCountBucket[]> {
+        return await this.apiKeyAnalyticRepository.groupByType();
     }
 }

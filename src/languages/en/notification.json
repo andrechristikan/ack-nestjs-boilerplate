@@ -141,6 +141,7 @@
             "error": {
                 "unknownProcess": "No {process} job handler exists.",
                 "batchFailed": "Term policy email batch {batchId} failed for {failedCount} of {claimedCount} recipients.",
+                "deliveryUnknown": "Email batch {batchId} has {unknownCount} recipients with an unknown delivery outcome.",
                 "enqueueWorkspaceInviteUnregistered": "Enqueue workspace invite unregistered email failed."
             }
         },

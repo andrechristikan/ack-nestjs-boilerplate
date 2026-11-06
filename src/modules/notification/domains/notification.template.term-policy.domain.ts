@@ -3,6 +3,11 @@ import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import type {
+    INotificationTemplateEmail,
+    INotificationTemplateTermPolicyProcess,
+} from '@modules/notification/interfaces/notification.interface';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -10,33 +15,57 @@ import { join } from 'path';
 /** Manages the SES template for the term-policy publication email. */
 @Injectable()
 export class NotificationTemplateTermPolicyDomain {
-    constructor(private readonly awsSESService: AwsSESService) {}
+    constructor(
+        private readonly awsSESService: AwsSESService,
+        private readonly notificationUtil: NotificationUtil
+    ) {}
 
-    async emailImportPublishTermPolicy(): Promise<void> {
+    private getTemplateEmail(
+        process: INotificationTemplateTermPolicyProcess
+    ): INotificationTemplateEmail {
+        const templateDir = join(import.meta.dirname, '../templates');
+
+        switch (process) {
+            case EnumNotificationProcess.publishTermPolicy:
+                return {
+                    subject: `Publish Term Policy`,
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.publish-term-policy.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
+        }
+    }
+
+    async emailImport(
+        process: INotificationTemplateTermPolicyProcess
+    ): Promise<void> {
         try {
-            const templatePath = join(
-                import.meta.dirname,
-                '../templates',
-                'notification.publish-term-policy.template.hbs'
-            );
+            const template = this.getTemplateEmail(process);
 
             await this.awsSESService.createTemplate({
-                name: EnumNotificationProcess.publishTermPolicy,
-                subject: `Publish Term Policy`,
-                htmlBody: readFileSync(templatePath, 'utf8'),
+                name: process,
+                subject: template.subject,
+                htmlBody: template.htmlBody,
             });
         } catch (err: unknown) {
+            const label = this.notificationUtil.toTemplateLabel(process);
             throw new AppUnknownException(
                 err,
-                'Failed to import publish term policy template'
+                `Failed to import ${label} template`
             );
         }
     }
 
-    async emailGetPublishTermPolicy(): Promise<GetTemplateCommandOutput | null> {
+    async emailGet(
+        process: INotificationTemplateTermPolicyProcess
+    ): Promise<GetTemplateCommandOutput | null> {
         try {
             const template = await this.awsSESService.getTemplate({
-                name: EnumNotificationProcess.publishTermPolicy,
+                name: process,
             });
             return template;
         } catch (err: unknown) {
@@ -44,22 +73,26 @@ export class NotificationTemplateTermPolicyDomain {
                 return null;
             }
 
+            const label = this.notificationUtil.toTemplateLabel(process);
             throw new AppUnknownException(
                 err,
-                'Failed to get publish term policy template'
+                `Failed to get ${label} template`
             );
         }
     }
 
-    async emailDeletePublishTermPolicy(): Promise<void> {
+    async emailDelete(
+        process: INotificationTemplateTermPolicyProcess
+    ): Promise<void> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: EnumNotificationProcess.publishTermPolicy,
+                name: process,
             });
         } catch (err: unknown) {
+            const label = this.notificationUtil.toTemplateLabel(process);
             throw new AppUnknownException(
                 err,
-                'Failed to delete publish term policy template'
+                `Failed to delete ${label} template`
             );
         }
     }

@@ -1,14 +1,11 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
-    EnumTermPolicyType,
-    EnumUserLoginWith,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
-import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserCredentialInvalidException } from '@modules/user/exceptions/user.credential-invalid.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
@@ -19,7 +16,6 @@ import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserCredentialAttempt,
-    IUserLoginSocial,
     IUserSignUp,
     IUserSignUpResolved,
     IUserVerificationEmailCreate,
@@ -27,6 +23,7 @@ import type {
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
+import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
 
@@ -37,6 +34,7 @@ export class UserAuthDomain {
         private readonly userPasswordDomain: UserPasswordDomain,
         private readonly userVerificationDomain: UserVerificationDomain,
         private readonly userVerificationUtil: UserVerificationUtil,
+        private readonly userCreateUtil: UserCreateUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -99,47 +97,6 @@ export class UserAuthDomain {
         );
     }
 
-    prepareSocialCreate(
-        email: string,
-        loginWith: EnumUserLoginWith,
-        {
-            from,
-            username,
-            name,
-            countryId,
-            cookies,
-            marketing,
-        }: IUserLoginSocial,
-        { roleId, workspaceContext }: IUserSignUpResolved
-    ): IUserCreateWithWorkspaceInput {
-        const userId = this.databaseUtil.createId();
-
-        return {
-            userId,
-            email: email.trim().toLowerCase(),
-            name,
-            username,
-            countryId,
-            roleId,
-            signUpFrom: from,
-            signUpWith:
-                loginWith === EnumUserLoginWith.socialApple
-                    ? EnumUserSignUpWith.socialApple
-                    : EnumUserSignUpWith.socialGoogle,
-            isVerified: true,
-            acceptedTermPolicyTypes: [
-                ...UserTermPolicyContract.requiredTypes,
-                ...(cookies ? [EnumTermPolicyType.cookies] : []),
-                ...(marketing ? [EnumTermPolicyType.marketing] : []),
-            ],
-            password: null,
-            passwordHistoryType: UserCreateContract.social.passwordHistoryType,
-            verification: null,
-            workspaceContext,
-            createdBy: userId,
-        };
-    }
-
     async getOneForSocialLogin(email: string): Promise<IUser> {
         const user = await this.userRepository.findOneWithRoleByEmail(
             email.trim().toLowerCase()
@@ -186,6 +143,11 @@ export class UserAuthDomain {
         const password =
             await this.authPasswordUtil.createPassword(passwordString);
         const emailVerification = this.userVerificationUtil.createEmail();
+        const acceptedTermPolicyTypes =
+            this.userCreateUtil.buildAcceptedTermPolicyTypes(
+                cookies,
+                marketing
+            );
 
         return {
             input: {
@@ -198,11 +160,7 @@ export class UserAuthDomain {
                 signUpFrom: from,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
-                acceptedTermPolicyTypes: [
-                    ...UserTermPolicyContract.requiredTypes,
-                    ...(cookies ? [EnumTermPolicyType.cookies] : []),
-                    ...(marketing ? [EnumTermPolicyType.marketing] : []),
-                ],
+                acceptedTermPolicyTypes,
                 password,
                 passwordHistoryType:
                     UserCreateContract.signUp.passwordHistoryType,

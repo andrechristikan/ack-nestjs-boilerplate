@@ -7,6 +7,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.indicator';
 import type { Queue } from 'bullmq';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
 describe('HealthQueueIndicator', () => {
     const getBackend = vi.fn();
@@ -48,7 +49,9 @@ describe('HealthQueueIndicator', () => {
             });
             session.up.mockReturnValue({ queue: { status: 'up' } });
 
-            const result = await indicator.isHealthy('queue');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.queue
+            );
 
             expect(result).toEqual({ queue: { status: 'up' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith('queue');
@@ -61,7 +64,9 @@ describe('HealthQueueIndicator', () => {
             });
             session.down.mockReturnValue({ queue: { status: 'down' } });
 
-            const result = await indicator.isHealthy('queue');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.queue
+            );
 
             expect(result).toEqual({ queue: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -73,7 +78,9 @@ describe('HealthQueueIndicator', () => {
             getBackend.mockReturnValue({ client: Promise.resolve(null) });
             session.down.mockReturnValue({ queue: { status: 'down' } });
 
-            const result = await indicator.isHealthy('queue');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.queue
+            );
 
             expect(result).toEqual({ queue: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
@@ -87,7 +94,9 @@ describe('HealthQueueIndicator', () => {
             });
             session.down.mockReturnValue({ queue: { status: 'down' } });
 
-            const result = await indicator.isHealthy('queue');
+            const result = await indicator.isHealthy(
+                EnumHealthIndicatorKey.queue
+            );
 
             expect(result).toEqual({ queue: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith(
