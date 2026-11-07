@@ -49,7 +49,7 @@ The containers stay up for the next boot; a boot never runs `docker-compose down
 
 - One pattern in both compose files: a long-syntax object (`type`, `target`, `source` on a bind), `read_only: true` where the container only reads; the development `apis` source binds stay writable.
 - Every bind sets `bind: { create_host_path: false }`, failing the start on a missing host path, except the `generated/vault` output directory (`create_host_path: true`).
-- `apis` mounts the root `.env` at `/app/.env`; the app loads it itself (`src/common/common.module.ts:45`).
+- `apis` mounts root `.env` at `/app/.env`; the app loads it itself (`ConfigModule.forRoot`, `src/common/common.module.ts`).
 
 ## Mongo
 

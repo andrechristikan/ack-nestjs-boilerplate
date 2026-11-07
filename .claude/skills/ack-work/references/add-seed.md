@@ -4,7 +4,7 @@ Invariants: `.claude/rules/seeding.md`. Reference implementation: `src/migration
 
 ## 1. Access path
 
-Inject `DatabaseService` and write every model the seed owns through `this.databaseService.client` or the `tx` of `withTransaction` (`src/migration/seeds/migration.country.seed.ts:31-34`), never through a feature repository or a feature domain method that writes. Everything else a seed may inject, and what it may not, is `.claude/rules/seeding.md`, Outside the layering.
+Inject `DatabaseService` and write every model the seed owns through `this.databaseService.client` or the `tx` of `withTransaction` (`src/migration/seeds/migration.country.seed.ts:31-34`), never through a feature repository or a feature service method that writes. Everything else a seed may inject, and what it may not, is `.claude/rules/seeding.md`, Outside the layering.
 
 ## 2. Data file
 
@@ -24,7 +24,7 @@ Static rows live in `src/migration/data/migration.<concern>.data.ts` as a Pascal
 
 ## 4. Register
 
-Add the class to `providers` in `src/migration/migration.module.ts:21-32`, and a kit module it injects from (`AwsModule`) to `imports` (`:34`). A feature domain module goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a feature repository module never does. The `providers` order does not decide run order.
+Add the class to the `providers` of `src/migration/migration.module.ts`, and a kit module it injects from (`AwsModule`) to its `imports`. A feature `<Module>Module` goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a use-case module never does. The `providers` order does not decide run order.
 
 ## 5. Place it in the scripts
 

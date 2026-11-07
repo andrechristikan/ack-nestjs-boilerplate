@@ -26,8 +26,8 @@ src/generated/          prisma-client/ and package/, gitignored, produced by pnp
 src/languages/          nestjs-i18n JSON, one file per module prefix
 src/migration/          seeds: data/, seeds/, bases/, enums/, interfaces/
 src/modules/            feature modules
-src/queues/             BullMQ framework layer; named queues register in the owning feature module
-src/router/             http/ mounts controllers under /public /system /admin /user /shared; processor/ aggregates processor modules
+src/queues/             BullMQ framework layer; queues and factories register in QueueModule.forRoot()
+src/router/             http/ mounts controllers under /public /system /admin /user /shared; processor/ imports use-case modules with processors
 prisma/schema.prisma    editable; applying it is the owner's
 test/unit/              unit specs mirroring src/, no Docker
 test/integration/ e2e/  held, not created (.claude/rules/testing.md)
@@ -45,7 +45,7 @@ Propose no option a record rejects unless the owner reopens it: @docs/decisions/
 
 ## Layering
 
-Every feature module carries one shape: `Controller → HTTP Service → Domain → Repository`, with `Processor → Processor Service` joining at the domain (`.claude/rules/layering.md`). A domain injects its own module, any module's util, the kit, and `FeatureFlagDomain` (`NotificationDomain` also `DeviceDomain`); HTTP and processor services compose modules and alone own cross-module transactions; `src/modules/analytic/` aggregates analytic reads. Only a repository queries `databaseService.client`, health indicators excepted (`.claude/rules/database.md`). Seeds bypass it: `src/migration/` writes through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers the `APP_FILTER` providers general → http → validation → validation-import; NestJS evaluates them in reverse, so the most specific runs first.
+Feature modules share one shape: `Controller → Use case → Service → Repository`; `Processor → Use case` for jobs (`.claude/rules/layering.md`). A use case runs one action; a sequence two or more use cases share, its transaction included, sits in the highest participating module's service (`.claude/rules/database.md`, Transactions); a service holds one module's rules, injecting its own and lower-ranked modules' services; `src/modules/analytic/` aggregates analytic reads. Only a repository queries `databaseService.client`, health indicators excepted (`.claude/rules/database.md`). `src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
 
 ## Discipline
 

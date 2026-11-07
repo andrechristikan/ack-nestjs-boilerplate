@@ -16,13 +16,13 @@
 | `I*` for a request lifecycle or an external spec (JWT, Prisma) | `field?: Type` |
 | exception options, option bag | `field?: Type` |
 | config interface (`src/configs/`) | `field: Type \| null` |
-| domain / HTTP / processor / repository data param | `param: Type \| null` |
-| filter param | `param: Type \| null`; an additive domain-level filter may use `?` |
+| service / use case / repository data param | `param: Type \| null` |
+| filter param | `param: Type \| null`; an additive service-level filter may use `?` |
 | Prisma return | `Type \| null` |
 
 ## The controller and the boundary
 
-Pass the whole request DTO into the HTTP service. Normalize `undefined → null` only when a domain or HTTP method takes a discrete `T | null` param and the DTO field is optional: `const field = dto.field ?? null`. A domain or HTTP signature accepting `bio?: string` pushes the ambiguity one layer deeper.
+Pass the whole request DTO into the use case. Normalize `undefined → null` only when a service or use-case method takes a discrete `T | null` param and the DTO field is optional: `const field = dto.field ?? null`. A service or use-case signature accepting `bio?: string` pushes the ambiguity one layer deeper.
 
 ## Update and create
 
@@ -36,9 +36,9 @@ An update is a full replace; no field has an unchanged state.
 
 ## Consequences
 
-- Every public method on a controller, HTTP service, domain, or repository names its shape: an `I*` interface, a Prisma model, a primitive, or a DTO type. `Promise<unknown>`, `Record<string, unknown>`, and `Record<string, any>` are not stand-ins for an owned payload; map a Prisma `groupBy` or aggregate into the named type inside the repository.
+- Every public method on a controller, use case, service, or repository names its shape: an `I*` interface, a Prisma model, a primitive, or a DTO type. `Promise<unknown>`, `Record<string, unknown>`, and `Record<string, any>` are not stand-ins for an owned payload; map a Prisma `groupBy` or aggregate into the named type inside the repository.
 - `unknown` is a narrowing input only: a `catch` binding before a type guard, or a third-party callback value before it is narrowed into a type we own. Not a field on an `I*`, not a way to silence typecheck, and a return type only where a function hands back its own `unknown` input untouched: an error mapper returns an unmatched error as it came (`src/common/file/interceptors/file.upload-error.interceptor.ts:86`).
-- A non-null assertion (`!`) is permitted only where the value is structurally guaranteed and the compiler cannot see it; `ConfigService.get` for a key `AppEnvSchema` requires is the canonical case. A key its `superRefine` requires once an integration is set qualifies only where every use goes through that integration's adapter, a no-op while it is unset (`email.noreply` in the `NotificationEmail*Domain` classes). Anywhere else, handle the null.
+- A non-null assertion (`!`) is permitted only where the value is structurally guaranteed and the compiler cannot see it; `ConfigService.get` for a key `AppEnvSchema` requires is the canonical case. A key its `superRefine` requires once an integration is set qualifies only where every use goes through that integration's adapter, a no-op while it is unset (`email.noreply` in the `NotificationEmail*Service` classes). Anywhere else, handle the null.
 - No `as` between two types we own to silence a mismatch; the mismatch is the finding. An `as` that narrows a value a third party hands in untyped is legitimate.
 - No literal `undefined` in our own logic, in every tree: no `return undefined`, `?? undefined`, `= undefined`, or `T | undefined` on a signature we own; write `null`. `undefined` stays where it is a contract we do not own: a Prisma `where`, `data`, `select`, or `cursor` arg (`undefined` skips, `null` matches null), filled by a conditional spread; zod `.optional()`; and a third-party type, normalized with `?? null` where it enters our types.
 - `||` is boolean logic only, on a non-nullable operand too. Where `''` or `0` must also fall back, write the comparison (`name === '' ? fallback : name`).

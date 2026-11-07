@@ -26,7 +26,7 @@ Open the owner's enum and find a member that already means the thing. Add a memb
 3. Create `exceptions/<module>.<descriptor>.exception.ts` from `src/modules/device/exceptions/device.not-found.exception.ts:9-18`: `module`, `statusCode` by member name, `statusCodeKey` as the reverse lookup on the same member, `httpStatus`, and `super('<module>.error.<descriptor>')`. Named constructor params go into `messageProperties`.
 4. Choose `httpStatus` deliberately: it is the wire status and the Sentry switch (500 and above is reported). 500 is only for an unknown error or a bug we detect ourselves; a failure outside an HTTP request gets no member and extends `AppUnknownException` (`.claude/rules/exceptions.md`, The hierarchy).
 5. Add `error.<descriptor>` to `src/languages/<lang>/<module>.json` in every language directory (`.claude/rules/i18n.md`).
-6. Throw it from the domain, or return it from a util for the caller to throw.
+6. Throw it from the service, or return it from a util for the caller to throw.
 
 ## 4. Claim a block for a new module
 

@@ -6,42 +6,25 @@ paths:
 
 # Services
 
-An HTTP service and a processor service sequence domain calls for one entry point; neither decides what a domain decides. Their place in the layer chain and their sole ownership of a cross-module transaction: `layering.md`, Roles.
+A service holds one module's business rules and typed exceptions; many use cases and higher-ranked services call it. Its place in the layer chain and what it injects: `layering.md`, Roles and Dependency order.
 
-## HTTP service
+## Shape
 
-- Path: `services/http/<module>[.<concern>].http.service.ts` (`naming.md`).
-- The controller's only collaborator (`http.md`).
-- Translates a request DTO into domain calls and the result into the envelope (`dto.md`); a method with no data returns `{}` or `{ metadata }`.
-- Composes in sequence:
-    1. a cross-module gate (`RoleDomain.assertActorOutranks`);
-    2. the subject domain, or the cross-module write transaction it owns;
-    3. another module's queue class for a post-commit side effect, awaited (`QueueBase.addSideEffect`, `queue.md`).
-- Prepares and stages activity-log rows around the subject call (`activity-log.md`).
-- Injects no repository and holds no business rule.
-- Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `src/modules/user/services/http/user.registration.http.service.ts:241-259` shows the last two:
-    - a mapped write conflict: `DatabaseWriteConflictCode` through `DatabaseUtil.toException` to the guard's own exception (`database.md`, Transactions);
-    - a mapped unique collision: a statement's `DatabaseUniqueConstraintCode` on a named column through `DatabaseUtil.isUniqueCollision`, inline or in the feature's util (`UserCreateUtil.mapCreateCollision`), to the feature's own exception;
-    - the slug retry exhaustion `DatabaseUniqueValueGenerationFailedException` after the retry loop's last attempt (`database.md`, Generated unique values).
+- Path: `services/<module>[.<concern>].service.ts`, class `<Module>[<Concern>]Service` (`naming.md`).
+- A noun for one module: a method needing a higher-ranked module's service is a use case (`use-case.md`).
+- No `IRequestApp`, `Job`, response envelope, or response DTO in a signature. `DatabaseService` is `withTransaction` only; a model query on `client` is the defect (`database.md`, Access).
+- Stages no activity-log row: a method whose action records one returns the stages as data, and the use case stages them (`activity-log.md`).
+- Throws the typed exception of the subject that failed (`exceptions.md`).
 
-## Transactions
+## Methods
 
-- One cross-module transaction per flow, opened in the method serving that flow or in a private helper of the same service; each feature domain joins as `*InTx(tx, ...)` (`database.md`, Transactions).
-- A private helper may open that transaction for several flows of its own service when it takes no mode or caller-kind parameter: `UserAuthHttpService` `createTokenAndSession` serves `loginCredential`, `loginWithSocial`, and `loginVerifyTwoFactor`; `UserRegistrationHttpService` `createByAdmin` and `importByAdmin` share one.
-- Logic copied across services is forbidden. A helper whose statements belong to one module lives once, in that module's domain, and every service calls it, holding only the sequencing. An identical pure piece goes to a util or the owning domain.
-- No service calls a private helper of another service: an HTTP service injects no other HTTP service.
+- A method, private included, that calls no repository, cache, queue, service, `RequestStoreService`, `FileService`, `AwsS3Service`, `JwtService`, or `SentryService` and returns a value is a util method once it exceeds three lines or has two call sites; the same shape inline in two methods or two services is one util method.
+- An assert is a util predicate plus the throw: `if (!this.roleUtil.outranks(actor, target)) throw new RoleRankForbiddenException()`. A method that throws its subject's exception and otherwise returns its narrowed input is an assert and stays in the service (`UserTwoFactorService.getProvidedMethod`, `src/modules/user/services/user.two-factor.service.ts`).
+- A method returning its argument or a single util call is deleted.
+- A method joining a caller's transaction is `*InTx(tx, ...)` and forwards `tx` to its own repositories and lower-ranked services.
 
-## Branches
+## Shared transactions
 
-- A branch picks the next domain call on a util predicate or a domain result: `if (!this.userUtil.revokesSessionsOn(status))`, not `if (status === EnumUserStatus.active)`.
-- Inline, a branch tests only:
-    - a null or presence check of an input (`!inviteToken`, `revoked.length > 0`);
-    - an enum comparison of a value a domain returned (`cacheUpdate === EnumSessionCacheUpdate.mismatch`).
-- A business-state check on an entity (`!user.isVerified`, `user.twoFactor.enabled`, `status === EnumUserStatus.active`) goes through a util predicate or a domain assert (`layering.md`, Roles).
-
-## Processor service
-
-- Path: `services/processor/<module>[.<concern>].processor.service.ts`.
-- Follows the HTTP service's sequencing, Transactions, and Branches on the queue side; it stages no activity-log row (`activity-log.md`).
-- Translates a job payload into domain calls and returns `IQueueResponse`.
-- Originates only `QueueException` (`queue.md`) and a mapped write conflict.
+- When two or more use cases run the same sequence over this module's and lower-ranked services, that sequence is one method here: it opens `withTransaction` and calls each participant as `*InTx(tx, ...)`; the use cases call it.
+- A sequence that also touches a higher-ranked module keeps its lower part here as an `*InTx` method; each use case opens the transaction and sequences the higher-ranked calls around it.
+- Whoever opens the transaction maps a guarded transition's write conflict (`database.md`, Transactions).
