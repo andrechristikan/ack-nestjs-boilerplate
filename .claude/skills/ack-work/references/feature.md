@@ -18,6 +18,7 @@ The steps of `SKILL.md`, step 6, in order, then the `feature` build of step 4. E
 
 Invoke `superpowers:brainstorming` with the settled paragraph and the location table. It runs in the session because it is a dialogue with the owner. Its departures:
 
+- It opens by naming the records in `docs/decisions/README.md` that touch the scope, before any option is offered; the design file lists them under `## Decisions to honour`.
 - The design document saves to `.superpowers/specs/YYYY-MM-DD-<topic>-design.md` in place of `docs/superpowers/specs/`.
 - Its commit step is not taken: the design is a gitignored working artifact.
 - Its visual companion is not used: its server is never started (`.claude/CLAUDE.md`, Etiquette, no process left behind).

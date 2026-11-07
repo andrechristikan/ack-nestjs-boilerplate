@@ -58,7 +58,7 @@ echo '{}' | bash .claude/hooks/roster.sh
 printf 'add a bio field to the user profile' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh route   # no key: one <jev_route> block, off
 printf '.superpowers/plans/2026-11-05-x.md' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh route   # a .superpowers/ path: Route: resume, no call
 printf '{"request":"x","route":"fix","location":"src/modules/user/domains/user.domain.ts:40"}' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh level   # no key: one <jev_level> block, off
-grep -rnE 'N[E]VER|A[L]WAYS|M[U]ST|H[A]RD' .claude AGENTS.md .github/copilot-instructions.md --exclude-dir=worktrees   # all-caps emphasis: empty
+grep -rnE 'N[E]VER|A[L]WAYS|M[U]ST|H[A]RD' .claude AGENTS.md .github/copilot-instructions.md --exclude-dir=worktrees --exclude=settings.local.json   # all-caps emphasis: empty
 wc -w .claude/CLAUDE.md AGENTS.md .github/copilot-instructions.md .claude/rules/*.md .claude/agents/*.md .claude/skills/*/SKILL.md .claude/skills/*/references/*.md
 ```
 

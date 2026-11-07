@@ -28,7 +28,7 @@ Establish the exact version from `package.json` or `pnpm-lock.yaml` first. Prefe
 
 ## Assess
 
-Classify the request (spike, bounded, architectural), map the context, list two or three approaches with what the code does today and the trade-offs, recommend one, and write down every open question the owner has to settle. The session designs with the owner from this hand-back. Do not pick for the owner. Do not write a spec or plan file.
+Classify the request (spike, bounded, architectural), map the context, list two or three approaches with what the code does today and the trade-offs, recommend one, and write down every open question the owner has to settle. Propose no approach a record in `docs/decisions/` rejects unless the request names the record and asks to reopen it. The session designs with the owner from this hand-back. Do not pick for the owner. Do not write a spec or plan file.
 
 ## Hand back
 

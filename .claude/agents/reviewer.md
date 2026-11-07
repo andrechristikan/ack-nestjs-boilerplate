@@ -25,6 +25,8 @@ Every dispatch carries the block in `.claude/skills/ack-work/references/dispatch
 
 ## Checks
 
+At every depth, open each record the `Decisions to honour:` lines name; a change or a suggestion that contradicts a record is an Important finding citing its `NNNN`.
+
 At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of `pnpm lint`, `pnpm deadcode`, `pnpm spell`; `deadcode` and `spell` can exit 0 with findings, so read them. Also `pnpm typecheck`: quote its exit code and first `error TS` line, or none. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`. At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/concurrency.md`).
 
 Boot: the app runs in the Docker `apis` container through the steps in `.claude/rules/docker.md`, Boot; starting and leaving up those containers is the one side effect this agent makes. The proof is the `App Name:` block from `src/main.ts`; a failed image build or a missing block is a failed boot, its log lines the evidence. Docker daemon unreachable (`docker ps` fails): NOT RUN, its output quoted.

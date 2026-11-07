@@ -20,7 +20,7 @@ Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.
 
 - `/ack-work`: routed code work through explorer, debugger, planner, coder, and reviewer, then writer and harness, each after the owner's yes.
 - `/ack-spec`: creates or repairs unit tests for code that exists; test and coverage prove it.
-- `/ack-doc`: `docs/*.md`, root people files, `.github/**` but `copilot-instructions.md`; writer, then a reader test.
+- `/ack-doc`: `docs/*.md`, `docs/decisions/`, root people files, `.github/**` but `copilot-instructions.md`; writer, then a reader test.
 - `/ack-pr`: pull requests end to end: description, create, comment, review replies, version notes; merge is an ask.
 - `/ack-harness`: `.claude/**`, `AGENTS.md`, `copilot-instructions.md` through harness; `diagnose` reads a transcript.
 

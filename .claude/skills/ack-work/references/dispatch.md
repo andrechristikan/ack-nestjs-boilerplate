@@ -4,17 +4,17 @@
 
 Binds every skill that dispatches an agent. An Agent call may return before the agent finishes; the hand-back is the result.
 
-- Pass `run_in_background: false` on every Agent call where the tool offers the parameter.
+- Pass `run_in_background: false` on every Agent call that offers it.
 - Run parallel work (a review split into parts, one reader test per file) as several calls in one message.
-- Wait for every dispatched agent's hand-back before the next step; never poll (`.claude/CLAUDE.md`, Etiquette).
-- Read each hand-back and act on it (confirm or reject, route, record) before the next step. End the turn only when every hand-back has been read and acted on.
+- Wait for every hand-back, never poll (`.claude/CLAUDE.md`, Etiquette); read each and act on it (confirm or reject, route, record) before the next step. End the turn only when every hand-back is read and acted on.
 
 ## Every dispatch
 
-Every dispatch carries these lines verbatim after the template body, except `Decisions:`: fill it once, in the template's slot where it has one; before a plan file exists, with the owner's answers so far, or `none`.
+Every dispatch carries these lines verbatim after the template body, except two slots: `Decisions:`, filled once, in the template's slot where it has one (before a plan file exists, the owner's answers so far, or `none`); `Decisions to honour:`, from `docs/decisions/README.md`.
 
 ```
 Decisions: <the **Decisions:** block of the plan file, pasted>
+Decisions to honour: <the index lines the Scope touches, or none>
 The working tree is the source, including unstaged and untracked files; read files from
 disk, never from `HEAD` or a ref. To list what changed, use `git status --short` and
 `git diff HEAD --name-only` plus `git ls-files --others --exclude-standard`; never

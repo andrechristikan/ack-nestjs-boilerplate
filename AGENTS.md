@@ -33,12 +33,15 @@ test/unit/              unit specs mirroring src/, no Docker
 test/integration/ e2e/  held, not created (.claude/rules/testing.md)
 test/helpers/           helpers two or more test types share
 docs/                   durable project documentation
+docs/decisions/         decision records, indexed in README.md
 scripts/                generate-secret.ts, generate-package.ts
 ci/                     dockerfile.production, docker-compose.production.yml (production); mongo/, vault/, jwks-server/ (both compose files)
 dockerfile              development image, the compose apis service
 keys/                   generated JWT keys, encryption secret, and Mongo keyfile, gitignored
 generated/              swagger, vault init, agent reports under docs/, gitignored
 ```
+
+Propose no option a record rejects unless the owner reopens it: @docs/decisions/README.md
 
 ## Layering
 
@@ -58,7 +61,7 @@ Every change follows `.claude/rules/discipline.md`: ask before guessing, minimum
 
 ## Prisma schema
 
-`prisma/schema.prisma` is editable. The owner applies it: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`, `pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`, `prisma migrate *`, `prisma studio` in any launcher, `mongosh`, `redis-cli`. Edit it; hand back the owner's commands.
+`prisma/schema.prisma` is editable. Owner-only: `pnpm db:migrate` (applies it), `pnpm db:studio`, `pnpm migration*`, `prisma db|migrate|studio`, `node dist/migration.js`, `mongosh`, `redis-cli`. Edit it; hand back the commands.
 
 ## Commit gates
 

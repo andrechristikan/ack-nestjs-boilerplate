@@ -4,12 +4,14 @@
 # decides on its own. Every mode prints one block on stdout.
 #   route     ack-work step 1, the request as raw text on stdin: prints a <jev_route> block with the route, the agents
 #             dispatched before the location is known, and the next call. An empty request prints "no request"; a path
-#             under .superpowers/ prints "resume <path>" and calls nothing.
+#             under .superpowers/ prints "resume <path>" and calls nothing, and so does a .superpowers/specs/ path
+#             followed by a note, printed as a Note: line.
 #   level     ack-work step 1, after the location is known, JSON on stdin {"request","route","location"} with route fix,
 #             debug, or new_behaviour: prints a <jev_level> block with the level, the route, and each agent's model and
 #             effort.
-#   followup  ack-work step 8, after a route that changed files, JSON on stdin {"request","change","files"}: prints a
-#             <jev_followup> block naming the docs pages writer updates and whether the harness needs a change.
+#   followup  ack-work step 8, after a route that changed files, JSON on stdin {"request","change","files","decisions"}:
+#             prints a <jev_followup> block naming the docs pages writer updates, whether the harness needs a change,
+#             and whether the decisions close a choice a decision record keeps.
 # Questions and thresholds live in jev.json; each agent's floor is the model: and effort: of its .claude/agents/<name>.md
 # frontmatter; the truth tables live here.
 set -uo pipefail
@@ -134,9 +136,15 @@ def route():
     fallback = "ack-work routes on its own"
     if not request:
         return block("jev_route", f"no request; {fallback}")
-    # A working artifact is a resume: ack-work enters at the step the artifact proves, and Jev is not called.
-    if not any(c.isspace() for c in request) and (request.startswith(".superpowers/") or "/.superpowers/" in request):
-        return block("jev_route", f"Route: resume {request}.")
+    # A working artifact is a resume: ack-work enters at the step the artifact proves, and Jev is not called. A design
+    # path under .superpowers/specs/ may lead a note (`<path>: <note>`); the session reads it (resume.md).
+    head, *note = request.split(None, 1)
+    path = head.rstrip(":")
+    if path.startswith(".superpowers/") or "/.superpowers/" in path:
+        if not note:
+            return block("jev_route", f"Route: resume {path}.")
+        if ".superpowers/specs/" in path:
+            return block("jev_route", f"Route: resume {path}.", f"Note: {note[0]}")
     if gate("jev_route", fallback):
         return
 
@@ -214,11 +222,13 @@ def followup():
     questions = {f"doc:{rel}": {"type": "noul", "instructions": {"question": q["doc_question"], "page": page}}
                  for rel, page in pages.items()}
     questions["harness"] = q["harness_question"]
+    questions["decision"] = q["decision_question"]
     state = {
         "repository": cfg["repository"],
         "request": payload.get("request", ""),
         "change": payload.get("change", ""),
         "files": payload.get("files", []),
+        "decisions": payload.get("decisions", ""),
     }
     a = ask(state, questions)
     if isinstance(a, str):
@@ -229,13 +239,17 @@ def followup():
         hits = [(rel, a[f"doc:{rel}"]["noul"]) for rel in pages if lo <= a[f"doc:{rel}"]["noul"] < hi]
         return ", ".join(f"{rel} ({p:.2f})" for rel, p in sorted(hits, key=lambda x: -x[1])) or "none"
 
+    def verdict(p):
+        return "yes" if p >= t["noul_yes"] else "no" if p <= t["noul_no"] else "unsettled"
+
     h = a["harness"]["noul"]
-    harness = "yes" if h >= t["noul_yes"] else "no" if h <= t["noul_no"] else "unsettled"
+    d = a["decision"]["noul"]
     print(
         "<jev_followup>\n"
         f"writer: {bucket(t['noul_yes'], 1.01)}\n"
         f"check: {bucket(t['noul_no'] + 1e-9, t['noul_yes'])}\n"
-        f"harness: {harness} ({h:.2f})\n"
+        f"harness: {verdict(h)} ({h:.2f})\n"
+        f"decision: {verdict(d)} ({d:.2f})\n"
         "</jev_followup>"
     )
 

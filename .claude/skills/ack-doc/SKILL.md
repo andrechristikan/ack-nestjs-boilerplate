@@ -1,10 +1,10 @@
 ---
 name: ack-doc
 description: >-
-    Checks docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md against the checkout through writer and repairs what is stale, final state only. Use when the owner asks to update, verify, or extend the docs, or for an architecture diagram. Not for a PR description or version notes (ack-pr), src/ (ack-work), or .claude/** (ack-harness).
-blurb: 'docs, root people files, .github against the code'
+    Checks docs/*.md, the decision records in docs/decisions/, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md against the checkout through writer and repairs what is stale, final state only. Use when the owner asks to update, verify, or extend the docs, or for an architecture diagram. Not for a PR description or version notes (ack-pr), src/ (ack-work), or .claude/** (ack-harness).
+blurb: 'docs, decision records, root people files, .github against the code'
 disable-model-invocation: true
-argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <name and subject>]"
+argument-hint: "<named doc files, a .superpowers/plans/ path, or 'all'> [what changed recently] [diagram: <name and subject>]"
 ---
 
 !`git status --short` !`git diff --name-only HEAD`
@@ -15,12 +15,13 @@ You orchestrate one dispatch to `writer`, the agent that owns reader-facing pros
 
 ## 1. Scope
 
-The checkout as it sits on disk, unstaged and untracked files included. The argument names the files, or `all` for every `docs/*.md`. Every run also includes the root people files and `.github/**` except `copilot-instructions.md`; name them in the dispatch either way.
+The checkout as it sits on disk, unstaged and untracked files included. The argument names the files, a `.superpowers/plans/` path whose `**Files:**` are the scope, or `all` for every `docs/*.md` and `docs/decisions/*.md`. Every run also includes the root people files and `.github/**` except `copilot-instructions.md`; name them in the dispatch either way.
 
 When the argument leaves the files missing or ambiguous, or asks for a diagram without a clear subject, ask the owner with `AskUserQuestion` before the `writer` dispatch; do not guess.
 
 | File | Checkable claims |
 | --- | --- |
+| `docs/decisions/*.md` | the shape in `.claude/rules/authoring.md`, Decision records; one index line in `docs/decisions/README.md` per record, matching its title, chosen option, and rejected options; each `superseded by NNNN` names a record that exists |
 | `README.md` | version table, prerequisites, Quick Start commands |
 | `SECURITY.md` | supported version line against `package.json` `version`, advisory URL, maintainer contact |
 | `CONTRIBUTING.md` | `engines` and `packageManager`, setup scripts against `package.json` `scripts`, CoC link |
@@ -29,6 +30,8 @@ When the argument leaves the files missing or ambiguous, or asks for a diagram w
 | `.github/pull_request_template.md` | `src/modules/*` names, commit types against `.commitlintrc` |
 | `.github/ISSUE_TEMPLATE/*` | advisory URL, contributing path, docs path |
 | `.github/dependabot.yml` | lockfile ecosystem against `package.json` |
+
+A claim in `docs/decisions/**` is classified against the source the dispatch names for the record (a design section, a rule, a commit), not the code on disk: a record states a decision about the target shape.
 
 `docs/status-codes.md` is the human catalog; it is updated from the numbers an `ack-work` build handed back, not re-derived here.
 
@@ -42,9 +45,10 @@ Scope: <the files from step 1>
 Context: <what changed recently, when the owner said>
 Diagram: <name and subject, when the owner asked for one | none>
 Acceptance: every claim classified ACCURATE, STALE, MISSING, PHANTOM, CONTRADICTS, or
-  CONFLICT; the first five repaired in place against the code on disk; CONFLICT left
-  unresolved and reported with the evidence for both sides. Final state only. Indicative
-  for a fact or an obligation, imperative for a procedure step; one idea per paragraph; an
+  CONFLICT; the first five repaired in place against the code on disk, or for a record in
+  `docs/decisions/` the source the dispatch names; CONFLICT left unresolved and reported
+  with the evidence for both sides. Final state only. Indicative for a fact or an
+  obligation, imperative for a procedure step; one idea per paragraph; an
   entry with several separate facts is a list, one fact per item, numbered when order
   matters. A flow, a stack, or a hand-off is a mermaid diagram; a designed diagram only for
   the Diagram line; no em-dash; keep the page's section structure. Run humanizer in file

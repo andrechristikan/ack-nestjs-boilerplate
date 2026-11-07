@@ -72,6 +72,14 @@
                 "true": "A new or renamed pnpm script, a new module folder pattern, a new required decorator or base class, or a moved config file",
                 "false": "A change inside existing files that follows the patterns already in the repository"
             }
+        },
+        "decision_question": {
+            "type": "noul",
+            "instructions": "Do `decisions` close a product or architecture choice and name an alternative that was rejected?",
+            "criteria": {
+                "true": "One option picked over a named other for a flow, a module boundary, a data store, or a mechanism, such as one signed-in user per device over several accounts",
+                "false": "Answers that settle naming, wording, scope, or task order, approve a plan, or pick nothing over an alternative"
+            }
         }
     }
 }
