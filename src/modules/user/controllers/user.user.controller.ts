@@ -13,7 +13,7 @@ import {
 import { UserDeleteSelfRequestSchema } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { UserHttpService } from '@modules/user/services/http/user.http.service';
+import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
 import { Body, Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client/client';
@@ -25,7 +25,9 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
     path: '/user',
 })
 export class UserUserController {
-    constructor(private readonly userHttpService: UserHttpService) {}
+    constructor(
+        private readonly userDeleteSelfUseCase: UserDeleteSelfUseCase
+    ) {}
 
     @Doc({ summary: 'user delete their account' })
     @Response('user.deleteSelf')
@@ -41,6 +43,6 @@ export class UserUserController {
         @Body({ schema: UserDeleteSelfRequestSchema })
         body: UserDeleteSelfRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userHttpService.deleteSelf(user, body);
+        return this.userDeleteSelfUseCase.execute(user, body);
     }
 }

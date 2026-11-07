@@ -5,24 +5,28 @@ import {
     AuthJwtAccessGuardKey,
     AuthPayloadStoreKey,
 } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 @Injectable()
 export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
     constructor(
-        private readonly authDomain: AuthDomain,
+        private readonly authService: AuthService,
         private readonly requestStoreService: RequestStoreService
     ) {
         super();
     }
 
     handleRequest<T = IAuthJwtAccessTokenPayload>(
-        err: Error,
-        user: IAuthJwtAccessTokenPayload,
-        info: Error
+        err: Error | null,
+        user: IAuthJwtAccessTokenPayload | false,
+        info: Error | string | undefined
     ): T {
-        const payload = this.authDomain.validateJwtAccessGuard(err, user, info);
+        const payload = this.authService.validateJwtAccessGuard(
+            err,
+            user === false ? null : user,
+            info instanceof Error ? info : null
+        );
 
         this.requestStoreService.set(AuthPayloadStoreKey, payload);
 

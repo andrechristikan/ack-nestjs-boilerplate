@@ -13,16 +13,13 @@ import {
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
-import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('AuthUtil', () => {
@@ -468,70 +465,6 @@ describe('AuthUtil', () => {
             const result = util.toProviderUnavailableException(null);
 
             expect(result).toBeNull();
-        });
-    });
-
-    describe('toJwtGuardException', () => {
-        const fallback = new AuthJwtAccessTokenInvalidException(
-            new Error('info')
-        );
-
-        it('returns a typed exception from the strategy unchanged', () => {
-            const err = new SessionRevokedException();
-
-            const result = util.toJwtGuardException(
-                err,
-                new Error('info'),
-                fallback
-            );
-
-            expect(result).toBe(err);
-        });
-
-        it('wraps an unknown strategy error in AppUnknownException with the raw error, even when info is an outage', () => {
-            const err = new Error('redis down');
-            const info = Object.assign(new Error('network'), {
-                code: 'ECONNREFUSED',
-            });
-
-            const result = util.toJwtGuardException(err, info, fallback);
-
-            expect(result).toBeInstanceOf(AppUnknownException);
-            expect(result).toMatchObject({
-                rawError: err,
-                message: 'Validating the JWT session failed',
-            });
-        });
-
-        it('returns AuthProviderUnavailableException when passport info is a key endpoint outage', () => {
-            const info = Object.assign(new Error('jwks endpoint down'), {
-                isEndpointUnavailable: true,
-            });
-
-            const result = util.toJwtGuardException(null, info, fallback);
-
-            expect(result).toBeInstanceOf(AuthProviderUnavailableException);
-            expect(result).toMatchObject({ rawError: info });
-        });
-
-        it('returns the fallback for a signing key miss or a bad token', () => {
-            const info = Object.assign(new Error('no matching kid'), {
-                name: 'SigningKeyNotFoundError',
-            });
-
-            const result = util.toJwtGuardException(null, info, fallback);
-
-            expect(result).toBe(fallback);
-        });
-
-        it('returns the fallback when passport reports no user and no error', () => {
-            const result = util.toJwtGuardException(
-                null,
-                new Error('no auth header'),
-                fallback
-            );
-
-            expect(result).toBe(fallback);
         });
     });
 });

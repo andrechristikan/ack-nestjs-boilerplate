@@ -28,8 +28,9 @@ import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceHttpService } from '@modules/workspace/services/http/workspace.http.service';
-import { WorkspaceMemberHttpService } from '@modules/workspace/services/http/workspace.member.http.service';
+import { WorkspaceGetListOffsetByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-list-offset-by-admin.use-case';
+import { WorkspaceGetByIdByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-by-id-by-admin.use-case';
+import { WorkspaceGetMembersListByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-members-list-by-admin.use-case';
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -40,8 +41,9 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class WorkspaceAdminController {
     constructor(
-        private readonly workspaceHttpService: WorkspaceHttpService,
-        private readonly workspaceMemberHttpService: WorkspaceMemberHttpService
+        private readonly workspaceGetListOffsetByAdminUseCase: WorkspaceGetListOffsetByAdminUseCase,
+        private readonly workspaceGetByIdByAdminUseCase: WorkspaceGetByIdByAdminUseCase,
+        private readonly workspaceGetMembersListByAdminUseCase: WorkspaceGetMembersListByAdminUseCase
     ) {}
 
     @Doc({ summary: 'admin list all workspaces (read-only)' })
@@ -63,7 +65,7 @@ export class WorkspaceAdminController {
         @Query({ schema: WorkspaceAdminListRequestSchema })
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.workspaceHttpService.getListOffsetByAdmin(query);
+        return this.workspaceGetListOffsetByAdminUseCase.execute(query);
     }
 
     @Doc({
@@ -88,7 +90,7 @@ export class WorkspaceAdminController {
         @Param('workspaceId', { schema: RequestMongoIdSchema })
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.getByIdByAdmin(workspaceId);
+        return this.workspaceGetByIdByAdminUseCase.execute(workspaceId);
     }
 
     @Doc({ summary: 'admin list members of a workspace (read-only)' })
@@ -112,7 +114,7 @@ export class WorkspaceAdminController {
         @Param('workspaceId', { schema: RequestMongoIdSchema })
         workspaceId: string
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        return this.workspaceMemberHttpService.getMembersListByAdmin(
+        return this.workspaceGetMembersListByAdminUseCase.execute(
             workspaceId,
             query
         );

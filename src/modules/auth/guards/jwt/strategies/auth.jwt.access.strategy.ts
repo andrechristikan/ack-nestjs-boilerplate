@@ -9,8 +9,8 @@ import {
     AuthBearerScheme,
     AuthJwtAccessGuardKey,
 } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
-import { SessionDomain } from '@modules/session/domains/session.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { SessionService } from '@modules/session/services/session.service';
 
 @Injectable()
 export class AuthJwtAccessStrategy extends PassportStrategy(
@@ -19,8 +19,8 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
 ) {
     constructor(
         protected readonly configService: ConfigService,
-        private readonly authDomain: AuthDomain,
-        private readonly sessionDomain: SessionDomain
+        private readonly authService: AuthService,
+        private readonly sessionService: SessionService
     ) {
         // jti is not validated here.
         super({
@@ -55,13 +55,13 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
     async validate(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {
-        const payload = this.authDomain.validateJwtAccessStrategy(data);
-        const login = await this.sessionDomain.getLogin(
+        const payload = this.authService.validateJwtAccessStrategy(data);
+        const login = await this.sessionService.getLogin(
             payload.sub,
             payload.sessionId
         );
 
-        return this.authDomain.validateJwtAccessSession(
+        return this.authService.validateJwtAccessSession(
             payload,
             login?.jtiDigest ?? null
         );

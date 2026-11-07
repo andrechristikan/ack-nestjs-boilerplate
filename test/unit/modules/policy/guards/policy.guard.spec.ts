@@ -22,7 +22,7 @@ import {
 } from '@modules/policy/constants/policy.constant';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -77,7 +77,7 @@ describe('PolicyGuard', () => {
     };
 
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
+    const policyService: MockProxy<PolicyService> = mock<PolicyService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const executionContext: MockProxy<ExecutionContext> =
@@ -92,7 +92,7 @@ describe('PolicyGuard', () => {
             providers: [
                 PolicyGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: PolicyDomain, useValue: policyDomain },
+                { provide: PolicyService, useValue: policyService },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -122,7 +122,7 @@ describe('PolicyGuard', () => {
                 }
                 return null;
             });
-            policyDomain.validatePolicyGuard.mockReturnValue(true);
+            policyService.validatePolicyGuard.mockReturnValue(true);
 
             const result = await guard.canActivate(executionContext);
 
@@ -131,7 +131,7 @@ describe('PolicyGuard', () => {
                 PolicyRequiredMetaKey,
                 executionContext.getHandler()
             );
-            expect(policyDomain.validatePolicyGuard).toHaveBeenCalledWith(
+            expect(policyService.validatePolicyGuard).toHaveBeenCalledWith(
                 user,
                 policies,
                 requiredPolicies
@@ -147,11 +147,11 @@ describe('PolicyGuard', () => {
                 }
                 return policies;
             });
-            policyDomain.validatePolicyGuard.mockReturnValue(true);
+            policyService.validatePolicyGuard.mockReturnValue(true);
 
             await guard.canActivate(executionContext);
 
-            expect(policyDomain.validatePolicyGuard).toHaveBeenCalledWith(
+            expect(policyService.validatePolicyGuard).toHaveBeenCalledWith(
                 user,
                 policies,
                 []
@@ -174,7 +174,7 @@ describe('PolicyGuard', () => {
                 messagePath: 'user.error.guardMissing',
                 httpStatus: HttpStatus.UNAUTHORIZED,
             });
-            expect(policyDomain.validatePolicyGuard).not.toHaveBeenCalled();
+            expect(policyService.validatePolicyGuard).not.toHaveBeenCalled();
         });
 
         it('throws PolicyGuardMissingException before the domain call when the policy store is empty', async () => {
@@ -198,7 +198,7 @@ describe('PolicyGuard', () => {
                 messagePath: 'policy.error.guardMissing',
                 httpStatus: HttpStatus.FORBIDDEN,
             });
-            expect(policyDomain.validatePolicyGuard).not.toHaveBeenCalled();
+            expect(policyService.validatePolicyGuard).not.toHaveBeenCalled();
         });
 
         it('propagates a false result from the domain', async () => {
@@ -209,7 +209,7 @@ describe('PolicyGuard', () => {
                 }
                 return [];
             });
-            policyDomain.validatePolicyGuard.mockReturnValue(false);
+            policyService.validatePolicyGuard.mockReturnValue(false);
 
             await expect(guard.canActivate(executionContext)).resolves.toBe(
                 false

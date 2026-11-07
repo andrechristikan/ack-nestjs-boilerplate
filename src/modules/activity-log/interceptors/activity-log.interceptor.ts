@@ -9,17 +9,17 @@ import { catchError, concatMap } from 'rxjs/operators';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
     private readonly logger = new Logger(ActivityLogInterceptor.name);
 
-    constructor(private readonly activityLogDomain: ActivityLogDomain) {}
+    constructor(private readonly activityLogService: ActivityLogService) {}
 
     private async flushSafe(payloadUserId: string | null): Promise<void> {
         try {
-            await this.activityLogDomain.flushStaged({ payloadUserId });
+            await this.activityLogService.flushStaged({ payloadUserId });
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to flush staged activity logs');
         }

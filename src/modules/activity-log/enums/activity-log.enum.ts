@@ -1,4 +1,9 @@
 /** @public */
+export enum EnumActivityLogQueue {
+    activityLog = 'activityLog',
+}
+
+/** @public */
 export enum EnumActivityLogProcess {
     createMany = 'createMany',
 }

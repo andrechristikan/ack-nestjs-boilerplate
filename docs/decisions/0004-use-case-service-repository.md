@@ -9,11 +9,11 @@ Cross-module flows live in feature HTTP services, and nothing may share them. Th
 
 ## Decision
 
-Each user- or job-facing action is one class in `use-cases/` with one public method `execute`. A module's rules live in `services/`, and a service injects services only of lower-ranked modules on a declared order the lint enforces.
+Each user- or job-facing action is one class in `use-cases/` with one public method `execute`. A module's rules live in `services/`, and a service injects services only of lower-ranked modules on a declared order that each module file's `imports:` follows; lint checks those imports and that the module graph has no cycle (0031).
 
 ## Considered options
 
-- one use case per action, rules in services shared downward on a lint-enforced order (chosen)
+- one use case per action, rules in services shared downward on a declared order (chosen)
 - domains as orchestrators: rejected, a rules class that orchestrates other modules is a use case in disguise.
 - domain events for orchestration: rejected, in-memory events add a second, non-durable mechanism whose `suppressErrors` default swallows listener failures.
 - grouped multi-method use cases: rejected, a use case is one action called by one entry point.

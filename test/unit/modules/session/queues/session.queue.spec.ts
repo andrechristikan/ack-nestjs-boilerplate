@@ -8,7 +8,8 @@ import type { Queue } from 'bullmq';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumSessionQueue } from '@modules/session/enums/session.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { EnumSessionProcess } from '@modules/session/enums/session.enum';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { MessageService } from '@common/message/services/message.service';
@@ -39,7 +40,7 @@ describe('SessionQueue', () => {
                 { provide: MessageService, useValue: messageService },
                 SessionQueue,
                 {
-                    provide: getQueueToken(EnumQueue.session),
+                    provide: getQueueToken(EnumSessionQueue.session),
                     useValue: sessionQueue,
                 },
                 { provide: SentryService, useValue: sentryService },

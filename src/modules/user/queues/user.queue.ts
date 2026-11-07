@@ -12,7 +12,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { QueueBase } from '@queues/bases/queue.base';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumUserQueue } from '@modules/user/enums/user.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()
@@ -20,7 +21,7 @@ export class UserQueue extends QueueBase {
     private readonly deletePhotoJobIdPattern: string;
 
     constructor(
-        @InjectQueue(EnumQueue.user) protected readonly queue: Queue,
+        @InjectQueue(EnumUserQueue.user) protected readonly queue: Queue,
         protected readonly sentryService: SentryService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,

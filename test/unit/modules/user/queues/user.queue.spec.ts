@@ -9,7 +9,8 @@ import { SentryService } from '@common/sentry/services/sentry.service';
 import type { UserPhoto } from '@generated/prisma-client/client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumUserQueue } from '@modules/user/enums/user.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { MessageService } from '@common/message/services/message.service';
@@ -49,7 +50,7 @@ describe('UserQueue', () => {
                 { provide: MessageService, useValue: messageService },
                 UserQueue,
                 {
-                    provide: getQueueToken(EnumQueue.user),
+                    provide: getQueueToken(EnumUserQueue.user),
                     useValue: userQueue,
                 },
                 { provide: SentryService, useValue: sentryService },

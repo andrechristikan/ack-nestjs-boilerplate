@@ -35,7 +35,8 @@ import type {
     INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationQueue', () => {
@@ -79,7 +80,7 @@ describe('NotificationQueue', () => {
                 { provide: MessageService, useValue: messageService },
                 NotificationQueue,
                 {
-                    provide: getQueueToken(EnumQueue.notification),
+                    provide: getQueueToken(EnumNotificationQueue.notification),
                     useValue: notificationQueue,
                 },
                 { provide: SentryService, useValue: sentryService },

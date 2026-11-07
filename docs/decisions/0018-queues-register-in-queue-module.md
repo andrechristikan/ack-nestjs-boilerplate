@@ -1,6 +1,6 @@
 # 0018. Every queue registers in `QueueModule.forRoot()`
 
-- Status: accepted
+- Status: superseded by 0033
 - Date: 2026-11-07
 
 ## Context

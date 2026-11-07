@@ -5,7 +5,7 @@ import { ResponsePagination } from '@common/response/decorators/response.decorat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { TermPolicyHttpService } from '@modules/term-policy/services/http/term-policy.http.service';
+import { TermPolicyGetListPublishedUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-published.use-case';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { TermPolicy } from '@generated/prisma-client/client';
@@ -17,7 +17,7 @@ import type { TermPolicy } from '@generated/prisma-client/client';
 })
 export class TermPolicyPublicController {
     constructor(
-        private readonly termPolicyHttpService: TermPolicyHttpService
+        private readonly termPolicyGetListPublishedUseCase: TermPolicyGetListPublishedUseCase
     ) {}
 
     @Doc({ summary: 'retrieve list of publish terms and policies' })
@@ -30,6 +30,6 @@ export class TermPolicyPublicController {
         @Query({ schema: TermPolicyPublicListRequestSchema })
         query: TermPolicyPublicListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyHttpService.getListPublished(query);
+        return this.termPolicyGetListPublishedUseCase.execute(query);
     }
 }

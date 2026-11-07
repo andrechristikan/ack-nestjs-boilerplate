@@ -7,14 +7,14 @@ import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Project, Workspace } from '@generated/prisma-client/client';
 import { ProjectStoreKey } from '@modules/project/constants/project.constant';
-import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
 describe('ProjectGuard', () => {
-    const projectDomain: MockProxy<ProjectDomain> = mock<ProjectDomain>();
+    const projectService: MockProxy<ProjectService> = mock<ProjectService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     let guard: ProjectGuard;
@@ -24,7 +24,7 @@ describe('ProjectGuard', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectGuard,
-                { provide: ProjectDomain, useValue: projectDomain },
+                { provide: ProjectService, useValue: projectService },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -66,7 +66,7 @@ describe('ProjectGuard', () => {
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.params = { projectId: '507f1f77bcf86cd799439012' };
             requestStoreService.get.mockReturnValue(workspace);
-            projectDomain.validateProjectGuard.mockResolvedValue(project);
+            projectService.validateProjectGuard.mockResolvedValue(project);
             const executionContext = buildHttpExecutionContext(request);
 
             await expect(guard.canActivate(executionContext)).resolves.toBe(
@@ -75,7 +75,7 @@ describe('ProjectGuard', () => {
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 WorkspaceStoreKey
             );
-            expect(projectDomain.validateProjectGuard).toHaveBeenCalledWith(
+            expect(projectService.validateProjectGuard).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439013',
                 '507f1f77bcf86cd799439012'
             );
@@ -103,19 +103,19 @@ describe('ProjectGuard', () => {
                 messagePath: 'workspace.error.guardMissing',
                 httpStatus: HttpStatus.FORBIDDEN,
             });
-            expect(projectDomain.validateProjectGuard).not.toHaveBeenCalled();
+            expect(projectService.validateProjectGuard).not.toHaveBeenCalled();
         });
 
         it('validates with a null projectId when the route carries none', async () => {
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.params = {};
             requestStoreService.get.mockReturnValue(workspace);
-            projectDomain.validateProjectGuard.mockResolvedValue(project);
+            projectService.validateProjectGuard.mockResolvedValue(project);
             const executionContext = buildHttpExecutionContext(request);
 
             await guard.canActivate(executionContext);
 
-            expect(projectDomain.validateProjectGuard).toHaveBeenCalledWith(
+            expect(projectService.validateProjectGuard).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439013',
                 null
             );

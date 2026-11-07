@@ -6,7 +6,8 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Queue } from 'bullmq';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
 import { MessageService } from '@common/message/services/message.service';
@@ -38,7 +39,7 @@ describe('WorkspaceQueue', () => {
                 { provide: MessageService, useValue: messageService },
                 WorkspaceQueue,
                 {
-                    provide: getQueueToken(EnumQueue.workspace),
+                    provide: getQueueToken(EnumWorkspaceQueue.workspace),
                     useValue: workspaceQueue,
                 },
                 { provide: SentryService, useValue: sentryService },
@@ -47,6 +48,44 @@ describe('WorkspaceQueue', () => {
         }).compile();
 
         queue = module.get(WorkspaceQueue);
+    });
+
+    describe('onModuleInit', () => {
+        it('schedules the invite and join-request expiry sweeps', async () => {
+            await queue.onModuleInit();
+
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledTimes(2);
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumWorkspaceProcess.expireStaleInvites,
+                {
+                    pattern: '0 * * * *',
+                    tz: 'UTC',
+                    immediately: true,
+                },
+                {
+                    name: EnumWorkspaceProcess.expireStaleInvites,
+                    data: {},
+                    opts: {
+                        priority: EnumQueuePriority.low,
+                    },
+                }
+            );
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumWorkspaceProcess.expireStaleJoinRequests,
+                {
+                    pattern: '0 * * * *',
+                    tz: 'UTC',
+                    immediately: true,
+                },
+                {
+                    name: EnumWorkspaceProcess.expireStaleJoinRequests,
+                    data: {},
+                    opts: {
+                        priority: EnumQueuePriority.low,
+                    },
+                }
+            );
+        });
     });
 
     describe('scheduleJoinRequestExpirySweep', () => {

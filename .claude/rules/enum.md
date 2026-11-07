@@ -6,7 +6,7 @@ paths:
 
 # Enums
 
-A string value equals its key; diverge only when the wire value genuinely differs from the code name. Three families take numeric values: status-code enums (5-digit, sequential from the module block, `exceptions.md`), ordered scales where the order is the meaning (`EnumQueuePriority.high = 1`), and quantities where the number is the value (`EnumWorkspaceInviteExpiry.sevenDays = 7`, `src/modules/workspace/enums/workspace.enum.ts:16`).
+A string value equals its key; diverge only when the wire value genuinely differs from the code name. Three families take numeric values: status-code enums (5-digit, sequential from the module block, `exceptions.md`), ordered scales where the order is the meaning (`EnumQueuePriority.high = 1`), and quantities where the number is the value (`EnumWorkspaceInviteExpiry.sevenDays = 7`, `EnumWorkspaceInviteExpiry`, `src/modules/workspace/enums/workspace.enum.ts`).
 
 ## One file per module
 
@@ -20,7 +20,7 @@ Every enum a module owns sits in `<module>.enum.ts` in that module's `enums/` fo
 
 ## Reference by member
 
-`EnumUserStatusCodeError.notFound`, never `51000`; `EnumQueue.notificationEmail`, never `'notificationEmail'`; `EnumPaginationType.offset`, never `'offset'`. A literal compiles and silently survives a rename. A decorator factory uses the member too (`@QueueProcessor(EnumQueue.notificationEmail)`, `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)`).
+`EnumUserStatusCodeError.notFound`, never `51000`; `EnumNotificationQueue.notificationEmail`, never `'notificationEmail'`; `EnumPaginationType.offset`, never `'offset'`. A literal compiles and silently survives a rename. A decorator factory uses the member too (`@QueueProcessor(EnumNotificationQueue.notificationEmail)`, `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)`).
 
 ## Literal unions
 
@@ -30,7 +30,7 @@ Every enum a module owns sits in `<module>.enum.ts` in that module's `enums/` fo
 
 ## Enum-typed query filters
 
-A query param filtered against an enum is a field on the list schema; the use case applies `PaginationFilterUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant in `<module>.list.constant.ts` (`UserDefaultStatus`, `src/modules/user/constants/user.list.constant.ts:26`; `pagination.md`). Never a hand-parsed `@Query` plus a manual `includes`.
+A query param filtered against an enum is a field on the list schema; the use case applies `PaginationFilterUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant in `<module>.list.constant.ts` (`UserDefaultStatus`, `src/modules/user/constants/user.list.constant.ts`; `pagination.md`). Never a hand-parsed `@Query` plus a manual `includes`.
 
 ## Adding a member
 

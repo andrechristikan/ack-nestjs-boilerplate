@@ -31,4 +31,4 @@ OpenAPI rides on the runtime decorators: no `*.doc.ts` factory, no bare `@ApiOpe
 - Each kit decorator (`@Response*`, `@FileUpload*`) and each `*Protected` decorator calls `DocErrors(...<Its>DocErrors)` for its own guard or interceptor. A `*Protected` decorator also emits its security scheme, named by a module constant (`AuthJwtAccessDocSecurityName`) shared with `src/swagger.ts`.
 - `IDocOptions.errors` takes the same entries for a custom error a flow adds. No controller passes it, and a controller calls no `DocErrors`.
 
-Request shape comes from the zod schema through `standardSchemaConverter` (`src/swagger.ts:80`); `src/swagger.ts` writes `generated/swagger.json` in every environment except production.
+Request shape comes from the zod schema through `standardSchemaConverter` (`src/swagger.ts:80`); `src/swagger.ts` rewrites `generated/swagger.json` at every boot outside production.

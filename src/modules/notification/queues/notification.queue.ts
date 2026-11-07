@@ -39,7 +39,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { QueueBase } from '@queues/bases/queue.base';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()
@@ -54,7 +55,8 @@ export class NotificationQueue extends QueueBase {
     private readonly userTermPolicyJobIdPattern: string;
 
     constructor(
-        @InjectQueue(EnumQueue.notification) protected readonly queue: Queue,
+        @InjectQueue(EnumNotificationQueue.notification)
+        protected readonly queue: Queue,
         protected readonly sentryService: SentryService,
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService,

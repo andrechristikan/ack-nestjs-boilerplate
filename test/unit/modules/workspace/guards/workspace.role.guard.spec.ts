@@ -13,13 +13,13 @@ import {
     WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 
 describe('WorkspaceRoleGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
-        mock<WorkspaceMemberDomain>();
+    const workspaceMemberService: MockProxy<WorkspaceMemberService> =
+        mock<WorkspaceMemberService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const executionContext: MockProxy<ExecutionContext> =
@@ -48,8 +48,8 @@ describe('WorkspaceRoleGuard', () => {
                 WorkspaceRoleGuard,
                 { provide: Reflector, useValue: reflector },
                 {
-                    provide: WorkspaceMemberDomain,
-                    useValue: workspaceMemberDomain,
+                    provide: WorkspaceMemberService,
+                    useValue: workspaceMemberService,
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -75,7 +75,7 @@ describe('WorkspaceRoleGuard', () => {
                 WorkspaceMemberStoreKey
             );
             expect(
-                workspaceMemberDomain.validateWorkspaceRoleGuard
+                workspaceMemberService.validateWorkspaceRoleGuard
             ).toHaveBeenCalledWith(member, [EnumWorkspaceMemberRole.admin]);
         });
 
@@ -86,7 +86,7 @@ describe('WorkspaceRoleGuard', () => {
             guard.canActivate(executionContext);
 
             expect(
-                workspaceMemberDomain.validateWorkspaceRoleGuard
+                workspaceMemberService.validateWorkspaceRoleGuard
             ).toHaveBeenCalledWith(member, []);
         });
 
@@ -112,7 +112,7 @@ describe('WorkspaceRoleGuard', () => {
                 httpStatus: HttpStatus.FORBIDDEN,
             });
             expect(
-                workspaceMemberDomain.validateWorkspaceRoleGuard
+                workspaceMemberService.validateWorkspaceRoleGuard
             ).not.toHaveBeenCalled();
         });
 
@@ -120,7 +120,7 @@ describe('WorkspaceRoleGuard', () => {
             reflector.get.mockReturnValue([EnumWorkspaceMemberRole.owner]);
             requestStoreService.get.mockReturnValue(member);
             const forbidden = new Error('forbidden');
-            workspaceMemberDomain.validateWorkspaceRoleGuard.mockImplementation(
+            workspaceMemberService.validateWorkspaceRoleGuard.mockImplementation(
                 () => {
                     throw forbidden;
                 }

@@ -17,7 +17,9 @@ import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
-import { SessionHttpService } from '@modules/session/services/http/session.http.service';
+import { SessionGetListOffsetByAdminUseCase } from '@modules/session/use-cases/session.get-list-offset-by-admin.use-case';
+import { SessionRevokeByAdminUseCase } from '@modules/session/use-cases/session.revoke-by-admin.use-case';
+import { SessionRevokeAllByAdminUseCase } from '@modules/session/use-cases/session.revoke-all-by-admin.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserCurrent,
@@ -38,7 +40,11 @@ import {
     path: '/user/:userId/session',
 })
 export class SessionAdminController {
-    constructor(private readonly sessionHttpService: SessionHttpService) {}
+    constructor(
+        private readonly sessionGetListOffsetByAdminUseCase: SessionGetListOffsetByAdminUseCase,
+        private readonly sessionRevokeByAdminUseCase: SessionRevokeByAdminUseCase,
+        private readonly sessionRevokeAllByAdminUseCase: SessionRevokeAllByAdminUseCase
+    ) {}
 
     @Doc({ summary: 'admin get all user Sessions' })
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
@@ -65,7 +71,7 @@ export class SessionAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        return this.sessionHttpService.getListOffsetByAdmin(userId, query);
+        return this.sessionGetListOffsetByAdminUseCase.execute(userId, query);
     }
 
     @Doc({ summary: 'admin revoke user Session' })
@@ -94,7 +100,11 @@ export class SessionAdminController {
         sessionId: string,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.sessionHttpService.revokeByAdmin(userId, sessionId, user);
+        return this.sessionRevokeByAdminUseCase.execute(
+            userId,
+            sessionId,
+            user
+        );
     }
 
     @Doc({ summary: 'admin revoke all user Sessions' })
@@ -121,6 +131,6 @@ export class SessionAdminController {
         userId: string,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.sessionHttpService.revokeAllByAdmin(userId, user);
+        return this.sessionRevokeAllByAdminUseCase.execute(userId, user);
     }
 }

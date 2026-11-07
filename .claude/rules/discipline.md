@@ -38,6 +38,7 @@ Define the check first, then loop until it passes.
 - Turn the request into a check before writing: a failing spec for new behaviour or a bug, specs green before and after a refactor.
 - A multi-step task states its plan as steps, each with its check: `1. <step> → verify: <check>`.
 - Done means the checks ran and their decisive output is quoted.
+- A generated file is no check: `generated/swagger.json`, rewritten at every boot (`http.md`), gets no count, diff, or acceptance line in a plan, task, dispatch, or review.
 
 ## Enforcement
 

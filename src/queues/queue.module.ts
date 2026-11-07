@@ -3,23 +3,21 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { QueueConfigKey } from '@queues/constants/queue.constant';
 
 @Module({})
 export class QueueModule {
     static forRoot(): DynamicModule {
         return {
             module: QueueModule,
+            global: true,
             imports: [
-                BullModule.forRootAsync(QueueConfigKey, {
+                BullModule.forRootAsync({
                     imports: [ConfigModule],
                     inject: [ConfigService],
                     useFactory: (configService: ConfigService) => ({
                         connection: {
                             url: configService.get<string>('redis.queue.url')!,
-                            connectionName: `${configService.get<string>(
-                                'app.name'
-                            )}-${configService.get<EnumAppEnvironment>('app.env')}:queue`,
+                            connectionName: `${configService.get<string>('app.name')}-${configService.get<EnumAppEnvironment>('app.env')}:queue`,
                             enableOfflineQueue: false,
                             connectTimeout: configService.get<number>(
                                 'queue.redis.connectTimeoutInMs'
@@ -57,6 +55,7 @@ export class QueueModule {
                 }),
             ],
             controllers: [],
+            exports: [BullModule],
         };
     }
 }

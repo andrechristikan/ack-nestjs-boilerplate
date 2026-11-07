@@ -20,7 +20,8 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
-import { DeviceHttpService } from '@modules/device/services/http/device.http.service';
+import { DeviceGetListOffsetByAdminUseCase } from '@modules/device/use-cases/device.get-list-offset-by-admin.use-case';
+import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -38,7 +39,10 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/:userId/device',
 })
 export class DeviceAdminController {
-    constructor(private readonly deviceHttpService: DeviceHttpService) {}
+    constructor(
+        private readonly deviceGetListOffsetByAdminUseCase: DeviceGetListOffsetByAdminUseCase,
+        private readonly deviceRemoveByAdminUseCase: DeviceRemoveByAdminUseCase
+    ) {}
 
     @Doc({ summary: 'admin get all user Devices' })
     @ResponsePagination('device.list', {
@@ -67,7 +71,7 @@ export class DeviceAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        return this.deviceHttpService.getListOffsetByAdmin(userId, query);
+        return this.deviceGetListOffsetByAdminUseCase.execute(userId, query);
     }
 
     @Doc({ summary: 'admin remove user Device' })
@@ -96,7 +100,7 @@ export class DeviceAdminController {
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        return this.deviceHttpService.removeByAdmin(
+        return this.deviceRemoveByAdminUseCase.execute(
             userId,
             deviceOwnershipId,
             user

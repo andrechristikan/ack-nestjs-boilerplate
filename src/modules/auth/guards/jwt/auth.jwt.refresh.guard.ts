@@ -8,27 +8,27 @@ import {
     AuthJwtRefreshGuardKey,
     AuthPayloadStoreKey,
 } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 @Injectable()
 export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
     constructor(
-        private readonly authDomain: AuthDomain,
+        private readonly authService: AuthService,
         private readonly requestStoreService: RequestStoreService
     ) {
         super();
     }
 
     handleRequest<T = IAuthJwtRefreshTokenPayload>(
-        err: Error,
-        user: IAuthJwtRefreshTokenPayload,
-        info: Error
+        err: Error | null,
+        user: IAuthJwtRefreshTokenPayload | false,
+        info: Error | string | undefined
     ): T {
-        const payload = this.authDomain.validateJwtRefreshGuard(
+        const payload = this.authService.validateJwtRefreshGuard(
             err,
-            user,
-            info
+            user === false ? null : user,
+            info instanceof Error ? info : null
         );
 
         this.requestStoreService.set(

@@ -15,7 +15,8 @@ import type { UserAgent } from '@generated/prisma-client/client';
 import { EnumActivityLogProcess } from '@modules/activity-log/enums/activity-log.enum';
 import type { IActivityLogCreate } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumActivityLogQueue } from '@modules/activity-log/enums/activity-log.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('ActivityLogQueue', () => {
@@ -86,7 +87,7 @@ describe('ActivityLogQueue', () => {
                 { provide: MessageService, useValue: messageService },
                 ActivityLogQueue,
                 {
-                    provide: getQueueToken(EnumQueue.activityLog),
+                    provide: getQueueToken(EnumActivityLogQueue.activityLog),
                     useValue: activityLogQueue,
                 },
                 { provide: SentryService, useValue: sentryService },

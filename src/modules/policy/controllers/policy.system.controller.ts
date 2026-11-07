@@ -5,7 +5,7 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
-import { PolicyHttpService } from '@modules/policy/services/http/policy.http.service';
+import { PolicyListByRoleUseCase } from '@modules/policy/use-cases/policy.list-by-role.use-case';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -15,7 +15,9 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/role/:roleId/policy',
 })
 export class PolicySystemController {
-    constructor(private readonly policyHttpService: PolicyHttpService) {}
+    constructor(
+        private readonly policyListByRoleUseCase: PolicyListByRoleUseCase
+    ) {}
 
     @Doc({ summary: 'get all policies granted by a role' })
     @Response('policy.listByRole', { schema: PolicyListResponseSchema })
@@ -25,6 +27,6 @@ export class PolicySystemController {
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        return this.policyHttpService.listByRole(roleId);
+        return this.policyListByRoleUseCase.execute(roleId);
     }
 }

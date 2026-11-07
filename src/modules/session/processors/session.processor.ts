@@ -1,20 +1,21 @@
 import { EnumSessionProcess } from '@modules/session/enums/session.enum';
 import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
-import { SessionProcessorService } from '@modules/session/services/processor/session.processor.service';
+import { SessionProcessPurgeLoginsUseCase } from '@modules/session/use-cases/session.process-purge-logins.use-case';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
-import { EnumQueue } from '@queues/enums/queue.enum';
+import { QueueException } from '@queues/exceptions/queue.exception';
+import { EnumSessionQueue } from '@modules/session/enums/session.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
-@QueueProcessor(EnumQueue.session)
+@QueueProcessor(EnumSessionQueue.session)
 export class SessionProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
-        private readonly sessionProcessorService: SessionProcessorService
+        private readonly sessionProcessPurgeLoginsUseCase: SessionProcessPurgeLoginsUseCase
     ) {
         super(sentryService, messageService);
     }
@@ -24,11 +25,15 @@ export class SessionProcessor extends QueueProcessorBase {
     ): Promise<IQueueResponse> {
         switch (job.name) {
             case EnumSessionProcess.purgeLogins:
-                return await this.sessionProcessorService.processPurgeLogins(
-                    job
+                return await this.sessionProcessPurgeLoginsUseCase.execute(job);
+            default: {
+                const message = this.messageService.setMessage(
+                    'session.queue.error.unknownProcess',
+                    { properties: { process: job.name } }
                 );
-            default:
-                this.sessionProcessorService.processUnknown(job.name);
+
+                throw new QueueException(message, true);
+            }
         }
     }
 }

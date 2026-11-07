@@ -9,7 +9,7 @@ import {
     AuthBearerScheme,
     AuthJwtRefreshGuardKey,
 } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 
 @Injectable()
 export class AuthJwtRefreshStrategy extends PassportStrategy(
@@ -18,7 +18,7 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
 ) {
     constructor(
         protected readonly configService: ConfigService,
-        private readonly authDomain: AuthDomain
+        private readonly authService: AuthService
     ) {
         // jti is not validated here.
         super({
@@ -55,6 +55,6 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
     async validate(
         data: IAuthJwtRefreshTokenPayload
     ): Promise<IAuthJwtRefreshTokenPayload> {
-        return this.authDomain.validateJwtRefreshStrategy(data);
+        return this.authService.validateJwtRefreshStrategy(data);
     }
 }

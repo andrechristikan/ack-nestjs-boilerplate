@@ -14,7 +14,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
-import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -23,8 +23,8 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 
 describe('TermPolicyGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const termPolicyAcceptanceDomain: MockProxy<TermPolicyAcceptanceDomain> =
-        mock<TermPolicyAcceptanceDomain>();
+    const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
+        mock<TermPolicyAcceptanceService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const executionContext: MockProxy<ExecutionContext> =
@@ -87,8 +87,8 @@ describe('TermPolicyGuard', () => {
                 TermPolicyGuard,
                 { provide: Reflector, useValue: reflector },
                 {
-                    provide: TermPolicyAcceptanceDomain,
-                    useValue: termPolicyAcceptanceDomain,
+                    provide: TermPolicyAcceptanceService,
+                    useValue: termPolicyAcceptanceService,
                 },
                 {
                     provide: RequestStoreService,
@@ -105,7 +105,7 @@ describe('TermPolicyGuard', () => {
             const requiredTermPolicies = [EnumTermPolicyType.privacy];
             reflector.get.mockReturnValue(requiredTermPolicies);
             requestStoreService.get.mockReturnValue(user);
-            termPolicyAcceptanceDomain.validateTermPolicyGuard.mockResolvedValue(
+            termPolicyAcceptanceService.validateTermPolicyGuard.mockResolvedValue(
                 undefined
             );
 
@@ -118,7 +118,7 @@ describe('TermPolicyGuard', () => {
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(UserStoreKey);
             expect(
-                termPolicyAcceptanceDomain.validateTermPolicyGuard
+                termPolicyAcceptanceService.validateTermPolicyGuard
             ).toHaveBeenCalledWith(user.id, requiredTermPolicies);
         });
 
@@ -139,7 +139,7 @@ describe('TermPolicyGuard', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
             });
             expect(
-                termPolicyAcceptanceDomain.validateTermPolicyGuard
+                termPolicyAcceptanceService.validateTermPolicyGuard
             ).not.toHaveBeenCalled();
         });
 
@@ -147,7 +147,7 @@ describe('TermPolicyGuard', () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockReturnValue(user);
             const rejection = new Error('required-invalid');
-            termPolicyAcceptanceDomain.validateTermPolicyGuard.mockRejectedValue(
+            termPolicyAcceptanceService.validateTermPolicyGuard.mockRejectedValue(
                 rejection
             );
 

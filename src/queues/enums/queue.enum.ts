@@ -1,16 +1,4 @@
 /** @public */
-export enum EnumQueue {
-    activityLog = 'activityLog',
-    notification = 'notification',
-    notificationEmail = 'notificationEmail',
-    notificationPush = 'notificationPush',
-    session = 'session',
-    termPolicy = 'termPolicy',
-    user = 'user',
-    workspace = 'workspace',
-}
-
-/** @public */
 export enum EnumQueuePriority {
     high = 1,
     medium = 5,

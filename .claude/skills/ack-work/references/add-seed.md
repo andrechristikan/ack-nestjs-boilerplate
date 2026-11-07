@@ -4,7 +4,7 @@ Invariants: `.claude/rules/seeding.md`. Reference implementation: `src/migration
 
 ## 1. Access path
 
-Inject `DatabaseService` and write every model the seed owns through `this.databaseService.client` or the `tx` of `withTransaction` (`src/migration/seeds/migration.country.seed.ts:31-34`), never through a feature repository or a feature service method that writes. Everything else a seed may inject, and what it may not, is `.claude/rules/seeding.md`, Outside the layering.
+Inject `DatabaseService` and write every model the seed owns through `this.databaseService.client` or the `tx` of `withTransaction` (`MigrationCountrySeed.seed` and `.remove`, `src/migration/seeds/migration.country.seed.ts`), never through a feature repository or a feature service method that writes. Everything else a seed may inject, and what it may not, is `.claude/rules/seeding.md`, Outside the layering.
 
 ## 2. Data file
 
@@ -12,15 +12,15 @@ Static rows live in `src/migration/data/migration.<concern>.data.ts` as a Pascal
 
 ## 3. Seed class
 
-`src/migration/seeds/migration.<concern>.seed.ts`, from `src/migration/seeds/migration.country.seed.ts:16-93`:
+`src/migration/seeds/migration.<concern>.seed.ts`, from `MigrationCountrySeed` (`src/migration/seeds/migration.country.seed.ts`):
 
 - `@Command({ name: '<concern>', description, allowUnknownOptions: false })`; `name` is camelCase (`apiKey`, `featureFlag`, `templateEmailNotification`).
-- `class Migration<Concern>Seed extends MigrationSeedBase implements IMigrationSeed` (`src/migration/bases/migration.seed.base.ts:9`, `src/migration/interfaces/migration.seed.interface.ts`). The base owns `--type seed|remove`; the class implements both `seed()` and `remove()`.
-- Constructor calls `super()`, reads `database.seedTransactionTimeoutInMs` from `ConfigService` (`:39-41`).
-- `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` and holds statements only; hashing, key drawing, and row building happen before the callback (`:48-71`). Every write is idempotent (`.claude/rules/seeding.md`, Idempotency and reset).
-- Every row carries `createdBy` and `updatedBy` set to `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts:4`), on the `create` branch, the `update` branch, and every nested row (`:56-63`).
-- `remove()` resets the collections `seed()` owns with `deleteMany` (`:78-92`).
-- A failed write is wrapped and thrown with no log before it, `throw new AppUnknownException(error)` (`:70`; `.claude/rules/exceptions.md`, `.claude/rules/logging.md`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
+- `class Migration<Concern>Seed extends MigrationSeedBase implements IMigrationSeed` (`src/migration/bases/migration.seed.base.ts`, `src/migration/interfaces/migration.seed.interface.ts`). The base's `run` owns `--type seed|remove`; the class implements both `seed()` and `remove()`.
+- Constructor calls `super()`, reads `database.seedTransactionTimeoutInMs` from `ConfigService` (the `MigrationCountrySeed` constructor).
+- `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` and holds statements only; hashing, key drawing, and row building happen before the callback (`MigrationCountrySeed.seed`). Every write is idempotent (`.claude/rules/seeding.md`, Idempotency and reset).
+- Every row carries `createdBy` and `updatedBy` set to `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts:4`), on the `create` branch, the `update` branch, and every nested row (`MigrationUserSeed.seed`, `src/migration/seeds/migration.user.seed.ts`).
+- `remove()` resets the collections `seed()` owns with `deleteMany` (`MigrationCountrySeed.remove`).
+- A failed write is wrapped and thrown with no log before it, `throw new AppUnknownException(error)` (`MigrationCountrySeed.seed`; `.claude/rules/exceptions.md`, `.claude/rules/logging.md`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
 
 ## 4. Register
 

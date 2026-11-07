@@ -5,7 +5,7 @@ import type { VerifyOptions } from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthJwtRefreshStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import {
@@ -22,7 +22,7 @@ vi.mock('jwks-rsa', () => ({
 }));
 
 describe('AuthJwtRefreshStrategy', () => {
-    const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const authService: MockProxy<AuthService> = mock<AuthService>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -49,7 +49,7 @@ describe('AuthJwtRefreshStrategy', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtRefreshStrategy,
-                { provide: AuthDomain, useValue: authDomain },
+                { provide: AuthService, useValue: authService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -110,7 +110,7 @@ describe('AuthJwtRefreshStrategy', () => {
     });
 
     describe('validate', () => {
-        it('delegates session and payload checks to AuthDomain', async () => {
+        it('delegates session and payload checks to AuthService', async () => {
             const payload: IAuthJwtRefreshTokenPayload = {
                 loginAt: new Date('2026-01-01T00:00:00.000Z'),
                 loginFrom: EnumUserLoginFrom.website,
@@ -119,12 +119,12 @@ describe('AuthJwtRefreshStrategy', () => {
                 sessionId: 'session-1',
                 deviceOwnershipId: 'device-1',
             };
-            authDomain.validateJwtRefreshStrategy.mockResolvedValue(payload);
+            authService.validateJwtRefreshStrategy.mockResolvedValue(payload);
 
             const result = await strategy.validate(payload);
 
             expect(result).toBe(payload);
-            expect(authDomain.validateJwtRefreshStrategy).toHaveBeenCalledWith(
+            expect(authService.validateJwtRefreshStrategy).toHaveBeenCalledWith(
                 payload
             );
         });

@@ -16,7 +16,6 @@ import type {
     IAnalyticStatusCountList,
     IAnalyticWorkspaceSummary,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/http/analytic.workspace-user.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
@@ -32,6 +31,11 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
+import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.summary.use-case';
+import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
+import { AnalyticJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.join-outcomes.use-case';
+import { AnalyticMemberRolesUseCase } from '@modules/analytic/use-cases/analytic.member-roles.use-case';
+import { AnalyticActivityUseCase } from '@modules/analytic/use-cases/analytic.activity.use-case';
 
 @ApiTags('modules.user.analytic')
 @Controller({
@@ -40,7 +44,11 @@ import type { Workspace } from '@generated/prisma-client/client';
 })
 export class AnalyticUserController {
     constructor(
-        private readonly analyticWorkspaceUserHttpService: AnalyticWorkspaceUserHttpService
+        private readonly analyticSummaryUseCase: AnalyticSummaryUseCase,
+        private readonly analyticInviteFunnelUseCase: AnalyticInviteFunnelUseCase,
+        private readonly analyticJoinOutcomesUseCase: AnalyticJoinOutcomesUseCase,
+        private readonly analyticMemberRolesUseCase: AnalyticMemberRolesUseCase,
+        private readonly analyticActivityUseCase: AnalyticActivityUseCase
     ) {}
 
     @Doc({ summary: 'get current workspace analytic summary' })
@@ -61,10 +69,7 @@ export class AnalyticUserController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
-        return this.analyticWorkspaceUserHttpService.summary(
-            workspace.id,
-            query
-        );
+        return this.analyticSummaryUseCase.execute(workspace.id, query);
     }
 
     @Doc({ summary: 'get current workspace invite funnel by date range' })
@@ -85,10 +90,7 @@ export class AnalyticUserController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticWorkspaceUserHttpService.inviteFunnel(
-            workspace.id,
-            query
-        );
+        return this.analyticInviteFunnelUseCase.execute(workspace.id, query);
     }
 
     @Doc({
@@ -111,10 +113,7 @@ export class AnalyticUserController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticWorkspaceUserHttpService.joinOutcomes(
-            workspace.id,
-            query
-        );
+        return this.analyticJoinOutcomesUseCase.execute(workspace.id, query);
     }
 
     @Doc({ summary: 'get current workspace member role distribution' })
@@ -133,7 +132,7 @@ export class AnalyticUserController {
     async memberRoles(
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
-        return this.analyticWorkspaceUserHttpService.memberRoles(workspace.id);
+        return this.analyticMemberRolesUseCase.execute(workspace.id);
     }
 
     @Doc({ summary: 'get current workspace activity count by date range' })
@@ -154,9 +153,6 @@ export class AnalyticUserController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticWorkspaceUserHttpService.activity(
-            workspace.id,
-            query
-        );
+        return this.analyticActivityUseCase.execute(workspace.id, query);
     }
 }

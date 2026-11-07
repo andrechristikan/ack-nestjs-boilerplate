@@ -1,15 +1,17 @@
-import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
+import {
+    EnumHealthIndicatorKey,
+    EnumHealthQueue,
+} from '@modules/health/enums/health.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
-import { EnumQueue } from '@queues/enums/queue.enum';
 import { Queue } from 'bullmq';
 
 @Injectable()
 export class HealthQueueIndicator {
     constructor(
-        @InjectQueue(EnumQueue.notification)
+        @InjectQueue(EnumHealthQueue.health)
         private readonly queue: Queue,
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}

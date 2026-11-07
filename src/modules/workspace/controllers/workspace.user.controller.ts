@@ -71,10 +71,28 @@ import {
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
-import { WorkspaceHttpService } from '@modules/workspace/services/http/workspace.http.service';
-import { WorkspaceInviteHttpService } from '@modules/workspace/services/http/workspace.invite.http.service';
-import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/http/workspace.join-request.http.service';
-import { WorkspaceMemberHttpService } from '@modules/workspace/services/http/workspace.member.http.service';
+import { WorkspaceGetListCursorByMemberUseCase } from '@modules/workspace/use-cases/workspace.get-list-cursor-by-member.use-case';
+import { WorkspaceCreateUseCase } from '@modules/workspace/use-cases/workspace.create.use-case';
+import { WorkspaceGetCurrentUseCase } from '@modules/workspace/use-cases/workspace.get-current.use-case';
+import { WorkspaceUpdateUseCase } from '@modules/workspace/use-cases/workspace.update.use-case';
+import { WorkspaceUpdateIsPublicUseCase } from '@modules/workspace/use-cases/workspace.update-is-public.use-case';
+import { WorkspaceUpdateSlugUseCase } from '@modules/workspace/use-cases/workspace.update-slug.use-case';
+import { WorkspaceSwitchUseCase } from '@modules/workspace/use-cases/workspace.switch.use-case';
+import { WorkspaceTransferOwnershipUseCase } from '@modules/workspace/use-cases/workspace.transfer-ownership.use-case';
+import { WorkspaceLeaveUseCase } from '@modules/workspace/use-cases/workspace.leave.use-case';
+import { WorkspaceSoftDeleteUseCase } from '@modules/workspace/use-cases/workspace.soft-delete.use-case';
+import { WorkspaceGetMembersListUseCase } from '@modules/workspace/use-cases/workspace.get-members-list.use-case';
+import { WorkspaceUpdateMemberRoleUseCase } from '@modules/workspace/use-cases/workspace.update-member-role.use-case';
+import { WorkspaceRemoveMemberUseCase } from '@modules/workspace/use-cases/workspace.remove-member.use-case';
+import { WorkspaceGetInvitesListUseCase } from '@modules/workspace/use-cases/workspace.get-invites-list.use-case';
+import { WorkspaceCreateInviteUseCase } from '@modules/workspace/use-cases/workspace.create-invite.use-case';
+import { WorkspaceResendInviteUseCase } from '@modules/workspace/use-cases/workspace.resend-invite.use-case';
+import { WorkspaceRevokeInviteUseCase } from '@modules/workspace/use-cases/workspace.revoke-invite.use-case';
+import { WorkspaceClaimInviteUseCase } from '@modules/workspace/use-cases/workspace.claim-invite.use-case';
+import { WorkspaceCreateJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.create-join-request.use-case';
+import { WorkspaceGetJoinRequestsListUseCase } from '@modules/workspace/use-cases/workspace.get-join-requests-list.use-case';
+import { WorkspaceAcceptJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.accept-join-request.use-case';
+import { WorkspaceRejectJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.reject-join-request.use-case';
 import {
     Body,
     Controller,
@@ -97,10 +115,28 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class WorkspaceUserController {
     constructor(
-        private readonly workspaceHttpService: WorkspaceHttpService,
-        private readonly workspaceMemberHttpService: WorkspaceMemberHttpService,
-        private readonly workspaceInviteHttpService: WorkspaceInviteHttpService,
-        private readonly workspaceJoinRequestHttpService: WorkspaceJoinRequestHttpService
+        private readonly workspaceGetListCursorByMemberUseCase: WorkspaceGetListCursorByMemberUseCase,
+        private readonly workspaceCreateUseCase: WorkspaceCreateUseCase,
+        private readonly workspaceGetCurrentUseCase: WorkspaceGetCurrentUseCase,
+        private readonly workspaceUpdateUseCase: WorkspaceUpdateUseCase,
+        private readonly workspaceUpdateIsPublicUseCase: WorkspaceUpdateIsPublicUseCase,
+        private readonly workspaceUpdateSlugUseCase: WorkspaceUpdateSlugUseCase,
+        private readonly workspaceSwitchUseCase: WorkspaceSwitchUseCase,
+        private readonly workspaceTransferOwnershipUseCase: WorkspaceTransferOwnershipUseCase,
+        private readonly workspaceLeaveUseCase: WorkspaceLeaveUseCase,
+        private readonly workspaceSoftDeleteUseCase: WorkspaceSoftDeleteUseCase,
+        private readonly workspaceGetMembersListUseCase: WorkspaceGetMembersListUseCase,
+        private readonly workspaceUpdateMemberRoleUseCase: WorkspaceUpdateMemberRoleUseCase,
+        private readonly workspaceRemoveMemberUseCase: WorkspaceRemoveMemberUseCase,
+        private readonly workspaceGetInvitesListUseCase: WorkspaceGetInvitesListUseCase,
+        private readonly workspaceCreateInviteUseCase: WorkspaceCreateInviteUseCase,
+        private readonly workspaceResendInviteUseCase: WorkspaceResendInviteUseCase,
+        private readonly workspaceRevokeInviteUseCase: WorkspaceRevokeInviteUseCase,
+        private readonly workspaceClaimInviteUseCase: WorkspaceClaimInviteUseCase,
+        private readonly workspaceCreateJoinRequestUseCase: WorkspaceCreateJoinRequestUseCase,
+        private readonly workspaceGetJoinRequestsListUseCase: WorkspaceGetJoinRequestsListUseCase,
+        private readonly workspaceAcceptJoinRequestUseCase: WorkspaceAcceptJoinRequestUseCase,
+        private readonly workspaceRejectJoinRequestUseCase: WorkspaceRejectJoinRequestUseCase
     ) {}
 
     @Doc({ summary: 'list workspaces the caller is a member of' })
@@ -119,7 +155,10 @@ export class WorkspaceUserController {
         query: WorkspaceUserListRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.workspaceHttpService.getListCursorByMember(userId, query);
+        return this.workspaceGetListCursorByMemberUseCase.execute(
+            userId,
+            query
+        );
     }
 
     @Doc({ summary: 'create a new workspace; caller becomes owner' })
@@ -136,7 +175,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceCreateRequestSchema })
         body: WorkspaceCreateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.createWorkspace(userId, body);
+        return this.workspaceCreateUseCase.execute(userId, body);
     }
 
     @Doc({ summary: 'get the current workspace (`x-workspace-id`)' })
@@ -155,7 +194,7 @@ export class WorkspaceUserController {
     async get(
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.getCurrentWorkspace(workspace);
+        return this.workspaceGetCurrentUseCase.execute(workspace);
     }
 
     @Doc({ summary: 'update the current workspace name/description' })
@@ -177,11 +216,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceUpdateRequestSchema })
         body: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.updateWorkspace(
-            workspace.id,
-            userId,
-            body
-        );
+        return this.workspaceUpdateUseCase.execute(workspace.id, userId, body);
     }
 
     @Doc({
@@ -206,7 +241,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceUpdateIsPublicRequestSchema })
         body: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.updateWorkspaceIsPublic(
+        return this.workspaceUpdateIsPublicUseCase.execute(
             workspace.id,
             userId,
             body
@@ -232,7 +267,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceUpdateSlugRequestSchema })
         body: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.updateWorkspaceSlug(
+        return this.workspaceUpdateSlugUseCase.execute(
             workspace.id,
             userId,
             body
@@ -257,7 +292,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceSwitchRequestSchema })
         body: WorkspaceSwitchRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceHttpService.switchWorkspace(userId, body);
+        return this.workspaceSwitchUseCase.execute(userId, body);
     }
 
     @Doc({ summary: 'transfer workspace ownership to another member' })
@@ -278,7 +313,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceTransferOwnershipRequestSchema })
         body: WorkspaceTransferOwnershipRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceMemberHttpService.transferOwnership(
+        return this.workspaceTransferOwnershipUseCase.execute(
             workspace.id,
             member,
             body
@@ -301,10 +336,7 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() member: WorkspaceMember
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceMemberHttpService.leaveWorkspace(
-            workspace.id,
-            member
-        );
+        return this.workspaceLeaveUseCase.execute(workspace.id, member);
     }
 
     @Doc({ summary: 'soft-delete the current workspace' })
@@ -322,10 +354,7 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceHttpService.softDeleteWorkspace(
-            workspace.id,
-            userId
-        );
+        return this.workspaceSoftDeleteUseCase.execute(workspace.id, userId);
     }
 
     @Doc({ summary: 'list members of the current workspace' })
@@ -346,10 +375,7 @@ export class WorkspaceUserController {
         query: WorkspaceMemberListRequestDto,
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        return this.workspaceMemberHttpService.getMembersList(
-            workspace.id,
-            query
-        );
+        return this.workspaceGetMembersListUseCase.execute(workspace.id, query);
     }
 
     @Doc({ summary: 'update a member role in the current workspace' })
@@ -371,7 +397,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceMemberHttpService.updateMemberRole(
+        return this.workspaceUpdateMemberRoleUseCase.execute(
             workspace.id,
             actorMember,
             workspaceMemberId,
@@ -396,7 +422,7 @@ export class WorkspaceUserController {
         @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
         workspaceMemberId: string
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceMemberHttpService.removeMember(
+        return this.workspaceRemoveMemberUseCase.execute(
             workspace.id,
             actorMember,
             workspaceMemberId
@@ -421,10 +447,7 @@ export class WorkspaceUserController {
         query: WorkspaceInviteListRequestDto,
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
-        return this.workspaceInviteHttpService.getInvitesList(
-            workspace.id,
-            query
-        );
+        return this.workspaceGetInvitesListUseCase.execute(workspace.id, query);
     }
 
     @Doc({
@@ -449,7 +472,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceInviteCreateRequestSchema })
         body: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        return this.workspaceInviteHttpService.createInvite(
+        return this.workspaceCreateInviteUseCase.execute(
             workspace,
             userId,
             body
@@ -481,7 +504,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceInviteResendRequestSchema })
         body: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        return this.workspaceInviteHttpService.resendInvite(
+        return this.workspaceResendInviteUseCase.execute(
             workspace,
             userId,
             workspaceInviteId,
@@ -506,7 +529,7 @@ export class WorkspaceUserController {
         @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceInviteHttpService.revokeInvite(
+        return this.workspaceRevokeInviteUseCase.execute(
             workspace.id,
             userId,
             workspaceInviteId
@@ -532,7 +555,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceInviteClaimRequestSchema })
         body: WorkspaceInviteClaimRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceInviteHttpService.claimInvite(userId, email, body);
+        return this.workspaceClaimInviteUseCase.execute(userId, email, body);
     }
 
     @Doc({
@@ -554,10 +577,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceJoinRequestCreateRequestSchema })
         body: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
-        return this.workspaceJoinRequestHttpService.createJoinRequest(
-            userId,
-            body
-        );
+        return this.workspaceCreateJoinRequestUseCase.execute(userId, body);
     }
 
     @Doc({ summary: 'list join requests for the current workspace' })
@@ -578,7 +598,7 @@ export class WorkspaceUserController {
         query: WorkspaceJoinRequestListRequestDto,
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
-        return this.workspaceJoinRequestHttpService.getJoinRequestsList(
+        return this.workspaceGetJoinRequestsListUseCase.execute(
             workspace.id,
             query
         );
@@ -605,7 +625,7 @@ export class WorkspaceUserController {
         @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
         workspaceJoinRequestId: string
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceJoinRequestHttpService.acceptJoinRequest(
+        return this.workspaceAcceptJoinRequestUseCase.execute(
             workspace,
             userId,
             workspaceJoinRequestId
@@ -632,7 +652,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
         body: WorkspaceJoinRequestRejectRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceJoinRequestHttpService.rejectJoinRequest(
+        return this.workspaceRejectJoinRequestUseCase.execute(
             workspace,
             userId,
             workspaceJoinRequestId,

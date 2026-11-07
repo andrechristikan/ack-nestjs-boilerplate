@@ -35,10 +35,15 @@ import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.
 import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import type { IUserLoginOutcome } from '@modules/user/interfaces/user.interface';
-import { UserAuthHttpService } from '@modules/user/services/http/user.auth.http.service';
-import { UserPasswordHttpService } from '@modules/user/services/http/user.password.http.service';
-import { UserRegistrationHttpService } from '@modules/user/services/http/user.registration.http.service';
-import { UserVerificationHttpService } from '@modules/user/services/http/user.verification.http.service';
+import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
+import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-with-social.use-case';
+import { UserSignUpUseCase } from '@modules/user/use-cases/user.sign-up.use-case';
+import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-email.use-case';
+import { UserSendVerificationEmailUseCase } from '@modules/user/use-cases/user.send-verification-email.use-case';
+import { UserForgotPasswordUseCase } from '@modules/user/use-cases/user.forgot-password.use-case';
+import { UserResetPasswordUseCase } from '@modules/user/use-cases/user.reset-password.use-case';
+import { UserLoginVerifyTwoFactorUseCase } from '@modules/user/use-cases/user.login-verify-two-factor.use-case';
+import { UserLoginSetupTwoFactorUseCase } from '@modules/user/use-cases/user.login-setup-two-factor.use-case';
 import {
     Body,
     Controller,
@@ -58,10 +63,15 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 })
 export class UserPublicController {
     constructor(
-        private readonly userAuthHttpService: UserAuthHttpService,
-        private readonly userRegistrationHttpService: UserRegistrationHttpService,
-        private readonly userVerificationHttpService: UserVerificationHttpService,
-        private readonly userPasswordHttpService: UserPasswordHttpService
+        private readonly userLoginCredentialUseCase: UserLoginCredentialUseCase,
+        private readonly userLoginWithSocialUseCase: UserLoginWithSocialUseCase,
+        private readonly userSignUpUseCase: UserSignUpUseCase,
+        private readonly userVerifyEmailUseCase: UserVerifyEmailUseCase,
+        private readonly userSendVerificationEmailUseCase: UserSendVerificationEmailUseCase,
+        private readonly userForgotPasswordUseCase: UserForgotPasswordUseCase,
+        private readonly userResetPasswordUseCase: UserResetPasswordUseCase,
+        private readonly userLoginVerifyTwoFactorUseCase: UserLoginVerifyTwoFactorUseCase,
+        private readonly userLoginSetupTwoFactorUseCase: UserLoginSetupTwoFactorUseCase
     ) {}
 
     @Doc({ summary: 'login with credential' })
@@ -75,7 +85,7 @@ export class UserPublicController {
         @Body({ schema: UserLoginRequestSchema })
         body: UserLoginRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
-        return this.userAuthHttpService.loginCredential(body);
+        return this.userLoginCredentialUseCase.execute(body);
     }
 
     @Doc({ summary: 'login with social google' })
@@ -94,7 +104,7 @@ export class UserPublicController {
         @Body({ schema: UserCreateSocialRequestSchema })
         body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
-        return this.userAuthHttpService.loginWithSocial(
+        return this.userLoginWithSocialUseCase.execute(
             email,
             EnumUserLoginWith.socialGoogle,
             body
@@ -117,7 +127,7 @@ export class UserPublicController {
         @Body({ schema: UserCreateSocialRequestSchema })
         body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
-        return this.userAuthHttpService.loginWithSocial(
+        return this.userLoginWithSocialUseCase.execute(
             email,
             EnumUserLoginWith.socialApple,
             body
@@ -134,7 +144,7 @@ export class UserPublicController {
         @Body({ schema: UserSignUpRequestSchema })
         body: UserSignUpRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userRegistrationHttpService.signUp(body);
+        return this.userSignUpUseCase.execute(body);
     }
 
     @Doc({ summary: 'user email verification' })
@@ -146,7 +156,7 @@ export class UserPublicController {
         @Body({ schema: UserVerifyEmailRequestSchema })
         body: UserVerifyEmailRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userVerificationHttpService.verifyEmail(body);
+        return this.userVerifyEmailUseCase.execute(body);
     }
 
     @Doc({ summary: 'user resend email verification' })
@@ -159,7 +169,7 @@ export class UserPublicController {
         @Body({ schema: UserSendEmailVerificationRequestSchema })
         body: UserSendEmailVerificationRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userVerificationHttpService.sendVerificationEmail(body);
+        return this.userSendVerificationEmailUseCase.execute(body);
     }
 
     @Doc({ summary: 'user forgot password' })
@@ -173,7 +183,7 @@ export class UserPublicController {
         @Body({ schema: UserForgotPasswordRequestSchema })
         body: UserForgotPasswordRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userPasswordHttpService.forgotPassword(body);
+        return this.userForgotPasswordUseCase.execute(body);
     }
 
     @Doc({ summary: 'user reset password' })
@@ -186,7 +196,7 @@ export class UserPublicController {
         @Body({ schema: UserForgotPasswordResetRequestSchema })
         body: UserForgotPasswordResetRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userPasswordHttpService.resetPassword(body);
+        return this.userResetPasswordUseCase.execute(body);
     }
 
     @Doc({ summary: 'user verify two factor during login' })
@@ -198,7 +208,7 @@ export class UserPublicController {
         @Body({ schema: UserLoginVerifyTwoFactorRequestSchema })
         body: UserLoginVerifyTwoFactorRequestDto
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userAuthHttpService.loginVerifyTwoFactor(body);
+        return this.userLoginVerifyTwoFactorUseCase.execute(body);
     }
 
     @Doc({
@@ -216,6 +226,6 @@ export class UserPublicController {
         @Body({ schema: UserLoginSetupTwoFactorRequestSchema })
         body: UserLoginSetupTwoFactorRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userAuthHttpService.loginSetupTwoFactor(body);
+        return this.userLoginSetupTwoFactorUseCase.execute(body);
     }
 }

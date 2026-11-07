@@ -19,7 +19,10 @@ import { PolicyUpdateRequestSchema } from '@modules/policy/dtos/request/policy.u
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
-import { PolicyHttpService } from '@modules/policy/services/http/policy.http.service';
+import { PolicyListByRoleUseCase } from '@modules/policy/use-cases/policy.list-by-role.use-case';
+import { PolicyCreateByAdminUseCase } from '@modules/policy/use-cases/policy.create-by-admin.use-case';
+import { PolicyUpdateByAdminUseCase } from '@modules/policy/use-cases/policy.update-by-admin.use-case';
+import { PolicyDeleteByAdminUseCase } from '@modules/policy/use-cases/policy.delete-by-admin.use-case';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
@@ -44,7 +47,12 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/role/:roleId/policy',
 })
 export class PolicyAdminController {
-    constructor(private readonly policyHttpService: PolicyHttpService) {}
+    constructor(
+        private readonly policyListByRoleUseCase: PolicyListByRoleUseCase,
+        private readonly policyCreateByAdminUseCase: PolicyCreateByAdminUseCase,
+        private readonly policyUpdateByAdminUseCase: PolicyUpdateByAdminUseCase,
+        private readonly policyDeleteByAdminUseCase: PolicyDeleteByAdminUseCase
+    ) {}
 
     @Doc({ summary: 'get all policies granted by a role' })
     @Response('policy.listByRole', { schema: PolicyListResponseSchema })
@@ -63,7 +71,7 @@ export class PolicyAdminController {
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        return this.policyHttpService.listByRole(roleId);
+        return this.policyListByRoleUseCase.execute(roleId);
     }
 
     @Doc({ summary: 'grant a policy to a role' })
@@ -86,7 +94,7 @@ export class PolicyAdminController {
         body: PolicyRequestDto,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<PolicyDto>> {
-        return this.policyHttpService.createByAdmin(roleId, body, user);
+        return this.policyCreateByAdminUseCase.execute(roleId, body, user);
     }
 
     @Doc({ summary: 'update the action list of a role policy' })
@@ -111,7 +119,7 @@ export class PolicyAdminController {
         body: PolicyUpdateRequestDto,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<PolicyDto>> {
-        return this.policyHttpService.updateByAdmin(
+        return this.policyUpdateByAdminUseCase.execute(
             roleId,
             policyId,
             body,
@@ -139,6 +147,6 @@ export class PolicyAdminController {
         policyId: string,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.policyHttpService.deleteByAdmin(roleId, policyId, user);
+        return this.policyDeleteByAdminUseCase.execute(roleId, policyId, user);
     }
 }

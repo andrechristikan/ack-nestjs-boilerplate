@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import type { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
+import type { AuthSocialService } from '@modules/auth/services/auth.social.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 export const AuthSocialConfigDefaults: Record<string, string | null> = {
@@ -9,11 +9,11 @@ export const AuthSocialConfigDefaults: Record<string, string | null> = {
     'auth.google.clientId': 'google-client-id',
 };
 
-export async function createAuthSocialDomain(
+export async function createAuthSocialService(
     overrides: Record<string, string | null>
-): Promise<AuthSocialDomain> {
-    const { AuthSocialDomain: AuthSocialDomainClass } =
-        await import('@modules/auth/domains/auth.social.domain');
+): Promise<AuthSocialService> {
+    const { AuthSocialService: AuthSocialServiceClass } =
+        await import('@modules/auth/services/auth.social.service');
     const configService = buildConfigService({
         ...AuthSocialConfigDefaults,
         ...overrides,
@@ -21,10 +21,10 @@ export async function createAuthSocialDomain(
 
     const module = await Test.createTestingModule({
         providers: [
-            AuthSocialDomainClass,
+            AuthSocialServiceClass,
             { provide: ConfigService, useValue: configService },
         ],
     }).compile();
 
-    return module.get(AuthSocialDomainClass);
+    return module.get(AuthSocialServiceClass);
 }

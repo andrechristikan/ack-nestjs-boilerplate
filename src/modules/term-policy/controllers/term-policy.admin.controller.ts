@@ -32,8 +32,16 @@ import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/reque
 import { TermPolicyRemoveContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { TermPolicyContentHttpService } from '@modules/term-policy/services/http/term-policy.content.http.service';
-import { TermPolicyHttpService } from '@modules/term-policy/services/http/term-policy.http.service';
+import { TermPolicyGetListByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-by-admin.use-case';
+import { TermPolicyCreateByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.create-by-admin.use-case';
+import { TermPolicyDeleteByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.delete-by-admin.use-case';
+import { TermPolicyGenerateContentPresignByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.generate-content-presign-by-admin.use-case';
+import { TermPolicyUpdateContentByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.update-content-by-admin.use-case';
+import { TermPolicyAddContentByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.add-content-by-admin.use-case';
+import { TermPolicyRemoveContentByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.remove-content-by-admin.use-case';
+import { TermPolicyGetContentByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.get-content-by-admin.use-case';
+import { TermPolicyPublishByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.publish-by-admin.use-case';
+import { TermPolicyResendEmailByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.resend-email-by-admin.use-case';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     Body,
@@ -63,8 +71,16 @@ import type { TermPolicy } from '@generated/prisma-client/client';
 })
 export class TermPolicyAdminController {
     constructor(
-        private readonly termPolicyHttpService: TermPolicyHttpService,
-        private readonly termPolicyContentHttpService: TermPolicyContentHttpService
+        private readonly termPolicyGetListByAdminUseCase: TermPolicyGetListByAdminUseCase,
+        private readonly termPolicyCreateByAdminUseCase: TermPolicyCreateByAdminUseCase,
+        private readonly termPolicyDeleteByAdminUseCase: TermPolicyDeleteByAdminUseCase,
+        private readonly termPolicyGenerateContentPresignByAdminUseCase: TermPolicyGenerateContentPresignByAdminUseCase,
+        private readonly termPolicyUpdateContentByAdminUseCase: TermPolicyUpdateContentByAdminUseCase,
+        private readonly termPolicyAddContentByAdminUseCase: TermPolicyAddContentByAdminUseCase,
+        private readonly termPolicyRemoveContentByAdminUseCase: TermPolicyRemoveContentByAdminUseCase,
+        private readonly termPolicyGetContentByAdminUseCase: TermPolicyGetContentByAdminUseCase,
+        private readonly termPolicyPublishByAdminUseCase: TermPolicyPublishByAdminUseCase,
+        private readonly termPolicyResendEmailByAdminUseCase: TermPolicyResendEmailByAdminUseCase
     ) {}
 
     @Doc({ summary: 'retrieve list of terms and policies for admin' })
@@ -86,7 +102,7 @@ export class TermPolicyAdminController {
         @Query({ schema: TermPolicyAdminListRequestSchema })
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyHttpService.getListByAdmin(query);
+        return this.termPolicyGetListByAdminUseCase.execute(query);
     }
 
     @Doc({ summary: 'create a new term or policy' })
@@ -106,7 +122,7 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyCreateRequestSchema })
         body: TermPolicyCreateRequestDto
     ): Promise<IResponseReturn<TermPolicy>> {
-        return this.termPolicyHttpService.createByAdmin(body);
+        return this.termPolicyCreateByAdminUseCase.execute(body);
     }
 
     @Doc({ summary: 'delete a term or policy by ID' })
@@ -128,7 +144,7 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
-        return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
+        return this.termPolicyDeleteByAdminUseCase.execute(termPolicyId);
     }
 
     @Doc({ summary: 'generate presign url for term or policy content upload' })
@@ -155,7 +171,7 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyContentPresignRequestSchema })
         body: TermPolicyContentPresignRequestDto
     ): Promise<IResponseReturn<IAwsS3Presign>> {
-        return this.termPolicyContentHttpService.generateContentPresignByAdmin(
+        return this.termPolicyGenerateContentPresignByAdminUseCase.execute(
             body
         );
     }
@@ -179,7 +195,7 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyContentHttpService.updateContentByAdmin(
+        return this.termPolicyUpdateContentByAdminUseCase.execute(
             termPolicyId,
             body
         );
@@ -204,7 +220,7 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyContentHttpService.addContentByAdmin(
+        return this.termPolicyAddContentByAdminUseCase.execute(
             termPolicyId,
             body
         );
@@ -229,7 +245,7 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyContentHttpService.removeContentByAdmin(
+        return this.termPolicyRemoveContentByAdminUseCase.execute(
             termPolicyId,
             body
         );
@@ -256,7 +272,7 @@ export class TermPolicyAdminController {
         @Param('language', { schema: RequestMessageLanguageSchema })
         language: EnumMessageLanguage
     ): Promise<IResponseReturn<IAwsS3Presign>> {
-        return this.termPolicyContentHttpService.getContentByAdmin(
+        return this.termPolicyGetContentByAdminUseCase.execute(
             termPolicyId,
             language
         );
@@ -280,7 +296,7 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyHttpService.publishByAdmin(
+        return this.termPolicyPublishByAdminUseCase.execute(
             termPolicyId,
             updatedBy
         );
@@ -305,7 +321,7 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyHttpService.resendEmailByAdmin(
+        return this.termPolicyResendEmailByAdminUseCase.execute(
             termPolicyId,
             updatedBy
         );

@@ -12,7 +12,8 @@ import type {
     IUserCheckEmail,
     IUserCheckUsername,
 } from '@modules/user/interfaces/user.interface';
-import { UserHttpService } from '@modules/user/services/http/user.http.service';
+import { UserCheckUsernameUseCase } from '@modules/user/use-cases/user.check-username.use-case';
+import { UserCheckEmailUseCase } from '@modules/user/use-cases/user.check-email.use-case';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -22,7 +23,10 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user',
 })
 export class UserSystemController {
-    constructor(private readonly userHttpService: UserHttpService) {}
+    constructor(
+        private readonly userCheckUsernameUseCase: UserCheckUsernameUseCase,
+        private readonly userCheckEmailUseCase: UserCheckEmailUseCase
+    ) {}
 
     @Doc({ summary: 'check user exist by username' })
     @Response('user.checkUsername', {
@@ -35,7 +39,7 @@ export class UserSystemController {
         @Body({ schema: UserCheckUsernameRequestSchema })
         body: UserCheckUsernameRequestDto
     ): Promise<IResponseReturn<IUserCheckUsername>> {
-        return this.userHttpService.checkUsername(body);
+        return this.userCheckUsernameUseCase.execute(body);
     }
 
     @Doc({ summary: 'check user exist by email' })
@@ -47,6 +51,6 @@ export class UserSystemController {
         @Body({ schema: UserCheckEmailRequestSchema })
         body: UserCheckEmailRequestDto
     ): Promise<IResponseReturn<IUserCheckEmail>> {
-        return this.userHttpService.checkEmail(body);
+        return this.userCheckEmailUseCase.execute(body);
     }
 }

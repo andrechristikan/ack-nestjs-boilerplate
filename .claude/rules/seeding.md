@@ -18,13 +18,13 @@ src/migration/
 └── migration.module.ts            its own composition root; provides every seed
 ```
 
-- A seed is `Migration<Concern>Seed`, decorated `@Command({ name, description, allowUnknownOptions: false })`, extending `MigrationSeedBase` (`src/migration/bases/migration.seed.base.ts:9`), which owns the `--type seed|remove` dispatch, and implementing `IMigrationSeed` (`src/migration/interfaces/migration.seed.interface.ts`): `seed()` and `remove()`, both.
+- A seed is `Migration<Concern>Seed`, decorated `@Command({ name, description, allowUnknownOptions: false })`, extending `MigrationSeedBase` (`src/migration/bases/migration.seed.base.ts`), whose `run` owns the `--type seed|remove` dispatch, and implementing `IMigrationSeed` (`src/migration/interfaces/migration.seed.interface.ts`): `seed()` and `remove()`, both.
 - `@Command` `name` is camelCase for the concern: `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `awsS3Config`.
 - Static rows live in `data/` as PascalCase consts; a seed whose data has no external key needs no data file.
-- A data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (`src/migration/seeds/migration.user.seed.ts:68`).
+- A data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (the `MigrationUserSeed` constructor, `src/migration/seeds/migration.user.seed.ts`).
 - A seed writes its audit fields explicitly: no request actor exists in a command, so `createdBy` and `updatedBy` on every seeded row, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
 - A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns.
-- A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`migration.template-notification.seed.ts:42`), and `awsS3Config` also needs `AWS_S3_IAM_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
+- A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`MigrationTemplateEmailNotificationSeed.seed`, `src/migration/seeds/migration.template-notification.seed.ts`), and `awsS3Config` also needs `AWS_S3_IAM_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
 - A transaction opens through `this.databaseService.withTransaction` with `database.seedTransactionTimeoutInMs`; hashing, key drawing, and row building happen before the callback so the transaction holds only statements.
 
 ## Outside the layering

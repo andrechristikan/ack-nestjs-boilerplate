@@ -8,14 +8,14 @@ import {
     ProjectStoreKey,
 } from '@modules/project/constants/project.constant';
 import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
-import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 @Injectable()
 export class ProjectMemberGuard implements CanActivate {
     constructor(
-        private readonly projectMemberDomain: ProjectMemberDomain,
+        private readonly projectMemberService: ProjectMemberService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -31,7 +31,7 @@ export class ProjectMemberGuard implements CanActivate {
         }
 
         const member =
-            await this.projectMemberDomain.validateProjectMemberGuard(
+            await this.projectMemberService.validateProjectMemberGuard(
                 project.id,
                 user.id
             );

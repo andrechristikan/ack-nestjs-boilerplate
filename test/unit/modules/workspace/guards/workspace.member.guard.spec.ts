@@ -27,12 +27,12 @@ import {
 } from '@modules/workspace/constants/workspace.constant';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 
 describe('WorkspaceMemberGuard', () => {
-    const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
-        mock<WorkspaceMemberDomain>();
+    const workspaceMemberService: MockProxy<WorkspaceMemberService> =
+        mock<WorkspaceMemberService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const executionContext: MockProxy<ExecutionContext> =
@@ -119,8 +119,8 @@ describe('WorkspaceMemberGuard', () => {
             providers: [
                 WorkspaceMemberGuard,
                 {
-                    provide: WorkspaceMemberDomain,
-                    useValue: workspaceMemberDomain,
+                    provide: WorkspaceMemberService,
+                    useValue: workspaceMemberService,
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -138,7 +138,7 @@ describe('WorkspaceMemberGuard', () => {
                     return null;
                 }
             );
-            workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue(
+            workspaceMemberService.validateWorkspaceMemberGuard.mockResolvedValue(
                 member
             );
 
@@ -146,7 +146,7 @@ describe('WorkspaceMemberGuard', () => {
 
             expect(result).toBe(true);
             expect(
-                workspaceMemberDomain.validateWorkspaceMemberGuard
+                workspaceMemberService.validateWorkspaceMemberGuard
             ).toHaveBeenCalledWith('workspace-1', 'user-1');
             expect(requestStoreService.set).toHaveBeenCalledWith(
                 WorkspaceMemberStoreKey,
@@ -175,7 +175,7 @@ describe('WorkspaceMemberGuard', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
             });
             expect(
-                workspaceMemberDomain.validateWorkspaceMemberGuard
+                workspaceMemberService.validateWorkspaceMemberGuard
             ).not.toHaveBeenCalled();
         });
 
@@ -200,7 +200,7 @@ describe('WorkspaceMemberGuard', () => {
                 httpStatus: HttpStatus.FORBIDDEN,
             });
             expect(
-                workspaceMemberDomain.validateWorkspaceMemberGuard
+                workspaceMemberService.validateWorkspaceMemberGuard
             ).not.toHaveBeenCalled();
         });
     });

@@ -23,7 +23,7 @@ import {
 } from '@modules/project/constants/project.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 
 describe('ProjectMemberGuard', () => {
@@ -73,8 +73,8 @@ describe('ProjectMemberGuard', () => {
         twoFactor: null,
     };
 
-    const projectMemberDomain: MockProxy<ProjectMemberDomain> =
-        mock<ProjectMemberDomain>();
+    const projectMemberService: MockProxy<ProjectMemberService> =
+        mock<ProjectMemberService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     let guard: ProjectMemberGuard;
@@ -85,8 +85,8 @@ describe('ProjectMemberGuard', () => {
             providers: [
                 ProjectMemberGuard,
                 {
-                    provide: ProjectMemberDomain,
-                    useValue: projectMemberDomain,
+                    provide: ProjectMemberService,
+                    useValue: projectMemberService,
                 },
                 {
                     provide: RequestStoreService,
@@ -135,7 +135,7 @@ describe('ProjectMemberGuard', () => {
 
                 return null;
             });
-            projectMemberDomain.validateProjectMemberGuard.mockResolvedValue(
+            projectMemberService.validateProjectMemberGuard.mockResolvedValue(
                 member
             );
 
@@ -143,7 +143,7 @@ describe('ProjectMemberGuard', () => {
                 true
             );
             expect(
-                projectMemberDomain.validateProjectMemberGuard
+                projectMemberService.validateProjectMemberGuard
             ).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
                 '507f1f77bcf86cd799439013'
@@ -170,7 +170,7 @@ describe('ProjectMemberGuard', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
             });
             expect(
-                projectMemberDomain.validateProjectMemberGuard
+                projectMemberService.validateProjectMemberGuard
             ).not.toHaveBeenCalled();
         });
 
@@ -196,7 +196,7 @@ describe('ProjectMemberGuard', () => {
                 httpStatus: HttpStatus.FORBIDDEN,
             });
             expect(
-                projectMemberDomain.validateProjectMemberGuard
+                projectMemberService.validateProjectMemberGuard
             ).not.toHaveBeenCalled();
         });
     });

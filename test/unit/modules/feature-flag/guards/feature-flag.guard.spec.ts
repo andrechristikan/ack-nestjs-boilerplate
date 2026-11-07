@@ -14,13 +14,13 @@ import {
     FeatureFlagKeyPathMetaKey,
 } from '@modules/feature-flag/constants/feature-flag.constant';
 import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guard';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
 describe('FeatureFlagGuard', () => {
-    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
-        mock<FeatureFlagDomain>();
+    const featureFlagService: MockProxy<FeatureFlagService> =
+        mock<FeatureFlagService>();
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     const configGet =
         vi.fn<(key: string) => string | number | RegExp | undefined>();
@@ -44,7 +44,7 @@ describe('FeatureFlagGuard', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagGuard,
-                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
+                { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: Reflector, useValue: reflector },
                 { provide: ConfigService, useValue: configService },
             ],
@@ -76,7 +76,7 @@ describe('FeatureFlagGuard', () => {
                 roleId: '507f1f77bcf86cd799439014',
             };
             const executionContext = buildHttpExecutionContext(request);
-            featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
+            featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
             await expect(guard.canActivate(executionContext)).resolves.toBe(
                 true
@@ -85,7 +85,7 @@ describe('FeatureFlagGuard', () => {
                 FeatureFlagKeyPathMetaKey,
                 executionContext.getHandler()
             );
-            expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagService.validateFeatureFlag).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.changePassword,
                 '507f1f77bcf86cd799439011',
                 null
@@ -98,11 +98,11 @@ describe('FeatureFlagGuard', () => {
             request.headers = {};
             delete request.user;
             const executionContext = buildHttpExecutionContext(request);
-            featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
+            featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
             await guard.canActivate(executionContext);
 
-            expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagService.validateFeatureFlag).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.changePassword,
                 null,
                 null
@@ -117,11 +117,11 @@ describe('FeatureFlagGuard', () => {
             };
             delete request.user;
             const executionContext = buildHttpExecutionContext(request);
-            featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
+            featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
             await guard.canActivate(executionContext);
 
-            expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagService.validateFeatureFlag).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.changePassword,
                 null,
                 'anon-user-1'
@@ -136,11 +136,11 @@ describe('FeatureFlagGuard', () => {
             };
             delete request.user;
             const executionContext = buildHttpExecutionContext(request);
-            featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
+            featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
             await guard.canActivate(executionContext);
 
-            expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagService.validateFeatureFlag).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.changePassword,
                 null,
                 null
@@ -153,11 +153,11 @@ describe('FeatureFlagGuard', () => {
             request.headers = { [FeatureFlagAnonymousIdHeaderName]: '' };
             delete request.user;
             const executionContext = buildHttpExecutionContext(request);
-            featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
+            featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
             await guard.canActivate(executionContext);
 
-            expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagService.validateFeatureFlag).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.changePassword,
                 null,
                 null
@@ -172,11 +172,11 @@ describe('FeatureFlagGuard', () => {
             };
             delete request.user;
             const executionContext = buildHttpExecutionContext(request);
-            featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
+            featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
             await guard.canActivate(executionContext);
 
-            expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagService.validateFeatureFlag).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.changePassword,
                 null,
                 null
@@ -191,11 +191,11 @@ describe('FeatureFlagGuard', () => {
             };
             delete request.user;
             const executionContext = buildHttpExecutionContext(request);
-            featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
+            featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
             await guard.canActivate(executionContext);
 
-            expect(featureFlagDomain.validateFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagService.validateFeatureFlag).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.changePassword,
                 null,
                 null

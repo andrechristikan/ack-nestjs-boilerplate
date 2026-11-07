@@ -7,7 +7,7 @@ import {
     WorkspaceMemberStoreKey,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/workspace.guard-missing.exception';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -15,7 +15,7 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {
     constructor(
-        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -32,7 +32,7 @@ export class WorkspaceMemberGuard implements CanActivate {
         }
 
         const member =
-            await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
+            await this.workspaceMemberService.validateWorkspaceMemberGuard(
                 workspace.id,
                 user.id
             );

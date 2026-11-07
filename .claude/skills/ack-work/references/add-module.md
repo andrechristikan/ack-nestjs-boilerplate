@@ -4,7 +4,7 @@ Invariants: `.claude/rules/layering.md` (roles, dependency order, `@Global()`, m
 
 ## 1. Claim the status-code block
 
-Scan and claim the next free hundred, then create `src/modules/<module>/enums/<module>.status-code.enum.ts` with the first member at the block base (`src/modules/device/enums/device.status-code.enum.ts:5-7`). Procedure: `.claude/skills/ack-work/references/add-status-code.md`.
+Scan and claim the next free hundred, then create `src/modules/<module>/enums/<module>.status-code.enum.ts` with the first member at the block base (`EnumDeviceStatusCodeError`, `src/modules/device/enums/device.status-code.enum.ts`). Procedure: `.claude/skills/ack-work/references/add-status-code.md`.
 
 ## 2. Schema
 
@@ -19,15 +19,15 @@ The module's rank in `.claude/rules/layering.md`, Dependency order, sits above e
 | Layer | File | Reference |
 | --- | --- | --- |
 | repository port | `interfaces/<module>.repository.interface.ts` | `src/modules/device/interfaces/device.repository.interface.ts` |
-| repository | `repositories/<module>.repository.ts`, `implements I<Module>Repository` | `src/modules/device/repositories/device.repository.ts:12` |
+| repository | `repositories/<module>.repository.ts`, `implements I<Module>Repository` | `DeviceRepository`, `src/modules/device/repositories/device.repository.ts` |
 | data shapes | `interfaces/<module>.interface.ts` | `src/modules/device/interfaces/device.interface.ts` |
-| list fields | `constants/<module>.list.constant.ts`, `Prisma.<Model>ScalarFieldEnum` members `as const satisfies ReadonlyArray<…>` | `src/modules/device/constants/device.list.constant.ts:7-18` |
+| list fields | `constants/<module>.list.constant.ts`, `Prisma.<Model>ScalarFieldEnum` members `as const satisfies ReadonlyArray<…>` | `DeviceDefaultAvailableOrderBy`, `src/modules/device/constants/device.list.constant.ts` |
 | service | `services/<module>.service.ts`, its own module's collaborators plus lower-ranked modules' services and utils | `src/modules/country/services/country.service.ts` |
 | util (optional) | `utils/<module>.util.ts` | `src/modules/device/utils/device.util.ts:16` |
-| exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `src/modules/device/exceptions/device.not-found.exception.ts:9-18` |
+| exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `DeviceNotFoundException`, `src/modules/device/exceptions/device.not-found.exception.ts` |
 | request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type; an update DTO requires every editable field (`.claude/rules/null-safety.md`, Update and create) | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |
-| response DTO | `dtos/response/<module>.response.dto.ts`: `DatabaseResponseSchema` extended, `.meta()` on every field | `src/modules/device/dtos/response/device.response.dto.ts:10-26` |
-| use case | `use-cases/<module>.<action>.use-case.ts`, one per endpoint or job, one public `execute` | `src/modules/device/use-cases/` |
+| response DTO | `dtos/response/<module>.response.dto.ts`: `DatabaseResponseSchema` extended, `.meta()` on every field | `DeviceResponseSchema`, `src/modules/device/dtos/response/device.response.dto.ts` |
+| use case | `use-cases/<module>.<action>.use-case.ts`, one per endpoint or job, implements `IAppUseCase`, one public `async execute` | `src/modules/device/use-cases/` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts` |
 
 A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-work/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. The service injects its own module's classes, lower-ranked modules' services and utils, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the use case around the service call, and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
@@ -43,7 +43,7 @@ Copy the shape, not the names:
 
 ## 6. Register
 
-- Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module (`src/router/http/router.http.shared.module.ts`). A missing import fails the boot.
+- Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module, use-case modules first, one blank line, then the rest (`src/router/http/router.http.shared.module.ts`). A missing import fails the boot.
 - Processor: the use-case module into `imports` of `src/router/processor/router.processor.module.ts`.
 - A `@Global()` module: `src/common/common.module.ts` `imports`, only when a guard, strategy, interceptor, or decorator injects the module (`.claude/rules/layering.md`, `@Global()`; `src/modules/session/session.module.ts`); the default is not global.
 

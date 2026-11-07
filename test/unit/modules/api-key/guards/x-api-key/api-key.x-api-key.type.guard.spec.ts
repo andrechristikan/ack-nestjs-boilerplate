@@ -11,14 +11,14 @@ import {
     ApiKeyXTypeMetaKey,
 } from '@modules/api-key/constants/api-key.constant';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
-import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
+import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 
 describe('ApiKeyXApiKeyTypeGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const apiKeyDomain: MockProxy<ApiKeyDomain> = mock<ApiKeyDomain>();
+    const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const executionContext: MockProxy<ExecutionContext> =
@@ -52,7 +52,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             providers: [
                 ApiKeyXApiKeyTypeGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: ApiKeyDomain, useValue: apiKeyDomain },
+                { provide: ApiKeyService, useValue: apiKeyService },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -69,7 +69,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
                 EnumApiKeyType.default,
             ]);
             requestStoreService.get.mockReturnValue(apiKey);
-            apiKeyDomain.validateXApiKeyTypeGuard.mockReturnValue(true);
+            apiKeyService.validateXApiKeyTypeGuard.mockReturnValue(true);
 
             const result = await guard.canActivate(executionContext);
 
@@ -81,7 +81,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 ApiKeyStoreKey
             );
-            expect(apiKeyDomain.validateXApiKeyTypeGuard).toHaveBeenCalledWith(
+            expect(apiKeyService.validateXApiKeyTypeGuard).toHaveBeenCalledWith(
                 apiKey,
                 [EnumApiKeyType.default]
             );
@@ -106,7 +106,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
             });
             expect(
-                apiKeyDomain.validateXApiKeyTypeGuard
+                apiKeyService.validateXApiKeyTypeGuard
             ).not.toHaveBeenCalled();
         });
 
@@ -114,7 +114,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             reflector.getAllAndOverride.mockReturnValue([]);
             requestStoreService.get.mockReturnValue(apiKey);
             const error = new Error('predefined not found');
-            apiKeyDomain.validateXApiKeyTypeGuard.mockImplementation(() => {
+            apiKeyService.validateXApiKeyTypeGuard.mockImplementation(() => {
                 throw error;
             });
 

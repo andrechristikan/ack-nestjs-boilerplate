@@ -17,14 +17,14 @@ import {
 } from '@modules/project/constants/project.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
 import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
 
 describe('ProjectRoleGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const projectMemberDomain: MockProxy<ProjectMemberDomain> =
-        mock<ProjectMemberDomain>();
+    const projectMemberService: MockProxy<ProjectMemberService> =
+        mock<ProjectMemberService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     let guard: ProjectRoleGuard;
@@ -36,8 +36,8 @@ describe('ProjectRoleGuard', () => {
                 ProjectRoleGuard,
                 { provide: Reflector, useValue: reflector },
                 {
-                    provide: ProjectMemberDomain,
-                    useValue: projectMemberDomain,
+                    provide: ProjectMemberService,
+                    useValue: projectMemberService,
                 },
                 {
                     provide: RequestStoreService,
@@ -87,7 +87,7 @@ describe('ProjectRoleGuard', () => {
 
                 return null;
             });
-            projectMemberDomain.validateProjectRoleGuard.mockResolvedValue();
+            projectMemberService.validateProjectRoleGuard.mockResolvedValue();
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             executionContext.getHandler.mockReturnValue(vi.fn());
@@ -100,7 +100,7 @@ describe('ProjectRoleGuard', () => {
                 executionContext.getHandler()
             );
             expect(
-                projectMemberDomain.validateProjectRoleGuard
+                projectMemberService.validateProjectRoleGuard
             ).toHaveBeenCalledWith(project.id, workspaceMember, [
                 EnumProjectMemberRole.admin,
             ]);
@@ -118,7 +118,7 @@ describe('ProjectRoleGuard', () => {
 
                 return null;
             });
-            projectMemberDomain.validateProjectRoleGuard.mockResolvedValue();
+            projectMemberService.validateProjectRoleGuard.mockResolvedValue();
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             executionContext.getHandler.mockReturnValue(vi.fn());
@@ -126,7 +126,7 @@ describe('ProjectRoleGuard', () => {
             await guard.canActivate(executionContext);
 
             expect(
-                projectMemberDomain.validateProjectRoleGuard
+                projectMemberService.validateProjectRoleGuard
             ).toHaveBeenCalledWith(stubProject.id, stubWorkspaceMember, []);
         });
 
@@ -150,7 +150,7 @@ describe('ProjectRoleGuard', () => {
                 httpStatus: HttpStatus.FORBIDDEN,
             });
             expect(
-                projectMemberDomain.validateProjectRoleGuard
+                projectMemberService.validateProjectRoleGuard
             ).not.toHaveBeenCalled();
         });
 
@@ -180,7 +180,7 @@ describe('ProjectRoleGuard', () => {
                 httpStatus: HttpStatus.FORBIDDEN,
             });
             expect(
-                projectMemberDomain.validateProjectRoleGuard
+                projectMemberService.validateProjectRoleGuard
             ).not.toHaveBeenCalled();
         });
     });

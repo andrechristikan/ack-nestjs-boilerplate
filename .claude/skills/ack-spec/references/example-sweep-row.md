@@ -12,18 +12,18 @@ Each row sits under its heading in `generated/docs/report-src-sweep.md`, in the 
 ```markdown
 ## CHANGE
 
-- [ ] `src/modules/country/exceptions/country.not-found.exception.ts:13`: `CountryNotFoundException` answers HTTP 404, and `getOne` throws it for the `countryId` a sign-up body carries (`src/modules/user/services/http/user.registration.http.service.ts:297`), so a sign-up naming an unknown country answers 404.
+- [ ] `src/modules/country/exceptions/country.not-found.exception.ts:10`: `CountryNotFoundException` answers HTTP 404, and `getOne` throws it for the `countryId` a sign-up body carries (`src/modules/user/use-cases/user.sign-up.use-case.ts:220`), so a sign-up naming an unknown country answers 404.
 
 ## DELETE
 
-- [ ] `src/modules/country/domains/country.domain.ts:22`: the `countryId === null` branch throws `CountryNotFoundException`, and its one caller passes `user.default.country`, the constant `'ID'` (`src/configs/user.config.ts:37`) that the country seed writes (`src/migration/data/migration.country.data.ts:7`).
+- [ ] `src/modules/country/services/country.service.ts:22`: the `countryId === null` branch of `getIdByAlpha2Code` throws `CountryNotFoundException`, and its one caller (`src/modules/user/use-cases/user.import-by-admin.use-case.ts:166`) passes `user.default.country`, the constant `'ID'` (`src/configs/user.config.ts:41`) that the country seed writes (`src/migration/data/migration.country.data.ts:7`).
 ```
 
 At the end of the run, each row is re-read against the file it names (`sweep-log.md`, the state table): a fixed defect deletes its row, a moved line updates its `file:line`.
 
 ## Tester dispatch, step 4
 
-The template is `SKILL.md`, step 4. The Every dispatch block follows the body with `Decisions: none`, because a fork has no plan file. `Rules to read:` is the output of `bash .claude/hooks/rules.sh src/modules/country/ test/unit/modules/country/`.
+The template is `SKILL.md`, step 4. The Every dispatch block follows the body with `Decisions: none`, because a fork has no plan file, and `Decisions to honour: none`, because the specs change no recorded choice. `Rules to read:` is the output of `bash .claude/hooks/rules.sh src/modules/country/ test/unit/modules/country/`.
 
 ```
 Agent: tester
@@ -51,10 +51,12 @@ Rules to read:
 .claude/rules/pagination.md
 .claude/rules/service.md
 .claude/rules/testing.md
+.claude/rules/use-case.md
 Report: specs written or repaired; per-file coverage rows; every line that cannot be
   covered without changing src/, with file:line and why; defects noticed, each with
   file:line, unfixed.
 Decisions: none
+Decisions to honour: none
 The working tree is the source, including unstaged and untracked files; read files from
 disk, never from `HEAD` or a ref. To list what changed, use `git status --short` and
 `git diff HEAD --name-only` plus `git ls-files --others --exclude-standard`; never
@@ -67,4 +69,4 @@ Before writing or judging, run `bash .claude/hooks/rules.sh <every file you touc
 Reply in English.
 ```
 
-In scope for the coverage bar: the domain, the DTOs, the exception, and the HTTP service. The controller, the repository, the constants, the enum, the interface, and the module files sit in `vitest.config.ts` `coverage.exclude` and get no spec (`sweep-log.md`, Coverage reading).
+In scope for the coverage bar: the service, the use case, the DTOs, and the exception. The controller, the repository, the constants, the enum, the interface, and the two module files sit in `vitest.config.ts` `coverage.exclude` and get no spec (`sweep-log.md`, Coverage reading).

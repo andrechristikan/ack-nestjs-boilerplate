@@ -1,4 +1,9 @@
 /** @public */
+export enum EnumWorkspaceQueue {
+    workspace = 'workspace',
+}
+
+/** @public */
 export enum EnumWorkspaceProcess {
     expireStaleInvites = 'expireStaleInvites',
     expireStaleJoinRequests = 'expireStaleJoinRequests',

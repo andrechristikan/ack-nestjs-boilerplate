@@ -21,7 +21,11 @@ import {
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleHttpService } from '@modules/role/services/http/role.http.service';
+import { RoleGetListOffsetByAdminUseCase } from '@modules/role/use-cases/role.get-list-offset-by-admin.use-case';
+import { RoleGetOneUseCase } from '@modules/role/use-cases/role.get-one.use-case';
+import { RoleCreateByAdminUseCase } from '@modules/role/use-cases/role.create-by-admin.use-case';
+import { RoleUpdateByAdminUseCase } from '@modules/role/use-cases/role.update-by-admin.use-case';
+import { RoleDeleteByAdminUseCase } from '@modules/role/use-cases/role.delete-by-admin.use-case';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
@@ -53,7 +57,13 @@ import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.
     path: '/role',
 })
 export class RoleAdminController {
-    constructor(private readonly roleHttpService: RoleHttpService) {}
+    constructor(
+        private readonly roleGetListOffsetByAdminUseCase: RoleGetListOffsetByAdminUseCase,
+        private readonly roleGetOneUseCase: RoleGetOneUseCase,
+        private readonly roleCreateByAdminUseCase: RoleCreateByAdminUseCase,
+        private readonly roleUpdateByAdminUseCase: RoleUpdateByAdminUseCase,
+        private readonly roleDeleteByAdminUseCase: RoleDeleteByAdminUseCase
+    ) {}
 
     @Doc({ summary: 'get list of roles' })
     @ResponsePagination('role.list', { schema: RoleListResponseSchema })
@@ -72,7 +82,7 @@ export class RoleAdminController {
         @Query({ schema: RoleAdminListRequestSchema })
         query: RoleAdminListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
-        return this.roleHttpService.getListOffsetByAdmin(query);
+        return this.roleGetListOffsetByAdminUseCase.execute(query);
     }
 
     @Doc({ summary: 'get detail a role' })
@@ -92,7 +102,7 @@ export class RoleAdminController {
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleHttpService.getOne(roleId);
+        return this.roleGetOneUseCase.execute(roleId);
     }
 
     @Doc({ summary: 'create a role' })
@@ -113,7 +123,7 @@ export class RoleAdminController {
         body: RoleCreateRequestDto,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleHttpService.createByAdmin(body, user);
+        return this.roleCreateByAdminUseCase.execute(body, user);
     }
 
     @Doc({ summary: 'update data a role' })
@@ -136,7 +146,7 @@ export class RoleAdminController {
         body: RoleUpdateRequestDto,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleHttpService.updateByAdmin(roleId, body, user);
+        return this.roleUpdateByAdminUseCase.execute(roleId, body, user);
     }
 
     @Doc({ summary: 'delete data a role' })
@@ -157,6 +167,6 @@ export class RoleAdminController {
         roleId: string,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.roleHttpService.deleteByAdmin(roleId, user);
+        return this.roleDeleteByAdminUseCase.execute(roleId, user);
     }
 }

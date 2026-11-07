@@ -11,6 +11,7 @@ A use case runs one user- or job-facing action: its own feature's entry points c
 ## Shape
 
 - Path: `use-cases/<module>[.<concern>].<action>.use-case.ts`, class `<Module>[<Concern>]<Action>UseCase`, one public method `execute` (`naming.md`).
+- The class `implements IAppUseCase<[<execute params>], <result>>` (`src/app/interfaces/app.use-case.interface.ts`); `execute` is `async`, its parameter types and result match the type arguments.
 - Called by one or more entry points of its own feature (controllers, processors; `http.md`, `queue.md`, Processors); never by another use case.
 - A private method holds only this action's sequencing; a piece holding one module's statements is a service method.
 - On HTTP, it translates the request DTO into service calls and the result into the envelope (`dto.md`); a method with no data returns `{}` or `{ metadata }`.

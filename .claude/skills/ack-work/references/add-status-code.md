@@ -23,7 +23,7 @@ Open the owner's enum and find a member that already means the thing. Add a memb
 
 1. Check headroom: the next sequential number stays inside the owner's hundred. When it does not, stop and report.
 2. Append the member at the next number, no gap, camelCase descriptor (`src/modules/user/enums/user.status-code.enum.ts`).
-3. Create `exceptions/<module>.<descriptor>.exception.ts` from `src/modules/device/exceptions/device.not-found.exception.ts:9-18`: `module`, `statusCode` by member name, `statusCodeKey` as the reverse lookup on the same member, `httpStatus`, and `super('<module>.error.<descriptor>')`. Named constructor params go into `messageProperties`.
+3. Create `exceptions/<module>.<descriptor>.exception.ts` from `DeviceNotFoundException` (`src/modules/device/exceptions/device.not-found.exception.ts`): `module`, `statusCode` by member name, `statusCodeKey` as the reverse lookup on the same member, `httpStatus`, and `super('<module>.error.<descriptor>')`. Named constructor params go into `messageProperties`.
 4. Choose `httpStatus` deliberately: it is the wire status and the Sentry switch (500 and above is reported). 500 is only for an unknown error or a bug we detect ourselves; a failure outside an HTTP request gets no member and extends `AppUnknownException` (`.claude/rules/exceptions.md`, The hierarchy).
 5. Add `error.<descriptor>` to `src/languages/<lang>/<module>.json` in every language directory (`.claude/rules/i18n.md`).
 6. Throw it from the service, or return it from a util for the caller to throw.
@@ -31,7 +31,7 @@ Open the owner's enum and find a member that already means the thing. Add a memb
 ## 4. Claim a block for a new module
 
 1. Scan (step 1); take the next free hundred that overlaps no neighbour.
-2. Create `src/modules/<module>/enums/<module>.status-code.enum.ts` with the first member at the block base (`src/modules/device/enums/device.status-code.enum.ts:5-7`).
+2. Create `src/modules/<module>/enums/<module>.status-code.enum.ts` with the first member at the block base (`EnumDeviceStatusCodeError`, `src/modules/device/enums/device.status-code.enum.ts`).
 3. Report the claim in the hand-back: module, base, next free hundred, members.
 
 ## 5. Remove a member

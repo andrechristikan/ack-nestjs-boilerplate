@@ -21,7 +21,7 @@ A DTO is a zod schema plus `z.infer` of it, in one `*.dto.ts` file declaring exa
 
 ## The pipe and the interceptor
 
-`RequestSchemaValidationPipe` (`src/common/request/pipes/request.schema-validation.pipe.ts:15`) is the single `APP_PIPE`. A body or path param with no schema attached raises `RequestSchemaMissingException` (`:37`), so each binds `{ schema }` (`@Body({ schema })`); a query with no schema passes unvalidated. The response schema is what reaches the wire: `z.object` strips undeclared keys, `@Response()` with no schema declares a route returning no data, and a payload the schema rejects raises `ResponseSerializationException`. Every handler returns an envelope its use case builds (`IResponseReturn<T>`, `IResponsePaginationReturn<T>`, `IResponseFileReturn`; `http.md`); a no-data method is `Promise<IResponseReturn<void>>` (`use-case.md`). A response schema never reaches a service.
+`RequestSchemaValidationPipe` (`src/common/request/pipes/request.schema-validation.pipe.ts`) is the single `APP_PIPE`. A body or path param with no schema attached raises `RequestSchemaMissingException` (`RequestSchemaValidationPipe.transform`), so each binds `{ schema }` (`@Body({ schema })`); a query with no schema passes unvalidated. The response schema is what reaches the wire: `z.object` strips undeclared keys, `@Response()` with no schema declares a route returning no data, and a payload the schema rejects raises `ResponseSerializationException`. Every handler returns an envelope its use case builds (`IResponseReturn<T>`, `IResponsePaginationReturn<T>`, `IResponseFileReturn`; `http.md`); a no-data method is `Promise<IResponseReturn<void>>` (`use-case.md`). A response schema never reaches a service.
 
 ## Specs
 

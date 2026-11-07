@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RoleDomain } from '@modules/role/domains/role.domain';
+import { RoleService } from '@modules/role/services/role.service';
 import { EnumRoleType } from '@generated/prisma-client/client';
 import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
 import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
@@ -14,7 +14,7 @@ import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-m
 export class RoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly roleDomain: RoleDomain,
+        private readonly roleService: RoleService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -30,7 +30,7 @@ export class RoleGuard implements CanActivate {
             throw new UserGuardMissingException();
         }
 
-        const policies = await this.roleDomain.validateRoleGuard(
+        const policies = await this.roleService.validateRoleGuard(
             user,
             requiredRoles
         );

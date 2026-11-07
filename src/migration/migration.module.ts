@@ -11,7 +11,8 @@ import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migrati
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';
-import { UserDomainModule } from '@modules/user/user.domain.module';
+import { NotificationModule } from '@modules/notification/notification.module';
+import { UserModule } from '@modules/user/user.module';
 
 @Module({
     controllers: [],
@@ -28,6 +29,6 @@ import { UserDomainModule } from '@modules/user/user.domain.module';
         MigrationAwsS3ConfigSeed,
     ],
     exports: [],
-    imports: [CommonModule, AwsModule, UserDomainModule],
+    imports: [CommonModule, AwsModule, UserModule, NotificationModule],
 })
 export class MigrationModule {}

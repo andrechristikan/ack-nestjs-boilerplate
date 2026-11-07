@@ -5,13 +5,13 @@ import {
 } from '@modules/auth/constants/auth.constant';
 import { AuthSocialAppleRequiredException } from '@modules/auth/exceptions/auth.social-apple-required.exception';
 import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 @Injectable()
 export class AuthSocialAppleGuard implements CanActivate {
-    constructor(private readonly authDomain: AuthDomain) {}
+    constructor(private readonly authService: AuthService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context
@@ -26,7 +26,7 @@ export class AuthSocialAppleGuard implements CanActivate {
             throw new AuthSocialAppleRequiredException();
         }
 
-        request.user = await this.authDomain.validateOAuthApple(
+        request.user = await this.authService.validateOAuthApple(
             requestHeaders[1]!
         );
 

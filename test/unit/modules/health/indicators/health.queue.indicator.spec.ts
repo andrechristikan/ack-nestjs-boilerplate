@@ -4,10 +4,13 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumQueue } from '@queues/enums/queue.enum';
+
 import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.indicator';
 import type { Queue } from 'bullmq';
-import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
+import {
+    EnumHealthIndicatorKey,
+    EnumHealthQueue,
+} from '@modules/health/enums/health.enum';
 
 describe('HealthQueueIndicator', () => {
     const getBackend = vi.fn();
@@ -29,7 +32,7 @@ describe('HealthQueueIndicator', () => {
             providers: [
                 HealthQueueIndicator,
                 {
-                    provide: getQueueToken(EnumQueue.notification),
+                    provide: getQueueToken(EnumHealthQueue.health),
                     useValue: queue,
                 },
                 {

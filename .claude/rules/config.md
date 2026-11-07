@@ -8,7 +8,6 @@ paths:
     - 'src/swagger.ts'
     - 'src/instrument.ts'
     - 'src/common/common.module.ts'
-    - 'src/queues/decorators/queue.decorator.ts'
     - 'src/common/logger/**'
     - 'src/common/cache/**'
     - 'src/common/redis/**'
@@ -24,7 +23,7 @@ paths:
 - `AppEnvSchema` (`dto.md`) declares every key a config reads. A new env var is the config file and interface, that key, and `.env.example`.
 - The factory, not module scope, reads `process.env` and parses no schema: required `process.env.X!`, boolean `process.env.X === 'true'`, number `Number(process.env.X!)`, enum or `ms.StringValue` narrowed by `as`, optional `process.env.X === '' ? null : (process.env.X ?? null)` at each read, no helper: the one `code-style.md` copy-paste exception.
 - Only the environment boundary (`eslint.md`, Config blocks) reads `process.env`.
-- `src/instrument.ts`, imported first by `main.ts`, loads `dotenv/config` and calls `appConfigFunction()` and `loggerConfigFunction()` on unvalidated env before Nest; everything else reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field; a module `useFactory`, a queue options factory, `main.ts`, `configure.ts`, and `swagger.ts` read where they build.
+- `src/instrument.ts`, imported first by `main.ts`, loads `dotenv/config` and calls `appConfigFunction()` and `loggerConfigFunction()` on unvalidated env before Nest; `@QueueProcessor()` calls the `redis.config.ts` and `app.config.ts` default exports, a decorator having no injection context; everything else reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field; a module `useFactory`, a queue options factory, `main.ts`, `configure.ts`, and `swagger.ts` read where they build.
 - A TTL, retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, max-attempts budget, or job id pattern (`<namespace>.jobId.<name>Pattern`, `queue.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`.
 - A duration key is named for its consumer's unit (`InMs`, `InSeconds`, `InDays`) and built from `ms('<string>')`, divided inside the config file (`ms('7d') / 1000`); no raw number, no call-site arithmetic. A duration computed at request time has no key. A size key is `InBytes` from `bytes('<string>')`.
 - A URL is a `*Pattern` key with `{placeholder}` segments: an emitted URL is full with its own host key, a path a fragment.

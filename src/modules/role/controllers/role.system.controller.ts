@@ -6,7 +6,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
 import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleHttpService } from '@modules/role/services/http/role.http.service';
+import { RoleGetListCursorBySystemUseCase } from '@modules/role/use-cases/role.get-list-cursor-by-system.use-case';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -16,7 +16,9 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/role',
 })
 export class RoleSystemController {
-    constructor(private readonly roleHttpService: RoleHttpService) {}
+    constructor(
+        private readonly roleGetListCursorBySystemUseCase: RoleGetListCursorBySystemUseCase
+    ) {}
 
     @Doc({ summary: 'get list of roles' })
     @ResponsePagination('role.list', { schema: RoleListResponseSchema })
@@ -26,6 +28,6 @@ export class RoleSystemController {
         @Query({ schema: RoleSystemListRequestSchema })
         query: RoleSystemListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
-        return this.roleHttpService.getListCursorBySystem(query);
+        return this.roleGetListCursorBySystemUseCase.execute(query);
     }
 }

@@ -1,6 +1,6 @@
 # 0012. Boundary lint
 
-- Status: accepted
+- Status: superseded by 0031
 - Date: 2026-11-07
 
 ## Context

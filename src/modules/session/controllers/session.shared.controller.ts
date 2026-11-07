@@ -18,7 +18,8 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
-import { SessionHttpService } from '@modules/session/services/http/session.http.service';
+import { SessionGetListCursorUseCase } from '@modules/session/use-cases/session.get-list-cursor.use-case';
+import { SessionRevokeUseCase } from '@modules/session/use-cases/session.revoke.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
@@ -30,7 +31,10 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/session',
 })
 export class SessionSharedController {
-    constructor(private readonly sessionHttpService: SessionHttpService) {}
+    constructor(
+        private readonly sessionGetListCursorUseCase: SessionGetListCursorUseCase,
+        private readonly sessionRevokeUseCase: SessionRevokeUseCase
+    ) {}
 
     @Doc({ summary: 'get all user Sessions' })
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
@@ -45,7 +49,7 @@ export class SessionSharedController {
         query: SessionSharedListRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        return this.sessionHttpService.getListCursor(userId, query);
+        return this.sessionGetListCursorUseCase.execute(userId, query);
     }
 
     @Doc({ summary: 'revoke user Session' })
@@ -61,6 +65,6 @@ export class SessionSharedController {
         sessionId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.sessionHttpService.revoke(userId, sessionId);
+        return this.sessionRevokeUseCase.execute(userId, sessionId);
     }
 }

@@ -46,8 +46,17 @@ import {
     ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
-import { ProjectMemberHttpService } from '@modules/project/services/http/project.member.http.service';
-import { ProjectHttpService } from '@modules/project/services/http/project.http.service';
+import { ProjectGetListCursorByMemberUseCase } from '@modules/project/use-cases/project.get-list-cursor-by-member.use-case';
+import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
+import { ProjectGetUseCase } from '@modules/project/use-cases/project.get.use-case';
+import { ProjectUpdateUseCase } from '@modules/project/use-cases/project.update.use-case';
+import { ProjectUpdateSlugUseCase } from '@modules/project/use-cases/project.update-slug.use-case';
+import { ProjectSoftDeleteUseCase } from '@modules/project/use-cases/project.soft-delete.use-case';
+import { ProjectGetMembersListUseCase } from '@modules/project/use-cases/project.get-members-list.use-case';
+import { ProjectAssignMemberUseCase } from '@modules/project/use-cases/project.assign-member.use-case';
+import { ProjectUpdateMemberRoleUseCase } from '@modules/project/use-cases/project.update-member-role.use-case';
+import { ProjectRemoveMemberUseCase } from '@modules/project/use-cases/project.remove-member.use-case';
+import { ProjectLeaveUseCase } from '@modules/project/use-cases/project.leave.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -78,8 +87,17 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class ProjectUserController {
     constructor(
-        private readonly projectHttpService: ProjectHttpService,
-        private readonly projectMemberHttpService: ProjectMemberHttpService
+        private readonly projectGetListCursorByMemberUseCase: ProjectGetListCursorByMemberUseCase,
+        private readonly projectCreateUseCase: ProjectCreateUseCase,
+        private readonly projectGetUseCase: ProjectGetUseCase,
+        private readonly projectUpdateUseCase: ProjectUpdateUseCase,
+        private readonly projectUpdateSlugUseCase: ProjectUpdateSlugUseCase,
+        private readonly projectSoftDeleteUseCase: ProjectSoftDeleteUseCase,
+        private readonly projectGetMembersListUseCase: ProjectGetMembersListUseCase,
+        private readonly projectAssignMemberUseCase: ProjectAssignMemberUseCase,
+        private readonly projectUpdateMemberRoleUseCase: ProjectUpdateMemberRoleUseCase,
+        private readonly projectRemoveMemberUseCase: ProjectRemoveMemberUseCase,
+        private readonly projectLeaveUseCase: ProjectLeaveUseCase
     ) {}
 
     @Doc({
@@ -104,7 +122,7 @@ export class ProjectUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectHttpService.getListCursorByMember(
+        return this.projectGetListCursorByMemberUseCase.execute(
             workspace.id,
             workspaceMember,
             query
@@ -128,7 +146,7 @@ export class ProjectUserController {
         @Body({ schema: ProjectCreateRequestSchema })
         body: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        return this.projectHttpService.createProject(
+        return this.projectCreateUseCase.execute(
             workspace.id,
             workspaceMember.userId,
             body
@@ -157,7 +175,7 @@ export class ProjectUserController {
     async get(
         @ProjectCurrent() project: Project
     ): Promise<IResponseReturn<Project>> {
-        return this.projectHttpService.getProject(project);
+        return this.projectGetUseCase.execute(project);
     }
 
     @Doc({
@@ -184,7 +202,7 @@ export class ProjectUserController {
         @Body({ schema: ProjectUpdateRequestSchema })
         body: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        return this.projectHttpService.updateProject(
+        return this.projectUpdateUseCase.execute(
             project,
             workspaceMember.userId,
             body
@@ -215,7 +233,7 @@ export class ProjectUserController {
         @Body({ schema: ProjectUpdateSlugRequestSchema })
         body: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
-        return this.projectHttpService.updateProjectSlug(
+        return this.projectUpdateSlugUseCase.execute(
             project,
             workspaceMember.userId,
             body
@@ -238,7 +256,7 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
     ): Promise<IResponseReturn<void>> {
-        return this.projectHttpService.softDeleteProject(
+        return this.projectSoftDeleteUseCase.execute(
             project,
             workspaceMember.userId
         );
@@ -268,7 +286,7 @@ export class ProjectUserController {
         query: ProjectMemberListRequestDto,
         @ProjectCurrent() project: Project
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
-        return this.projectMemberHttpService.getMembersList(project, query);
+        return this.projectGetMembersListUseCase.execute(project, query);
     }
 
     @Doc({
@@ -293,7 +311,7 @@ export class ProjectUserController {
         @Body({ schema: ProjectMemberAssignRequestSchema })
         body: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
-        return this.projectMemberHttpService.assignMember(
+        return this.projectAssignMemberUseCase.execute(
             project,
             workspaceMember,
             body
@@ -324,7 +342,7 @@ export class ProjectUserController {
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.projectMemberHttpService.updateMemberRole(
+        return this.projectUpdateMemberRoleUseCase.execute(
             project,
             workspaceMember,
             projectMemberId,
@@ -354,7 +372,7 @@ export class ProjectUserController {
         @Param('projectMemberId', { schema: RequestMongoIdSchema })
         projectMemberId: string
     ): Promise<IResponseReturn<void>> {
-        return this.projectMemberHttpService.removeMember(
+        return this.projectRemoveMemberUseCase.execute(
             project,
             workspaceMember,
             projectMemberId
@@ -379,9 +397,6 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @ProjectMemberCurrent() projectMember: ProjectMember
     ): Promise<IResponseReturn<void>> {
-        return this.projectMemberHttpService.leaveProject(
-            project,
-            projectMember
-        );
+        return this.projectLeaveUseCase.execute(project, projectMember);
     }
 }

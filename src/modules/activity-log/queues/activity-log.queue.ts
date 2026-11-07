@@ -13,7 +13,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { QueueBase } from '@queues/bases/queue.base';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumActivityLogQueue } from '@modules/activity-log/enums/activity-log.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()
@@ -21,7 +22,8 @@ export class ActivityLogQueue extends QueueBase {
     private readonly createManyJobIdPattern: string;
 
     constructor(
-        @InjectQueue(EnumQueue.activityLog) protected readonly queue: Queue,
+        @InjectQueue(EnumActivityLogQueue.activityLog)
+        protected readonly queue: Queue,
         protected readonly sentryService: SentryService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,

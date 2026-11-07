@@ -6,7 +6,7 @@ import {
     PolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyGuardMissingException } from '@modules/policy/exceptions/policy.guard-missing.exception';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
@@ -18,7 +18,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 export class PolicyGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly policyDomain: PolicyDomain,
+        private readonly policyService: PolicyService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -39,7 +39,7 @@ export class PolicyGuard implements CanActivate {
             throw new PolicyGuardMissingException();
         }
 
-        return this.policyDomain.validatePolicyGuard(
+        return this.policyService.validatePolicyGuard(
             user,
             policies,
             requiredPolicies

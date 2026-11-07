@@ -10,8 +10,8 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 
 ## Keys
 
-- A flag key is an `EnumFeatureFlagKey` member and a metadata sub-key code reads is an `EnumFeatureFlagMetadataKey` member (`src/modules/feature-flag/enums/feature-flag.enum.ts`), named by the seed data and every caller, never a literal. A flag key is camelCase (`loginWithGoogle`). A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts:10`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
-- A gate reference is the member: `@FeatureFlagProtected(EnumFeatureFlagKey.changePassword)`. `FeatureFlagProtected` checks the key when the route is decorated (`src/modules/feature-flag/decorators/feature-flag.decorator.ts:19-24`): an empty segment throws `FeatureFlagKeyEmptyException` and a dotted `key.metadataKey` `FeatureFlagKeyNestedException`, so the app does not boot (`guards.md`).
+- A flag key is an `EnumFeatureFlagKey` member and a metadata sub-key code reads is an `EnumFeatureFlagMetadataKey` member (`src/modules/feature-flag/enums/feature-flag.enum.ts`), named by the seed data and every caller, never a literal. A flag key is camelCase (`loginWithGoogle`). A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
+- A gate reference is the member: `@FeatureFlagProtected(EnumFeatureFlagKey.changePassword)`. `FeatureFlagProtected` checks the key when the route is decorated (`src/modules/feature-flag/decorators/feature-flag.decorator.ts`): an empty segment throws `FeatureFlagKeyEmptyException` and a dotted `key.metadataKey` `FeatureFlagKeyNestedException`, so the app does not boot (`guards.md`).
 
 ## Metadata
 
@@ -28,7 +28,7 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 ## Rollout and targeting
 
 - `targetUserIds` is an allow-list that bypasses rollout; a targeted user passes at `rolloutPercent: 0`. It applies to authenticated callers only.
-- Rollout buckets stickily: `sha256Hash('<key>:<identifier>')`, the first 8 hex characters modulo 100 (`FeatureFlagUtil.isInRollout`, `src/modules/feature-flag/utils/feature-flag.util.ts:65-67`), so one caller lands in the same bucket for a flag and not on the same side of every flag.
+- Rollout buckets stickily: `sha256Hash('<key>:<identifier>')`, the first 8 hex characters modulo 100 (`FeatureFlagUtil.isInRollout`, `src/modules/feature-flag/utils/feature-flag.util.ts`), so one caller lands in the same bucket for a flag and not on the same side of every flag.
 - An authenticated caller is bucketed by `userId`; the `x-anonymous-id` header is ignored for them. With no user, `rolloutPercent: 100` passes without reading the header; anything lower buckets by `x-anonymous-id`, and a caller sending none or a malformed one is rejected. Fail closed. The header is `FeatureFlagAnonymousIdHeaderName`; the bounds come from `featureFlag.anonymous.*` config; an invalid value is treated as absent and never reaches the hash, a log, or a key.
 - A flag is never an authorization boundary: the anonymous key is client-supplied and forgeable by design. An entitlement is gated by authorization or `isEnable: false`.
 

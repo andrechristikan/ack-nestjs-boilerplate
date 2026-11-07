@@ -20,7 +20,9 @@ import { DeviceRefreshRequestSchema } from '@modules/device/dtos/request/device.
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
-import { DeviceHttpService } from '@modules/device/services/http/device.http.service';
+import { DeviceGetListCursorUseCase } from '@modules/device/use-cases/device.get-list-cursor.use-case';
+import { DeviceRefreshUseCase } from '@modules/device/use-cases/device.refresh.use-case';
+import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -42,7 +44,11 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/device',
 })
 export class DeviceSharedController {
-    constructor(private readonly deviceHttpService: DeviceHttpService) {}
+    constructor(
+        private readonly deviceGetListCursorUseCase: DeviceGetListCursorUseCase,
+        private readonly deviceRefreshUseCase: DeviceRefreshUseCase,
+        private readonly deviceRemoveUseCase: DeviceRemoveUseCase
+    ) {}
 
     @Doc({ summary: 'get all user devices' })
     @ResponsePagination('device.list', {
@@ -60,7 +66,11 @@ export class DeviceSharedController {
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('sessionId') sessionId: string
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        return this.deviceHttpService.getListCursor(userId, sessionId, query);
+        return this.deviceGetListCursorUseCase.execute(
+            userId,
+            sessionId,
+            query
+        );
     }
 
     @Doc({ summary: 'refresh device information' })
@@ -78,7 +88,11 @@ export class DeviceSharedController {
         @Body({ schema: DeviceRefreshRequestSchema })
         body: DeviceRefreshRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.deviceHttpService.refresh(userId, deviceOwnershipId, body);
+        return this.deviceRefreshUseCase.execute(
+            userId,
+            deviceOwnershipId,
+            body
+        );
     }
 
     @Doc({ summary: 'remove a user device' })
@@ -94,6 +108,6 @@ export class DeviceSharedController {
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        return this.deviceHttpService.remove(userId, deviceOwnershipId);
+        return this.deviceRemoveUseCase.execute(userId, deviceOwnershipId);
     }
 }

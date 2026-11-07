@@ -5,23 +5,22 @@ import { RequestModule } from '@common/request/request.module';
 import { ResponseModule } from '@common/response/response.module';
 import configs from '@configs/index';
 import { FileModule } from '@common/file/file.module';
-import { AuthDomainModule } from '@modules/auth/auth.domain.module';
+import { AuthModule } from '@modules/auth/auth.module';
 import { DatabaseModule } from '@common/database/database.module';
 import { PaginationModule } from '@common/pagination/pagination.module';
-import { ApiKeyDomainModule } from '@modules/api-key/api-key.domain.module';
+import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { RedisCacheModule } from '@common/redis/redis.module';
 import { ConfigModule } from '@nestjs/config';
 import { CacheMainModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
 import { QueueModule } from '@queues/queue.module';
-import { TermPolicyDomainModule } from '@modules/term-policy/term-policy.domain.module';
+import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
-import { ActivityLogDomainModule } from '@modules/activity-log/activity-log.domain.module';
-import { NotificationDomainModule } from '@modules/notification/notification.domain.module';
-import { SessionDomainModule } from '@modules/session/session.domain.module';
-import { PolicyDomainModule } from '@modules/policy/policy.domain.module';
-import { RoleDomainModule } from '@modules/role/role.domain.module';
-import { FeatureFlagDomainModule } from '@modules/feature-flag/feature-flag.domain.module';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
+import { SessionModule } from '@modules/session/session.module';
+import { PolicyModule } from '@modules/policy/policy.module';
+import { RoleModule } from '@modules/role/role.module';
+import { FeatureFlagModule } from '@modules/feature-flag/feature-flag.module';
 import { SentryModule } from '@common/sentry/sentry.module';
 import { AppEnvSchema } from '@app/dtos/app.env.dto';
 
@@ -53,15 +52,14 @@ import { AppEnvSchema } from '@app/dtos/app.env.dto';
         FileModule.forRoot(),
         FirebaseModule.forRoot(),
 
-        ActivityLogDomainModule,
-        ApiKeyDomainModule,
-        AuthDomainModule,
-        FeatureFlagDomainModule,
-        RoleDomainModule,
-        PolicyDomainModule,
-        TermPolicyDomainModule,
-        SessionDomainModule,
-        NotificationDomainModule,
+        ActivityLogModule,
+        ApiKeyModule,
+        AuthModule,
+        FeatureFlagModule,
+        RoleModule,
+        PolicyModule,
+        TermPolicyModule,
+        SessionModule,
     ],
 })
 export class CommonModule {}

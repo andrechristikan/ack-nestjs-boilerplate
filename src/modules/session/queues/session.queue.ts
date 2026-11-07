@@ -11,7 +11,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { QueueBase } from '@queues/bases/queue.base';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumSessionQueue } from '@modules/session/enums/session.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()
@@ -19,7 +20,7 @@ export class SessionQueue extends QueueBase {
     private readonly purgeLoginsJobIdPattern: string;
 
     constructor(
-        @InjectQueue(EnumQueue.session) protected readonly queue: Queue,
+        @InjectQueue(EnumSessionQueue.session) protected readonly queue: Queue,
         protected readonly sentryService: SentryService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,

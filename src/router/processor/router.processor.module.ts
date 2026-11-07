@@ -1,9 +1,9 @@
-import { ActivityLogProcessorModule } from '@modules/activity-log/activity-log.processor.module';
-import { NotificationProcessorModule } from '@modules/notification/notification.processor.module';
-import { SessionProcessorModule } from '@modules/session/session.processor.module';
-import { TermPolicyProcessorModule } from '@modules/term-policy/term-policy.processor.module';
-import { UserProcessorModule } from '@modules/user/user.processor.module';
-import { WorkspaceProcessorModule } from '@modules/workspace/workspace.processor.module';
+import { ActivityLogUseCaseModule } from '@modules/activity-log/activity-log.use-case.module';
+import { NotificationUseCaseModule } from '@modules/notification/notification.use-case.module';
+import { SessionUseCaseModule } from '@modules/session/session.use-case.module';
+import { TermPolicyUseCaseModule } from '@modules/term-policy/term-policy.use-case.module';
+import { UserUseCaseModule } from '@modules/user/user.use-case.module';
+import { WorkspaceUseCaseModule } from '@modules/workspace/workspace.use-case.module';
 import { Module } from '@nestjs/common';
 
 @Module({
@@ -11,12 +11,12 @@ import { Module } from '@nestjs/common';
     providers: [],
     exports: [],
     imports: [
-        ActivityLogProcessorModule,
-        NotificationProcessorModule,
-        SessionProcessorModule,
-        TermPolicyProcessorModule,
-        UserProcessorModule,
-        WorkspaceProcessorModule,
+        ActivityLogUseCaseModule,
+        NotificationUseCaseModule,
+        SessionUseCaseModule,
+        TermPolicyUseCaseModule,
+        UserUseCaseModule,
+        WorkspaceUseCaseModule,
     ],
 })
 export class RouterProcessorModule {}

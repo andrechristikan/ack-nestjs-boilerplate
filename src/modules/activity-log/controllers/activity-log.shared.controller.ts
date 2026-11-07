@@ -7,7 +7,8 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogHttpService } from '@modules/activity-log/services/http/activity-log.http.service';
+import { ActivityLogGetListCursorByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-user.use-case';
+import { ActivityLogGetListCursorByWorkspaceUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-workspace.use-case';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -32,7 +33,8 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class ActivityLogSharedController {
     constructor(
-        private readonly activityLogHttpService: ActivityLogHttpService
+        private readonly activityLogGetListCursorByUserUseCase: ActivityLogGetListCursorByUserUseCase,
+        private readonly activityLogGetListCursorByWorkspaceUseCase: ActivityLogGetListCursorByWorkspaceUseCase
     ) {}
 
     @Doc({ summary: 'get my own activity logs' })
@@ -50,7 +52,10 @@ export class ActivityLogSharedController {
         query: ActivityLogSharedListRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListCursorByUser(userId, query);
+        return this.activityLogGetListCursorByUserUseCase.execute(
+            userId,
+            query
+        );
     }
 
     @Doc({ summary: 'get my own activity logs in the current workspace' })
@@ -72,7 +77,7 @@ export class ActivityLogSharedController {
         @AuthJwtPayload('userId') userId: string,
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListCursorByWorkspace(
+        return this.activityLogGetListCursorByWorkspaceUseCase.execute(
             workspace.id,
             userId,
             query

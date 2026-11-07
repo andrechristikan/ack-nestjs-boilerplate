@@ -9,7 +9,8 @@ import { ResponsePagination } from '@common/response/decorators/response.decorat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogHttpService } from '@modules/activity-log/services/http/activity-log.http.service';
+import { ActivityLogGetListOffsetByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-user.use-case';
+import { ActivityLogGetListOffsetByWorkspaceUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-workspace.use-case';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
@@ -31,7 +32,8 @@ import {
 })
 export class ActivityLogAdminController {
     constructor(
-        private readonly activityLogHttpService: ActivityLogHttpService
+        private readonly activityLogGetListOffsetByUserUseCase: ActivityLogGetListOffsetByUserUseCase,
+        private readonly activityLogGetListOffsetByWorkspaceUseCase: ActivityLogGetListOffsetByWorkspaceUseCase
     ) {}
 
     @Doc({ summary: 'get all activity logs of a user' })
@@ -61,7 +63,10 @@ export class ActivityLogAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByUser(userId, query);
+        return this.activityLogGetListOffsetByUserUseCase.execute(
+            userId,
+            query
+        );
     }
 
     @Doc({ summary: 'get all activity logs of a workspace' })
@@ -91,7 +96,7 @@ export class ActivityLogAdminController {
         @Param('workspaceId', { schema: RequestMongoIdSchema })
         workspaceId: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByWorkspace(
+        return this.activityLogGetListOffsetByWorkspaceUseCase.execute(
             workspaceId,
             query
         );

@@ -9,7 +9,7 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
-import { PasswordHistoryHttpService } from '@modules/password-history/services/http/password-history.http.service';
+import { PasswordHistoryGetListOffsetByAdminUseCase } from '@modules/password-history/use-cases/password-history.get-list-offset-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -29,7 +29,7 @@ import {
 })
 export class PasswordHistoryAdminController {
     constructor(
-        private readonly passwordHistoryHttpService: PasswordHistoryHttpService
+        private readonly passwordHistoryGetListOffsetByAdminUseCase: PasswordHistoryGetListOffsetByAdminUseCase
     ) {}
 
     @Doc({ summary: 'get all user password histories' })
@@ -59,7 +59,7 @@ export class PasswordHistoryAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        return this.passwordHistoryHttpService.getListOffsetByAdmin(
+        return this.passwordHistoryGetListOffsetByAdminUseCase.execute(
             userId,
             query
         );

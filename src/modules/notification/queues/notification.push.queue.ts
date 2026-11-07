@@ -17,19 +17,21 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { QueueBase } from '@queues/bases/queue.base';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 
 @Injectable()
-export class NotificationPushQueue extends QueueBase {
+export class NotificationPushQueue extends QueueBase implements OnModuleInit {
     private readonly defTz: string;
     private readonly cleanupStaleTokensCron: string;
     private readonly stepJobIdPattern: string;
 
     constructor(
-        @InjectQueue(EnumQueue.notificationPush)
+        @InjectQueue(EnumNotificationQueue.notificationPush)
         protected readonly queue: Queue,
         protected readonly sentryService: SentryService,
         private readonly configService: ConfigService,
@@ -43,6 +45,10 @@ export class NotificationPushQueue extends QueueBase {
         this.stepJobIdPattern = this.configService.get<string>(
             'notification.jobId.stepPattern'
         )!;
+    }
+
+    async onModuleInit(): Promise<void> {
+        await this.sendCleanupStaleTokens();
     }
 
     async sendTemporaryPasswordByAdmin(

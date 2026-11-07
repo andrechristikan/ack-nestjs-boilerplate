@@ -4,14 +4,14 @@ import {
     ApiKeyHeaderName,
     ApiKeyStoreKey,
 } from '@modules/api-key/constants/api-key.constant';
-import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
+import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 @Injectable()
 export class ApiKeyXApiKeyGuard implements CanActivate {
     constructor(
-        private readonly apiKeyDomain: ApiKeyDomain,
+        private readonly apiKeyService: ApiKeyService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -19,7 +19,7 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const xApiKeyHeader =
             (request.headers[ApiKeyHeaderName] as string) ?? '';
-        const apiKey = await this.apiKeyDomain.validateXApiKey(xApiKeyHeader);
+        const apiKey = await this.apiKeyService.validateXApiKey(xApiKeyHeader);
 
         this.requestStoreService.set(ApiKeyStoreKey, apiKey);
 

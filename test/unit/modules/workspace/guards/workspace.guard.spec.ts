@@ -7,11 +7,12 @@ import type { Workspace } from '@generated/prisma-client/client';
 import { RequestWorkspaceIdStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
+import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 
 describe('WorkspaceGuard', () => {
-    const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
+    const workspaceService: MockProxy<WorkspaceService> =
+        mock<WorkspaceService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const executionContext: MockProxy<ExecutionContext> =
@@ -39,7 +40,7 @@ describe('WorkspaceGuard', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceGuard,
-                { provide: WorkspaceDomain, useValue: workspaceDomain },
+                { provide: WorkspaceService, useValue: workspaceService },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -50,7 +51,9 @@ describe('WorkspaceGuard', () => {
     describe('canActivate', () => {
         it('resolves the workspace by the stored id and caches it', async () => {
             requestStoreService.get.mockReturnValue('workspace-1');
-            workspaceDomain.validateWorkspaceGuard.mockResolvedValue(workspace);
+            workspaceService.validateWorkspaceGuard.mockResolvedValue(
+                workspace
+            );
 
             const result = await guard.canActivate(executionContext);
 
@@ -58,9 +61,9 @@ describe('WorkspaceGuard', () => {
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 RequestWorkspaceIdStoreKey
             );
-            expect(workspaceDomain.validateWorkspaceGuard).toHaveBeenCalledWith(
-                'workspace-1'
-            );
+            expect(
+                workspaceService.validateWorkspaceGuard
+            ).toHaveBeenCalledWith('workspace-1');
             expect(requestStoreService.set).toHaveBeenCalledWith(
                 WorkspaceStoreKey,
                 workspace
@@ -69,13 +72,15 @@ describe('WorkspaceGuard', () => {
 
         it('validates with a null id when the store has none', async () => {
             requestStoreService.get.mockReturnValue(null);
-            workspaceDomain.validateWorkspaceGuard.mockResolvedValue(workspace);
+            workspaceService.validateWorkspaceGuard.mockResolvedValue(
+                workspace
+            );
 
             await guard.canActivate(executionContext);
 
-            expect(workspaceDomain.validateWorkspaceGuard).toHaveBeenCalledWith(
-                null
-            );
+            expect(
+                workspaceService.validateWorkspaceGuard
+            ).toHaveBeenCalledWith(null);
         });
     });
 });

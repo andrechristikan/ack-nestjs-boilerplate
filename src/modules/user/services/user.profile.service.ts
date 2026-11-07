@@ -1,0 +1,312 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { NotFound } from '@aws-sdk/client-s3';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
+import type {
+    IAwsS3,
+    IAwsS3Presign,
+} from '@common/aws/interfaces/aws.interface';
+import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
+import type {
+    IFile,
+    IFileRandomFilenameOptions,
+} from '@common/file/interfaces/file.interface';
+import { FileService } from '@common/file/services/file.service';
+import type { UserPhoto } from '@generated/prisma-client/client';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
+import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
+import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
+import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
+import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
+import type {
+    IUserGeneratePhotoProfile,
+    IUserProfile,
+    IUserUpdatePhotoProfile,
+    IUserUpdateProfile,
+} from '@modules/user/interfaces/user.interface';
+import { UserQueue } from '@modules/user/queues/user.queue';
+import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserUtil } from '@modules/user/utils/user.util';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class UserProfileService {
+    private readonly logger = new Logger(UserProfileService.name);
+    private readonly photoFilenameRandomLength: number;
+
+    constructor(
+        private readonly userRepository: UserRepository,
+        private readonly userUtil: UserUtil,
+        private readonly awsS3Service: AwsS3Service,
+        private readonly fileService: FileService,
+        private readonly userQueue: UserQueue,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.photoFilenameRandomLength = this.configService.get<number>(
+            'user.photo.filenameRandomLength'
+        )!;
+    }
+
+    private async deletePreviousPhoto(
+        userId: string,
+        previousPhoto: UserPhoto | null,
+        currentKey: string
+    ): Promise<void> {
+        if (previousPhoto === null || previousPhoto.key === currentKey) {
+            return;
+        }
+
+        await this.deleteOwnedPhoto(userId, previousPhoto);
+    }
+
+    /** Enqueues the photo delete; does nothing when the photo is null or not under the profile path of the user. */
+    async deleteOwnedPhoto(
+        userId: string,
+        photo: UserPhoto | null
+    ): Promise<void> {
+        if (photo === null) {
+            return;
+        }
+
+        const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, photo.key);
+        if (!isOwned) {
+            return;
+        }
+
+        await this.userQueue.deletePhoto(userId, photo);
+    }
+
+    createRandomFilenamePhotoProfileWithPath(
+        user: string,
+        { extension }: IFileRandomFilenameOptions
+    ): string {
+        const path = this.userUtil.buildPhotoProfilePath(user);
+
+        return this.fileService.createRandomFilename({
+            path,
+            extension,
+            randomLength: this.photoFilenameRandomLength,
+        });
+    }
+
+    async deletePhotoObject(
+        key: string,
+        access: EnumAwsS3Accessibility
+    ): Promise<void> {
+        await this.awsS3Service.deleteItem(key, { access });
+    }
+
+    async getProfile(userId: string): Promise<IUserProfile> {
+        const user = await this.userRepository.findOneActiveProfileById(userId);
+        if (!user) {
+            throw new UserNotFoundException();
+        }
+
+        return user;
+    }
+
+    async updateProfile(
+        userId: string,
+        { countryId, ...data }: IUserUpdateProfile
+    ): Promise<void> {
+        try {
+            await this.userRepository.updateProfile(userId, {
+                countryId,
+                ...data,
+            });
+
+            return;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    async generatePhotoProfilePresign(
+        userId: string,
+        { extension, size }: IUserGeneratePhotoProfile
+    ): Promise<IAwsS3Presign> {
+        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(size);
+        if (!isSizeAllowed) {
+            throw new UserPhotoSizeExceededException();
+        }
+
+        const key: string = this.createRandomFilenamePhotoProfileWithPath(
+            userId,
+            {
+                extension,
+            }
+        );
+
+        const aws: IAwsS3Presign | null =
+            await this.awsS3Service.presignPutItem(
+                {
+                    key,
+                    size,
+                },
+                {
+                    forceUpdate: true,
+                    access: EnumAwsS3Accessibility.public,
+                }
+            );
+
+        if (!aws) {
+            throw new AwsS3NotConfiguredException();
+        }
+
+        return aws;
+    }
+
+    async updatePhotoProfile(
+        userId: string,
+        { key }: IUserUpdatePhotoProfile
+    ): Promise<void> {
+        const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, key);
+        if (!isOwned) {
+            throw new UserPhotoKeyInvalidException();
+        }
+
+        try {
+            const aws: IAwsS3 | null = await this.awsS3Service.checkItem(key, {
+                access: EnumAwsS3Accessibility.public,
+            });
+            if (!aws) {
+                throw new AwsS3NotConfiguredException();
+            }
+
+            const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(aws.size);
+            if (!isSizeAllowed) {
+                throw new UserPhotoSizeExceededException();
+            }
+
+            // Sequential by design: gate before the work it guards
+            const user = await this.userRepository.findOneById(userId);
+            if (!user) {
+                throw new UserNotFoundException();
+            }
+
+            await this.userRepository.updatePhotoProfile(userId, aws);
+
+            await this.deletePreviousPhoto(userId, user.photo, aws.key);
+
+            return;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            } else if (err instanceof NotFound) {
+                throw new UserPhotoKeyInvalidException();
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
+        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(file.size);
+        if (!isSizeAllowed) {
+            throw new UserPhotoSizeExceededException();
+        }
+
+        try {
+            const extension: EnumFileExtensionImage =
+                this.fileService.extractExtensionFromFilename(
+                    file.originalname
+                ) as EnumFileExtensionImage;
+
+            const key: string = this.createRandomFilenamePhotoProfileWithPath(
+                userId,
+                {
+                    extension,
+                }
+            );
+
+            const [user, aws] = await Promise.all([
+                this.userRepository.findOneById(userId),
+                this.awsS3Service.putItem(
+                    {
+                        key,
+                        size: file.size,
+                        file: file.buffer,
+                    },
+                    { access: EnumAwsS3Accessibility.public }
+                ),
+            ]);
+            if (!user) {
+                throw new UserNotFoundException();
+            }
+            if (!aws) {
+                throw new AwsS3NotConfiguredException();
+            }
+
+            this.logger.debug(
+                {
+                    userId,
+                    fileSize: file.size,
+                    awsKey: aws.key,
+                    awsBucket: aws.bucket,
+                },
+                `Photo profile uploaded to S3 with key: ${key}`
+            );
+
+            await this.userRepository.updatePhotoProfile(userId, aws);
+
+            await this.deletePreviousPhoto(userId, user.photo, aws.key);
+
+            return;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    async claimUsername(
+        userId: string,
+        username: Lowercase<string>
+    ): Promise<void> {
+        // Sequential by design: gate before the work it guards
+        const [checkUsername, checkBadWord, exist] = await Promise.all([
+            this.userUtil.checkUsernamePattern(username),
+            this.userUtil.checkBadWord(username),
+            this.userRepository.existsByUsername(username),
+        ]);
+        if (checkUsername) {
+            throw new UserUsernameNotAllowedException();
+        } else if (checkBadWord) {
+            throw new UserUsernameContainBadWordException();
+        } else if (exist) {
+            throw new UserUsernameExistException();
+        }
+
+        try {
+            await this.userRepository.claimUsername(userId, { username });
+
+            return;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const isUsernameCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'username'
+            );
+            if (isUsernameCollision) {
+                throw new UserUsernameExistException();
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+}

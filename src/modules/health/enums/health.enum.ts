@@ -30,3 +30,8 @@ export enum EnumHealthIndicatorKey {
     memoryHeap = 'memoryHeap',
     storage = 'storage',
 }
+
+/** @public */
+export enum EnumHealthQueue {
+    health = 'health',
+}

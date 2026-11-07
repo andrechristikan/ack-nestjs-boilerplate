@@ -6,7 +6,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 import type { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
-import { CountryHttpService } from '@modules/country/services/http/country.http.service';
+import { CountryGetListCursorUseCase } from '@modules/country/use-cases/country.get-list-cursor.use-case';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -16,7 +16,9 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/country',
 })
 export class CountryPublicController {
-    constructor(private readonly countryHttpService: CountryHttpService) {}
+    constructor(
+        private readonly countryGetListCursorUseCase: CountryGetListCursorUseCase
+    ) {}
 
     @Doc({ summary: 'get all list country' })
     @ResponsePagination('country.list', { schema: CountryResponseSchema })
@@ -26,6 +28,6 @@ export class CountryPublicController {
         @Query({ schema: CountryListRequestSchema })
         query: CountryListRequestDto
     ): Promise<IResponsePaginationReturn<CountryResponseDto>> {
-        return this.countryHttpService.getListCursor(query);
+        return this.countryGetListCursorUseCase.execute(query);
     }
 }

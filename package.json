@@ -149,6 +149,8 @@
         "cspell": "^10.3.3",
         "eslint": "^10.11.0",
         "eslint-config-prettier": "^10.1.8",
+        "eslint-import-resolver-typescript": "^4.4.5",
+        "eslint-plugin-boundaries": "^7.4.2",
         "eslint-plugin-security": "^4.0.1",
         "husky": "^9.1.7",
         "knip": "^6.37.0",

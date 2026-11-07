@@ -22,11 +22,14 @@ import {
     ResponseFile,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import { UserHttpService } from '@modules/user/services/http/user.http.service';
-import { UserExportHttpService } from '@modules/user/services/http/user.export.http.service';
-import { UserRegistrationHttpService } from '@modules/user/services/http/user.registration.http.service';
-import { UserPasswordHttpService } from '@modules/user/services/http/user.password.http.service';
-import { UserTwoFactorHttpService } from '@modules/user/services/http/user.two-factor.http.service';
+import { UserGetListOffsetByAdminUseCase } from '@modules/user/use-cases/user.get-list-offset-by-admin.use-case';
+import { UserGetOneUseCase } from '@modules/user/use-cases/user.get-one.use-case';
+import { UserCreateByAdminUseCase } from '@modules/user/use-cases/user.create-by-admin.use-case';
+import { UserUpdateStatusByAdminUseCase } from '@modules/user/use-cases/user.update-status-by-admin.use-case';
+import { UserUpdatePasswordByAdminUseCase } from '@modules/user/use-cases/user.update-password-by-admin.use-case';
+import { UserResetTwoFactorByAdminUseCase } from '@modules/user/use-cases/user.reset-two-factor-by-admin.use-case';
+import { UserImportByAdminUseCase } from '@modules/user/use-cases/user.import-by-admin.use-case';
+import { UserExportByAdminUseCase } from '@modules/user/use-cases/user.export-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
@@ -83,11 +86,14 @@ import type { UserImportRequestDto } from '@modules/user/dtos/request/user.impor
 })
 export class UserAdminController {
     constructor(
-        private readonly userHttpService: UserHttpService,
-        private readonly userPasswordHttpService: UserPasswordHttpService,
-        private readonly userTwoFactorHttpService: UserTwoFactorHttpService,
-        private readonly userRegistrationHttpService: UserRegistrationHttpService,
-        private readonly userExportHttpService: UserExportHttpService
+        private readonly userGetListOffsetByAdminUseCase: UserGetListOffsetByAdminUseCase,
+        private readonly userGetOneUseCase: UserGetOneUseCase,
+        private readonly userCreateByAdminUseCase: UserCreateByAdminUseCase,
+        private readonly userUpdateStatusByAdminUseCase: UserUpdateStatusByAdminUseCase,
+        private readonly userUpdatePasswordByAdminUseCase: UserUpdatePasswordByAdminUseCase,
+        private readonly userResetTwoFactorByAdminUseCase: UserResetTwoFactorByAdminUseCase,
+        private readonly userImportByAdminUseCase: UserImportByAdminUseCase,
+        private readonly userExportByAdminUseCase: UserExportByAdminUseCase
     ) {}
 
     @Doc({ summary: 'get all users' })
@@ -106,7 +112,7 @@ export class UserAdminController {
     async list(
         @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        return this.userHttpService.getListOffsetByAdmin(query);
+        return this.userGetListOffsetByAdminUseCase.execute(query);
     }
 
     @Doc({ summary: 'get detail an user' })
@@ -126,7 +132,7 @@ export class UserAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponseReturn<IUserProfile>> {
-        return this.userHttpService.getOne(userId);
+        return this.userGetOneUseCase.execute(userId);
     }
 
     @Doc({ summary: 'create a user' })
@@ -147,7 +153,7 @@ export class UserAdminController {
         body: UserCreateRequestDto,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userRegistrationHttpService.createByAdmin(body, user);
+        return this.userCreateByAdminUseCase.execute(body, user);
     }
 
     @Doc({ summary: 'update status of user' })
@@ -170,7 +176,7 @@ export class UserAdminController {
         @Body({ schema: UserUpdateStatusRequestSchema })
         body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userHttpService.updateStatusByAdmin(userId, body, user);
+        return this.userUpdateStatusByAdminUseCase.execute(userId, body, user);
     }
 
     @Doc({ summary: 'update password of user' })
@@ -191,7 +197,7 @@ export class UserAdminController {
         userId: string,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.userPasswordHttpService.updatePasswordByAdmin(userId, user);
+        return this.userUpdatePasswordByAdminUseCase.execute(userId, user);
     }
 
     @Doc({ summary: 'reset user' })
@@ -212,10 +218,7 @@ export class UserAdminController {
         userId: string,
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<void>> {
-        return this.userTwoFactorHttpService.resetTwoFactorByAdmin(
-            userId,
-            user
-        );
+        return this.userResetTwoFactorByAdminUseCase.execute(userId, user);
     }
 
     @Doc({ summary: 'import users via csv file' })
@@ -247,7 +250,7 @@ export class UserAdminController {
         )
         data: UserImportRequestDto[]
     ): Promise<IResponseReturn<void>> {
-        return this.userRegistrationHttpService.importByAdmin(data, createdBy);
+        return this.userImportByAdminUseCase.execute(data, createdBy);
     }
 
     @Doc({ summary: 'export users via csv file' })
@@ -268,6 +271,6 @@ export class UserAdminController {
         @Query({ schema: UserExportRequestSchema })
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        return this.userExportHttpService.exportByAdmin(query);
+        return this.userExportByAdminUseCase.execute(query);
     }
 }

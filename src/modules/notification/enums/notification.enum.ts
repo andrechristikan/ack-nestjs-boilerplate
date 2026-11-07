@@ -1,4 +1,11 @@
 /** @public */
+export enum EnumNotificationQueue {
+    notification = 'notification',
+    notificationEmail = 'notificationEmail',
+    notificationPush = 'notificationPush',
+}
+
+/** @public */
 export enum EnumNotificationProcess {
     welcomeByAdmin = 'welcomeByAdmin',
     welcome = 'welcome',

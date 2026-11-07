@@ -9,13 +9,13 @@ import {
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyGuardMissingException } from '@modules/api-key/exceptions/api-key.guard-missing.exception';
-import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
+import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 
 @Injectable()
 export class ApiKeyXApiKeyTypeGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly apiKeyDomain: ApiKeyDomain,
+        private readonly apiKeyService: ApiKeyService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -29,6 +29,6 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
             throw new ApiKeyGuardMissingException();
         }
 
-        return this.apiKeyDomain.validateXApiKeyTypeGuard(apiKey, apiKeyTypes);
+        return this.apiKeyService.validateXApiKeyTypeGuard(apiKey, apiKeyTypes);
     }
 }

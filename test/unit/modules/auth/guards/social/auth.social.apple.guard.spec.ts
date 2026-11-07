@@ -3,14 +3,14 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthSocialAppleGuard } from '@modules/auth/guards/social/auth.social.apple.guard';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
 describe('AuthSocialAppleGuard', () => {
-    const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const authService: MockProxy<AuthService> = mock<AuthService>();
 
     let guard: AuthSocialAppleGuard;
 
@@ -19,7 +19,7 @@ describe('AuthSocialAppleGuard', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialAppleGuard,
-                { provide: AuthDomain, useValue: authDomain },
+                { provide: AuthService, useValue: authService },
             ],
         }).compile();
 
@@ -75,7 +75,7 @@ describe('AuthSocialAppleGuard', () => {
                 email: 'jane@example.com',
                 emailVerified: true,
             };
-            authDomain.validateOAuthApple.mockResolvedValue(payload);
+            authService.validateOAuthApple.mockResolvedValue(payload);
 
             const result = await guard.canActivate(
                 buildHttpExecutionContext(request)
@@ -83,7 +83,7 @@ describe('AuthSocialAppleGuard', () => {
 
             expect(result).toBe(true);
             expect(request.user).toBe(payload);
-            expect(authDomain.validateOAuthApple).toHaveBeenCalledWith(
+            expect(authService.validateOAuthApple).toHaveBeenCalledWith(
                 'id-token'
             );
         });

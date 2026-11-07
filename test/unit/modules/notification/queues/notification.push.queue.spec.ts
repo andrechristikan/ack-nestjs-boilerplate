@@ -20,7 +20,8 @@ import type {
     INotificationWorkspaceJoinRejectedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationPushQueue', () => {
@@ -54,7 +55,9 @@ describe('NotificationPushQueue', () => {
                 { provide: MessageService, useValue: messageService },
                 NotificationPushQueue,
                 {
-                    provide: getQueueToken(EnumQueue.notificationPush),
+                    provide: getQueueToken(
+                        EnumNotificationQueue.notificationPush
+                    ),
                     useValue: notificationPushQueue,
                 },
                 { provide: SentryService, useValue: sentryService },
@@ -63,6 +66,27 @@ describe('NotificationPushQueue', () => {
             ],
         }).compile();
         queue = module.get(NotificationPushQueue);
+    });
+
+    describe('onModuleInit', () => {
+        it('schedules the recurring stale-token cleanup job', async () => {
+            await queue.onModuleInit();
+
+            expect(
+                notificationPushQueue.upsertJobScheduler
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                notificationPushQueue.upsertJobScheduler
+            ).toHaveBeenCalledWith(
+                EnumNotificationPushProcess.cleanupStaleTokens,
+                { pattern: '0 3 * * *', tz: 'UTC' },
+                {
+                    name: EnumNotificationPushProcess.cleanupStaleTokens,
+                    data: {},
+                    opts: { priority: EnumQueuePriority.low },
+                }
+            );
+        });
     });
 
     describe('sendTemporaryPasswordByAdmin', () => {

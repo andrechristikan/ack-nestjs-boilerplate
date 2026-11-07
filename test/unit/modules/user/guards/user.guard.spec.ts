@@ -18,7 +18,7 @@ import {
     UserGuardIsVerifiedMetaKey,
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserService } from '@modules/user/services/user.service';
 import { UserGuard } from '@modules/user/guards/user.guard';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
@@ -27,7 +27,7 @@ import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.executio
 
 describe('UserGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const userService: MockProxy<UserService> = mock<UserService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -98,7 +98,7 @@ describe('UserGuard', () => {
             providers: [
                 UserGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: UserDomain, useValue: userDomain },
+                { provide: UserService, useValue: userService },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -110,7 +110,7 @@ describe('UserGuard', () => {
 
     it('validates the guard with verified required when the reflector returns true, and stores the resolved user', async () => {
         reflector.get.mockReturnValue(true);
-        userDomain.validateUserGuard.mockResolvedValue(user);
+        userService.validateUserGuard.mockResolvedValue(user);
         const context = buildHttpExecutionContext({ user: jwtPayload });
 
         const result = await guard.canActivate(context);
@@ -120,7 +120,7 @@ describe('UserGuard', () => {
             UserGuardIsVerifiedMetaKey,
             context.getHandler()
         );
-        expect(userDomain.validateUserGuard).toHaveBeenCalledWith(
+        expect(userService.validateUserGuard).toHaveBeenCalledWith(
             jwtPayload,
             true
         );
@@ -132,12 +132,12 @@ describe('UserGuard', () => {
 
     it('validates the guard with verified not required when the reflector returns false', async () => {
         reflector.get.mockReturnValue(false);
-        userDomain.validateUserGuard.mockResolvedValue(user);
+        userService.validateUserGuard.mockResolvedValue(user);
         const context = buildHttpExecutionContext({ user: jwtPayload });
 
         await guard.canActivate(context);
 
-        expect(userDomain.validateUserGuard).toHaveBeenCalledWith(
+        expect(userService.validateUserGuard).toHaveBeenCalledWith(
             jwtPayload,
             false
         );
@@ -145,12 +145,12 @@ describe('UserGuard', () => {
 
     it('defaults verified to false when the reflector returns undefined', async () => {
         reflector.get.mockReturnValue(undefined);
-        userDomain.validateUserGuard.mockResolvedValue(user);
+        userService.validateUserGuard.mockResolvedValue(user);
         const context = buildHttpExecutionContext({ user: jwtPayload });
 
         await guard.canActivate(context);
 
-        expect(userDomain.validateUserGuard).toHaveBeenCalledWith(
+        expect(userService.validateUserGuard).toHaveBeenCalledWith(
             jwtPayload,
             false
         );
@@ -170,7 +170,7 @@ describe('UserGuard', () => {
             messagePath: 'auth.error.jwtGuardMissing',
             httpStatus: HttpStatus.UNAUTHORIZED,
         });
-        expect(userDomain.validateUserGuard).not.toHaveBeenCalled();
+        expect(userService.validateUserGuard).not.toHaveBeenCalled();
         expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 });

@@ -18,7 +18,9 @@ import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/
 import { FeatureFlagUpdateStatusRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
-import { FeatureFlagHttpService } from '@modules/feature-flag/services/http/feature-flag.http.service';
+import { FeatureFlagGetListByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-by-admin.use-case';
+import { FeatureFlagUpdateStatusByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.update-status-by-admin.use-case';
+import { FeatureFlagUpdateMetadataByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.update-metadata-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -47,7 +49,9 @@ import type { FeatureFlag } from '@generated/prisma-client/client';
 })
 export class FeatureFlagAdminController {
     constructor(
-        private readonly featureFlagHttpService: FeatureFlagHttpService
+        private readonly featureFlagGetListByAdminUseCase: FeatureFlagGetListByAdminUseCase,
+        private readonly featureFlagUpdateStatusByAdminUseCase: FeatureFlagUpdateStatusByAdminUseCase,
+        private readonly featureFlagUpdateMetadataByAdminUseCase: FeatureFlagUpdateMetadataByAdminUseCase
     ) {}
 
     @Doc({ summary: 'admin get all Feature Flags' })
@@ -69,7 +73,7 @@ export class FeatureFlagAdminController {
         @Query({ schema: FeatureFlagAdminListRequestSchema })
         query: FeatureFlagAdminListRequestDto
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        return this.featureFlagHttpService.getListByAdmin(query);
+        return this.featureFlagGetListByAdminUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin update Feature Flag status' })
@@ -93,7 +97,7 @@ export class FeatureFlagAdminController {
         @Body({ schema: FeatureFlagUpdateStatusRequestSchema })
         body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        return this.featureFlagHttpService.updateStatusByAdmin(
+        return this.featureFlagUpdateStatusByAdminUseCase.execute(
             featureFlagId,
             body
         );
@@ -120,7 +124,7 @@ export class FeatureFlagAdminController {
         @Body({ schema: FeatureFlagUpdateMetadataRequestSchema })
         body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        return this.featureFlagHttpService.updateMetadataByAdmin(
+        return this.featureFlagUpdateMetadataByAdminUseCase.execute(
             featureFlagId,
             body
         );

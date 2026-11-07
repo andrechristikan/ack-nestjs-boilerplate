@@ -355,6 +355,12 @@ describe('ActivityLogUtil', () => {
             ).toBeNull();
         });
 
+        it('returns null for a target resolution with an empty staged createdBy', () => {
+            expect(
+                util.resolveCreatedBy(EnumActivityLogUser.target, '', 'user-1')
+            ).toBeNull();
+        });
+
         it('returns the resolved userId for a payload resolution', () => {
             expect(
                 util.resolveCreatedBy(

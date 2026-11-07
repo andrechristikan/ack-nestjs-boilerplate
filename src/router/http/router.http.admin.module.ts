@@ -1,30 +1,30 @@
-import { ActivityLogHttpModule } from '@modules/activity-log/activity-log.http.module';
+import { ActivityLogUseCaseModule } from '@modules/activity-log/activity-log.use-case.module';
 import { ActivityLogAdminController } from '@modules/activity-log/controllers/activity-log.admin.controller';
-import { ApiKeyHttpModule } from '@modules/api-key/api-key.http.module';
+import { ApiKeyUseCaseModule } from '@modules/api-key/api-key.use-case.module';
 import { ApiKeyAdminController } from '@modules/api-key/controllers/api-key.admin.controller';
 import { DeviceAdminController } from '@modules/device/controllers/device.admin.controller';
-import { DeviceHttpModule } from '@modules/device/device.http.module';
+import { DeviceUseCaseModule } from '@modules/device/device.use-case.module';
 import { FeatureFlagAdminController } from '@modules/feature-flag/controllers/feature-flag.admin.controller';
-import { FeatureFlagHttpModule } from '@modules/feature-flag/feature-flag.http.module';
+import { FeatureFlagUseCaseModule } from '@modules/feature-flag/feature-flag.use-case.module';
 import { PasswordHistoryAdminController } from '@modules/password-history/controllers/password-history.admin.controller';
-import { PasswordHistoryHttpModule } from '@modules/password-history/password-history.http.module';
+import { PasswordHistoryUseCaseModule } from '@modules/password-history/password-history.use-case.module';
 import { PolicyAdminController } from '@modules/policy/controllers/policy.admin.controller';
-import { PolicyHttpModule } from '@modules/policy/policy.http.module';
+import { PolicyUseCaseModule } from '@modules/policy/policy.use-case.module';
 import { ProjectAdminController } from '@modules/project/controllers/project.admin.controller';
-import { ProjectHttpModule } from '@modules/project/project.http.module';
+import { ProjectUseCaseModule } from '@modules/project/project.use-case.module';
 import { RoleAdminController } from '@modules/role/controllers/role.admin.controller';
-import { RoleHttpModule } from '@modules/role/role.http.module';
+import { RoleUseCaseModule } from '@modules/role/role.use-case.module';
 import { SessionAdminController } from '@modules/session/controllers/session.admin.controller';
-import { SessionHttpModule } from '@modules/session/session.http.module';
+import { SessionUseCaseModule } from '@modules/session/session.use-case.module';
 import { TermPolicyAdminController } from '@modules/term-policy/controllers/term-policy.admin.controller';
-import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.module';
+import { TermPolicyUseCaseModule } from '@modules/term-policy/term-policy.use-case.module';
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
-import { UserHttpModule } from '@modules/user/user.http.module';
+import { UserUseCaseModule } from '@modules/user/user.use-case.module';
 import { WorkspaceAdminController } from '@modules/workspace/controllers/workspace.admin.controller';
-import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
-import { AnalyticHttpModule } from '@modules/analytic/analytic.http.module';
+import { WorkspaceUseCaseModule } from '@modules/workspace/workspace.use-case.module';
+import { AnalyticUseCaseModule } from '@modules/analytic/analytic.use-case.module';
 import { AnalyticAdminController } from '@modules/analytic/controllers/analytic.admin.controller';
-import { UserDomainModule } from '@modules/user/user.domain.module';
+import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
 @Module({
@@ -46,20 +46,21 @@ import { Module } from '@nestjs/common';
     providers: [],
     exports: [],
     imports: [
-        ActivityLogHttpModule,
-        ApiKeyHttpModule,
-        UserHttpModule,
-        PasswordHistoryHttpModule,
-        DeviceHttpModule,
-        FeatureFlagHttpModule,
-        RoleHttpModule,
-        SessionHttpModule,
-        TermPolicyHttpModule,
-        WorkspaceHttpModule,
-        ProjectHttpModule,
-        PolicyHttpModule,
-        AnalyticHttpModule,
-        UserDomainModule,
+        ActivityLogUseCaseModule,
+        ApiKeyUseCaseModule,
+        UserUseCaseModule,
+        PasswordHistoryUseCaseModule,
+        DeviceUseCaseModule,
+        FeatureFlagUseCaseModule,
+        RoleUseCaseModule,
+        SessionUseCaseModule,
+        TermPolicyUseCaseModule,
+        WorkspaceUseCaseModule,
+        ProjectUseCaseModule,
+        PolicyUseCaseModule,
+        AnalyticUseCaseModule,
+
+        UserModule,
     ],
 })
 export class RouterHttpAdminModule {}

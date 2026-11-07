@@ -27,7 +27,13 @@ import { ApiKeyUpdateRequestSchema } from '@modules/api-key/dtos/request/api-key
 import type { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseSchema } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { ApiKeyHttpService } from '@modules/api-key/services/http/api-key.http.service';
+import { ApiKeyGetListByAdminUseCase } from '@modules/api-key/use-cases/api-key.get-list-by-admin.use-case';
+import { ApiKeyCreateByAdminUseCase } from '@modules/api-key/use-cases/api-key.create-by-admin.use-case';
+import { ApiKeyResetByAdminUseCase } from '@modules/api-key/use-cases/api-key.reset-by-admin.use-case';
+import { ApiKeyUpdateByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-by-admin.use-case';
+import { ApiKeyUpdateDatesByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-dates-by-admin.use-case';
+import { ApiKeyUpdateStatusByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-status-by-admin.use-case';
+import { ApiKeyDeleteByAdminUseCase } from '@modules/api-key/use-cases/api-key.delete-by-admin.use-case';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
@@ -54,7 +60,15 @@ import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.res
     path: '/api-key',
 })
 export class ApiKeyAdminController {
-    constructor(private readonly apiKeyHttpService: ApiKeyHttpService) {}
+    constructor(
+        private readonly apiKeyGetListByAdminUseCase: ApiKeyGetListByAdminUseCase,
+        private readonly apiKeyCreateByAdminUseCase: ApiKeyCreateByAdminUseCase,
+        private readonly apiKeyResetByAdminUseCase: ApiKeyResetByAdminUseCase,
+        private readonly apiKeyUpdateByAdminUseCase: ApiKeyUpdateByAdminUseCase,
+        private readonly apiKeyUpdateDatesByAdminUseCase: ApiKeyUpdateDatesByAdminUseCase,
+        private readonly apiKeyUpdateStatusByAdminUseCase: ApiKeyUpdateStatusByAdminUseCase,
+        private readonly apiKeyDeleteByAdminUseCase: ApiKeyDeleteByAdminUseCase
+    ) {}
 
     @Doc({ summary: 'get list of api keys' })
     @ResponsePagination('apiKey.list', {
@@ -74,7 +88,7 @@ export class ApiKeyAdminController {
     async list(
         @Query({ schema: ApiKeyListRequestSchema }) query: ApiKeyListRequestDto
     ): Promise<IResponsePaginationReturn<IApiKey>> {
-        return this.apiKeyHttpService.getListByAdmin(query);
+        return this.apiKeyGetListByAdminUseCase.execute(query);
     }
 
     @Doc({ summary: 'create an api key' })
@@ -94,7 +108,7 @@ export class ApiKeyAdminController {
         @Body({ schema: ApiKeyCreateRequestSchema })
         body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyHttpService.createByAdmin(body);
+        return this.apiKeyCreateByAdminUseCase.execute(body);
     }
 
     @Doc({ summary: 'reset secret an api key' })
@@ -116,7 +130,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyHttpService.resetByAdmin(apiKeyId);
+        return this.apiKeyResetByAdminUseCase.execute(apiKeyId);
     }
 
     @Doc({ summary: 'update data an api key' })
@@ -140,7 +154,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyHttpService.updateByAdmin(apiKeyId, body);
+        return this.apiKeyUpdateByAdminUseCase.execute(apiKeyId, body);
     }
 
     @Doc({ summary: 'update date of api key' })
@@ -164,7 +178,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyHttpService.updateDatesByAdmin(apiKeyId, body);
+        return this.apiKeyUpdateDatesByAdminUseCase.execute(apiKeyId, body);
     }
 
     @Doc({ summary: 'update status of an api key' })
@@ -188,7 +202,7 @@ export class ApiKeyAdminController {
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyHttpService.updateStatusByAdmin(apiKeyId, body);
+        return this.apiKeyUpdateStatusByAdminUseCase.execute(apiKeyId, body);
     }
 
     @Doc({ summary: 'delete an api key' })
@@ -210,6 +224,6 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyHttpService.deleteByAdmin(apiKeyId);
+        return this.apiKeyDeleteByAdminUseCase.execute(apiKeyId);
     }
 }

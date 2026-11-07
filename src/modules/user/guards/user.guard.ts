@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserService } from '@modules/user/services/user.service';
 import { Reflector } from '@nestjs/core';
 import {
     UserGuardIsVerifiedMetaKey,
@@ -14,7 +14,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 export class UserGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly userDomain: UserDomain,
+        private readonly userService: UserService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -32,7 +32,7 @@ export class UserGuard implements CanActivate {
             throw new AuthJwtGuardMissingException();
         }
 
-        const user = await this.userDomain.validateUserGuard(
+        const user = await this.userService.validateUserGuard(
             payload,
             isVerified
         );

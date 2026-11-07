@@ -10,13 +10,13 @@ import {
     ApiKeyHeaderName,
     ApiKeyStoreKey,
 } from '@modules/api-key/constants/api-key.constant';
-import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
+import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 
 describe('ApiKeyXApiKeyGuard', () => {
-    const apiKeyDomain: MockProxy<ApiKeyDomain> = mock<ApiKeyDomain>();
+    const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -43,7 +43,7 @@ describe('ApiKeyXApiKeyGuard', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyXApiKeyGuard,
-                { provide: ApiKeyDomain, useValue: apiKeyDomain },
+                { provide: ApiKeyService, useValue: apiKeyService },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -64,12 +64,12 @@ describe('ApiKeyXApiKeyGuard', () => {
             request.headers = { [ApiKeyHeaderName]: 'local_abc123:secret-1' };
             executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
             httpArgumentsHost.getRequest.mockReturnValue(request);
-            apiKeyDomain.validateXApiKey.mockResolvedValue(apiKey);
+            apiKeyService.validateXApiKey.mockResolvedValue(apiKey);
 
             const result = await guard.canActivate(executionContext);
 
             expect(result).toBe(true);
-            expect(apiKeyDomain.validateXApiKey).toHaveBeenCalledWith(
+            expect(apiKeyService.validateXApiKey).toHaveBeenCalledWith(
                 'local_abc123:secret-1'
             );
             expect(requestStoreService.set).toHaveBeenCalledWith(
@@ -87,11 +87,11 @@ describe('ApiKeyXApiKeyGuard', () => {
             request.headers = {};
             executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
             httpArgumentsHost.getRequest.mockReturnValue(request);
-            apiKeyDomain.validateXApiKey.mockResolvedValue(apiKey);
+            apiKeyService.validateXApiKey.mockResolvedValue(apiKey);
 
             await guard.canActivate(executionContext);
 
-            expect(apiKeyDomain.validateXApiKey).toHaveBeenCalledWith('');
+            expect(apiKeyService.validateXApiKey).toHaveBeenCalledWith('');
         });
     });
 });

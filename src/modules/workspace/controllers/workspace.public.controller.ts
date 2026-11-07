@@ -13,8 +13,8 @@ import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/r
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
-import { WorkspaceHttpService } from '@modules/workspace/services/http/workspace.http.service';
-import { WorkspaceInviteHttpService } from '@modules/workspace/services/http/workspace.invite.http.service';
+import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
+import { WorkspacePreviewUseCase } from '@modules/workspace/use-cases/workspace.preview.use-case';
 import {
     Body,
     Controller,
@@ -33,8 +33,8 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class WorkspacePublicController {
     constructor(
-        private readonly workspaceHttpService: WorkspaceHttpService,
-        private readonly workspaceInviteHttpService: WorkspaceInviteHttpService
+        private readonly workspacePreviewInviteUseCase: WorkspacePreviewInviteUseCase,
+        private readonly workspacePreviewUseCase: WorkspacePreviewUseCase
     ) {}
 
     @Doc({
@@ -53,7 +53,7 @@ export class WorkspacePublicController {
         @Body({ schema: WorkspaceInvitePreviewRequestSchema })
         body: WorkspaceInvitePreviewRequestDto
     ): Promise<IResponseReturn<WorkspaceInvitePreviewResponseDto>> {
-        return this.workspaceInviteHttpService.previewInvite(body);
+        return this.workspacePreviewInviteUseCase.execute(body);
     }
 
     @Doc({
@@ -71,6 +71,6 @@ export class WorkspacePublicController {
         @Param('slug', { schema: RequestRequiredStringSchema })
         slug: string
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.previewWorkspace(slug);
+        return this.workspacePreviewUseCase.execute(slug);
     }
 }

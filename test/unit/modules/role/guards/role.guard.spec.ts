@@ -14,7 +14,7 @@ import {
 import type { Policy } from '@generated/prisma-client/client';
 import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
 import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
-import { RoleDomain } from '@modules/role/domains/role.domain';
+import { RoleService } from '@modules/role/services/role.service';
 import { RoleGuard } from '@modules/role/guards/role.guard';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
@@ -24,7 +24,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 
 describe('RoleGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const executionContext: MockProxy<ExecutionContext> =
@@ -88,7 +88,7 @@ describe('RoleGuard', () => {
             providers: [
                 RoleGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: RoleDomain, useValue: roleDomain },
+                { provide: RoleService, useValue: roleService },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -103,7 +103,7 @@ describe('RoleGuard', () => {
         it('reads the required roles and stored user, delegates to the domain, and stores the resolved policies', async () => {
             reflector.get.mockReturnValue([EnumRoleType.user]);
             requestStoreService.get.mockReturnValue(user);
-            roleDomain.validateRoleGuard.mockResolvedValue(policies);
+            roleService.validateRoleGuard.mockResolvedValue(policies);
 
             const result = await guard.canActivate(executionContext);
 
@@ -113,7 +113,7 @@ describe('RoleGuard', () => {
                 executionContext.getHandler()
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(UserStoreKey);
-            expect(roleDomain.validateRoleGuard).toHaveBeenCalledWith(user, [
+            expect(roleService.validateRoleGuard).toHaveBeenCalledWith(user, [
                 EnumRoleType.user,
             ]);
             expect(requestStoreService.set).toHaveBeenCalledWith(
@@ -125,11 +125,14 @@ describe('RoleGuard', () => {
         it('defaults required roles to an empty array when no metadata is set', async () => {
             reflector.get.mockReturnValue(undefined);
             requestStoreService.get.mockReturnValue(user);
-            roleDomain.validateRoleGuard.mockResolvedValue([]);
+            roleService.validateRoleGuard.mockResolvedValue([]);
 
             await guard.canActivate(executionContext);
 
-            expect(roleDomain.validateRoleGuard).toHaveBeenCalledWith(user, []);
+            expect(roleService.validateRoleGuard).toHaveBeenCalledWith(
+                user,
+                []
+            );
         });
 
         it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
@@ -148,7 +151,7 @@ describe('RoleGuard', () => {
                 messagePath: 'user.error.guardMissing',
                 httpStatus: HttpStatus.UNAUTHORIZED,
             });
-            expect(roleDomain.validateRoleGuard).not.toHaveBeenCalled();
+            expect(roleService.validateRoleGuard).not.toHaveBeenCalled();
             expect(requestStoreService.set).not.toHaveBeenCalled();
         });
 
@@ -156,7 +159,7 @@ describe('RoleGuard', () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockReturnValue(user);
             const error = new Error('forbidden');
-            roleDomain.validateRoleGuard.mockRejectedValue(error);
+            roleService.validateRoleGuard.mockRejectedValue(error);
 
             await expect(guard.canActivate(executionContext)).rejects.toBe(
                 error

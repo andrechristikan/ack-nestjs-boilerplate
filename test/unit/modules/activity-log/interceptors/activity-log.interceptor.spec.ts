@@ -14,7 +14,7 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
-import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 import {
@@ -24,8 +24,8 @@ import {
 } from '@test/unit/helpers/test.unit.observable.helper';
 
 describe('ActivityLogInterceptor', () => {
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
 
     const user: IAuthJwtAccessTokenPayload = {
         loginAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -47,7 +47,7 @@ describe('ActivityLogInterceptor', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ActivityLogInterceptor,
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
@@ -67,7 +67,7 @@ describe('ActivityLogInterceptor', () => {
             );
 
             expect(result).toBe('handled');
-            expect(activityLogDomain.flushStaged).not.toHaveBeenCalled();
+            expect(activityLogService.flushStaged).not.toHaveBeenCalled();
         });
 
         it('flushes every staged activity log with the authenticated user on success', async () => {
@@ -82,14 +82,14 @@ describe('ActivityLogInterceptor', () => {
             httpArgumentsHost.getRequest.mockReturnValue(request);
             const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
             callHandler.handle.mockReturnValue(of('handled'));
-            activityLogDomain.flushStaged.mockResolvedValue(undefined);
+            activityLogService.flushStaged.mockResolvedValue(undefined);
 
             const result = await subscribeNext(
                 interceptor.intercept(executionContext, callHandler)
             );
 
             expect(result).toBe('handled');
-            expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+            expect(activityLogService.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
             });
         });
@@ -106,13 +106,13 @@ describe('ActivityLogInterceptor', () => {
             httpArgumentsHost.getRequest.mockReturnValue(request);
             const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
             callHandler.handle.mockReturnValue(of('handled'));
-            activityLogDomain.flushStaged.mockResolvedValue(undefined);
+            activityLogService.flushStaged.mockResolvedValue(undefined);
 
             await subscribeNext(
                 interceptor.intercept(executionContext, callHandler)
             );
 
-            expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+            expect(activityLogService.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: null,
             });
         });
@@ -129,7 +129,7 @@ describe('ActivityLogInterceptor', () => {
             httpArgumentsHost.getRequest.mockReturnValue(request);
             const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
             callHandler.handle.mockReturnValue(of('handled'));
-            activityLogDomain.flushStaged.mockRejectedValue(
+            activityLogService.flushStaged.mockRejectedValue(
                 new Error('flush failed')
             );
 
@@ -155,7 +155,7 @@ describe('ActivityLogInterceptor', () => {
             callHandler.handle.mockReturnValue(
                 buildErrorObservable(handlerError)
             );
-            activityLogDomain.flushStaged.mockResolvedValue(undefined);
+            activityLogService.flushStaged.mockResolvedValue(undefined);
 
             const caught = await subscribeError(
                 interceptor.intercept(executionContext, callHandler)
@@ -163,7 +163,7 @@ describe('ActivityLogInterceptor', () => {
 
             expect(caught).toBeInstanceOf(AppUnknownException);
             expect(caught).toMatchObject({ rawError: handlerError });
-            expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+            expect(activityLogService.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
             });
         });
@@ -176,14 +176,14 @@ describe('ActivityLogInterceptor', () => {
             callHandler.handle.mockReturnValue(
                 buildErrorObservable(handlerError)
             );
-            activityLogDomain.flushStaged.mockResolvedValue(undefined);
+            activityLogService.flushStaged.mockResolvedValue(undefined);
 
             const caught = await subscribeError(
                 interceptor.intercept(executionContext, callHandler)
             );
 
             expect(caught).toBe(handlerError);
-            expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+            expect(activityLogService.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
             });
         });
@@ -196,7 +196,7 @@ describe('ActivityLogInterceptor', () => {
             callHandler.handle.mockReturnValue(
                 buildErrorObservable(handlerError)
             );
-            activityLogDomain.flushStaged.mockResolvedValue(undefined);
+            activityLogService.flushStaged.mockResolvedValue(undefined);
 
             const caught = await subscribeError(
                 interceptor.intercept(executionContext, callHandler)
@@ -221,7 +221,7 @@ describe('ActivityLogInterceptor', () => {
             callHandler.handle.mockReturnValue(
                 buildErrorObservable(handlerError)
             );
-            activityLogDomain.flushStaged.mockRejectedValue(
+            activityLogService.flushStaged.mockRejectedValue(
                 new Error('flush failed')
             );
 
@@ -236,17 +236,17 @@ describe('ActivityLogInterceptor', () => {
 
     describe('flushSafe', () => {
         it('flushes staged activity logs for the given payload user', async () => {
-            activityLogDomain.flushStaged.mockResolvedValue(undefined);
+            activityLogService.flushStaged.mockResolvedValue(undefined);
 
             await interceptor['flushSafe']('user-1');
 
-            expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+            expect(activityLogService.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
             });
         });
 
         it('swallows a domain failure instead of throwing', async () => {
-            activityLogDomain.flushStaged.mockRejectedValue(
+            activityLogService.flushStaged.mockRejectedValue(
                 new Error('flush failed')
             );
 

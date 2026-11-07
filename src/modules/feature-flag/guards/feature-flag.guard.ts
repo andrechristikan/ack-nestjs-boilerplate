@@ -3,7 +3,7 @@ import {
     FeatureFlagAnonymousIdHeaderName,
     FeatureFlagKeyPathMetaKey,
 } from '@modules/feature-flag/constants/feature-flag.constant';
-import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import type { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -16,7 +16,7 @@ export class FeatureFlagGuard implements CanActivate {
     private readonly anonymousIdRegex: RegExp;
 
     constructor(
-        private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly featureFlagService: FeatureFlagService,
         private readonly reflector: Reflector,
         private readonly configService: ConfigService
     ) {
@@ -50,7 +50,7 @@ export class FeatureFlagGuard implements CanActivate {
             }
         }
 
-        await this.featureFlagDomain.validateFeatureFlag(
+        await this.featureFlagService.validateFeatureFlag(
             featureFlagKeyPath,
             request.user?.userId ?? null,
             anonymousId

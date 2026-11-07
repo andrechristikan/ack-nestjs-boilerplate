@@ -23,7 +23,9 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/http/term-policy.acceptance.http.service';
+import { TermPolicyGetListUserAcceptedUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-accepted.use-case';
+import { TermPolicyGetListUserPendingUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-pending.use-case';
+import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import type {
@@ -48,7 +50,9 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 })
 export class TermPolicySharedController {
     constructor(
-        private readonly termPolicyAcceptanceHttpService: TermPolicyAcceptanceHttpService
+        private readonly termPolicyGetListUserAcceptedUseCase: TermPolicyGetListUserAcceptedUseCase,
+        private readonly termPolicyGetListUserPendingUseCase: TermPolicyGetListUserPendingUseCase,
+        private readonly termPolicyUserAcceptUseCase: TermPolicyUserAcceptUseCase
     ) {}
 
     @Doc({ summary: 'list of terms or policies accepted by the user' })
@@ -66,10 +70,7 @@ export class TermPolicySharedController {
         query: TermPolicyAcceptedListRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
-        return this.termPolicyAcceptanceHttpService.getListUserAccepted(
-            userId,
-            query
-        );
+        return this.termPolicyGetListUserAcceptedUseCase.execute(userId, query);
     }
 
     @Doc({
@@ -87,7 +88,7 @@ export class TermPolicySharedController {
     async listPending(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<ITermPolicyPending>> {
-        return this.termPolicyAcceptanceHttpService.getListUserPending(userId);
+        return this.termPolicyGetListUserPendingUseCase.execute(userId);
     }
 
     @Doc({ summary: 'user accepts term or policy' })
@@ -103,6 +104,6 @@ export class TermPolicySharedController {
         @Body({ schema: TermPolicyAcceptRequestSchema })
         body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyAcceptanceHttpService.userAccept(user, body);
+        return this.termPolicyUserAcceptUseCase.execute(user, body);
     }
 }

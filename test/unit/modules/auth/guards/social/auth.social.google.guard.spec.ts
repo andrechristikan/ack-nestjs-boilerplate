@@ -3,14 +3,14 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthSocialGoogleGuard } from '@modules/auth/guards/social/auth.social.google.guard';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
 describe('AuthSocialGoogleGuard', () => {
-    const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const authService: MockProxy<AuthService> = mock<AuthService>();
 
     let guard: AuthSocialGoogleGuard;
 
@@ -19,7 +19,7 @@ describe('AuthSocialGoogleGuard', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialGoogleGuard,
-                { provide: AuthDomain, useValue: authDomain },
+                { provide: AuthService, useValue: authService },
             ],
         }).compile();
 
@@ -75,7 +75,7 @@ describe('AuthSocialGoogleGuard', () => {
                 email: 'jane@example.com',
                 emailVerified: true,
             };
-            authDomain.validateOAuthGoogle.mockResolvedValue(payload);
+            authService.validateOAuthGoogle.mockResolvedValue(payload);
 
             const result = await guard.canActivate(
                 buildHttpExecutionContext(request)
@@ -83,7 +83,7 @@ describe('AuthSocialGoogleGuard', () => {
 
             expect(result).toBe(true);
             expect(request.user).toBe(payload);
-            expect(authDomain.validateOAuthGoogle).toHaveBeenCalledWith(
+            expect(authService.validateOAuthGoogle).toHaveBeenCalledWith(
                 'id-token'
             );
         });

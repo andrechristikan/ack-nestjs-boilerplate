@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IAuthJwtAccessTokenPayload,
@@ -168,27 +166,5 @@ export class AuthUtil {
         }
 
         return null;
-    }
-
-    /** Maps a failed Passport JWT result to the exception the guard throws: a typed strategy exception as is, any other strategy error wrapped, a provider outage in `info`, otherwise the fallback. */
-    toJwtGuardException(
-        err: Error | null,
-        info: Error,
-        fallback: AppBaseException
-    ): AppBaseException {
-        if (err instanceof AppBaseException) {
-            return err;
-        }
-
-        if (err) {
-            return new AppUnknownException(
-                err,
-                'Validating the JWT session failed'
-            );
-        }
-
-        const unavailable = this.toProviderUnavailableException(info);
-
-        return unavailable ?? fallback;
     }
 }

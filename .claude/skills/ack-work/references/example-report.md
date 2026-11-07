@@ -14,11 +14,11 @@ New names in this example, not in the checkout: the plan in `example-plan.md`, t
 - `prisma/schema.prisma`: `isActive Boolean @default(true)` on `Country`.
 - `src/modules/country/dtos/response/country.response.dto.ts`: `isActive: z.boolean()` with its description.
 - `test/unit/modules/country/dtos/response/country.response.dto.spec.ts`: the row carries `isActive: true`.
-- `isActive: true` added to the `Country` fixture in `test/unit/modules/country/domains/country.domain.spec.ts`, `test/unit/modules/country/services/http/country.http.service.spec.ts`, and the ten `test/unit/modules/user/` specs the task names.
+- `isActive: true` added to the `Country` fixture in `test/unit/modules/country/services/country.service.spec.ts`, `test/unit/modules/country/use-cases/country.get-list-cursor.use-case.spec.ts`, and the fourteen `test/unit/modules/user/` specs the task names.
 
 ## Rule files read
 
-`activity-log.md`, `code-style.md`, `concurrency.md`, `cross-module.md`, `database.md`, `discipline.md`, `dto.md`, `enum.md`, `eslint.md`, `exceptions.md`, `guards.md`, `http.md`, `layering.md`, `naming.md`, `null-safety.md`, `pagination.md`, `service.md`, `testing.md`, all under `.claude/rules/`.
+`activity-log.md`, `code-style.md`, `concurrency.md`, `cross-module.md`, `database.md`, `discipline.md`, `dto.md`, `enum.md`, `eslint.md`, `exceptions.md`, `guards.md`, `http.md`, `layering.md`, `naming.md`, `null-safety.md`, `pagination.md`, `service.md`, `testing.md`, `use-case.md`, all under `.claude/rules/`.
 
 ## Specs watched fail, then pass
 
@@ -56,7 +56,7 @@ None.
 
 ## Noticed outside the scope
 
-- `src/modules/country/dtos/response/country.response.dto.ts:37`: the `continent` example is `faker.location.country()`, a country name.
+- `src/modules/country/dtos/response/country.response.dto.ts:12`: the `name` example `faker.location.country()` and the `alpha2Code` example (`:19`) draw independently, so the Swagger example pairs a name with another country's code.
 ```
 
 The session reads this file after the hand-back, appends the task's line to `.superpowers/sdd/2026-11-05-country-inactive/progress.md`, and marks task 1 `- [x]` once every acceptance line is quoted green (`SKILL.md`, step 4).

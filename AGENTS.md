@@ -26,7 +26,7 @@ src/generated/          prisma-client/ and package/, gitignored, produced by pnp
 src/languages/          nestjs-i18n JSON, one file per module prefix
 src/migration/          seeds: data/, seeds/, bases/, enums/, interfaces/
 src/modules/            feature modules
-src/queues/             BullMQ framework layer; queues and factories register in QueueModule.forRoot()
+src/queues/             BullMQ framework layer; feature modules register their own queues
 src/router/             http/ mounts controllers under /public /system /admin /user /shared; processor/ imports use-case modules with processors
 prisma/schema.prisma    editable; applying it is the owner's
 test/unit/              unit specs mirroring src/, no Docker

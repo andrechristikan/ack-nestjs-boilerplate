@@ -27,7 +27,8 @@ import type {
     INotificationWorkspaceInviteUnregisteredPayload,
     INotificationWorkspaceJoinRejectedPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationEmailQueue', () => {
@@ -70,7 +71,9 @@ describe('NotificationEmailQueue', () => {
                 { provide: MessageService, useValue: messageService },
                 NotificationEmailQueue,
                 {
-                    provide: getQueueToken(EnumQueue.notificationEmail),
+                    provide: getQueueToken(
+                        EnumNotificationQueue.notificationEmail
+                    ),
                     useValue: emailQueue,
                 },
                 { provide: SentryService, useValue: sentryService },

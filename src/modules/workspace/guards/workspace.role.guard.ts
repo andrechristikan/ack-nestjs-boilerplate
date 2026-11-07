@@ -5,7 +5,7 @@ import {
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -15,7 +15,7 @@ import { Reflector } from '@nestjs/core';
 export class WorkspaceRoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -33,7 +33,7 @@ export class WorkspaceRoleGuard implements CanActivate {
             throw new WorkspaceMemberGuardMissingException();
         }
 
-        this.workspaceMemberDomain.validateWorkspaceRoleGuard(
+        this.workspaceMemberService.validateWorkspaceRoleGuard(
             member,
             allowedRoles
         );

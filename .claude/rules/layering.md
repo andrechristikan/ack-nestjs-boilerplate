@@ -35,24 +35,25 @@ Lowest first. A service injects services and utils only of its own module or of 
 - Controllers, processors, and use cases sit above the whole order.
 - `analytic` reads only: its services inject lower modules' analytic services and utils and its own services, utils, and caches (`src/modules/analytic/services/analytic.fraud.service.ts`); never a repository, a queue class, or `DatabaseService`.
 - The kit, the `src/common/` modules `common.module.ts` composes, sits below every feature; anyone injects it.
-- `eslint-plugin-boundaries` enforces the layer matrix and this order (`eslint.md`, Config blocks).
+- Lint enforces the layer matrix and each module file's declared `imports:` (`eslint.md`, Config blocks) and does not read this list: the list is the source a module file's `imports:` follows and `reviewer` checks.
 
 `AwsModule` is imported where used. `src/common/` reaches a feature only through `common.module.ts` and `import type` (`src/common/request/interfaces/request.interface.ts:2`). Promote only a module-agnostic concept with three callers or more; an exported, complete member of a used family is kit surface, its `pnpm deadcode` warning no finding. YAGNI rejects a base, token, knob, branch, or stub.
 
 ## `@Global()`
 
 - A `<Module>Module` carries `@Global()` only when a guard, strategy, interceptor, or decorator injects its classes: `ActivityLogModule`, `ApiKeyModule`, `AuthModule`, `FeatureFlagModule`, `PolicyModule`, `RoleModule`, `SessionModule`, `TermPolicyModule`. A use-case module is never global.
-- In the kit, `RequestThrottleModule` and `QueueModule` (its `forRoot()`) carry `@Global()`, so a feature module imports no queue module.
+- In the kit, `RequestThrottleModule` and `QueueModule` (its `forRoot()`, the shared BullMQ config only) carry `@Global()`.
 - `@Global()` removes the import, never the rank: a global module's services keep their place in the dependency order (`cross-module.md`).
 - `src/common/common.module.ts` imports each global module once, and `RequestMiddlewareModule` imports `RequestThrottleModule` into `ThrottlerModule.forRootAsync`; beyond that, no module imports a `@Global()` module except its own use-case module.
 
 ## Module files
 
-- `<module>.module.ts`, `<Module>Module`: services, repositories, utils, caches, queue classes, factories, strategies, interceptors, indicators in `providers`; its services, utils, caches, and queue classes in `exports`, never a repository; imports the `<Module>Module` of each lower-ranked, non-`@Global()` feature whose services or utils its services inject, nothing else.
+- `<module>.module.ts`, `<Module>Module`: services, repositories, utils, caches, queue classes, factories, strategies, interceptors, indicators in `providers`; its services, utils, caches, and queue classes in `exports`, never a repository; imports the `<Module>Module` of each lower-ranked, non-`@Global()` feature whose services or utils its services inject, plus one `BullModule.registerQueueAsync` for the queues it owns, each with its factory, nothing else.
 - `<module>.use-case.module.ts`, `<Module>UseCaseModule`: the feature's use cases and processors in `providers`, its use cases in `exports`; imports each non-`@Global()` `<Module>Module` its use cases inject, its own included. A leaf: only `src/router/` imports it.
 - `src/router/http/router.http.<scope>.module.ts` declares the scope's controllers and imports each `<Module>UseCaseModule` whose use cases they inject, plus the `<Module>Module` of every non-`@Global()` feature whose guard they carry (`src/router/http/router.http.user.module.ts`).
 - `src/router/processor/router.processor.module.ts` imports each `<Module>UseCaseModule` that provides a processor.
-- `QueueModule.forRoot()` registers every queue with its factory (`queue.md`, Where things live); a feature module registers none.
+- In `@Module({ imports: [...] })`, every `<Module>UseCaseModule` comes first, then one blank line, then every other module (`<Module>Module`, kit modules, `forRootAsync(...)` calls); a file with one group carries no blank line, and Prettier keeps the blank line.
+- Each `<module>.module.ts` registers its own queues, once however many modules import it; the kit registers none (`queue.md`, Where things live).
 
 Only files with something to provide exist. A `@Module({})` lists `controllers` (`[]` in both), `providers`, `exports`, `imports`, in that order. `forRoot()` runs once, in a root module: `src/app/app.module.ts`, `src/common/common.module.ts`, `src/router/router.module.ts`. A feature module imports neither the composed kit nor `QueueModule`. `tsc` and Vitest pass a broken `imports:`; boot to verify wiring (a cycle raises `ReferenceError`, a missing provider `UnknownDependenciesException`).
 

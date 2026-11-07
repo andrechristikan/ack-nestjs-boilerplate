@@ -1,26 +1,23 @@
 import { Processor } from '@nestjs/bullmq';
-import { QueueConfigKey } from '@queues/constants/queue.constant';
-import { EnumQueue } from '@queues/enums/queue.enum';
+import appConfigFunction from '@configs/app.config';
+import redisConfigFunction from '@configs/redis.config';
 import type { IQueueProcessorOptions } from '@queues/interfaces/queue.interface';
 
 /** @public */
 export function QueueProcessor(
-    name: EnumQueue,
+    name: string,
     options?: IQueueProcessorOptions
 ): ClassDecorator {
-    // Config is read through configKey, not ConfigService: a decorator has no
-    // injection context.
+    const appConfigs = appConfigFunction();
+    const redisConfigs = redisConfigFunction();
+
     return Processor(
-        {
-            name,
-            configKey: QueueConfigKey,
-        },
+        { name },
         {
             ...options,
-            name: `${process.env.APP_NAME}-${process.env.APP_ENV}:${name}:consumer`,
             connection: {
-                url: process.env.QUEUE_REDIS_URL!,
-                connectionName: `${process.env.APP_NAME}-${process.env.APP_ENV}:processor`,
+                url: redisConfigs.queue.url,
+                connectionName: `${appConfigs.name}-${appConfigs.env}:processor`,
             },
         }
     );

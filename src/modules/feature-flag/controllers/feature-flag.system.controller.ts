@@ -6,7 +6,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
-import { FeatureFlagHttpService } from '@modules/feature-flag/services/http/feature-flag.http.service';
+import { FeatureFlagGetListCursorUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-cursor.use-case';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -17,7 +17,7 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class FeatureFlagSystemController {
     constructor(
-        private readonly featureFlagHttpService: FeatureFlagHttpService
+        private readonly featureFlagGetListCursorUseCase: FeatureFlagGetListCursorUseCase
     ) {}
 
     @Doc({ summary: 'get all of active feature flags' })
@@ -30,6 +30,6 @@ export class FeatureFlagSystemController {
         @Query({ schema: FeatureFlagSystemListRequestSchema })
         query: FeatureFlagSystemListRequestDto
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        return this.featureFlagHttpService.getListCursor(query);
+        return this.featureFlagGetListCursorUseCase.execute(query);
     }
 }

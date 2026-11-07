@@ -9,7 +9,7 @@ API-key and feature-flag caches are deleted after the write commits. When that d
 
 ## Decision
 
-`ApiKeyService` and `FeatureFlagService` write a `cache.invalidate { keys }` effect inside the write transaction. One kit queue, `EnumQueue.cache`, with `CacheProcessor` in `src/common/cache/`, deletes the keys.
+`ApiKeyService` and `FeatureFlagService` write a `cache.invalidate { keys }` effect inside the write transaction. One `cache` queue, with `CacheProcessor` in `src/common/cache/`, deletes the keys.
 
 ## Considered options
 

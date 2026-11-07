@@ -8,7 +8,8 @@ import type { Queue } from 'bullmq';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumTermPolicyQueue } from '@modules/term-policy/enums/term-policy.enum';
+import { EnumQueuePriority } from '@queues/enums/queue.enum';
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import type { ITermPolicyCopyContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -42,7 +43,7 @@ describe('TermPolicyQueue', () => {
                 { provide: MessageService, useValue: messageService },
                 TermPolicyQueue,
                 {
-                    provide: getQueueToken(EnumQueue.termPolicy),
+                    provide: getQueueToken(EnumTermPolicyQueue.termPolicy),
                     useValue: termPolicyQueue,
                 },
                 { provide: SentryService, useValue: sentryService },

@@ -26,7 +26,7 @@ describe('TermPolicyQueueFactory', () => {
     });
 
     describe('createRegisterQueueOptions', () => {
-        it('builds the default job options from queue config', () => {
+        it('builds the default job options and no connection from queue config', () => {
             configGet.mockImplementation((key: string) => {
                 const values: Record<string, unknown> = {
                     'queue.job.attempts': 5,

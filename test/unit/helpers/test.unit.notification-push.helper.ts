@@ -2,7 +2,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { FirebaseService } from '@common/firebase/services/firebase.service';
 import type { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
-import type { NotificationPushDeliveryDomain } from '@modules/notification/domains/notification.push.delivery.domain';
+import type { NotificationPushDeliveryService } from '@modules/notification/services/notification.push.delivery.service';
 import {
     EnumNotificationPushProcess,
     EnumNotificationStep,
@@ -19,7 +19,7 @@ export const TestPushStampedAt = new Date('2024-03-01T00:00:00.000Z');
 
 export interface INotificationPushDoubles {
     firebaseService: MockProxy<FirebaseService>;
-    notificationPushDeliveryDomain: MockProxy<NotificationPushDeliveryDomain>;
+    notificationPushDeliveryService: MockProxy<NotificationPushDeliveryService>;
     notificationPushQueue: MockProxy<NotificationPushQueue>;
     helperEncryptionService: MockProxy<HelperEncryptionService>;
 }
@@ -81,7 +81,7 @@ export const PushAllSteps: EnumNotificationStep[] = [
 export function expectPushSentWithCleanup(
     {
         notificationPushQueue,
-        notificationPushDeliveryDomain,
+        notificationPushDeliveryService,
     }: INotificationPushDoubles,
     send: INotificationSendPushEncryptedPayload,
     result: INotificationPushStepResult,
@@ -93,7 +93,7 @@ export function expectPushSentWithCleanup(
         send.userId,
         ['cipher(token-1)']
     );
-    expect(notificationPushDeliveryDomain.stampSent).toHaveBeenCalledWith(
+    expect(notificationPushDeliveryService.stampSent).toHaveBeenCalledWith(
         send.notificationId,
         ['token-1'],
         process
@@ -111,7 +111,7 @@ export function expectPushRetrySkipsSend(
     {
         firebaseService,
         notificationPushQueue,
-        notificationPushDeliveryDomain,
+        notificationPushDeliveryService,
     }: INotificationPushDoubles,
     send: INotificationSendPushEncryptedPayload,
     result: INotificationPushStepResult,
@@ -119,7 +119,7 @@ export function expectPushRetrySkipsSend(
 ): void {
     expect(firebaseService.sendMulticast).not.toHaveBeenCalled();
     expect(notificationPushQueue.sendCleanupTokens).not.toHaveBeenCalled();
-    expect(notificationPushDeliveryDomain.stampSent).toHaveBeenCalledWith(
+    expect(notificationPushDeliveryService.stampSent).toHaveBeenCalledWith(
         send.notificationId,
         ['token-1'],
         process
@@ -132,13 +132,13 @@ export function expectPushAllStepsSkipped(
     {
         firebaseService,
         notificationPushQueue,
-        notificationPushDeliveryDomain,
+        notificationPushDeliveryService,
     }: INotificationPushDoubles,
     result: INotificationPushStepResult
 ): void {
     expect(firebaseService.sendMulticast).not.toHaveBeenCalled();
     expect(notificationPushQueue.sendCleanupTokens).not.toHaveBeenCalled();
-    expect(notificationPushDeliveryDomain.stampSent).not.toHaveBeenCalled();
+    expect(notificationPushDeliveryService.stampSent).not.toHaveBeenCalled();
     expect(result.failedSteps).toEqual([]);
     expect(result.completedSteps).toEqual(PushAllSteps);
 }
@@ -160,12 +160,12 @@ export function expectPushSentAtFailure(
 export function expectPushSendFailure(
     {
         notificationPushQueue,
-        notificationPushDeliveryDomain,
+        notificationPushDeliveryService,
     }: INotificationPushDoubles,
     result: INotificationPushStepResult
 ): void {
     expect(notificationPushQueue.sendCleanupTokens).not.toHaveBeenCalled();
-    expect(notificationPushDeliveryDomain.stampSent).not.toHaveBeenCalled();
+    expect(notificationPushDeliveryService.stampSent).not.toHaveBeenCalled();
     expect(result.failedSteps).toEqual([
         {
             step: EnumNotificationStep.sendMulticast,
@@ -182,11 +182,11 @@ export function expectPushSendFailure(
 export function expectPushOutagePending(
     {
         notificationPushQueue,
-        notificationPushDeliveryDomain,
+        notificationPushDeliveryService,
     }: INotificationPushDoubles,
     result: INotificationPushStepResult
 ): void {
-    expect(notificationPushDeliveryDomain.stampSent).not.toHaveBeenCalled();
+    expect(notificationPushDeliveryService.stampSent).not.toHaveBeenCalled();
     expect(notificationPushQueue.sendCleanupTokens).not.toHaveBeenCalled();
     expect(result.failedSteps).toEqual([
         {
@@ -208,7 +208,7 @@ export function expectPushRetrySendsPending(
     {
         firebaseService,
         notificationPushQueue,
-        notificationPushDeliveryDomain,
+        notificationPushDeliveryService,
     }: INotificationPushDoubles,
     send: INotificationSendPushEncryptedPayload,
     result: INotificationPushStepResult,
@@ -223,7 +223,7 @@ export function expectPushRetrySendsPending(
         send.userId,
         ['cipher(token-1)']
     );
-    expect(notificationPushDeliveryDomain.stampSent).toHaveBeenCalledWith(
+    expect(notificationPushDeliveryService.stampSent).toHaveBeenCalledWith(
         send.notificationId,
         ['token-1'],
         process
@@ -234,12 +234,12 @@ export function expectPushRetrySendsPending(
 }
 
 export function expectPushFailureTokensMerged(
-    { notificationPushDeliveryDomain }: INotificationPushDoubles,
+    { notificationPushDeliveryService }: INotificationPushDoubles,
     send: INotificationSendPushEncryptedPayload,
     result: INotificationPushStepResult,
     process: EnumNotificationPushProcess
 ): void {
-    expect(notificationPushDeliveryDomain.stampSent).toHaveBeenCalledWith(
+    expect(notificationPushDeliveryService.stampSent).toHaveBeenCalledWith(
         send.notificationId,
         ['old', 'token-1'],
         process

@@ -68,11 +68,23 @@ import type {
     IUserProfile,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
-import { UserAuthHttpService } from '@modules/user/services/http/user.auth.http.service';
-import { UserMobileNumberHttpService } from '@modules/user/services/http/user.mobile-number.http.service';
-import { UserPasswordHttpService } from '@modules/user/services/http/user.password.http.service';
-import { UserProfileHttpService } from '@modules/user/services/http/user.profile.http.service';
-import { UserTwoFactorHttpService } from '@modules/user/services/http/user.two-factor.http.service';
+import { UserRefreshUseCase } from '@modules/user/use-cases/user.refresh.use-case';
+import { UserGetProfileUseCase } from '@modules/user/use-cases/user.get-profile.use-case';
+import { UserUpdateProfileUseCase } from '@modules/user/use-cases/user.update-profile.use-case';
+import { UserGeneratePhotoProfilePresignUseCase } from '@modules/user/use-cases/user.generate-photo-profile-presign.use-case';
+import { UserUpdatePhotoProfileUseCase } from '@modules/user/use-cases/user.update-photo-profile.use-case';
+import { UserUploadPhotoProfileUseCase } from '@modules/user/use-cases/user.upload-photo-profile.use-case';
+import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-password.use-case';
+import { UserAddMobileNumberUseCase } from '@modules/user/use-cases/user.add-mobile-number.use-case';
+import { UserUpdateMobileNumberUseCase } from '@modules/user/use-cases/user.update-mobile-number.use-case';
+import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
+import { UserClaimUsernameUseCase } from '@modules/user/use-cases/user.claim-username.use-case';
+import { UserGetTwoFactorStatusUseCase } from '@modules/user/use-cases/user.get-two-factor-status.use-case';
+import { UserSetupTwoFactorUseCase } from '@modules/user/use-cases/user.setup-two-factor.use-case';
+import { UserEnableTwoFactorUseCase } from '@modules/user/use-cases/user.enable-two-factor.use-case';
+import { UserDisableTwoFactorUseCase } from '@modules/user/use-cases/user.disable-two-factor.use-case';
+import { UserRegenerateTwoFactorBackupCodesUseCase } from '@modules/user/use-cases/user.regenerate-two-factor-backup-codes.use-case';
+import { UserLogoutUseCase } from '@modules/user/use-cases/user.logout.use-case';
 import {
     Body,
     Controller,
@@ -95,11 +107,23 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class UserSharedController {
     constructor(
-        private readonly userAuthHttpService: UserAuthHttpService,
-        private readonly userProfileHttpService: UserProfileHttpService,
-        private readonly userPasswordHttpService: UserPasswordHttpService,
-        private readonly userMobileNumberHttpService: UserMobileNumberHttpService,
-        private readonly userTwoFactorHttpService: UserTwoFactorHttpService
+        private readonly userRefreshUseCase: UserRefreshUseCase,
+        private readonly userGetProfileUseCase: UserGetProfileUseCase,
+        private readonly userUpdateProfileUseCase: UserUpdateProfileUseCase,
+        private readonly userGeneratePhotoProfilePresignUseCase: UserGeneratePhotoProfilePresignUseCase,
+        private readonly userUpdatePhotoProfileUseCase: UserUpdatePhotoProfileUseCase,
+        private readonly userUploadPhotoProfileUseCase: UserUploadPhotoProfileUseCase,
+        private readonly userChangePasswordUseCase: UserChangePasswordUseCase,
+        private readonly userAddMobileNumberUseCase: UserAddMobileNumberUseCase,
+        private readonly userUpdateMobileNumberUseCase: UserUpdateMobileNumberUseCase,
+        private readonly userDeleteMobileNumberUseCase: UserDeleteMobileNumberUseCase,
+        private readonly userClaimUsernameUseCase: UserClaimUsernameUseCase,
+        private readonly userGetTwoFactorStatusUseCase: UserGetTwoFactorStatusUseCase,
+        private readonly userSetupTwoFactorUseCase: UserSetupTwoFactorUseCase,
+        private readonly userEnableTwoFactorUseCase: UserEnableTwoFactorUseCase,
+        private readonly userDisableTwoFactorUseCase: UserDisableTwoFactorUseCase,
+        private readonly userRegenerateTwoFactorBackupCodesUseCase: UserRegenerateTwoFactorBackupCodesUseCase,
+        private readonly userLogoutUseCase: UserLogoutUseCase
     ) {}
 
     @Doc({ summary: 'refresh token' })
@@ -114,7 +138,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @AuthJwtToken() refreshToken: string
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userAuthHttpService.refresh(user, refreshToken);
+        return this.userRefreshUseCase.execute(user, refreshToken);
     }
 
     @Doc({ summary: 'get profile' })
@@ -129,7 +153,7 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string
     ): Promise<IResponseReturn<IUserProfile>> {
-        return this.userProfileHttpService.getProfile(userId);
+        return this.userGetProfileUseCase.execute(userId);
     }
 
     @Doc({ summary: 'update profile' })
@@ -146,7 +170,7 @@ export class UserSharedController {
         @Body({ schema: UserUpdateProfileRequestSchema })
         body: UserUpdateProfileRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userProfileHttpService.updateProfile(userId, body);
+        return this.userUpdateProfileUseCase.execute(userId, body);
     }
 
     @Doc({ summary: 'generate upload photo profile presign' })
@@ -166,7 +190,7 @@ export class UserSharedController {
         @Body({ schema: UserGeneratePhotoProfileRequestSchema })
         body: UserGeneratePhotoProfileRequestDto
     ): Promise<IResponseReturn<IAwsS3Presign>> {
-        return this.userProfileHttpService.generatePhotoProfilePresign(
+        return this.userGeneratePhotoProfilePresignUseCase.execute(
             userId,
             body
         );
@@ -186,7 +210,7 @@ export class UserSharedController {
         @Body({ schema: UserUpdateProfilePhotoRequestSchema })
         body: UserUpdateProfilePhotoRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userProfileHttpService.updatePhotoProfile(userId, body);
+        return this.userUpdatePhotoProfileUseCase.execute(userId, body);
     }
 
     @Doc({ summary: 'upload photo profile' })
@@ -213,7 +237,7 @@ export class UserSharedController {
         )
         file: IFile
     ): Promise<IResponseReturn<void>> {
-        return this.userProfileHttpService.uploadPhotoProfile(userId, file);
+        return this.userUploadPhotoProfileUseCase.execute(userId, file);
     }
 
     @Doc({ summary: 'change password' })
@@ -230,7 +254,7 @@ export class UserSharedController {
         @Body({ schema: UserChangePasswordRequestSchema })
         body: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userPasswordHttpService.changePassword(user, body);
+        return this.userChangePasswordUseCase.execute(user, body);
     }
 
     @Doc({ summary: 'user add mobile number' })
@@ -248,7 +272,7 @@ export class UserSharedController {
         @Body({ schema: UserAddMobileNumberRequestSchema })
         body: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
-        return this.userMobileNumberHttpService.addMobileNumber(userId, body);
+        return this.userAddMobileNumberUseCase.execute(userId, body);
     }
 
     @Doc({ summary: 'user update mobile number' })
@@ -268,7 +292,7 @@ export class UserSharedController {
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
         body: UserUpdateMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
-        return this.userMobileNumberHttpService.updateMobileNumber(
+        return this.userUpdateMobileNumberUseCase.execute(
             userId,
             mobileNumberId,
             body
@@ -290,7 +314,7 @@ export class UserSharedController {
         @Param('mobileNumberId', { schema: RequestMongoIdSchema })
         mobileNumberId: string
     ): Promise<IResponseReturn<IUserMobileNumber>> {
-        return this.userMobileNumberHttpService.deleteMobileNumber(
+        return this.userDeleteMobileNumberUseCase.execute(
             userId,
             mobileNumberId
         );
@@ -310,7 +334,7 @@ export class UserSharedController {
         @Body({ schema: UserClaimUsernameRequestSchema })
         body: UserClaimUsernameRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userProfileHttpService.claimUsername(userId, body);
+        return this.userClaimUsernameUseCase.execute(userId, body);
     }
 
     @Doc({ summary: 'get current two-factor authentication status' })
@@ -326,7 +350,7 @@ export class UserSharedController {
     async getTwoFactorStatus(
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
-        return this.userTwoFactorHttpService.getTwoFactorStatus(user);
+        return this.userGetTwoFactorStatusUseCase.execute(user);
     }
 
     @Doc({
@@ -348,7 +372,7 @@ export class UserSharedController {
         @Body({ schema: UserTwoFactorSetupRequestSchema })
         body: UserTwoFactorSetupRequestDto
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        return this.userTwoFactorHttpService.setupTwoFactor(user, body);
+        return this.userSetupTwoFactorUseCase.execute(user, body);
     }
 
     @Doc({
@@ -369,7 +393,7 @@ export class UserSharedController {
         @Body({ schema: UserTwoFactorEnableRequestSchema })
         body: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userTwoFactorHttpService.enableTwoFactor(user, body);
+        return this.userEnableTwoFactorUseCase.execute(user, body);
     }
 
     @Doc({ summary: 'disable two-factor authentication' })
@@ -385,7 +409,7 @@ export class UserSharedController {
         @Body({ schema: UserTwoFactorDisableRequestSchema })
         body: UserTwoFactorDisableRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userTwoFactorHttpService.disableTwoFactor(user, body);
+        return this.userDisableTwoFactorUseCase.execute(user, body);
     }
 
     @Doc({ summary: 'regenerate two-factor backup codes' })
@@ -404,7 +428,7 @@ export class UserSharedController {
         @Body({ schema: UserTwoFactorRegenerateBackupCodeRequestSchema })
         body: UserTwoFactorRegenerateBackupCodeRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userTwoFactorHttpService.regenerateTwoFactorBackupCodes(
+        return this.userRegenerateTwoFactorBackupCodesUseCase.execute(
             user,
             body
         );
@@ -425,7 +449,7 @@ export class UserSharedController {
         @AuthJwtPayload()
         { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
     ): Promise<IResponseReturn<void>> {
-        return this.userAuthHttpService.logout(
+        return this.userLogoutUseCase.execute(
             userId,
             sessionId,
             deviceOwnershipId

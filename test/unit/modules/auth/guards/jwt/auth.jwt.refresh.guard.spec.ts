@@ -3,7 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthPayloadStoreKey } from '@modules/auth/constants/auth.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
@@ -15,7 +15,7 @@ import {
 } from '@generated/prisma-client/client';
 
 describe('AuthJwtRefreshGuard', () => {
-    const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const authService: MockProxy<AuthService> = mock<AuthService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     let guard: AuthJwtRefreshGuard;
@@ -34,7 +34,7 @@ describe('AuthJwtRefreshGuard', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtRefreshGuard,
-                { provide: AuthDomain, useValue: authDomain },
+                { provide: AuthService, useValue: authService },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -46,13 +46,9 @@ describe('AuthJwtRefreshGuard', () => {
 
     describe('handleRequest', () => {
         it('stores the validated payload and returns it', () => {
-            authDomain.validateJwtRefreshGuard.mockReturnValue(payload);
+            authService.validateJwtRefreshGuard.mockReturnValue(payload);
 
-            const result = guard.handleRequest(
-                undefined as unknown as Error,
-                payload,
-                undefined as unknown as Error
-            );
+            const result = guard.handleRequest(null, payload, undefined);
 
             expect(result).toBe(payload);
             expect(requestStoreService.set).toHaveBeenCalledWith(
@@ -61,19 +57,40 @@ describe('AuthJwtRefreshGuard', () => {
             );
         });
 
+        it('hands the service null for the false user Passport reports on a failed authentication', () => {
+            const info = new Error('invalid signature');
+            authService.validateJwtRefreshGuard.mockReturnValue(payload);
+
+            guard.handleRequest(null, false, info);
+
+            expect(authService.validateJwtRefreshGuard).toHaveBeenCalledWith(
+                null,
+                null,
+                info
+            );
+        });
+
+        it('hands the service null for an info that is not an Error', () => {
+            authService.validateJwtRefreshGuard.mockReturnValue(payload);
+
+            guard.handleRequest(null, payload, 'No auth token');
+
+            expect(authService.validateJwtRefreshGuard).toHaveBeenCalledWith(
+                null,
+                payload,
+                null
+            );
+        });
+
         it('propagates the exception the domain throws, without storing anything', () => {
             const err = new Error('passport error');
-            authDomain.validateJwtRefreshGuard.mockImplementation(() => {
+            authService.validateJwtRefreshGuard.mockImplementation(() => {
                 throw new AuthJwtRefreshTokenInvalidException(err);
             });
 
             let thrown: unknown;
             try {
-                guard.handleRequest(
-                    err,
-                    payload,
-                    undefined as unknown as Error
-                );
+                guard.handleRequest(err, payload, undefined);
             } catch (error) {
                 thrown = error;
             }

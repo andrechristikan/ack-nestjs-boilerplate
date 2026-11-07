@@ -22,7 +22,11 @@ import type { NotificationUserSettingRequestDto } from '@modules/notification/dt
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseSchema } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
-import { NotificationHttpService } from '@modules/notification/services/http/notification.http.service';
+import { NotificationGetListCursorUseCase } from '@modules/notification/use-cases/notification.get-list-cursor.use-case';
+import { NotificationGetListUserSettingUseCase } from '@modules/notification/use-cases/notification.get-list-user-setting.use-case';
+import { NotificationMarkAsReadUseCase } from '@modules/notification/use-cases/notification.mark-as-read.use-case';
+import { NotificationMarkAllAsReadUseCase } from '@modules/notification/use-cases/notification.mark-all-as-read.use-case';
+import { NotificationUpdateUserSettingUseCase } from '@modules/notification/use-cases/notification.update-user-setting.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -43,7 +47,11 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class NotificationSharedController {
     constructor(
-        private readonly notificationHttpService: NotificationHttpService
+        private readonly notificationGetListCursorUseCase: NotificationGetListCursorUseCase,
+        private readonly notificationGetListUserSettingUseCase: NotificationGetListUserSettingUseCase,
+        private readonly notificationMarkAsReadUseCase: NotificationMarkAsReadUseCase,
+        private readonly notificationMarkAllAsReadUseCase: NotificationMarkAllAsReadUseCase,
+        private readonly notificationUpdateUserSettingUseCase: NotificationUpdateUserSettingUseCase
     ) {}
 
     @Doc({ summary: 'get all notifications for current user' })
@@ -61,7 +69,7 @@ export class NotificationSharedController {
         query: NotificationListRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePaginationReturn<Notification>> {
-        return this.notificationHttpService.getListCursor(userId, query);
+        return this.notificationGetListCursorUseCase.execute(userId, query);
     }
 
     @Doc({ summary: 'get all notification settings for current user' })
@@ -77,7 +85,7 @@ export class NotificationSharedController {
     async listUserSetting(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
-        return this.notificationHttpService.getListUserSetting(userId);
+        return this.notificationGetListUserSettingUseCase.execute(userId);
     }
 
     @Doc({ summary: 'mark a notification as read' })
@@ -93,7 +101,10 @@ export class NotificationSharedController {
         @Param('notificationId', { schema: RequestMongoIdSchema })
         notificationId: string
     ): Promise<IResponseReturn<void>> {
-        return this.notificationHttpService.markAsRead(userId, notificationId);
+        return this.notificationMarkAsReadUseCase.execute(
+            userId,
+            notificationId
+        );
     }
 
     @Doc({ summary: 'mark all notifications as read' })
@@ -107,7 +118,7 @@ export class NotificationSharedController {
     async markAllAsRead(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.notificationHttpService.markAllAsRead(userId);
+        return this.notificationMarkAllAsReadUseCase.execute(userId);
     }
 
     @Doc({ summary: 'update notification setting' })
@@ -124,6 +135,6 @@ export class NotificationSharedController {
         @Body({ schema: NotificationUserSettingRequestSchema })
         body: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.notificationHttpService.updateUserSetting(userId, body);
+        return this.notificationUpdateUserSettingUseCase.execute(userId, body);
     }
 }
