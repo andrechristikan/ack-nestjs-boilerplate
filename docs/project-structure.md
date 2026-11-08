@@ -76,7 +76,7 @@ CommonModule registers shared infrastructure and the global feature modules. Its
 
 - **Infrastructure:** `ConfigModule` (loading `src/configs/index.ts`), `MessageModule`, `LoggerModule`, `SentryModule` (which exports `SentryService`), `RedisCacheModule`, `QueueModule` (the BullMQ producer connection), `CacheMainModule`, `DatabaseModule`, `RequestModule`, and `ResponseModule`
 - **Shared utilities:** `HelperModule`, `PaginationModule`, `FileModule`, and `FirebaseModule`
-- **The `@Global()` feature domains:** `ActivityLogDomainModule`, `ApiKeyDomainModule`, `AuthDomainModule`, `FeatureFlagDomainModule`, `RoleDomainModule`, `PolicyDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, and `NotificationDomainModule`
+- **The `@Global()` feature modules:** `ActivityLogModule`, `ApiKeyModule`, `AuthModule`, `FeatureFlagModule`, `RoleModule`, `PolicyModule`, `TermPolicyModule`, and `SessionModule`
 
 ## Configs
 
@@ -97,7 +97,7 @@ The catalog is [Configuration](configuration.md).
 i18n JSON, one folder per locale. It contains:
 
 - Subfolders for each supported language (e.g., `en/` for English)
-- JSON files for each domain or feature (e.g., `user.json`, `auth.json`, `policy.json`) containing translation strings and messages
+- JSON files for each module prefix (e.g., `user.json`, `auth.json`, `policy.json`) containing translation strings and messages
 
 ## Migration
 
@@ -109,10 +109,10 @@ MongoDB has no migration files. `pnpm db:migrate` (`prisma db push`) applies the
 
 It includes:
 
-- `migration.module.ts`: registers every seed command as a provider and imports `CommonModule`, `AwsModule`, and `UserDomainModule` but no feature repository module
+- `migration.module.ts`: registers every seed command as a provider and imports `CommonModule`, `AwsModule`, `UserModule`, and `NotificationModule`
 - Subfolders for migration bases, data, enums, interfaces, and seeds
 
-A seed writes every model through `DatabaseService` directly, never through a feature repository, a writing domain method, or a queue.
+A seed writes every model through `DatabaseService` directly, never through a feature repository, a service method, or a queue.
 
 Seed commands:
 
@@ -140,9 +140,9 @@ The queues folder is the BullMQ framework layer. It includes:
 
 Named queues:
 
-- The owning feature's `<feature>.domain.module.ts` registers each one through a `RegisterQueueOptionsFactory`.
+- The owning feature's `<module>.module.ts` registers each one with `BullModule.registerQueueAsync` and a `<Module>[<Concern>]QueueFactory`.
 - `queue.config.ts` supplies the per-queue job defaults.
-- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`.
+- Processor classes live in their owning feature (`<module>/processors/`), provided by that feature's `<module>.use-case.module.ts`.
 - Jobs are immediate, delayed, or recurring.
 
 ## Router
@@ -152,13 +152,13 @@ Named queues:
 The router folder mounts everything the application exposes. It includes:
 
 - `router.module.ts`: the project's `RouterModule`. It imports the five access-level modules, registers their path prefixes through `RouterModule.register` from `@nestjs/core` (imported there as `NestJsRouterModule`, a different class), and mounts the processor module.
-- `http/`: one module per access level, each holding its controllers, the `<feature>.http.module.ts` imports they need, and the `<feature>.domain.module.ts` of each non-`@Global()` feature whose domains the guards on its controllers inject:
+- `http/`: one module per access level, each declaring its controllers and importing the `<Module>UseCaseModule` of each feature whose use cases they inject, plus the `<Module>Module` of each non-`@Global()` feature whose guard they carry:
     - `router.http.public.module.ts` mounts under `/public`
     - `router.http.system.module.ts` mounts under `/system`
     - `router.http.admin.module.ts` mounts under `/admin`
     - `router.http.user.module.ts` mounts under `/user`
     - `router.http.shared.module.ts` mounts under `/shared`
-- `processor/router.processor.module.ts`: aggregates every `<feature>.processor.module.ts`, so the BullMQ workers boot with the HTTP application.
+- `processor/router.processor.module.ts`: imports each `<Module>UseCaseModule` that provides a processor, so the BullMQ workers boot with the HTTP application.
 
 ## Instrument
 
@@ -210,17 +210,16 @@ The migration file is the nest-commander entry point, which boots `MigrationModu
 
 One folder per feature:
 
-- A request travels Controller to HTTP service to Domain to Repository.
-- A job travels Processor to processor service to Domain.
+- A request travels Controller to Use case to Service to Repository.
+- A job travels Processor to Use case, then on to Service and Repository.
 - Lookup tables live under `contracts/` (`*.contract.ts`).
 
 ```mermaid
 flowchart LR
-    C[Controller] --> HS[HTTP service]
-    HS --> D[Domain]
-    D --> R[Repository]
-    P[Processor] --> PS[Processor service]
-    PS --> D
+    C[Controller] --> U[Use case]
+    P[Processor] --> U
+    U --> S[Service]
+    S --> R[Repository]
     R --> DB[DatabaseService]
 ```
 
@@ -250,28 +249,42 @@ modules
 
 `analytic`:
 
-- It orchestrates live metrics through owner `*AnalyticDomain` / `*AnalyticRepository` siblings (for example `user.analytic.domain.ts` with `user.analytic.repository.ts`).
-- It has no repository module of its own.
+- It aggregates live metrics through `*.analytic.service.ts` files that read the owner modules' analytic services and utils.
+- It has no repository of its own.
 - See [Analytic](analytic.md).
 
-**Per-layer Nest modules:**
+**Two Nest modules per feature:**
 
-Each layer of a feature gets its own Nest module file at the root of the feature folder. Only the files with something to provide exist:
+Each feature has up to two Nest module files at the root of its folder. Only the files with something to provide exist:
 
 ```
 modules/<feature>
-  ├── <feature>.repository.module.ts  # repositories
-  ├── <feature>.domain.module.ts      # domains, utils, caches, queue classes and factories
-  │                                   #   (the only one another feature consumes)
-  ├── <feature>.http.module.ts        # HTTP services, imported by a router http module
-  └── <feature>.processor.module.ts   # processors and their processor services
+  ├── <feature>.module.ts           # services, repositories, utils, caches, queue classes,
+  │                                 #   factories
+  └── <feature>.use-case.module.ts  # use cases and processors (only src/router/ imports it)
 ```
 
-- `<feature>.domain.module.ts` is present for every feature.
-- `<feature>.processor.module.ts` exists only in `activity-log`, `notification`, `session`, `term-policy`, `user`, and `workspace`, the features with background jobs.
-- `analytic`, `auth`, `health`, and `hello` have no repository module.
-- `auth` has no HTTP module either.
-- A `<feature>.http.module.ts` exports its HTTP services only, never a domain module.
+- `<feature>.module.ts` (`<Module>Module`) exports its services, utils, caches, and queue classes, never a repository.
+- `<feature>.module.ts` registers the feature's own BullMQ queues.
+- `<feature>.use-case.module.ts` (`<Module>UseCaseModule`) exports its use cases.
+- Another feature, `src/router/`, and `MigrationModule` import `<feature>.module.ts`; only `src/router/` imports `<feature>.use-case.module.ts`.
+- `auth` has `auth.module.ts` only: it has no use cases or controllers.
+- `analytic`, `auth`, `health`, and `hello` have no repositories.
+- `<feature>.use-case.module.ts` provides the processors of `activity-log`, `notification`, `session`, `term-policy`, `user`, and `workspace`, the features with background jobs.
+
+**Dependency order:**
+
+Lower and higher come from each `<Module>Module`'s `imports:`.
+
+- A module is lower than every module whose `<Module>Module` imports it, directly or transitively.
+- Lint keeps the graph acyclic.
+- A `@Global()` module is imported by no module file, so it ranks below every module whose services inject it.
+- The order, lowest first: kernel (`country`, `feature-flag`, `role`, `policy`, `api-key`, `activity-log`, `hello`, `health`), `device`, `session`, `auth`, `password-history`, `notification`, `term-policy`, `user`, `workspace`, `project`, `analytic`.
+- A service injects the services and utils of its own module, of a module its module file imports, and of a lower `@Global()` module.
+- A service never injects a higher module's service. When it would need one, the sequence moves up into a use case, or the shared piece moves down into a lower module's service (or into `src/common/` when it is module-agnostic).
+- A kernel module's services inject no other feature's service or util.
+- A use case stays inside its feature: only its own feature's controllers and processors call it. What it injects is listed under [Use cases](#use-cases).
+- A repository stays inside its feature: another module reaches the data through the owning service.
 
 **Folders:**
 
@@ -284,13 +297,13 @@ module
   # Core (present in almost every module)
   ├── constants
   ├── controllers
-  ├── domains
   ├── dtos
   ├── enums
   ├── exceptions
   ├── interfaces
   ├── repositories
   ├── services
+  ├── use-cases
   ├── utils
   # Common (present when the feature needs them)
   ├── caches
@@ -327,7 +340,7 @@ Coverage skips `src/**/*.contract.ts` (`vitest.config.ts`).
 
 ### Controllers
 
-- Controllers handle incoming HTTP requests, delegate to HTTP services, and return responses.
+- Controllers handle incoming HTTP requests, call one use case's `execute`, and return its response.
 - Controllers define the API endpoints for the module.
 
 ### Decorators
@@ -367,7 +380,8 @@ Health-check indicators that report the status of a dependency or subsystem (use
 ### Interfaces
 
 - TypeScript interfaces cover data shapes and repository contracts (`*.repository.interface.ts`).
-- Services, domains, and utils are injected as classes and carry no header interface.
+- Services and utils are injected as classes and carry no header interface.
+- A use case implements `IAppUseCase`.
 
 ### Interceptors
 
@@ -375,30 +389,42 @@ Logic to intercept and modify requests or responses, such as logging, caching, o
 
 ### Processors
 
-Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.
+- Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.
+- A processor switches on the job name and awaits one use case's `execute`.
 
 ### Queues
 
 - The `@Injectable()` classes hold the BullMQ `Queue`, one method per job the feature enqueues.
-- `<feature>.domain.module.ts` provides and exports them.
+- `<feature>.module.ts` provides and exports them.
 
 ### Repositories
 
-Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for domains.
-
-### Domains
-
-- Domains hold the business logic and orchestration of the module.
-- Domains interact with repositories, other domains, utils, and queue classes.
-- Domains open `DatabaseService.withTransaction` when a write spans more than one repository.
+Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for services.
 
 ### Services
 
-HTTP services (`*.http.service.ts`) and processor services (`*.processor.service.ts`):
+A service holds one module's application logic: its operations and the invariants it keeps.
 
-- They translate transport or job payloads into domain calls.
-- They assemble response DTOs.
-- They own no business rule and reach no repository.
+- A service injects its own module's repositories, services, utils, caches, and queue classes, plus the services and utils the dependency order allows.
+- A service throws the typed exception of the subject that failed.
+- A service opens `DatabaseService.withTransaction` on its own for a write spanning its own repositories.
+- A service's `*InTx(tx, ...)` methods join a caller's transaction and forward `tx` to its repositories and lower modules' services.
+- A service stages no activity log: a method whose action records one returns the stages as data.
+- When two or more use cases share a sequence and its subject is the entity of the highest participating module, that module's service opens the transaction and calls each participant as `*InTx(tx, ...)`.
+- The highest participating module is the one highest in the dependency order among the modules the sequence touches.
+- When the subject belongs to a lower module, no service holds the sequence: each use case opens its own transaction.
+
+### Use cases
+
+A use case holds the business logic of one user- or job-facing action: it assembles services into that action.
+
+- One file and one class per action, with one public method `execute`.
+- A use case injects any module's services, utils, and queue classes, `DatabaseService` for `withTransaction`, and the shared `src/common/` modules, never a repository, a cache, or another use case.
+- A use case opens the transaction that spans modules, and every participant joins through its service's `*InTx(tx, ...)`, unless a service holds a shared sequence (see [Services](#services)).
+- An HTTP use case translates the request DTO into service calls and the result into the response, and prepares and stages the activity logs around the call.
+- A job use case translates the payload into service calls and returns the job result.
+- A use case writes no module's operation: a body that would repeat across use cases moves into the service of the module whose statements it holds.
+- Calling the same service method from two use cases is sequencing, not duplication.
 
 ### Caches
 
@@ -411,8 +437,12 @@ Reusable templates, such as email templates or message formats, used by the modu
 ### Utils
 
 - Utils are pure shaping helpers specific to the module: mappers, predicates, and format checks.
-- A util reaches no cache, repository, queue, request store, or file service.
-- Work that needs one of those lives in a domain.
+- A util method is public when it has two or more callers or a caller outside the module; a method only the util itself calls is private; any other pure method lives in its service.
+- A caller is a class: several call sites in one class are one caller, and the util itself counts as a caller when another of its methods calls the method.
+- A util takes its input as arguments and returns a value.
+- A util reaches no cache, repository, queue, request store, or file service, and injects no other module's util.
+- Work that needs one of those lives in a service.
+- A util that fails returns the exception, and the caller throws it.
 
 ## Other Modules
 

@@ -128,7 +128,7 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
     - request lifecycle fields (`user?` on `IRequestApp`)
     - external spec fields (JWT claims, Prisma generated types)
     - exception options and option bags (for example `IAppBaseExceptionOptions`)
-    - an additive domain-level filter param
+    - an additive service-level filter param
 - `variable?: string | null` is ambiguous and never appears: the input boundary uses `?: string`, and the internal layers use `string | null`.
 - A response schema field uses `.optional()` when it is genuinely absent and `.nullable()` when it is present-or-null. `data?` on `ResponseDto<T>` is the optional wrapper field.
 - Repository filter params use `Type | null`. The repository normalizes `null` to `{}` before Prisma, not the caller.

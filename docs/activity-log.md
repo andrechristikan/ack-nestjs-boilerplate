@@ -6,10 +6,10 @@ Activity Log lives in `src/modules/activity-log`.
 
 Activity Log records audited user actions:
 
-- During the request, a domain builds each activity log with `ActivityLogDomain.prepare` and queues it with `ActivityLogDomain.stagePrepared`.
-- The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes after an HTTP handler settles, and success and error each flush every staged activity log.
+- During the request, a use case builds each activity log with `ActivityLogService.prepare` and queues it with `ActivityLogService.stagePrepared`.
+- The always-on `ActivityLogInterceptor` (registered from `ActivityLogModule`) flushes after an HTTP handler settles, and success and error each flush every staged activity log.
 - A flush draws the id of each row with `DatabaseUtil.createId()`, stamps every row with one `createdAt`, and enqueues one `createMany` job on the `activityLog` queue through `ActivityLogQueue`.
-- `ActivityLogProcessor` runs the job: `ActivityLogProcessorService.processCreateMany` calls `ActivityLogDomain.createMany`, which calls `ActivityLogRepository.createMany`.
+- `ActivityLogProcessor` runs the job: `ActivityLogProcessCreateManyUseCase` calls `ActivityLogService.createMany`, which calls `ActivityLogRepository.createMany`.
 - `ActivityLogRepository.createMany` reads which row ids already exist and inserts only the absent ones in one transaction, so a retried job writes no row twice.
 - The activity log is HTTP-only: a job stages no entry, and the interceptor passes any other context through.
 - An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows). The exception is a sign-in that signs other users out of its device: it writes target rows only (see Device sign-in under that section).
@@ -27,19 +27,19 @@ Both paths answer an error and still write their rows, because the error path fl
 
 Password mismatch:
 
-1. `UserAuthHttpService.loginCredential` calls `UserAuthDomain.countCredentialAttempt`, which counts one password attempt before the password is compared.
-2. `UserAuthDomain.verifyCredential` compares the password.
-3. On a mismatch the service prepares `EnumActivityLogAction.userLoginFailed` with `userId` and `createdBy` set to the target user, and stages it.
-4. The service then throws the not-match exception.
+1. `UserLoginCredentialUseCase` calls `UserAuthService.countCredentialAttempt`, which counts one password attempt before the password is compared.
+2. `UserAuthService.verifyCredential` compares the password.
+3. On a mismatch the use case prepares `EnumActivityLogAction.userLoginFailed` with `userId` and `createdBy` set to the target user, and stages it.
+4. The use case then throws `UserCredentialInvalidException`.
 
 The i18n key is `activityLog.userLoginFailed` ("Login failed with invalid credentials").
 
 Attempt limit already reached:
 
-1. `UserPasswordDomain.countPasswordAttempt` finds the budget spent, enqueues a `lockout` job on the user queue, and returns the stages from `UserUtil.buildPasswordLockoutStages` (`userRevokeAllSessions`, then `userReachMaxPasswordAttempt`).
-2. `UserAuthHttpService.loginCredential` prepares those stages and stages them before it asserts the counted attempt.
-3. The service throws `UserPasswordAttemptMaxException`.
-4. `UserProcessorService.lockout` runs the lockout transaction (user `inactive`, sessions and device ownerships revoked).
+1. `UserPasswordService.countPasswordAttempt` finds the budget spent, enqueues a `lockout` job on the user queue, and returns the lockout stages (`userRevokeAllSessions`, then `userReachMaxPasswordAttempt`).
+2. `UserLoginCredentialUseCase` prepares those stages and stages them before it asserts the counted attempt.
+3. The use case throws `UserPasswordAttemptMaxException`.
+4. `UserProcessLockoutUseCase` runs the lockout transaction (user `inactive`, sessions and device ownerships revoked).
 5. It enqueues the purge of the session logins the transaction revoked (see [Cache][ref-doc-cache]).
 
 The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached").
@@ -77,24 +77,24 @@ The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password att
 
 | Component | Responsibility |
 | --- | --- |
-| `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStaged`; stages nothing |
-| `ActivityLogDomain.stagePrepared` | Pushes prepared activity logs onto the request-store stage list |
-| `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (every staged activity log, on success and on error) |
+| `ActivityLogService.prepare` | Validates contract and metadata, returns an `IActivityLogStaged`; stages nothing |
+| `ActivityLogService.stagePrepared` | Pushes prepared activity logs onto the request-store stage list |
+| `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogService.flushStaged` (every staged activity log, on success and on error) |
 | `RequestStoreService` | Per-request carrier for staged activity logs (`ActivityLogStageStoreKey`, value `'ActivityLogStageStoreKey'`), request log, and workspace |
-| `ActivityLogDomain.flushStaged` | Builds the rows with their ids and `createdAt`, and enqueues them through `ActivityLogQueue.createMany` |
+| `ActivityLogService.flushStaged` | Builds the rows with their ids and `createdAt`, and enqueues them through `ActivityLogQueue.createMany` |
 | `ActivityLogQueue` | Holds the `activityLog` queue and adds one `createMany` job per flush under a fresh job id (`{process}-{nonce}`) |
-| `ActivityLogProcessor`, `ActivityLogProcessorService` | Consume the `createMany` job and write the rows through `ActivityLogDomain.createMany` |
-| `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
+| `ActivityLogProcessor`, `ActivityLogProcessCreateManyUseCase` | Consume the `createMany` job and write the rows through `ActivityLogService.createMany` |
+| `ActivityLogGetList*UseCase` | One use case per list route, by user or workspace and offset or cursor; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
 | `ActivityLogRepository` | Data access (Prisma), including `createMany`, which inserts the rows whose id is absent in one transaction |
 | `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
-| `ActivityLogAnalyticDomain` | Read-only aggregates the analytic module consumes: counts and groupings by action or workspace, and the action-range rows |
+| `ActivityLogAnalyticService` | Read-only aggregates the analytic module consumes: counts and groupings by action or workspace, and the action-range rows |
 | `ActivityLogAnalyticRepository` | Reads the `ActivityLog` model and writes nothing; the action-range read returns `IActivityLogAnalyticList` rows |
 | `ActivityLogActionContract` | Per-action contract: how `userId` and `workspaceId` resolve, and the metadata schema |
 | `ActivityLogWorkspaceVolumeContract` | Target-side workspace and project actions left out of workspace volume metrics |
 
 Analytic reads:
 
-- `ActivityLogAnalyticDomain` is exported from `ActivityLogDomainModule` and read by the analytic domains of the api-key, user, and analytic modules.
+- `ActivityLogAnalyticService` is exported from `ActivityLogModule` and read by the services of the analytic module.
 - `ActivityLogAnalyticListSelect` pins the columns of an action-range read to `id`, `userId`, `action`, `ipAddress`, `createdAt`, `userAgent`, and `workspaceId`, oldest first.
 - A grouping returns `IActivityLogAnalyticActionCount` rows, an action and its count.
 - Workspace volume reads leave out the actions in `ActivityLogWorkspaceVolumeContract`.
@@ -134,7 +134,8 @@ List scope:
 sequenceDiagram
     participant Client
     participant Controller
-    participant Domain
+    participant UseCase as Use case
+    participant Log as ActivityLogService
     participant Storage as RequestStoreService
     participant Interceptor as ActivityLogInterceptor
     participant Queue as ActivityLogQueue
@@ -142,24 +143,27 @@ sequenceDiagram
     participant Repo as ActivityLogRepository
 
     Client->>Controller: HTTP Request
-    Controller->>Domain: business logic
-    Note over Domain: prepare({ action, userId?, createdBy?, workspaceId?, metadata? })<br/>validates before the audited write
-    Domain->>Domain: audited write
-    Domain->>Storage: stagePrepared(activityLogs)
+    Controller->>UseCase: execute
+    UseCase->>Log: prepare({ action, userId?, createdBy?, workspaceId?, metadata? })
+    Note over Log: validates before the audited write
+    UseCase->>UseCase: audited write through the subject service
+    UseCase->>Log: stagePrepared(activityLogs)
+    Log->>Storage: push to the stage list
     alt Success
-        Domain-->>Interceptor: result
-        Interceptor->>Domain: flushStaged
-        Domain->>Queue: createMany(rows)
+        UseCase-->>Interceptor: result
+        Interceptor->>Log: flushStaged
+        Log->>Queue: createMany(rows)
         Interceptor-->>Client: Success Response
     else Failure
-        Domain-->>Interceptor: throws
-        Interceptor->>Domain: flushStaged
-        Note over Domain: Every staged activity log
-        Domain->>Queue: createMany(rows) when any are staged
+        UseCase-->>Interceptor: throws
+        Interceptor->>Log: flushStaged
+        Note over Log: Every staged activity log
+        Log->>Queue: createMany(rows) when any are staged
         Interceptor-->>Client: Error Response
     end
     Queue-->>Processor: createMany job
-    Processor->>Repo: createMany(rows)
+    Processor->>Log: createMany(rows) through the process use case
+    Log->>Repo: createMany(rows)
     Note over Repo: Inserts only the absent row ids
 ```
 
@@ -177,42 +181,50 @@ Ordering and values:
 
 - A session or device path commits, then enqueues the session cache purge, then stages.
 - An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`.
-- A metadata `timestamp` is the domain's pre-write time.
+- A metadata `timestamp` is the use case's pre-write time.
 
-Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
+Example from `RoleCreateByAdminUseCase`, whose private `prepareActivityLog` wraps `ActivityLogService.prepare`:
 
 ```typescript
 const roleId = this.databaseUtil.createId();
-const timestamp = this.helperDateService.create();
 const activityLogs = [
-    this.prepareActivityLog(
-        EnumActivityLogAction.adminRoleCreate,
-        { id: roleId, name: data.name, type: data.type },
-        timestamp
-    ),
+    this.prepareActivityLog(EnumActivityLogAction.adminRoleCreate, {
+        id: roleId,
+        name: body.name,
+        type: body.type,
+        isImmutable: false,
+    }),
 ];
-const created = await this.roleRepository.create(roleId, data);
+const created = await this.roleService.createByAdmin(
+    roleId,
+    {
+        name: body.name,
+        description: body.description ?? null,
+        type: body.type,
+    },
+    { roleId: user.roleId, roleType: user.role.type }
+);
 
-this.activityLogDomain.stagePrepared(activityLogs);
+this.activityLogService.stagePrepared(activityLogs);
 ```
 
 `userLoginFailed` is prepared with an explicit target `userId`, the same user as `createdBy`, and empty metadata:
 
 ```typescript
 const failedLogs = [
-    this.activityLogDomain.prepare({
+    this.activityLogService.prepare({
         action: EnumActivityLogAction.userLoginFailed,
         userId: attempt.user.id,
         createdBy: attempt.user.id,
     }),
 ];
 
-this.activityLogDomain.stagePrepared(failedLogs);
+this.activityLogService.stagePrepared(failedLogs);
 ```
 
 Activity logs prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit.
 
-`SessionDomain.revokeAllByAdmin` prepares its pair after the revoke write, because `sessionCount` exists only once the revoke has run.
+`SessionRevokeAllByAdminUseCase` prepares its pair after the revoke write, because `sessionCount` exists only once the revoke has run.
 
 The error path writes every staged row:
 
@@ -241,7 +253,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Actor and target rows
 
-When one user acts on another user, the domain prepares two rows:
+When one user acts on another user, the use case prepares two rows:
 
 - **Actor row.** Uses the action the actor performed and belongs to the actor.
 - **Target row.** Uses the paired `…ByAdmin`, `…ByOwner`, or `…ByInvitee` action (or `userBlocked` / `userUpdateStatus` for a status change), has contract `user = target`, and belongs to the affected user, with `createdBy` set to the actor.
@@ -250,12 +262,12 @@ A sign-in on a device other users hold is the one action that writes a target ro
 
 When the actor and the affected user are the same person:
 
-- The domain prepares the actor row only.
-- Each call site makes that comparison itself.
+- The use case prepares the actor row only.
+- Each use case makes that comparison itself.
 
 ```mermaid
 flowchart TD
-    A[Domain handles a mutation on another user] --> B["prepare actor row<br/>plain action, metadata.targetUserId"]
+    A[Use case handles a mutation on another user] --> B["prepare actor row<br/>plain action, metadata.targetUserId"]
     B --> C{"affected user<br/>= actor?"}
     C -->|yes| E[Actor row only]
     C -->|no| D["prepare target row<br/>paired action, userId = affected user,<br/>createdBy = actor, metadata.actorUserId"]

@@ -89,7 +89,7 @@ A good fit when you are building:
 
     Full detail: [Authorization Documentation][ref-doc-authorization].
 
-- Activity logging is separate from the stack: domains stage events, and a global interceptor enqueues them as a job that writes them.
+- Activity logging is separate from the stack: use cases stage events, and a global interceptor enqueues them as a job that writes them.
 
 ## TODO
 
@@ -178,7 +178,7 @@ See [package.json][ref-package-json] for the full list.
 
 ### 📈 Analytics
 
-- **Activity log**: Domains stage user actions. A global interceptor enqueues them after the request settles and a queue processor writes them, including actor/target pairs
+- **Activity log**: Use cases stage user actions. A global interceptor enqueues them after the request settles and a queue processor writes them, including actor/target pairs
 - **Analytic dashboard**: Admin metrics, anomaly and fraud reports, and current-workspace user metrics ([docs][ref-doc-analytic])
 
 ### 🩺 Monitoring
