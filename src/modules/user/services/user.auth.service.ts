@@ -1,11 +1,23 @@
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
-    EnumUserSignUpWith,
+    EnumActivityLogAction,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
     EnumUserStatus,
-    EnumVerificationType,
 } from '@generated/prisma-client/client';
+import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
+import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { DeviceService } from '@modules/device/services/device.service';
+import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import type {
+    ISessionPurgeLoginsPayload,
+    ISessionRef,
+} from '@modules/session/interfaces/session.interface';
+import { SessionService } from '@modules/session/services/session.service';
+import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserCredentialInvalidException } from '@modules/user/exceptions/user.credential-invalid.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
@@ -14,18 +26,19 @@ import { UserPasswordExpiredException } from '@modules/user/exceptions/user.pass
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import type {
     IUser,
-    IUserCreateWithWorkspaceInput,
     IUserCredentialAttempt,
-    IUserSignUp,
-    IUserSignUpResolved,
-    IUserVerificationEmailCreate,
+    IUserLoginTwoFactorChallenge,
+    IUserTwoFactorEnabled,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserService } from '@modules/user/services/user.service';
+import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
-import { UserCreateUtil } from '@modules/user/utils/user.create.util';
-import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
+import { Duration } from 'luxon';
 
 @Injectable()
 export class UserAuthService {
@@ -33,10 +46,18 @@ export class UserAuthService {
         private readonly userRepository: UserRepository,
         private readonly userPasswordService: UserPasswordService,
         private readonly userVerificationService: UserVerificationService,
-        private readonly userVerificationUtil: UserVerificationUtil,
-        private readonly userCreateUtil: UserCreateUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly userService: UserService,
+        private readonly userTwoFactorService: UserTwoFactorService,
+        private readonly deviceService: DeviceService,
+        private readonly sessionService: SessionService,
+        private readonly authJwtService: AuthJwtService,
+        private readonly authTwoFactorService: AuthTwoFactorService,
+        private readonly authUtil: AuthUtil,
+        private readonly sessionUtil: SessionUtil,
+        private readonly userUtil: UserUtil,
+        private readonly databaseService: DatabaseService,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     /** Resolves the active credential user of an email, counts one password attempt, and enqueues the lockout job when the budget is spent; isAttemptCounted false with the lockout activity stages on a spent budget, and an unknown, inactive, or passwordless account throws the credential error. */
@@ -145,61 +166,159 @@ export class UserAuthService {
         }
     }
 
-    async prepareSignUp(
-        {
-            countryId,
-            email,
-            username,
-            password: passwordString,
-            name,
-            from,
-            cookies,
-            marketing,
-        }: IUserSignUp,
-        { roleId, workspaceContext }: IUserSignUpResolved
-    ): Promise<{
-        input: IUserCreateWithWorkspaceInput;
-        emailVerification: IUserVerificationEmailCreate;
-    }> {
-        const userId = this.databaseUtil.createId();
-        const password =
-            await this.authPasswordUtil.createPassword(passwordString);
-        const emailVerification = this.userVerificationUtil.createEmail();
-        const acceptedTermPolicyTypes =
-            this.userCreateUtil.buildAcceptedTermPolicyTypes(
-                cookies,
-                marketing
-            );
+    /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, and stamps the login in one transaction; returns the tokens and what the caller enqueues and stages after commit. */
+    async createTokenAndSession(
+        user: IUser,
+        device: IDeviceIdentity,
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserLoginWith,
+        loginAt: Date
+    ): Promise<IUserLoginSession> {
+        const requestLog = this.sessionService.getRequestLog();
+        const { sessionId, jti } = this.authUtil.createLoginIdentifiers();
+        const expiredAt = this.helperDateService.forward(
+            loginAt,
+            Duration.fromObject({
+                seconds:
+                    this.authJwtService.jwtRefreshTokenExpirationTimeInSeconds,
+            })
+        );
+        const now = this.helperDateService.create();
+        const { isNewDevice, revoked, affected, deviceOwnershipId } =
+            await this.databaseService.withTransaction(async tx => {
+                const upserted = await this.deviceService.upsertForLoginInTx(
+                    tx,
+                    user.id,
+                    device,
+                    now
+                );
+                let revokedSessions: ISessionRef[] = [];
+                if (!upserted.isNewDevice) {
+                    revokedSessions =
+                        await this.sessionService.revokeByDeviceOwnershipInTx(
+                            tx,
+                            user.id,
+                            upserted.deviceOwnership.id,
+                            user.id,
+                            now
+                        );
+                }
+                const otherOwnershipIds =
+                    await this.deviceService.getOtherOwnershipIdsByDeviceInTx(
+                        tx,
+                        upserted.device.id,
+                        user.id
+                    );
+                let affectedSessions: ISessionPurgeLoginsPayload[] = [];
+                if (otherOwnershipIds.length > 0) {
+                    affectedSessions =
+                        await this.sessionService.revokeByDeviceOwnershipIdsInTx(
+                            tx,
+                            otherOwnershipIds,
+                            user.id,
+                            now
+                        );
+                }
+                await this.sessionService.createInTx(
+                    tx,
+                    user.id,
+                    sessionId,
+                    upserted.deviceOwnership.id,
+                    jti,
+                    expiredAt,
+                    requestLog
+                );
+                await this.userService.updateLoginInTx(
+                    tx,
+                    user.id,
+                    loginFrom,
+                    loginWith,
+                    requestLog.ipAddress,
+                    now
+                );
+
+                return {
+                    isNewDevice: upserted.isNewDevice,
+                    revoked: revokedSessions,
+                    affected: affectedSessions,
+                    deviceOwnershipId: upserted.deviceOwnership.id,
+                };
+            });
+
+        const tokens = this.authJwtService.createTokens(
+            user,
+            { sessionId, jti, deviceOwnershipId, loginAt },
+            loginFrom,
+            loginWith
+        );
+        const revokeStages = affected.map(({ userId, sessions }) => {
+            const metadata =
+                this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
+                    user.id,
+                    sessions.length
+                );
+
+            return {
+                action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
+                userId,
+                createdBy: user.id,
+                metadata,
+            };
+        });
 
         return {
-            input: {
-                userId,
-                email,
-                name,
-                username,
-                countryId,
-                roleId,
-                signUpFrom: from,
-                signUpWith: EnumUserSignUpWith.credential,
-                isVerified: false,
-                verifiedAt: null,
-                acceptedTermPolicyTypes,
-                password,
-                passwordHistoryType:
-                    UserCreateContract.signUp.passwordHistoryType,
-                verification: {
-                    reference: emailVerification.reference,
-                    token: emailVerification.hashedToken,
-                    type: EnumVerificationType.email,
-                    to: email,
-                    expiredAt: emailVerification.expiredAt,
-                    verifiedAt: null,
-                    isUsed: false,
-                },
-                workspaceContext,
-                createdBy: userId,
-            },
-            emailVerification,
+            tokens,
+            sessionId,
+            jti,
+            requestLog,
+            isNewDevice,
+            revoked,
+            affected,
+            revokeStages,
+        };
+    }
+
+    /** Creates the login challenge; when setup is required, also generates and saves a pending authenticator secret. */
+    async createTwoFactorChallenge(
+        user: IUserTwoFactorEnabled,
+        device: IDeviceIdentity,
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserLoginWith
+    ): Promise<IUserLoginTwoFactorChallenge> {
+        const challengePromise = this.authTwoFactorService.createChallenge({
+            userId: user.id,
+            device,
+            loginFrom,
+            loginWith,
+        });
+        const requiresSetup = this.userUtil.requiresTwoFactorSetup(user);
+        if (requiresSetup) {
+            const [
+                { challengeToken, expiresInMs },
+                { encryptedSecret, otpauthUrl, secret },
+            ] = await Promise.all([
+                challengePromise,
+                this.userTwoFactorService.setup(user),
+            ]);
+            await this.userTwoFactorService.saveSetup(user.id, encryptedSecret);
+
+            return {
+                isRequiredSetup: true,
+                challengeToken,
+                challengeExpiresInMs: expiresInMs,
+                backupCodesRemaining: user.twoFactor.backupCodes.length,
+                otpauthUrl,
+                secret,
+            };
+        }
+
+        const { challengeToken, expiresInMs } = await challengePromise;
+
+        return {
+            isRequiredSetup: false,
+            challengeToken,
+            challengeExpiresInMs: expiresInMs,
+            backupCodesRemaining: user.twoFactor.backupCodes.length,
         };
     }
 }

@@ -1,4 +1,3 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -9,7 +8,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
@@ -267,7 +265,7 @@ describe('UserRefreshUseCase', () => {
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 tokens
             );
-            expect(sessionService.setLogin).not.toHaveBeenCalled();
+            expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(callOrder).toEqual([
                 'updateJtiInTx',
@@ -292,65 +290,12 @@ describe('UserRefreshUseCase', () => {
                 useCase.execute(baseUser, 'refresh-token')
             ).resolves.toEqual({ data: tokens });
 
-            expect(sessionService.setLogin).toHaveBeenCalledWith(
+            expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
                 'user-bramble',
                 'session-bramble',
                 'new-jti'
             );
             expect(sessionService.revokeIfActive).not.toHaveBeenCalled();
-        });
-
-        it('revokes the rotated session, purges it, and rethrows when the fresh login entry cannot be written', async () => {
-            stubUserRefreshSession(refreshSessionDoubles, {
-                payload,
-                oldJti: 'old-jti',
-                refreshed,
-            });
-            sessionService.updateLogin.mockResolvedValue(
-                EnumSessionCacheUpdate.absent
-            );
-            const failure = new RedisUnavailableException();
-            sessionService.setLogin.mockRejectedValue(failure);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expect(
-                useCase.execute(baseUser, 'refresh-token')
-            ).rejects.toBe(failure);
-
-            expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
-                'user-bramble',
-                'session-bramble'
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
-        });
-
-        it('revokes the rotated session, purges it, and wraps a non-app failure when the fresh login entry cannot be written', async () => {
-            stubUserRefreshSession(refreshSessionDoubles, {
-                payload,
-                oldJti: 'old-jti',
-                refreshed,
-            });
-            sessionService.updateLogin.mockResolvedValue(
-                EnumSessionCacheUpdate.absent
-            );
-            const failure = new Error('cache exploded');
-            sessionService.setLogin.mockRejectedValue(failure);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expect(
-                useCase.execute(baseUser, 'refresh-token')
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: failure,
-            });
-
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
         });
 
         it('throws RequestContextMissingException before reading the token when the store has no request log', async () => {
@@ -490,7 +435,7 @@ describe('UserRefreshUseCase', () => {
                 'user-bramble',
                 revokedRef
             );
-            expect(sessionService.setLogin).not.toHaveBeenCalled();
+            expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
         });
 
         it('stages no reuse row when nothing was revoked', async () => {

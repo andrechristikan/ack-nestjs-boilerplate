@@ -2,12 +2,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
@@ -18,7 +12,6 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { RoleService } from '@modules/role/services/role.service';
@@ -31,19 +24,13 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
 
 describe('DeviceRemoveByAdminUseCase', () => {
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
-    const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const deviceOwnership: IDeviceOwnership = {
         id: 'device-ownership-1',
         createdAt: updatedAt,
@@ -141,11 +128,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceRemoveByAdminUseCase,
-                { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: DatabaseService, useValue: databaseService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: RoleService, useValue: roleService },
                 { provide: SessionQueue, useValue: sessionQueue },
@@ -195,19 +178,13 @@ describe('DeviceRemoveByAdminUseCase', () => {
         };
 
         beforeEach(() => {
-            helperDateService.create.mockReturnValue(updatedAt);
-            sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue(
-                revokedSessions
-            );
-            deviceService.removeOwnershipInTx.mockResolvedValue(
-                deviceOwnership
-            );
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
+            sessionService.removeDeviceOwnership.mockResolvedValue({
+                deviceOwnership,
+                revokedSessions,
+            });
         });
 
-        it('checks the rank, removes on one transaction attributed to the admin, purges, and stages the actor and target rows', async () => {
+        it('checks the rank, removes attributed to the admin, purges, and stages the actor and target rows', async () => {
             roleService.getOneByUserId.mockResolvedValue(userRole);
             deviceUtil.mapActivityLogActorMetadata.mockReturnValue(
                 actorMetadata
@@ -231,21 +208,10 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(
-                sessionService.revokeByDeviceOwnershipInTx
-            ).toHaveBeenCalledWith(
-                tx,
+            expect(sessionService.removeDeviceOwnership).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1',
-                'admin-1',
-                updatedAt
-            );
-            expect(deviceService.removeOwnershipInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'device-ownership-1',
-                'admin-1',
-                updatedAt
+                'admin-1'
             );
             expect(
                 deviceUtil.mapActivityLogTargetMetadata
@@ -291,50 +257,14 @@ describe('DeviceRemoveByAdminUseCase', () => {
             ]);
         });
 
-        it('answers DeviceNotFoundException from the guarded removal, purging and staging nothing', async () => {
+        it('purges and stages nothing when the removal throws', async () => {
             const notFound = new DeviceNotFoundException();
             roleService.getOneByUserId.mockResolvedValue(userRole);
-            deviceService.removeOwnershipInTx.mockRejectedValue(notFound);
+            sessionService.removeDeviceOwnership.mockRejectedValue(notFound);
 
             await expect(
                 useCase.execute('user-1', 'device-ownership-1', admin)
             ).rejects.toBe(notFound);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('answers DeviceNotFoundException when a concurrent removal wins the write', async () => {
-            const conflict = new Error('write conflict');
-            roleService.getOneByUserId.mockResolvedValue(userRole);
-            databaseService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            await expect(
-                useCase.execute('user-1', 'device-ownership-1', admin)
-            ).rejects.toMatchObject({
-                constructor: DeviceNotFoundException,
-                module: 'device',
-                messagePath: 'device.error.notFound',
-            });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('purges and stages nothing when the transaction fails', async () => {
-            const cause = new Error('database exploded');
-            roleService.getOneByUserId.mockResolvedValue(userRole);
-            databaseService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
-
-            await expect(
-                useCase.execute('user-1', 'device-ownership-1', admin)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
@@ -352,7 +282,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             await expect(
                 useCase.execute('user-1', 'device-ownership-1', admin)
             ).rejects.toBe(rankForbidden);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionService.removeDeviceOwnership).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });

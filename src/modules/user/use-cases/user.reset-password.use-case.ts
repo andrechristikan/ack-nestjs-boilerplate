@@ -10,11 +10,6 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import {
-    EnumFeatureFlagKey,
-    EnumFeatureFlagMetadataKey,
-} from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -49,7 +44,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly notificationService: NotificationService,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly featureFlagService: FeatureFlagService,
         private readonly activityLogService: ActivityLogService,
         private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
@@ -92,12 +86,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         code,
         method,
     }: UserForgotPasswordResetRequestDto): Promise<IResponseReturn<void>> {
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.changePassword,
-            EnumFeatureFlagMetadataKey.forgotAllowed
-        );
-
         const reset = await this.userPasswordService.getOneActiveReset(token);
         // Sequential by design: gate before the work it guards
         await this.passwordHistoryService.assertNew(reset.userId, newPassword);

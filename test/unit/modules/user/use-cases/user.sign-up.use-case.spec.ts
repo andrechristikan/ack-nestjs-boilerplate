@@ -33,7 +33,6 @@ import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationRecipient,
@@ -41,8 +40,6 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
-import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -51,7 +48,7 @@ import type { IRole } from '@modules/role/interfaces/role.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
-import { UserAuthService } from '@modules/user/services/user.auth.service';
+import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -81,15 +78,12 @@ import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feat
 import { UserSignUpUseCase } from '@modules/user/use-cases/user.sign-up.use-case';
 
 describe('UserSignUpUseCase', () => {
-    const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
         mock<UserVerificationUtil>();
-    const passwordHistoryService: MockProxy<PasswordHistoryService> =
-        mock<PasswordHistoryService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const userRegistrationService: MockProxy<UserRegistrationService> =
+        mock<UserRegistrationService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
     const notificationUtil: MockProxy<NotificationUtil> =
@@ -272,14 +266,6 @@ describe('UserSignUpUseCase', () => {
         expiredInMinutes: 15,
         reference: 'VRF-bramble',
     };
-    const historyEntry: IPasswordHistoryCreate = {
-        userId: 'user-bramble',
-        password: 'hashed',
-        type: EnumPasswordHistoryType.signUp,
-        expiredAt: password.passwordPeriodExpired,
-        createdAt: password.passwordCreated,
-        createdBy: 'user-bramble',
-    };
     const acceptanceEntry: ITermPolicyAcceptanceCreate = {
         userId: 'user-bramble',
         types: [EnumTermPolicyType.termsOfService],
@@ -331,14 +317,10 @@ describe('UserSignUpUseCase', () => {
         );
         activityLogService.prepare.mockReturnValue(activityLog);
         notificationUtil.mapRecipient.mockReturnValue(recipient);
-        userService.createManyInTx.mockResolvedValue([committedUser]);
-        userCreateUtil.buildPasswordHistoryEntries.mockReturnValue([
-            historyEntry,
-        ]);
+        userRegistrationService.createInTx.mockResolvedValue([committedUser]);
         userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
             acceptanceEntry,
         ]);
-        userCreateUtil.buildUserIds.mockReturnValue(['user-bramble']);
         workspaceUtil.countSlugAttempts.mockReturnValue(2);
         workspaceUtil.buildOwnedUsers.mockReturnValue([]);
         roleService.getByName.mockResolvedValue(role);
@@ -347,13 +329,11 @@ describe('UserSignUpUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserSignUpUseCase,
-                { provide: UserAuthService, useValue: userAuthService },
                 { provide: UserService, useValue: userService },
                 {
-                    provide: PasswordHistoryService,
-                    useValue: passwordHistoryService,
+                    provide: UserRegistrationService,
+                    useValue: userRegistrationService,
                 },
-                { provide: NotificationService, useValue: notificationService },
                 {
                     provide: TermPolicyAcceptanceService,
                     useValue: termPolicyAcceptanceService,
@@ -416,7 +396,7 @@ describe('UserSignUpUseCase', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 personalContext
             );
-            userAuthService.prepareSignUp.mockResolvedValue({
+            userRegistrationService.prepareSignUp.mockResolvedValue({
                 input,
                 emailVerification,
             });
@@ -442,7 +422,7 @@ describe('UserSignUpUseCase', () => {
             expect(countryService.getOne).toHaveBeenCalledWith(
                 'country-bramble'
             );
-            expect(userAuthService.prepareSignUp).toHaveBeenCalledWith(
+            expect(userRegistrationService.prepareSignUp).toHaveBeenCalledWith(
                 signUpInput,
                 { roleId: 'role-bramble', workspaceContext: personalContext }
             );
@@ -508,7 +488,7 @@ describe('UserSignUpUseCase', () => {
             expect(
                 userCreateUtil.buildSignUpWorkspaceContext
             ).toHaveBeenCalledWith(invite, 'bramble2fox');
-            expect(userAuthService.prepareSignUp).toHaveBeenCalledWith(
+            expect(userRegistrationService.prepareSignUp).toHaveBeenCalledWith(
                 {
                     ...signUpInput,
                     name: 'Bramble Fox',
@@ -573,7 +553,9 @@ describe('UserSignUpUseCase', () => {
                 messagePath: 'role.error.notFound',
             });
             expect(userService.assertEmailAvailable).not.toHaveBeenCalled();
-            expect(userAuthService.prepareSignUp).not.toHaveBeenCalled();
+            expect(
+                userRegistrationService.prepareSignUp
+            ).not.toHaveBeenCalled();
         });
 
         it('answers the country gate before the email and username gates', async () => {
@@ -662,16 +644,10 @@ describe('UserSignUpUseCase', () => {
                 EnumTermPolicyType.termsOfService,
                 EnumTermPolicyType.privacy,
             ]);
-            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
-                inviteInput,
-            ]);
-            expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
+            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
-                [historyEntry]
+                [inviteInput]
             );
-            expect(
-                notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, ['user-bramble']);
             expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
                 [inviteInput],
                 0
@@ -695,18 +671,10 @@ describe('UserSignUpUseCase', () => {
 
             expect(
                 termPolicyAcceptanceService.assertRequiredPublishedInTx
-            ).toHaveBeenCalledBefore(userService.createManyInTx);
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                passwordHistoryService.createManyInTx
+            ).toHaveBeenCalledBefore(userRegistrationService.createInTx);
+            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
+                workspaceService.createOwnedForUsersInTx
             );
-            expect(
-                passwordHistoryService.createManyInTx
-            ).toHaveBeenCalledBefore(
-                notificationService.createDefaultsManyInTx
-            );
-            expect(
-                notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledBefore(workspaceService.createOwnedForUsersInTx);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledBefore(workspaceInviteService.acceptOnSignUpInTx);
@@ -720,6 +688,43 @@ describe('UserSignUpUseCase', () => {
             expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
+            );
+        });
+
+        it("runs createInTx on each attempt's tx after a slug collision", async () => {
+            const retryTx = {} as IDatabaseTransactionClient;
+            databaseService.withTransaction
+                .mockImplementationOnce(async fn => {
+                    await fn(tx);
+                    throw new Error('slug collision');
+                })
+                .mockImplementationOnce(async fn => fn(retryTx) as never);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await useCase['createSignUpUser'](input);
+
+            expect(userRegistrationService.createInTx).toHaveBeenNthCalledWith(
+                1,
+                tx,
+                [input]
+            );
+            expect(userRegistrationService.createInTx).toHaveBeenNthCalledWith(
+                2,
+                retryTx,
+                [input]
+            );
+        });
+
+        it('asserts the published term policy before createInTx and accepts it last', async () => {
+            await useCase['createSignUpUser'](input);
+
+            expect(
+                termPolicyAcceptanceService.assertRequiredPublishedInTx
+            ).toHaveBeenCalledBefore(userRegistrationService.createInTx);
+            expect(
+                workspaceService.createOwnedForUsersInTx
+            ).toHaveBeenCalledBefore(
+                termPolicyAcceptanceService.acceptPublishedManyInTx
             );
         });
 
@@ -761,7 +766,7 @@ describe('UserSignUpUseCase', () => {
             await expect(useCase['createSignUpUser'](input)).rejects.toBe(
                 failure
             );
-            expect(userService.createManyInTx).not.toHaveBeenCalled();
+            expect(userRegistrationService.createInTx).not.toHaveBeenCalled();
         });
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {

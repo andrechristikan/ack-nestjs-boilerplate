@@ -19,8 +19,6 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationRecipient,
     INotificationWorkspaceInvitePushPayload,
@@ -41,8 +39,6 @@ describe('WorkspaceResendInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const notificationQueue: MockProxy<NotificationQueue> =
@@ -157,7 +153,6 @@ describe('WorkspaceResendInviteUseCase', () => {
                     useValue: workspaceInviteService,
                 },
                 { provide: UserService, useValue: userService },
-                { provide: NotificationService, useValue: notificationService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 {
@@ -177,14 +172,15 @@ describe('WorkspaceResendInviteUseCase', () => {
         beforeEach(() => {
             workspaceInviteService.getResendableById.mockResolvedValue(invite);
             userService.getOneActiveByEmail.mockResolvedValue(null);
-            userService.getNameById.mockResolvedValue(null);
-            workspaceUtil.resolveInviterName.mockReturnValue('Acme');
+            workspaceInviteService.getInviterName.mockResolvedValue('Acme');
             workspaceUtil.mapInviteNotificationPayload.mockReturnValue(payload);
             workspaceInviteService.resendInvite.mockResolvedValue({
                 invite,
                 tokenData,
             });
-            notificationService.getRecipient.mockResolvedValue(recipient);
+            workspaceInviteService.getInviteeRecipient.mockImplementation(
+                async user => (user ? recipient : null)
+            );
         });
 
         it('reads the pending invite, prepares the row, rotates, stages, and emails an unregistered invitee in order', async () => {
@@ -291,10 +287,9 @@ describe('WorkspaceResendInviteUseCase', () => {
 
             await useCase.execute(workspace, 'user-1', 'invite-1', body);
 
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                existingUser,
-                EnumNotificationKind.workspaceInvite
-            );
+            expect(
+                workspaceInviteService.getInviteeRecipient
+            ).toHaveBeenCalledWith(existingUser);
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(2, {
                 action: EnumActivityLogAction.workspaceInviteResentByAdmin,
                 userId: 'user-2',
@@ -331,7 +326,9 @@ describe('WorkspaceResendInviteUseCase', () => {
         it('rotates nothing when the invitee recipient read rejects', async () => {
             const failure = new Error('read-failed');
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
-            notificationService.getRecipient.mockRejectedValue(failure);
+            workspaceInviteService.getInviteeRecipient.mockRejectedValue(
+                failure
+            );
 
             await expect(
                 useCase.execute(workspace, 'user-1', 'invite-1', body)
@@ -341,7 +338,7 @@ describe('WorkspaceResendInviteUseCase', () => {
 
         it('rotates nothing when the inviter name read rejects', async () => {
             const failure = new Error('read-failed');
-            userService.getNameById.mockRejectedValue(failure);
+            workspaceInviteService.getInviterName.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(workspace, 'user-1', 'invite-1', body)

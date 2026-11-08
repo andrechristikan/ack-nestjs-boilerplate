@@ -14,7 +14,6 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
@@ -28,8 +27,6 @@ import { WorkspaceGetJoinRequestsListUseCase } from '@modules/workspace/use-case
 describe('WorkspaceGetJoinRequestsListUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
-    const featureFlagService: MockProxy<FeatureFlagService> =
-        mock<FeatureFlagService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
@@ -58,7 +55,6 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
                     provide: WorkspaceJoinRequestService,
                     useValue: workspaceJoinRequestService,
                 },
-                { provide: FeatureFlagService, useValue: featureFlagService },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -75,14 +71,15 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('gates on the flag before listing', async () => {
-            featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
+        it('runs the join-request gate first and stops when it rejects', async () => {
+            workspaceJoinRequestService.assertJoinRequestAllowed.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
 
             await expect(
                 useCase.execute('workspace-1', {})
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
+            expect(paginationQueryUtil.cursor).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestService.getJoinRequestsList
             ).not.toHaveBeenCalled();

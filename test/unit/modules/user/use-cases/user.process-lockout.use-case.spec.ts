@@ -5,7 +5,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
@@ -17,7 +16,6 @@ describe('UserProcessLockoutUseCase', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -43,7 +41,6 @@ describe('UserProcessLockoutUseCase', () => {
                 UserProcessLockoutUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: DeviceService, useValue: deviceService },
                 { provide: SessionQueue, useValue: sessionQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -70,15 +67,10 @@ describe('UserProcessLockoutUseCase', () => {
                     return true;
                 }
             );
-            sessionService.revokeActiveByUserInTx.mockImplementation(
-                async () => {
-                    calls.push('revokeSessions');
+            sessionService.revokeAllByUserInTx.mockImplementation(async () => {
+                calls.push('revokeSessions');
 
-                    return revoked;
-                }
-            );
-            deviceService.revokeAllByUserInTx.mockImplementation(async () => {
-                calls.push('revokeDevices');
+                return revoked;
             });
             sessionQueue.purgeLogins.mockImplementation(async () => {
                 calls.push('purge');
@@ -89,13 +81,7 @@ describe('UserProcessLockoutUseCase', () => {
             expect(
                 userService.deactivateForMaxAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-1');
-            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'user-1',
-                now
-            );
-            expect(deviceService.revokeAllByUserInTx).toHaveBeenCalledWith(
+            expect(sessionService.revokeAllByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'user-1',
@@ -109,7 +95,6 @@ describe('UserProcessLockoutUseCase', () => {
                 'begin',
                 'deactivate',
                 'revokeSessions',
-                'revokeDevices',
                 'commit',
                 'purge',
             ]);
@@ -124,10 +109,7 @@ describe('UserProcessLockoutUseCase', () => {
 
             const result = await useCase.execute('user-1');
 
-            expect(
-                sessionService.revokeActiveByUserInTx
-            ).not.toHaveBeenCalled();
-            expect(deviceService.revokeAllByUserInTx).not.toHaveBeenCalled();
+            expect(sessionService.revokeAllByUserInTx).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith('user-1', []);
             expect(result).toEqual({
                 message: 'user.queue.lockout',

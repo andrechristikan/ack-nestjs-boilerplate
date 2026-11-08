@@ -8,7 +8,7 @@ Each line is one accepted decision: its number, title, chosen option, and reject
 - 0004 · Use case, service, repository · chosen: one use case per action, rules in services shared downward on a declared order · rejected: domains as orchestrators, domain events for orchestration, grouped multi-method use cases, a separate `src/application/` tier
 - 0005 · Workspace above user · chosen: `WorkspaceService` may inject `UserService`, user calls into workspace are use cases · rejected: user above workspace
 - 0006 · Two modules per feature · chosen: `<Module>Module` and `<Module>UseCaseModule` · rejected: one module per feature, four modules per feature
-- 0007 · Shared cross-module transaction in the highest service · chosen: a service of the highest participating module owns a sequence two or more use cases share · rejected: the sequence copied per use case, a shared use case
+- 0007 · Shared cross-module transaction in the highest service · chosen: a service of the highest participating module owns a shared sequence when the subject is that module's entity, otherwise each use case sequences the `*InTx` calls · rejected: always in the highest service, a module's statements copied per use case, a shared use case
 - 0008 · `DatabaseService` outside repositories is `withTransaction` only · chosen: every statement goes through a repository · rejected: `databaseService.client` in a service or use case
 - 0009 · The `<module>.` file prefix stays · chosen: `user.sign-up.use-case.ts` · rejected: short names (`sign-up.use-case.ts`)
 - 0010 · Feature dependency order · chosen: kernel, device, session, auth, password-history, notification, term-policy, user, workspace, project, analytic · rejected: password-history in the kernel, `AuthPasswordUtil` in the kit

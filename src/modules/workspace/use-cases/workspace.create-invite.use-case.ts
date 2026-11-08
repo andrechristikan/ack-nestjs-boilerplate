@@ -8,8 +8,6 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -34,34 +32,11 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly projectService: ProjectService,
         private readonly userService: UserService,
-        private readonly notificationService: NotificationService,
         private readonly activityLogService: ActivityLogService,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly workspaceUtil: WorkspaceUtil
     ) {}
-
-    private async getInviterName(
-        workspace: Workspace,
-        actorId: string
-    ): Promise<string> {
-        const inviter = await this.userService.getNameById(actorId);
-
-        return this.workspaceUtil.resolveInviterName(inviter, workspace);
-    }
-
-    private async getInviteeRecipient(
-        existingUser: User | null
-    ): Promise<INotificationRecipient | null> {
-        if (!existingUser) {
-            return null;
-        }
-
-        return this.notificationService.getRecipient(
-            existingUser,
-            EnumNotificationKind.workspaceInvite
-        );
-    }
 
     private prepareInviteActivityLogs(
         action: EnumActivityLogAction,
@@ -168,8 +143,8 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         }
 
         const [inviterName, recipient] = await Promise.all([
-            this.getInviterName(workspace, actorId),
-            this.getInviteeRecipient(existingUser),
+            this.workspaceInviteService.getInviterName(workspace, actorId),
+            this.workspaceInviteService.getInviteeRecipient(existingUser),
         ]);
         // Sequential by design: write must not run if an earlier step throws
         const { invite, tokenData } =

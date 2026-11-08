@@ -12,6 +12,11 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
@@ -36,6 +41,7 @@ export class WorkspaceService {
     constructor(
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
+        private readonly featureFlagService: FeatureFlagService,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
@@ -274,8 +280,13 @@ export class WorkspaceService {
         return workspace;
     }
 
-    /** Resolves a live public workspace by slug; a private or deleted one throws the same not-found as an unknown slug. */
+    /** Gates on `workspace.joinRequestAllowed`, then resolves a live public workspace by slug; a private or deleted one throws the same not-found as an unknown slug. */
     async previewWorkspace(slug: string): Promise<Workspace> {
+        // Sequential by design: gate before the work it guards
+        await this.featureFlagService.validateFeatureFlagMetadata(
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.joinRequestAllowed
+        );
         const workspace =
             await this.workspaceRepository.findActivePublicBySlug(slug);
         if (!workspace) {

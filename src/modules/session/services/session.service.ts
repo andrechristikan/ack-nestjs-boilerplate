@@ -1,4 +1,9 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -13,6 +18,9 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
+import type { IDeviceRemoveResult } from '@modules/device/interfaces/device.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import type { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
@@ -24,6 +32,7 @@ import type {
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
@@ -36,7 +45,11 @@ export class SessionService {
         private readonly sessionCache: SessionCache,
         private readonly sessionUtil: SessionUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly deviceService: DeviceService,
+        private readonly sessionQueue: SessionQueue,
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async getListOffsetByAdmin(
@@ -84,6 +97,26 @@ export class SessionService {
         );
         if (!isActive) {
             await this.sessionCache.deleteLogins(userId, [{ id: sessionId }]);
+        }
+    }
+
+    /** Stores the login entry; on a store failure revokes the session, enqueues its cache purge, and rethrows. */
+    async setLoginOrRevoke(
+        userId: string,
+        sessionId: string,
+        jti: string
+    ): Promise<void> {
+        try {
+            await this.setLogin(userId, sessionId, jti);
+        } catch (error: unknown) {
+            const revoked = await this.revokeIfActive(userId, sessionId);
+            await this.sessionQueue.purgeLogins(userId, revoked);
+
+            if (error instanceof AppBaseException) {
+                throw error;
+            }
+
+            throw new AppUnknownException(error);
         }
     }
 
@@ -202,6 +235,29 @@ export class SessionService {
         );
     }
 
+    /** Revokes the user's active sessions, then every device ownership, on the caller's transaction; returns the revoked session refs. */
+    async revokeAllByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionRef[]> {
+        const sessions = await this.revokeActiveByUserInTx(
+            tx,
+            userId,
+            revokedBy,
+            revokedAt
+        );
+        await this.deviceService.revokeAllByUserInTx(
+            tx,
+            userId,
+            revokedBy,
+            revokedAt
+        );
+
+        return sessions;
+    }
+
     async revokeByDeviceOwnershipInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -288,5 +344,47 @@ export class SessionService {
         }
 
         return sessions;
+    }
+
+    /** Revokes the live sessions of a device ownership and removes the ownership in one transaction; a write conflict throws DeviceNotFoundException. */
+    async removeDeviceOwnership(
+        userId: string,
+        deviceOwnershipId: string,
+        removedBy: string
+    ): Promise<IDeviceRemoveResult> {
+        const now = this.helperDateService.create();
+
+        try {
+            return await this.databaseService.withTransaction(async tx => {
+                const revokedSessions = await this.revokeByDeviceOwnershipInTx(
+                    tx,
+                    userId,
+                    deviceOwnershipId,
+                    removedBy,
+                    now
+                );
+                const deviceOwnership =
+                    await this.deviceService.removeOwnershipInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        removedBy,
+                        now
+                    );
+
+                return { deviceOwnership, revokedSessions };
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new DeviceNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 }

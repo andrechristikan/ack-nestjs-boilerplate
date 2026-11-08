@@ -18,11 +18,6 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import {
-    EnumFeatureFlagKey,
-    EnumFeatureFlagMetadataKey,
-} from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -45,8 +40,6 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const featureFlagService: MockProxy<FeatureFlagService> =
-        mock<FeatureFlagService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const notificationQueue: MockProxy<NotificationQueue> =
@@ -143,7 +136,6 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 },
                 { provide: UserService, useValue: userService },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
@@ -185,7 +177,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
 
         it('gates on the flag, reads the target, creates the request, stages the activity, and notifies the reviewers in order', async () => {
             const callOrder: string[] = [];
-            featureFlagService.validateFeatureFlagMetadata.mockImplementation(
+            workspaceJoinRequestService.assertJoinRequestAllowed.mockImplementation(
                 async () => {
                     callOrder.push('gate');
                 }
@@ -229,11 +221,8 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             expect(callOrder.slice(0, 2)).toEqual(['gate', 'joinable']);
             expect(callOrder.slice(-3)).toEqual(['create', 'stage', 'notify']);
             expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.joinRequestAllowed
-            );
+                workspaceJoinRequestService.assertJoinRequestAllowed
+            ).toHaveBeenCalledTimes(1);
             expect(
                 workspaceJoinRequestService.getJoinableWorkspace
             ).toHaveBeenCalledWith('user-2', 'workspace-1');
@@ -306,8 +295,8 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('reads nothing when the gate rejects', async () => {
-            featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
+        it('runs the join-request gate first and stops when it rejects', async () => {
+            workspaceJoinRequestService.assertJoinRequestAllowed.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
 

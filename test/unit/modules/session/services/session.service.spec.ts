@@ -2,7 +2,16 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
+import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
+import { DeviceService } from '@modules/device/services/device.service';
+import { SessionQueue } from '@modules/session/queues/session.queue';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationQueryCursorParams,
@@ -15,7 +24,11 @@ import { EnumRequestStatusCodeError } from '@common/request/enums/request.status
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumDevicePlatform,
+    EnumRoleType,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
@@ -44,6 +57,10 @@ describe('SessionService', () => {
         mock<RequestStoreService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
+    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let service: SessionService;
 
@@ -98,6 +115,10 @@ describe('SessionService', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
+                { provide: DeviceService, useValue: deviceService },
+                { provide: SessionQueue, useValue: sessionQueue },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         service = module.get(SessionService);
@@ -527,6 +548,56 @@ describe('SessionService', () => {
         });
     });
 
+    describe('revokeAllByUserInTx', () => {
+        const revokedAt = new Date('2026-01-05T00:00:00.000Z');
+
+        it('revokes the active sessions, then every device ownership, on the given tx', async () => {
+            const order: string[] = [];
+            sessionRepository.revokeActiveByUserInTx.mockImplementation(
+                async () => {
+                    order.push('sessions');
+
+                    return [{ id: 'session-1' }];
+                }
+            );
+            deviceService.revokeAllByUserInTx.mockImplementation(async () => {
+                order.push('devices');
+            });
+
+            await service.revokeAllByUserInTx(
+                tx,
+                'user-1',
+                'admin-1',
+                revokedAt
+            );
+
+            expect(order).toEqual(['sessions', 'devices']);
+            expect(
+                sessionRepository.revokeActiveByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', 'admin-1', revokedAt);
+            expect(deviceService.revokeAllByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'admin-1',
+                revokedAt
+            );
+        });
+
+        it('returns the revoked session refs', async () => {
+            const refs: ISessionRef[] = [{ id: 'session-1' }];
+            sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
+
+            const result = await service.revokeAllByUserInTx(
+                tx,
+                'user-1',
+                'admin-1',
+                revokedAt
+            );
+
+            expect(result).toBe(refs);
+        });
+    });
+
     describe('revokeByDeviceOwnershipInTx', () => {
         it('delegates to the repository', async () => {
             const refs: ISessionRef[] = [{ id: 'session-1' }];
@@ -722,6 +793,235 @@ describe('SessionService', () => {
                         EnumSessionStatusCodeError.notFound
                     ],
                 messagePath: 'session.error.notFound',
+            });
+        });
+    });
+
+    describe('setLoginOrRevoke', () => {
+        const refs: ISessionRef[] = [{ id: 'session-1' }];
+
+        it('stores the login entry and revokes nothing', async () => {
+            sessionCache.setLogin.mockResolvedValue();
+            sessionRepository.existsActiveById.mockResolvedValue(true);
+
+            await service.setLoginOrRevoke('user-1', 'session-1', 'jti-1');
+
+            expect(sessionCache.setLogin).toHaveBeenCalledWith(
+                'user-1',
+                'session-1',
+                'jti-1'
+            );
+            expect(sessionRepository.revoke).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+        });
+
+        it('revokes the session, enqueues its purge, and rethrows the AppBaseException when the store write fails', async () => {
+            const failure = new RedisUnavailableException();
+            const revokedAt = new Date('2026-01-05T00:00:00.000Z');
+            sessionCache.setLogin.mockRejectedValue(failure);
+            helperDateService.create.mockReturnValue(revokedAt);
+            sessionRepository.revoke.mockResolvedValue(true);
+
+            await expect(
+                service.setLoginOrRevoke('user-1', 'session-1', 'jti-1')
+            ).rejects.toBe(failure);
+
+            expect(sessionRepository.revoke).toHaveBeenCalledWith(
+                'user-1',
+                'session-1',
+                'user-1',
+                revokedAt
+            );
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-1',
+                refs
+            );
+        });
+
+        it('wraps any other store failure in AppUnknownException after the revoke and purge', async () => {
+            const failure = new Error('cache exploded');
+            sessionCache.setLogin.mockRejectedValue(failure);
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-05T00:00:00.000Z')
+            );
+            sessionRepository.revoke.mockResolvedValue(true);
+
+            await expect(
+                service.setLoginOrRevoke('user-1', 'session-1', 'jti-1')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: failure,
+            });
+
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-1',
+                refs
+            );
+        });
+    });
+
+    describe('removeDeviceOwnership', () => {
+        const now = new Date('2026-01-05T00:00:00.000Z');
+        const revokedSessions: ISessionRef[] = [{ id: 'session-1' }];
+        const deviceOwnership: IDeviceOwnership = {
+            id: 'device-ownership-1',
+            createdAt: now,
+            createdBy: 'user-1',
+            updatedAt: now,
+            updatedBy: 'user-1',
+            deviceId: 'device-1',
+            userId: 'user-1',
+            revokedAt: null,
+            isRevoked: false,
+            revokedById: null,
+            lastActiveAt: now,
+            notificationToken: null,
+            notificationProvider: null,
+            biometricEnabled: false,
+            biometricToken: null,
+            biometricType: null,
+            biometricEnabledAt: null,
+            device: {
+                id: 'device-1',
+                createdAt: now,
+                createdBy: 'user-1',
+                updatedAt: now,
+                updatedBy: 'user-1',
+                fingerprint: 'abc123def456ghi789jkl012mno345pq',
+                name: 'iPhone 12',
+                platform: EnumDevicePlatform.ios,
+                lastActiveAt: now,
+            },
+            user: {
+                id: 'user-1',
+                createdAt: now,
+                createdBy: 'user-1',
+                updatedAt: now,
+                updatedBy: 'user-1',
+                deletedAt: null,
+                deletedBy: null,
+                name: 'Jane Doe',
+                username: 'jane',
+                photo: null,
+            },
+            revokedBy: null,
+            _count: { sessions: 2 },
+        };
+
+        beforeEach(() => {
+            helperDateService.create.mockReturnValue(now);
+            databaseService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+        });
+
+        it('revokes the ownership sessions, then removes the ownership, on one tx', async () => {
+            const calls: string[] = [];
+            sessionRepository.revokeByDeviceOwnershipInTx.mockImplementation(
+                async () => {
+                    calls.push('revokeSessions');
+
+                    return revokedSessions;
+                }
+            );
+            deviceService.removeOwnershipInTx.mockImplementation(async () => {
+                calls.push('removeOwnership');
+
+                return deviceOwnership;
+            });
+
+            await service.removeDeviceOwnership(
+                'user-1',
+                'device-ownership-1',
+                'admin-1'
+            );
+
+            expect(
+                sessionRepository.revokeByDeviceOwnershipInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'device-ownership-1',
+                'admin-1',
+                now
+            );
+            expect(deviceService.removeOwnershipInTx).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'device-ownership-1',
+                'admin-1',
+                now
+            );
+            expect(calls).toEqual(['revokeSessions', 'removeOwnership']);
+        });
+
+        it('returns the ownership and the revoked sessions', async () => {
+            sessionRepository.revokeByDeviceOwnershipInTx.mockResolvedValue(
+                revokedSessions
+            );
+            deviceService.removeOwnershipInTx.mockResolvedValue(
+                deviceOwnership
+            );
+
+            const result = await service.removeDeviceOwnership(
+                'user-1',
+                'device-ownership-1',
+                'user-1'
+            );
+
+            expect(result).toEqual({ deviceOwnership, revokedSessions });
+        });
+
+        it('throws DeviceNotFoundException on a write conflict', async () => {
+            const conflict = new Error('write conflict');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.removeDeviceOwnership(
+                    'user-1',
+                    'device-ownership-1',
+                    'user-1'
+                )
+            ).rejects.toMatchObject({
+                constructor: DeviceNotFoundException,
+                module: 'device',
+                messagePath: 'device.error.notFound',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('rethrows an AppBaseException unchanged', async () => {
+            const notFound = new DeviceNotFoundException();
+            sessionRepository.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
+            deviceService.removeOwnershipInTx.mockRejectedValue(notFound);
+
+            await expect(
+                service.removeDeviceOwnership(
+                    'user-1',
+                    'device-ownership-1',
+                    'user-1'
+                )
+            ).rejects.toBe(notFound);
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const cause = new Error('database exploded');
+            databaseService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.removeDeviceOwnership(
+                    'user-1',
+                    'device-ownership-1',
+                    'user-1'
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
             });
         });
     });

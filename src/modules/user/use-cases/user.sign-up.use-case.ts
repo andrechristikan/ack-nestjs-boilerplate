@@ -8,17 +8,15 @@ import type { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryService } from '@modules/country/services/country.service';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import { UserAuthService } from '@modules/user/services/user.auth.service';
+import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -45,10 +43,8 @@ export class UserSignUpUseCase implements IAppUseCase<
     private readonly createTimeoutInMs: number;
 
     constructor(
-        private readonly userAuthService: UserAuthService,
         private readonly userService: UserService,
-        private readonly passwordHistoryService: PasswordHistoryService,
-        private readonly notificationService: NotificationService,
+        private readonly userRegistrationService: UserRegistrationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceService: WorkspaceService,
         private readonly workspaceInviteService: WorkspaceInviteService,
@@ -87,11 +83,8 @@ export class UserSignUpUseCase implements IAppUseCase<
     ): Promise<IUser> {
         const inputs = [input];
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
-        const passwordHistories =
-            this.userCreateUtil.buildPasswordHistoryEntries(inputs);
         const termPolicyAcceptances =
             this.userCreateUtil.buildTermPolicyAcceptanceEntries(inputs);
-        const userIds = this.userCreateUtil.buildUserIds(inputs);
         const workspaceContext = input.workspaceContext;
 
         for (let attempt = 0; attempt < attempts; attempt++) {
@@ -104,18 +97,11 @@ export class UserSignUpUseCase implements IAppUseCase<
                             UserTermPolicyContract.requiredTypes
                         );
 
-                        const created = await this.userService.createManyInTx(
-                            tx,
-                            inputs
-                        );
-                        await this.passwordHistoryService.createManyInTx(
-                            tx,
-                            passwordHistories
-                        );
-                        await this.notificationService.createDefaultsManyInTx(
-                            tx,
-                            userIds
-                        );
+                        const created =
+                            await this.userRegistrationService.createInTx(
+                                tx,
+                                inputs
+                            );
 
                         const ownedUsers = this.workspaceUtil.buildOwnedUsers(
                             inputs,
@@ -223,7 +209,7 @@ export class UserSignUpUseCase implements IAppUseCase<
         this.userService.assertUsernameAvailable(usernameCheck);
 
         const { input, emailVerification } =
-            await this.userAuthService.prepareSignUp(signUp, {
+            await this.userRegistrationService.prepareSignUp(signUp, {
                 roleId: role.id,
                 workspaceContext,
             });

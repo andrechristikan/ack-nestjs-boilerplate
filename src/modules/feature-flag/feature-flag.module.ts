@@ -4,7 +4,7 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { Global, Module } from '@nestjs/common';
 
-/** Shared module: FeatureFlagService for the feature-flag guard, the use cases, and the workspace services' own-flag asserts. */
+/** Shared module: FeatureFlagService for the feature-flag guard and the user and workspace services' own-flag asserts. */
 @Global()
 @Module({
     controllers: [],

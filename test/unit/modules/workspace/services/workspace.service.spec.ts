@@ -16,6 +16,12 @@ import type {
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Prisma, Workspace } from '@generated/prisma-client/client';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
@@ -41,6 +47,8 @@ describe('WorkspaceService', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
+    const featureFlagService: MockProxy<FeatureFlagService> =
+        mock<FeatureFlagService>();
     const configGet = vi.fn<(key: string) => unknown>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -81,6 +89,7 @@ describe('WorkspaceService', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
+                { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -692,6 +701,39 @@ describe('WorkspaceService', () => {
     });
 
     describe('previewWorkspace', () => {
+        it('validates workspace.joinRequestAllowed before the read', async () => {
+            workspaceRepository.findActivePublicBySlug.mockResolvedValue(
+                workspace
+            );
+
+            await service.previewWorkspace('acme-team');
+
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.joinRequestAllowed
+            );
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledBefore(
+                workspaceRepository.findActivePublicBySlug
+            );
+        });
+
+        it('reads nothing when the gate rejects', async () => {
+            featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
+                new FeatureFlagDisabledException()
+            );
+
+            await expect(
+                service.previewWorkspace('acme-team')
+            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
+            expect(
+                workspaceRepository.findActivePublicBySlug
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws WorkspaceNotFoundException when no active public workspace matches the slug', async () => {
             workspaceRepository.findActivePublicBySlug.mockResolvedValue(null);
 

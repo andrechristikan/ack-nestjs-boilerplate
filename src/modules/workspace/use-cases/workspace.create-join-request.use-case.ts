@@ -2,11 +2,6 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import {
-    EnumFeatureFlagKey,
-    EnumFeatureFlagMetadataKey,
-} from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -29,18 +24,10 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly userService: UserService,
         private readonly notificationService: NotificationService,
-        private readonly featureFlagService: FeatureFlagService,
         private readonly activityLogService: ActivityLogService,
         private readonly notificationQueue: NotificationQueue,
         private readonly workspaceUtil: WorkspaceUtil
     ) {}
-
-    private async assertJoinRequestAllowed(): Promise<void> {
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.workspace,
-            EnumFeatureFlagMetadataKey.joinRequestAllowed
-        );
-    }
 
     private async getReviewerRecipients(
         workspaceId: string
@@ -65,7 +52,7 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
         { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
         // Sequential by design: gate before the work it guards
-        await this.assertJoinRequestAllowed();
+        await this.workspaceJoinRequestService.assertJoinRequestAllowed();
         const workspace =
             await this.workspaceJoinRequestService.getJoinableWorkspace(
                 userId,

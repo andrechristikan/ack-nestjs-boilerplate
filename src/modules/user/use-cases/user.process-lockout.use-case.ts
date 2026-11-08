@@ -1,6 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserService } from '@modules/user/services/user.service';
@@ -17,7 +16,6 @@ export class UserProcessLockoutUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly sessionService: SessionService,
-        private readonly deviceService: DeviceService,
         private readonly sessionQueue: SessionQueue,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
@@ -33,13 +31,7 @@ export class UserProcessLockoutUseCase implements IAppUseCase<
                 return [];
             }
 
-            const sessions = await this.sessionService.revokeActiveByUserInTx(
-                tx,
-                userId,
-                userId,
-                now
-            );
-            await this.deviceService.revokeAllByUserInTx(
+            const sessions = await this.sessionService.revokeAllByUserInTx(
                 tx,
                 userId,
                 userId,

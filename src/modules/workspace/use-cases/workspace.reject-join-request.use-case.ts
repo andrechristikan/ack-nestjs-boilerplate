@@ -6,16 +6,8 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import {
-    EnumFeatureFlagKey,
-    EnumFeatureFlagMetadataKey,
-} from '@modules/feature-flag/enums/feature-flag.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { Injectable } from '@nestjs/common';
@@ -28,31 +20,9 @@ export class WorkspaceRejectJoinRequestUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
-        private readonly userService: UserService,
-        private readonly notificationService: NotificationService,
-        private readonly featureFlagService: FeatureFlagService,
         private readonly activityLogService: ActivityLogService,
         private readonly notificationQueue: NotificationQueue
     ) {}
-
-    private async assertJoinRequestAllowed(): Promise<void> {
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.workspace,
-            EnumFeatureFlagMetadataKey.joinRequestAllowed
-        );
-    }
-
-    private async getRequesterRecipient(
-        requesterId: string,
-        kind: EnumNotificationKind
-    ): Promise<INotificationRecipient | null> {
-        const user = await this.userService.getOneActive(requesterId);
-        if (user === null) {
-            return null;
-        }
-
-        return this.notificationService.getRecipient(user, kind);
-    }
 
     private prepareReviewActivityLogs(
         action: EnumActivityLogAction,
@@ -91,7 +61,7 @@ export class WorkspaceRejectJoinRequestUseCase implements IAppUseCase<
         { rejectReasonCode }: WorkspaceJoinRequestRejectRequestDto
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards
-        await this.assertJoinRequestAllowed();
+        await this.workspaceJoinRequestService.assertJoinRequestAllowed();
         const joinRequest =
             await this.workspaceJoinRequestService.getPendingById(
                 workspaceJoinRequestId,
@@ -107,10 +77,11 @@ export class WorkspaceRejectJoinRequestUseCase implements IAppUseCase<
         );
 
         // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.getRequesterRecipient(
-            joinRequest.userId,
-            EnumNotificationKind.workspaceJoinRejected
-        );
+        const recipient =
+            await this.workspaceJoinRequestService.getRequesterRecipient(
+                joinRequest.userId,
+                EnumNotificationKind.workspaceJoinRejected
+            );
         await this.workspaceJoinRequestService.rejectJoinRequest(
             joinRequest.id,
             reviewerId,

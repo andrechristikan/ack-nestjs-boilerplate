@@ -22,6 +22,15 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import type { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
@@ -46,6 +55,9 @@ export class WorkspaceJoinRequestService {
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly userService: UserService,
+        private readonly notificationService: NotificationService,
+        private readonly featureFlagService: FeatureFlagService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
@@ -56,6 +68,26 @@ export class WorkspaceJoinRequestService {
         this.expiresInMs = this.configService.get<number>(
             'workspace.joinRequest.expiresInMs'
         )!;
+    }
+
+    async assertJoinRequestAllowed(): Promise<void> {
+        await this.featureFlagService.validateFeatureFlagMetadata(
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.joinRequestAllowed
+        );
+    }
+
+    /** Null when the requester is no longer an active user. */
+    async getRequesterRecipient(
+        requesterId: string,
+        kind: EnumNotificationKind
+    ): Promise<INotificationRecipient | null> {
+        const user = await this.userService.getOneActive(requesterId);
+        if (user === null) {
+            return null;
+        }
+
+        return this.notificationService.getRecipient(user, kind);
     }
 
     async getJoinableWorkspace(

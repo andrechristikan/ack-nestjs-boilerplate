@@ -14,11 +14,6 @@ import {
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import {
-    EnumFeatureFlagKey,
-    EnumFeatureFlagMetadataKey,
-} from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -37,8 +32,6 @@ describe('UserForgotPasswordUseCase', () => {
         mock<UserPasswordService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const featureFlagService: MockProxy<FeatureFlagService> =
-        mock<FeatureFlagService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const notificationQueue: MockProxy<NotificationQueue> =
@@ -132,7 +125,6 @@ describe('UserForgotPasswordUseCase', () => {
                     provide: NotificationService,
                     useValue: notificationService,
                 },
-                { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -171,15 +163,6 @@ describe('UserForgotPasswordUseCase', () => {
 
             await expect(useCase.execute(dto)).resolves.toEqual({});
 
-            expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.changePassword,
-                EnumFeatureFlagMetadataKey.forgotAllowed
-            );
-            expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledBefore(userPasswordService.prepareForgotPassword);
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userForgotPassword,
                 userId: 'user-linden',
@@ -230,15 +213,16 @@ describe('UserForgotPasswordUseCase', () => {
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('reads nothing when the flag gate rejects', async () => {
-            featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
+        it('sends nothing when the service call rejects', async () => {
+            userPasswordService.prepareForgotPassword.mockRejectedValue(
                 new Error('flag')
             );
 
             await expect(useCase.execute(dto)).rejects.toThrow('flag');
             expect(
-                userPasswordService.prepareForgotPassword
+                userPasswordService.createForgotPassword
             ).not.toHaveBeenCalled();
+            expect(notificationQueue.sendForgotPassword).not.toHaveBeenCalled();
         });
     });
 });

@@ -37,28 +37,6 @@ export class UserRefreshUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private async setLoginOrRevoke(
-        userId: string,
-        sessionId: string,
-        jti: string
-    ): Promise<void> {
-        try {
-            await this.sessionService.setLogin(userId, sessionId, jti);
-        } catch (error: unknown) {
-            const revoked = await this.sessionService.revokeIfActive(
-                userId,
-                sessionId
-            );
-            await this.sessionQueue.purgeLogins(userId, revoked);
-
-            if (error instanceof AppBaseException) {
-                throw error;
-            }
-
-            throw new AppUnknownException(error);
-        }
-    }
-
     private async rotateSession(
         user: IUser,
         refreshToken: string
@@ -138,7 +116,11 @@ export class UserRefreshUseCase implements IAppUseCase<
         }
 
         if (cacheUpdate === EnumSessionCacheUpdate.absent) {
-            await this.setLoginOrRevoke(userId, sessionId, newJti);
+            await this.sessionService.setLoginOrRevoke(
+                userId,
+                sessionId,
+                newJti
+            );
         }
 
         return { tokens, revoked: [] };

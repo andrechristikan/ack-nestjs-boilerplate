@@ -1,3 +1,4 @@
+import { DeviceModule } from '@modules/device/device.module';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { EnumSessionQueue } from '@modules/session/enums/session.enum';
 import { SessionQueueFactory } from '@modules/session/factories/session.queue.factory';
@@ -10,7 +11,7 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 
-/** Shared module: SessionService for the JWT access strategy and the user and device use cases; SessionQueue for the user and device use cases; SessionUtil for the user use cases; SessionAnalyticService for the analytic services. */
+/** Shared module: SessionService for the JWT access strategy, the user module, and the user and device use cases; SessionQueue for the user and device use cases; SessionUtil for the user module and use cases; SessionAnalyticService for the analytic services. */
 @Global()
 @Module({
     controllers: [],
@@ -31,6 +32,7 @@ import { Global, Module } from '@nestjs/common';
         SessionQueue,
     ],
     imports: [
+        DeviceModule,
         BullModule.registerQueueAsync({
             name: EnumSessionQueue.session,
             useClass: SessionQueueFactory,

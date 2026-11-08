@@ -10,11 +10,9 @@ import type { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryService } from '@modules/country/services/country.service';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -24,6 +22,7 @@ import type {
     IUserCreateWithWorkspaceInput,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
+import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
@@ -39,9 +38,6 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
 
     constructor(
         private readonly userService: UserService,
-        private readonly passwordHistoryService: PasswordHistoryService,
-        private readonly notificationService: NotificationService,
-        private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceService: WorkspaceService,
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
@@ -49,6 +45,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
+        private readonly userRegistrationService: UserRegistrationService,
+        private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
@@ -75,28 +73,18 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         timeoutInMs: number
     ): Promise<IUser[]> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
-        const passwordHistories =
-            this.userCreateUtil.buildPasswordHistoryEntries(inputs);
         const termPolicyAcceptances =
             this.userCreateUtil.buildTermPolicyAcceptanceEntries(inputs);
-        const userIds = this.userCreateUtil.buildUserIds(inputs);
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
                 return await this.databaseService.withTransaction(
                     async tx => {
-                        const users = await this.userService.createManyInTx(
-                            tx,
-                            inputs
-                        );
-                        await this.passwordHistoryService.createManyInTx(
-                            tx,
-                            passwordHistories
-                        );
-                        await this.notificationService.createDefaultsManyInTx(
-                            tx,
-                            userIds
-                        );
+                        const users =
+                            await this.userRegistrationService.createInTx(
+                                tx,
+                                inputs
+                            );
 
                         const ownedUsers = this.workspaceUtil.buildOwnedUsers(
                             inputs,

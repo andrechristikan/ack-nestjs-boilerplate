@@ -11,37 +11,24 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
-import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { CountryService } from '@modules/country/services/country.service';
-import { DeviceService } from '@modules/device/services/device.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { EnumFeatureFlagMetadataKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
-import type {
-    ISessionPurgeLoginsPayload,
-    ISessionRef,
-} from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
+import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserService } from '@modules/user/services/user.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserCreated } from '@modules/user/interfaces/user.create.interface';
@@ -58,7 +45,6 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Duration } from 'luxon';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
@@ -72,8 +58,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     constructor(
         private readonly userAuthService: UserAuthService,
         private readonly userService: UserService,
-        private readonly userTwoFactorService: UserTwoFactorService,
-        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly userRegistrationService: UserRegistrationService,
         private readonly notificationService: NotificationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceService: WorkspaceService,
@@ -82,15 +67,9 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly projectMemberService: ProjectMemberService,
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
-        private readonly featureFlagService: FeatureFlagService,
-        private readonly deviceService: DeviceService,
         private readonly sessionService: SessionService,
-        private readonly authJwtService: AuthJwtService,
-        private readonly authTwoFactorService: AuthTwoFactorService,
-        private readonly authUtil: AuthUtil,
         private readonly activityLogService: ActivityLogService,
         private readonly sessionQueue: SessionQueue,
-        private readonly sessionUtil: SessionUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
@@ -115,19 +94,13 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         loginSocial: IUserLoginSocial
     ): Promise<IUserCreated | null> {
         const normalizedEmail = email.trim().toLowerCase();
-        const featureFlagKey =
-            this.userCreateUtil.resolveSocialFeatureFlagKey(loginWith);
-        const [featureFlag, existing] = await Promise.all([
-            this.featureFlagService.getMetadataByKey<{
-                [EnumFeatureFlagMetadataKey.signUpAllowed]: boolean;
-            }>(featureFlagKey),
-            this.userAuthService.getOneByEmail(normalizedEmail),
-        ]);
+        const isAllowed =
+            await this.userRegistrationService.isSocialSignUpAllowed(
+                normalizedEmail,
+                loginWith
+            );
         // Sequential by design: gate before the work it guards
-        if (
-            existing ||
-            !featureFlag?.[EnumFeatureFlagMetadataKey.signUpAllowed]
-        ) {
+        if (!isAllowed) {
             return null;
         }
 
@@ -157,11 +130,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         const inputs = [input];
         const inputContext = input.workspaceContext;
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
-        const passwordHistories =
-            this.userCreateUtil.buildPasswordHistoryEntries(inputs);
         const termPolicyAcceptances =
             this.userCreateUtil.buildTermPolicyAcceptanceEntries(inputs);
-        const userIds = this.userCreateUtil.buildUserIds(inputs);
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
@@ -173,18 +143,11 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             UserTermPolicyContract.requiredTypes
                         );
 
-                        const created = await this.userService.createManyInTx(
-                            tx,
-                            inputs
-                        );
-                        await this.passwordHistoryService.createManyInTx(
-                            tx,
-                            passwordHistories
-                        );
-                        await this.notificationService.createDefaultsManyInTx(
-                            tx,
-                            userIds
-                        );
+                        const created =
+                            await this.userRegistrationService.createInTx(
+                                tx,
+                                inputs
+                            );
 
                         const ownedUsers = this.workspaceUtil.buildOwnedUsers(
                             inputs,
@@ -250,166 +213,63 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    private async createTokenAndSession(
+    private async startSession(
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IAuthToken> {
-        const requestLog = this.sessionService.getRequestLog();
-        const { sessionId, jti } = this.authUtil.createLoginIdentifiers();
-        const expiredAt = this.helperDateService.forward(
-            loginAt,
-            Duration.fromObject({
-                seconds:
-                    this.authJwtService.jwtRefreshTokenExpirationTimeInSeconds,
-            })
-        );
-        const now = this.helperDateService.create();
         // Sequential by design: write must not run if an earlier step throws
         const recipient = await this.notificationService.getRecipient(
             user,
             EnumNotificationKind.newDeviceLogin
         );
-        const { isNewDevice, revoked, affected, deviceOwnershipId } =
-            await this.databaseService.withTransaction(async tx => {
-                const upserted = await this.deviceService.upsertForLoginInTx(
-                    tx,
-                    user.id,
-                    device,
-                    now
-                );
-                let revokedSessions: ISessionRef[] = [];
-                if (!upserted.isNewDevice) {
-                    revokedSessions =
-                        await this.sessionService.revokeByDeviceOwnershipInTx(
-                            tx,
-                            user.id,
-                            upserted.deviceOwnership.id,
-                            user.id,
-                            now
-                        );
-                }
-                const otherOwnershipIds =
-                    await this.deviceService.getOtherOwnershipIdsByDeviceInTx(
-                        tx,
-                        upserted.device.id,
-                        user.id
-                    );
-                let affectedSessions: ISessionPurgeLoginsPayload[] = [];
-                if (otherOwnershipIds.length > 0) {
-                    affectedSessions =
-                        await this.sessionService.revokeByDeviceOwnershipIdsInTx(
-                            tx,
-                            otherOwnershipIds,
-                            user.id,
-                            now
-                        );
-                }
-                await this.sessionService.createInTx(
-                    tx,
-                    user.id,
-                    sessionId,
-                    upserted.deviceOwnership.id,
-                    jti,
-                    expiredAt,
-                    requestLog
-                );
-                await this.userService.updateLoginInTx(
-                    tx,
-                    user.id,
-                    loginFrom,
-                    loginWith,
-                    requestLog.ipAddress,
-                    now
-                );
-
-                return {
-                    isNewDevice: upserted.isNewDevice,
-                    revoked: revokedSessions,
-                    affected: affectedSessions,
-                    deviceOwnershipId: upserted.deviceOwnership.id,
-                };
-            });
-
-        const tokens = this.authJwtService.createTokens(
+        const session = await this.userAuthService.createTokenAndSession(
             user,
-            { sessionId, jti, deviceOwnershipId, loginAt },
+            device,
             loginFrom,
-            loginWith
+            loginWith,
+            loginAt
         );
         const promises = [
-            this.setLoginOrRevoke(user.id, sessionId, jti),
-            this.sessionQueue.purgeLogins(user.id, revoked),
-            ...affected.map(({ userId, sessions }) =>
+            this.sessionService.setLoginOrRevoke(
+                user.id,
+                session.sessionId,
+                session.jti
+            ),
+            this.sessionQueue.purgeLogins(user.id, session.revoked),
+            ...session.affected.map(({ userId, sessions }) =>
                 this.sessionQueue.purgeLogins(userId, sessions)
             ),
         ];
-        if (isNewDevice) {
+        if (session.isNewDevice) {
             const loginAtIso = this.helperDateService.formatToIso(loginAt);
             const newDeviceLoginSent =
                 this.notificationQueue.sendNewDeviceLogin(
                     recipient,
                     {
-                        requestLog,
+                        requestLog: session.requestLog,
                         loginFrom,
                         loginWith,
                         loginAt: loginAtIso,
                     },
-                    sessionId
+                    session.sessionId
                 );
             promises.push(newDeviceLoginSent);
         }
 
         await Promise.all(promises);
 
-        if (affected.length > 0) {
-            const prepareRevokeLog = ({
-                userId,
-                sessions,
-            }: ISessionPurgeLoginsPayload): IActivityLogStaged => {
-                const metadata =
-                    this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
-                        user.id,
-                        sessions.length
-                    );
-
-                return this.activityLogService.prepare({
-                    action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-                    userId,
-                    createdBy: user.id,
-                    metadata,
-                });
-            };
-            this.activityLogService.stagePrepared(
-                affected.map(prepareRevokeLog)
+        if (session.revokeStages.length > 0) {
+            const revokeLogs = session.revokeStages.map(stage =>
+                this.activityLogService.prepare(stage)
             );
+
+            this.activityLogService.stagePrepared(revokeLogs);
         }
 
-        return tokens;
-    }
-
-    private async setLoginOrRevoke(
-        userId: string,
-        sessionId: string,
-        jti: string
-    ): Promise<void> {
-        try {
-            await this.sessionService.setLogin(userId, sessionId, jti);
-        } catch (error: unknown) {
-            const revoked = await this.sessionService.revokeIfActive(
-                userId,
-                sessionId
-            );
-            await this.sessionQueue.purgeLogins(userId, revoked);
-
-            if (error instanceof AppBaseException) {
-                throw error;
-            }
-
-            throw new AppUnknownException(error);
-        }
+        return session.tokens;
     }
 
     private async resolveLoginOutcome(
@@ -428,7 +288,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             );
         const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
         if (!isTwoFactorEnabled) {
-            const tokens = await this.createTokenAndSession(
+            const tokens = await this.startSession(
                 user,
                 device,
                 loginFrom,
@@ -444,50 +304,18 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             };
         }
 
-        const challengePromise = this.authTwoFactorService.createChallenge({
-            userId: user.id,
+        const twoFactor = await this.userAuthService.createTwoFactorChallenge(
+            user,
             device,
             loginFrom,
-            loginWith,
-        });
-        const requiresSetup = this.userUtil.requiresTwoFactorSetup(user);
-        if (requiresSetup) {
-            const [
-                { challengeToken, expiresInMs },
-                { encryptedSecret, otpauthUrl, secret },
-            ] = await Promise.all([
-                challengePromise,
-                this.userTwoFactorService.setup(user),
-            ]);
-            await this.userTwoFactorService.saveSetup(user.id, encryptedSecret);
-
-            return {
-                isTwoFactorEnable: true,
-                lastWorkspaceId,
-                lastWorkspaceChangedAt,
-                twoFactor: {
-                    isRequiredSetup: true,
-                    challengeToken,
-                    challengeExpiresInMs: expiresInMs,
-                    backupCodesRemaining: user.twoFactor.backupCodes.length,
-                    otpauthUrl,
-                    secret,
-                },
-            };
-        }
-
-        const { challengeToken, expiresInMs } = await challengePromise;
+            loginWith
+        );
 
         return {
             isTwoFactorEnable: true,
             lastWorkspaceId,
             lastWorkspaceChangedAt,
-            twoFactor: {
-                isRequiredSetup: false,
-                challengeToken,
-                challengeExpiresInMs: expiresInMs,
-                backupCodesRemaining: user.twoFactor.backupCodes.length,
-            },
+            twoFactor,
         };
     }
 

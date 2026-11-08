@@ -2,6 +2,11 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { User } from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
@@ -35,6 +40,7 @@ export class UserPasswordService {
         private readonly userService: UserService,
         private readonly userQueue: UserQueue,
         private readonly authPasswordUtil: AuthPasswordUtil,
+        private readonly featureFlagService: FeatureFlagService,
         private readonly configService: ConfigService
     ) {
         this.passwordAttemptEnabled = this.configService.get<boolean>(
@@ -111,16 +117,21 @@ export class UserPasswordService {
         }
     }
 
-    /** Resolves the active user of an email with a reset payload; null when no active user holds the email or the last request is inside the resend window. */
+    /** Gates on `changePassword.forgotAllowed`, then resolves the active user of an email with a reset payload; null when no active user holds the email or the last request is inside the resend window. */
     async prepareForgotPassword(
         email: string
     ): Promise<IUserForgotPasswordPrepared | null> {
+        // Sequential by design: gate before the work it guards
+        await this.featureFlagService.validateFeatureFlagMetadata(
+            EnumFeatureFlagKey.changePassword,
+            EnumFeatureFlagMetadataKey.forgotAllowed
+        );
+
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
             return null;
         }
 
-        // Sequential by design: gate before the work it guards
         const lastForgotPassword =
             await this.userPasswordRepository.findOneLatestByForgotPassword(
                 user.id
@@ -152,7 +163,14 @@ export class UserPasswordService {
         );
     }
 
+    /** Gates on `changePassword.forgotAllowed`, then reads the active reset of a token. */
     async getOneActiveReset(token: string): Promise<IUserForgotPassword> {
+        // Sequential by design: gate before the work it guards
+        await this.featureFlagService.validateFeatureFlagMetadata(
+            EnumFeatureFlagKey.changePassword,
+            EnumFeatureFlagMetadataKey.forgotAllowed
+        );
+
         const hashedToken = this.helperHashService.sha256Hash(token);
         const reset =
             await this.userPasswordRepository.findOneActiveByForgotPasswordToken(

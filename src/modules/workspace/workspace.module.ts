@@ -18,6 +18,8 @@ import { WorkspaceMemberAnalyticService } from '@modules/workspace/services/work
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
+import { NotificationModule } from '@modules/notification/notification.module';
+import { UserModule } from '@modules/user/user.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
@@ -56,6 +58,8 @@ import { Module } from '@nestjs/common';
         WorkspaceMemberAnalyticService,
     ],
     imports: [
+        NotificationModule,
+        UserModule,
         BullModule.registerQueueAsync({
             name: EnumWorkspaceQueue.workspace,
             useClass: WorkspaceQueueFactory,

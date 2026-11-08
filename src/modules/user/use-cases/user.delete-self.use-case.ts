@@ -9,7 +9,6 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { DeviceService } from '@modules/device/services/device.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -52,7 +51,6 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         private readonly projectService: ProjectService,
         private readonly projectMemberService: ProjectMemberService,
         private readonly sessionService: SessionService,
-        private readonly deviceService: DeviceService,
         private readonly activityLogService: ActivityLogService,
         private readonly sessionQueue: SessionQueue,
         private readonly userProfileService: UserProfileService,
@@ -175,18 +173,12 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                         );
                         await this.userTwoFactorService.removeInTx(tx, userId);
                         const sessions =
-                            await this.sessionService.revokeActiveByUserInTx(
+                            await this.sessionService.revokeAllByUserInTx(
                                 tx,
                                 userId,
                                 userId,
                                 now
                             );
-                        await this.deviceService.revokeAllByUserInTx(
-                            tx,
-                            userId,
-                            userId,
-                            now
-                        );
                         const row = await this.userService.deleteSelfInTx(
                             tx,
                             user,

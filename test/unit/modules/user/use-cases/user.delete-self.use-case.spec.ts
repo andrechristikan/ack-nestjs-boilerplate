@@ -16,7 +16,6 @@ import { UserProfileService } from '@modules/user/services/user.profile.service'
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -48,7 +47,6 @@ import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.
 describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -142,7 +140,6 @@ describe('UserDeleteSelfUseCase', () => {
                 UserDeleteSelfUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: DeviceService, useValue: deviceService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogService, useValue: activityLogService },
@@ -224,7 +221,7 @@ describe('UserDeleteSelfUseCase', () => {
                 ...baseUser,
                 photo: null,
             });
-            sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
+            sessionService.revokeAllByUserInTx.mockResolvedValue(revoked);
         });
 
         it('throws UserDeleteSelfForbiddenException for a superAdmin before the password check', async () => {
@@ -331,15 +328,10 @@ describe('UserDeleteSelfUseCase', () => {
             userTwoFactorService.removeInTx.mockImplementation(async () => {
                 calls.push('removeTwoFactor');
             });
-            sessionService.revokeActiveByUserInTx.mockImplementation(
-                async () => {
-                    calls.push('revokeSessions');
+            sessionService.revokeAllByUserInTx.mockImplementation(async () => {
+                calls.push('revokeSessions');
 
-                    return revoked;
-                }
-            );
-            deviceService.revokeAllByUserInTx.mockImplementation(async () => {
-                calls.push('revokeDevices');
+                return revoked;
             });
             userService.deleteSelfInTx.mockImplementation(async () => {
                 calls.push('deleteUser');
@@ -379,13 +371,7 @@ describe('UserDeleteSelfUseCase', () => {
                 tx,
                 'user-cinder'
             );
-            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cinder',
-                'user-cinder',
-                now
-            );
-            expect(deviceService.revokeAllByUserInTx).toHaveBeenCalledWith(
+            expect(sessionService.revokeAllByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-cinder',
                 'user-cinder',
@@ -418,7 +404,6 @@ describe('UserDeleteSelfUseCase', () => {
                 'removeMobileNumbers',
                 'removeTwoFactor',
                 'revokeSessions',
-                'revokeDevices',
                 'deleteUser',
                 'commit',
                 'purge',

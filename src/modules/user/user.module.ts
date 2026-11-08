@@ -1,4 +1,5 @@
 import { AwsModule } from '@common/aws/aws.module';
+import { DeviceModule } from '@modules/device/device.module';
 import { EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserQueueFactory } from '@modules/user/factories/user.queue.factory';
 import { UserQueue } from '@modules/user/queues/user.queue';
@@ -20,6 +21,7 @@ import { UserMobileNumberAnalyticService } from '@modules/user/services/user.mob
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserPasswordAnalyticService } from '@modules/user/services/user.password.analytic.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
+import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserTwoFactorAnalyticService } from '@modules/user/services/user.two-factor.analytic.service';
@@ -30,6 +32,8 @@ import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
+import { NotificationModule } from '@modules/notification/notification.module';
+import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
@@ -53,6 +57,7 @@ import { Module } from '@nestjs/common';
         UserVerificationService,
         UserTwoFactorService,
         UserProfileService,
+        UserRegistrationService,
         UserMobileNumberService,
         UserUtil,
         UserCreateUtil,
@@ -74,6 +79,7 @@ import { Module } from '@nestjs/common';
         UserVerificationService,
         UserTwoFactorService,
         UserProfileService,
+        UserRegistrationService,
         UserMobileNumberService,
         UserCreateUtil,
         UserUtil,
@@ -89,6 +95,9 @@ import { Module } from '@nestjs/common';
     ],
     imports: [
         AwsModule,
+        DeviceModule,
+        NotificationModule,
+        PasswordHistoryModule,
         BullModule.registerQueueAsync({
             name: EnumUserQueue.user,
             useClass: UserQueueFactory,

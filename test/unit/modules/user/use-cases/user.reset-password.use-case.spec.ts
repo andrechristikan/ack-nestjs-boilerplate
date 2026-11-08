@@ -29,11 +29,6 @@ import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.en
 import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import {
-    EnumFeatureFlagKey,
-    EnumFeatureFlagMetadataKey,
-} from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
@@ -71,8 +66,6 @@ describe('UserResetPasswordUseCase', () => {
         mock<NotificationService>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
-    const featureFlagService: MockProxy<FeatureFlagService> =
-        mock<FeatureFlagService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
@@ -222,7 +215,6 @@ describe('UserResetPasswordUseCase', () => {
                     useValue: notificationService,
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
-                { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
@@ -255,7 +247,7 @@ describe('UserResetPasswordUseCase', () => {
             sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
         });
 
-        it('gates the flag, checks the history, hashes, writes on one transaction, purges after commit, notifies, and stages', async () => {
+        it('checks the history, hashes, writes on one transaction, purges after commit, notifies, and stages', async () => {
             const calls: string[] = [];
             databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
@@ -297,12 +289,6 @@ describe('UserResetPasswordUseCase', () => {
 
             await expect(useCase.execute(dto)).resolves.toEqual({});
 
-            expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.changePassword,
-                EnumFeatureFlagMetadataKey.forgotAllowed
-            );
             expect(userPasswordService.getOneActiveReset).toHaveBeenCalledWith(
                 'raw-token'
             );
@@ -522,6 +508,15 @@ describe('UserResetPasswordUseCase', () => {
             expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
             expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('checks and writes nothing when the reset lookup rejects', async () => {
+            const failure = new Error('flag');
+            userPasswordService.getOneActiveReset.mockRejectedValue(failure);
+
+            await expect(useCase.execute(dto)).rejects.toBe(failure);
+            expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 

@@ -18,6 +18,11 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IUser,
@@ -45,6 +50,8 @@ describe('UserPasswordService', () => {
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
+    const featureFlagService: MockProxy<FeatureFlagService> =
+        mock<FeatureFlagService>();
     const configGet = vi.fn<(key: string) => boolean | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -161,6 +168,7 @@ describe('UserPasswordService', () => {
                 { provide: UserService, useValue: userService },
                 { provide: UserQueue, useValue: userQueue },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -238,6 +246,10 @@ describe('UserPasswordService', () => {
                     { provide: UserService, useValue: userService },
                     { provide: UserQueue, useValue: userQueue },
                     { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                    {
+                        provide: FeatureFlagService,
+                        useValue: featureFlagService,
+                    },
                     { provide: ConfigService, useValue: configService },
                 ],
             }).compile();
@@ -343,6 +355,34 @@ describe('UserPasswordService', () => {
             ReturnType<UserPasswordRepository['findOneLatestByForgotPassword']>
         >;
 
+        it('validates changePassword.forgotAllowed before the read', async () => {
+            userRepository.findOneActiveByEmail.mockResolvedValue(null);
+
+            await service.prepareForgotPassword('hollow@example.com');
+
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.changePassword,
+                EnumFeatureFlagMetadataKey.forgotAllowed
+            );
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledBefore(userRepository.findOneActiveByEmail);
+        });
+
+        it('throws the flag exception and reads nothing when the gate rejects', async () => {
+            featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
+                new Error('flag')
+            );
+
+            await expect(
+                service.prepareForgotPassword('hollow@example.com')
+            ).rejects.toThrow('flag');
+
+            expect(userRepository.findOneActiveByEmail).not.toHaveBeenCalled();
+        });
+
         it('returns the active user and a fresh reset payload when there is no previous request', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
@@ -427,6 +467,41 @@ describe('UserPasswordService', () => {
             userId: 'user-hollow',
             user: baseUser,
         } as IUserForgotPassword;
+
+        it('validates changePassword.forgotAllowed before the read', async () => {
+            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+                reset
+            );
+
+            await service.getOneActiveReset('raw-token');
+
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.changePassword,
+                EnumFeatureFlagMetadataKey.forgotAllowed
+            );
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledBefore(
+                userPasswordRepository.findOneActiveByForgotPasswordToken
+            );
+        });
+
+        it('throws the flag exception and reads nothing when the gate rejects', async () => {
+            featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
+                new Error('flag')
+            );
+
+            await expect(
+                service.getOneActiveReset('raw-token')
+            ).rejects.toThrow('flag');
+
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
+            expect(
+                userPasswordRepository.findOneActiveByForgotPasswordToken
+            ).not.toHaveBeenCalled();
+        });
 
         it('hashes the token and returns the active request', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');

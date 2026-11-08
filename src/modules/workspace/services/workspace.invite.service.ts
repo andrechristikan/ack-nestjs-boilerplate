@@ -18,6 +18,7 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Project,
+    User,
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
@@ -26,6 +27,10 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { UserService } from '@modules/user/services/user.service';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
@@ -56,6 +61,8 @@ export class WorkspaceInviteService {
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly userService: UserService,
+        private readonly notificationService: NotificationService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseUtil: DatabaseUtil,
@@ -67,6 +74,29 @@ export class WorkspaceInviteService {
         this.referenceMaxAttempts = this.configService.get<number>(
             'workspace.invite.referenceMaxAttempts'
         )!;
+    }
+
+    async getInviterName(
+        workspace: Workspace,
+        actorId: string
+    ): Promise<string> {
+        const inviter = await this.userService.getNameById(actorId);
+
+        return this.workspaceUtil.resolveInviterName(inviter, workspace);
+    }
+
+    /** Null when the invitee has no account. */
+    async getInviteeRecipient(
+        existingUser: User | null
+    ): Promise<INotificationRecipient | null> {
+        if (!existingUser) {
+            return null;
+        }
+
+        return this.notificationService.getRecipient(
+            existingUser,
+            EnumNotificationKind.workspaceInvite
+        );
     }
 
     /** Gates on `workspace.invitationAllowed`, then reads the pending invite of a token. */

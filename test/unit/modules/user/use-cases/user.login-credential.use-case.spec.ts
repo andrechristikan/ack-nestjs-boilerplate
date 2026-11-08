@@ -2,14 +2,9 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
@@ -20,24 +15,14 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type {
-    DeviceOwnership,
-    TwoFactor,
-} from '@generated/prisma-client/client';
+import type { TwoFactor } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type {
-    IActivityLogMetadata,
+    IActivityLogStageInput,
     IActivityLogStaged,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
-import { DeviceService } from '@modules/device/services/device.service';
-import type {
-    IDeviceIdentity,
-    IDeviceLoginUpsert,
-} from '@modules/device/interfaces/device.interface';
+import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -53,11 +38,8 @@ import type {
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -68,8 +50,11 @@ import { UserPasswordExpiredException } from '@modules/user/exceptions/user.pass
 import type {
     IUser,
     IUserLoginOutcome,
+    IUserLoginTwoFactorChallenge,
+    IUserTwoFactorEnabled,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -78,11 +63,8 @@ import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-c
 
 describe('UserLoginCredentialUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const userService: MockProxy<UserService> = mock<UserService>();
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
-    const userTwoFactorService: MockProxy<UserTwoFactorService> =
-        mock<UserTwoFactorService>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
@@ -94,23 +76,15 @@ describe('UserLoginCredentialUseCase', () => {
         mock<NotificationQueue>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
-    const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
-    const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
-    const authTwoFactorService: MockProxy<AuthTwoFactorService> =
-        mock<AuthTwoFactorService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     let useCase: UserLoginCredentialUseCase;
 
-    const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
     const loginAt = new Date('2026-03-01T00:05:00.000Z');
     const requestLog: IRequestLog = {
@@ -222,58 +196,42 @@ describe('UserLoginCredentialUseCase', () => {
         twoFactor: null,
     };
     const enabledTwoFactor = { ...twoFactor, enabled: true };
-    const twoFactorUser: IUser = {
+    const twoFactorUser: IUserTwoFactorEnabled = {
         ...baseUser,
         twoFactor: enabledTwoFactor,
     };
-    const committedUser: IUser = { ...baseUser, twoFactor };
-    const ownership: DeviceOwnership = {
-        id: 'device-ownership-bramble',
-        deviceId: 'device-bramble',
-        userId: 'user-bramble',
-        revokedAt: null,
-        isRevoked: false,
-        revokedById: null,
-        lastActiveAt: now,
-        notificationToken: 'token-bramble',
-        notificationProvider: null,
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
+    const verifyChallenge: IUserLoginTwoFactorChallenge = {
+        isRequiredSetup: false,
+        challengeToken: 'challenge-token',
+        challengeExpiresInMs: 60000,
+        backupCodesRemaining: 1,
     };
-    const upsert: IDeviceLoginUpsert = {
-        device: {
-            id: 'device-bramble',
-            fingerprint: 'device-bramble',
-            name: null,
-            platform: EnumDevicePlatform.android,
-            lastActiveAt: now,
-            createdAt: now,
-            createdBy: null,
-            updatedAt: now,
-            updatedBy: null,
-        },
-        deviceOwnership: ownership,
-        isNewDevice: true,
+    const setupChallenge: IUserLoginTwoFactorChallenge = {
+        isRequiredSetup: true,
+        challengeToken: 'challenge-token',
+        challengeExpiresInMs: 60000,
+        backupCodesRemaining: 1,
+        otpauthUrl: 'otpauth://totp/secret',
+        secret: 'secret',
     };
     const revokedRef: ISessionRef[] = [{ id: 'session-bramble' }];
+    const session: IUserLoginSession = {
+        tokens,
+        sessionId: 'session-bramble',
+        jti: 'jti-bramble',
+        requestLog,
+        isNewDevice: true,
+        revoked: [],
+        affected: [],
+        revokeStages: [],
+    };
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        databaseService.withTransaction.mockImplementation(
-            async fn => fn(tx) as never
-        );
         helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(date => date);
         helperDateService.formatToIso.mockReturnValue(
             '2026-03-05T00:00:00.000Z'
         );
-        sessionService.getRequestLog.mockReturnValue(requestLog);
         activityLogService.prepare.mockReturnValue(activityLog);
         userUtil.resolveLoginActivityLogAction.mockReturnValue(
             EnumActivityLogAction.userLoginCredential
@@ -282,32 +240,15 @@ describe('UserLoginCredentialUseCase', () => {
         userUtil.isTwoFactorEnabled.mockReturnValue(false);
         userUtil.requiresTwoFactorSetup.mockReturnValue(false);
         notificationService.getRecipient.mockResolvedValue(recipient);
-        deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
-        deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue([]);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
-        authUtil.createLoginIdentifiers.mockReturnValue({
-            sessionId: 'session-bramble',
-            jti: 'jti-bramble',
-        });
-        authJwtService.createTokens.mockReturnValue(tokens);
-        Object.defineProperty(
-            authJwtService,
-            'jwtRefreshTokenExpirationTimeInSeconds',
-            { value: 2592000, configurable: true }
-        );
-        userService.createManyInTx.mockResolvedValue([committedUser]);
+        userAuthService.createTokenAndSession.mockResolvedValue(session);
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(null);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserLoginCredentialUseCase,
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: UserService, useValue: userService },
                 { provide: UserPasswordService, useValue: userPasswordService },
-                {
-                    provide: UserTwoFactorService,
-                    useValue: userTwoFactorService,
-                },
                 {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
@@ -317,17 +258,9 @@ describe('UserLoginCredentialUseCase', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
-                { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: AuthJwtService, useValue: authJwtService },
-                {
-                    provide: AuthTwoFactorService,
-                    useValue: authTwoFactorService,
-                },
-                { provide: AuthUtil, useValue: authUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: SessionUtil, useValue: sessionUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
                 {
@@ -335,7 +268,6 @@ describe('UserLoginCredentialUseCase', () => {
                     useValue: userVerificationUtil,
                 },
                 { provide: DeviceUtil, useValue: deviceUtil },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -391,21 +323,19 @@ describe('UserLoginCredentialUseCase', () => {
             userAuthService.verifyCredential.mockResolvedValue(true);
         });
 
-        it('logs the user in on one transaction and purges the session cache entries of a repeat device after the commit', async () => {
+        it('logs the user in through the service and purges the revoked sessions of a repeat device after it', async () => {
             const callOrder: string[] = [];
-            deviceService.upsertForLoginInTx.mockResolvedValue({
-                ...upsert,
-                isNewDevice: false,
-            });
-            sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue(
-                revokedRef
-            );
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
+            userAuthService.createTokenAndSession.mockImplementation(
+                async () => {
+                    callOrder.push('createTokenAndSession');
 
-                return result as never;
-            });
+                    return {
+                        ...session,
+                        isNewDevice: false,
+                        revoked: revokedRef,
+                    };
+                }
+            );
             sessionQueue.purgeLogins.mockImplementation(async () => {
                 callOrder.push('purgeLogins');
             });
@@ -430,36 +360,11 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userAuthService.assertCredentialMatched
             ).toHaveBeenCalledWith(true);
-            expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
+            expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
+                baseUser,
                 deviceIdentity,
-                now
-            );
-            expect(
-                sessionService.revokeByDeviceOwnershipInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'device-ownership-bramble',
-                'user-bramble',
-                now
-            );
-            expect(sessionService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'session-bramble',
-                'device-ownership-bramble',
-                'jti-bramble',
-                now,
-                requestLog
-            );
-            expect(userService.updateLoginInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                requestLog.ipAddress,
                 now
             );
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
@@ -476,7 +381,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(callOrder).toEqual([
                 'stagePrepared',
-                'committed',
+                'createTokenAndSession',
                 'purgeLogins',
                 'stagePrepared',
             ]);
@@ -500,10 +405,11 @@ describe('UserLoginCredentialUseCase', () => {
             await useCase.execute({ ...dto, device: requestDevice });
 
             expect(deviceUtil.toIdentity).toHaveBeenCalledWith(requestDevice);
-            expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
+            expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
+                baseUser,
                 fullDevice,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
                 now
             );
         });
@@ -542,7 +448,9 @@ describe('UserLoginCredentialUseCase', () => {
             expect(activityLogService.stagePrepared).toHaveBeenCalledBefore(
                 userAuthService.assertCredentialMatched
             );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
         });
 
         it('stages both lockout rows after the spent count before the attempt limit is answered', async () => {
@@ -602,7 +510,9 @@ describe('UserLoginCredentialUseCase', () => {
                 'stagePrepared',
                 'assert',
             ]);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userAuthService.verifyCredential).not.toHaveBeenCalled();
         });
@@ -694,8 +604,12 @@ describe('UserLoginCredentialUseCase', () => {
                 'sendVerificationEmail',
                 'assertVerified',
             ]);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(authTwoFactorService.createChallenge).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTwoFactorChallenge
+            ).not.toHaveBeenCalled();
         });
 
         it('rejects with the unverified error and sends nothing inside the resend window', async () => {
@@ -727,7 +641,9 @@ describe('UserLoginCredentialUseCase', () => {
             expect(userAuthService.assertVerified).toHaveBeenCalledWith(
                 unverifiedUser
             );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
         });
 
         it('sends the verification email before the expiry check for an unverified user with an expired password', async () => {
@@ -758,7 +674,9 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userAuthService.assertPasswordNotExpired
             ).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
         });
 
         it('skips the send for a verified user', async () => {
@@ -781,7 +699,7 @@ describe('UserLoginCredentialUseCase', () => {
             ).toHaveBeenCalledWith(baseUser);
             expect(
                 userAuthService.assertPasswordNotExpired
-            ).toHaveBeenCalledBefore(databaseService.withTransaction);
+            ).toHaveBeenCalledBefore(userAuthService.createTokenAndSession);
         });
 
         it('rejects a wrong password of an unverified user with the credential error and sends nothing', async () => {
@@ -881,9 +799,12 @@ describe('UserLoginCredentialUseCase', () => {
                 emailNotVerifiedFields
             );
 
-            expect(authTwoFactorService.createChallenge).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionService.createInTx).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTwoFactorChallenge
+            ).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
         });
 
         it('creates a challenge and issues nothing for an already set-up two-factor user', async () => {
@@ -892,81 +813,54 @@ describe('UserLoginCredentialUseCase', () => {
                 ...counted,
                 user: twoFactorUser,
             });
-            authTwoFactorService.createChallenge.mockResolvedValue({
-                challengeToken: 'challenge-token',
-                expiresInMs: 60000,
-            });
+            userAuthService.createTwoFactorChallenge.mockResolvedValue(
+                verifyChallenge
+            );
 
             await expect(useCase.execute(dto)).resolves.toEqual({
                 data: {
                     isTwoFactorEnable: true,
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt: null,
-                    twoFactor: {
-                        isRequiredSetup: false,
-                        challengeToken: 'challenge-token',
-                        challengeExpiresInMs: 60000,
-                        backupCodesRemaining: 1,
-                    },
+                    twoFactor: verifyChallenge,
                 },
             });
 
-            expect(authTwoFactorService.createChallenge).toHaveBeenCalledWith({
-                userId: 'user-bramble',
-                device: deviceIdentity,
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.credential,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTwoFactorChallenge
+            ).toHaveBeenCalledWith(
+                twoFactorUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential
+            );
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
-        it('creates a challenge and a fresh setup, stores the secret, and stages the setup row when two-factor requires setup', async () => {
+        it('stages the setup row when the challenge requires setup', async () => {
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            userUtil.requiresTwoFactorSetup.mockReturnValue(true);
-            const requiresSetup: IUser = {
-                ...twoFactorUser,
-                twoFactor: { ...twoFactor, enabled: true, requiredSetup: true },
-            };
             userAuthService.countCredentialAttempt.mockResolvedValue({
                 ...counted,
-                user: requiresSetup,
+                user: twoFactorUser,
             });
-            authTwoFactorService.createChallenge.mockResolvedValue({
-                challengeToken: 'challenge-token',
-                expiresInMs: 60000,
-            });
-            userTwoFactorService.setup.mockResolvedValue({
-                encryptedSecret: 'encrypted-secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                secret: 'secret',
-            });
+            userAuthService.createTwoFactorChallenge.mockResolvedValue(
+                setupChallenge
+            );
 
             await expect(useCase.execute(dto)).resolves.toEqual({
                 data: {
                     isTwoFactorEnable: true,
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt: null,
-                    twoFactor: {
-                        isRequiredSetup: true,
-                        challengeToken: 'challenge-token',
-                        challengeExpiresInMs: 60000,
-                        backupCodesRemaining: 1,
-                        otpauthUrl: 'otpauth://totp/secret',
-                        secret: 'secret',
-                    },
+                    twoFactor: setupChallenge,
                 },
             });
 
-            expect(userTwoFactorService.setup).toHaveBeenCalledWith(
-                requiresSetup
-            );
-            expect(userTwoFactorService.saveSetup).toHaveBeenCalledWith(
-                'user-bramble',
-                'encrypted-secret'
-            );
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userSetupTwoFactor,
                 userId: 'user-bramble',
@@ -975,28 +869,17 @@ describe('UserLoginCredentialUseCase', () => {
             expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(2);
         });
 
-        it('writes no secret when the challenge fails during setup', async () => {
+        it('stages no setup row when the challenge fails', async () => {
+            const failure = new Error('challenge failed');
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            userUtil.requiresTwoFactorSetup.mockReturnValue(true);
-            const requiresSetup: IUser = {
-                ...twoFactorUser,
-                twoFactor: { ...twoFactor, enabled: true, requiredSetup: true },
-            };
             userAuthService.countCredentialAttempt.mockResolvedValue({
                 ...counted,
-                user: requiresSetup,
+                user: twoFactorUser,
             });
-            const failure = new Error('challenge failed');
-            authTwoFactorService.createChallenge.mockRejectedValue(failure);
-            userTwoFactorService.setup.mockResolvedValue({
-                encryptedSecret: 'encrypted-secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                secret: 'secret',
-            });
+            userAuthService.createTwoFactorChallenge.mockRejectedValue(failure);
 
             await expect(useCase.execute(dto)).rejects.toBe(failure);
 
-            expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
@@ -1034,10 +917,9 @@ describe('UserLoginCredentialUseCase', () => {
                 ...counted,
                 user: { ...twoFactorUser, ...lastWorkspace },
             });
-            authTwoFactorService.createChallenge.mockResolvedValue({
-                challengeToken: 'challenge-token',
-                expiresInMs: 60000,
-            });
+            userAuthService.createTwoFactorChallenge.mockResolvedValue(
+                verifyChallenge
+            );
 
             await expect(useCase.execute(dto)).resolves.toEqual({
                 data: {
@@ -1045,44 +927,27 @@ describe('UserLoginCredentialUseCase', () => {
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt:
                         lastWorkspace.lastWorkspaceChangedAt,
-                    twoFactor: {
-                        isRequiredSetup: false,
-                        challengeToken: 'challenge-token',
-                        challengeExpiresInMs: 60000,
-                        backupCodesRemaining: 1,
-                    },
+                    twoFactor: verifyChallenge,
                 },
             });
 
             expect(
                 workspaceMemberService.resolveLastWorkspaceId
             ).toHaveBeenCalledWith('user-bramble', 'workspace-stale');
+            expect(
+                workspaceMemberService.resolveLastWorkspaceId
+            ).toHaveBeenCalledBefore(userAuthService.createTwoFactorChallenge);
         });
 
         it('returns the resolved lastWorkspaceId on the two-factor setup outcome', async () => {
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            userUtil.requiresTwoFactorSetup.mockReturnValue(true);
             userAuthService.countCredentialAttempt.mockResolvedValue({
                 ...counted,
-                user: {
-                    ...twoFactorUser,
-                    ...lastWorkspace,
-                    twoFactor: {
-                        ...twoFactor,
-                        enabled: true,
-                        requiredSetup: true,
-                    },
-                },
+                user: { ...twoFactorUser, ...lastWorkspace },
             });
-            authTwoFactorService.createChallenge.mockResolvedValue({
-                challengeToken: 'challenge-token',
-                expiresInMs: 60000,
-            });
-            userTwoFactorService.setup.mockResolvedValue({
-                encryptedSecret: 'encrypted-secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                secret: 'secret',
-            });
+            userAuthService.createTwoFactorChallenge.mockResolvedValue(
+                setupChallenge
+            );
 
             await expect(useCase.execute(dto)).resolves.toEqual({
                 data: {
@@ -1090,14 +955,7 @@ describe('UserLoginCredentialUseCase', () => {
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt:
                         lastWorkspace.lastWorkspaceChangedAt,
-                    twoFactor: {
-                        isRequiredSetup: true,
-                        challengeToken: 'challenge-token',
-                        challengeExpiresInMs: 60000,
-                        backupCodesRemaining: 1,
-                        otpauthUrl: 'otpauth://totp/secret',
-                        secret: 'secret',
-                    },
+                    twoFactor: setupChallenge,
                 },
             });
 
@@ -1107,11 +965,7 @@ describe('UserLoginCredentialUseCase', () => {
         });
     });
 
-    describe('createTokenAndSession', () => {
-        const otherOwnershipIds = [
-            'device-ownership-thistle',
-            'device-ownership-clover',
-        ];
+    describe('startSession', () => {
         const affected: ISessionPurgeLoginsPayload[] = [
             {
                 userId: 'user-thistle',
@@ -1122,97 +976,87 @@ describe('UserLoginCredentialUseCase', () => {
             },
             { userId: 'user-clover', sessions: [{ id: 'session-clover' }] },
         ];
-        const revokeMetadata: IActivityLogMetadata = {
-            actorUserId: 'user-bramble',
-            sessionCount: 2,
-        };
-        const thistleLog: IActivityLogStaged = {
+        const thistleStage: IActivityLogStageInput<EnumActivityLogAction> = {
             action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-            metadata: revokeMetadata,
             userId: 'user-thistle',
             createdBy: 'user-bramble',
-            workspaceId: null,
+            metadata: { actorUserId: 'user-bramble', sessionCount: 2 },
         };
-        const cloverLog: IActivityLogStaged = {
-            ...thistleLog,
+        const cloverStage: IActivityLogStageInput<EnumActivityLogAction> = {
+            ...thistleStage,
             userId: 'user-clover',
         };
+        const startArgs = [
+            baseUser,
+            deviceIdentity,
+            EnumUserLoginFrom.website,
+            EnumUserLoginWith.credential,
+            loginAt,
+        ] as const;
 
-        it('reads the recipient, creates the session on the transaction, stamps the login, caches the entry, and enqueues the purge and the new-device notice', async () => {
-            const callOrder: string[] = [];
-            notificationService.getRecipient.mockImplementation(async () => {
-                callOrder.push('getRecipient');
+        it('reads the recipient before createTokenAndSession', async () => {
+            await useCase['startSession'](...startArgs);
 
-                return recipient;
-            });
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
-
-                return result as never;
-            });
-            authJwtService.createTokens.mockImplementation(() => {
-                callOrder.push('createTokens');
-
-                return tokens;
-            });
-            sessionService.setLogin.mockImplementation(async () => {
-                callOrder.push('setLogin');
-            });
-
-            const result = await useCase['createTokenAndSession'](
+            expect(notificationService.getRecipient).toHaveBeenCalledWith(
+                baseUser,
+                EnumNotificationKind.newDeviceLogin
+            );
+            expect(notificationService.getRecipient).toHaveBeenCalledBefore(
+                userAuthService.createTokenAndSession
+            );
+            expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
             );
+        });
 
-            expect(result).toBe(tokens);
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.newDeviceLogin
-            );
-            expect(
-                sessionService.revokeByDeviceOwnershipInTx
-            ).not.toHaveBeenCalled();
-            expect(sessionService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'session-bramble',
-                'device-ownership-bramble',
-                'jti-bramble',
-                loginAt,
-                requestLog
-            );
-            expect(userService.updateLoginInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                requestLog.ipAddress,
-                now
-            );
-            expect(authJwtService.createTokens).toHaveBeenCalledWith(
-                baseUser,
-                {
-                    sessionId: 'session-bramble',
-                    jti: 'jti-bramble',
-                    deviceOwnershipId: 'device-ownership-bramble',
-                    loginAt,
-                },
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential
-            );
-            expect(sessionService.setLogin).toHaveBeenCalledWith(
+        it('sets the login and purges the revoked sessions after the service call', async () => {
+            userAuthService.createTokenAndSession.mockResolvedValue({
+                ...session,
+                revoked: revokedRef,
+            });
+
+            await useCase['startSession'](...startArgs);
+
+            expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
                 'user-bramble',
                 'session-bramble',
                 'jti-bramble'
             );
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
                 'user-bramble',
-                []
+                revokedRef
             );
+            expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
+                userAuthService.createTokenAndSession
+            );
+        });
+
+        it('purges once per affected user', async () => {
+            userAuthService.createTokenAndSession.mockResolvedValue({
+                ...session,
+                affected,
+            });
+
+            await useCase['startSession'](...startArgs);
+
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(3);
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-thistle',
+                affected[0]!.sessions
+            );
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-clover',
+                affected[1]!.sessions
+            );
+        });
+
+        it('sends the new-device notification only for a new device', async () => {
+            await useCase['startSession'](...startArgs);
+
             expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledWith(
                 recipient,
                 {
@@ -1223,341 +1067,101 @@ describe('UserLoginCredentialUseCase', () => {
                 },
                 'session-bramble'
             );
-            expect(callOrder).toEqual([
-                'getRecipient',
-                'committed',
-                'createTokens',
-                'setLogin',
-            ]);
-        });
 
-        it('announces no new device for an existing one', async () => {
-            deviceService.upsertForLoginInTx.mockResolvedValue({
-                ...upsert,
+            notificationQueue.sendNewDeviceLogin.mockClear();
+            userAuthService.createTokenAndSession.mockResolvedValue({
+                ...session,
                 isNewDevice: false,
             });
 
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
+            await useCase['startSession'](...startArgs);
 
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
         });
 
-        it('revokes the new session, purges it, and rethrows when the login cache write rejects, still enqueueing the repeat-device purge and the new-device notice', async () => {
-            const failure = new Error('cache down');
-            sessionService.setLogin.mockRejectedValue(failure);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toMatchObject({ rawError: failure });
-            expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
-                'user-bramble',
-                'session-bramble'
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                []
-            );
-            expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledTimes(
-                1
-            );
-        });
-
-        it('rethrows a typed login cache failure unwrapped after the compensating revoke', async () => {
-            const failure = new RedisUnavailableException();
-            sessionService.setLogin.mockRejectedValue(failure);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toBe(failure);
-            expect(sessionService.revokeIfActive).toHaveBeenCalledTimes(1);
-        });
-
-        it("still enqueues the affected users' purges and stages no activity row when the login cache write rejects", async () => {
-            const failure = new Error('cache down');
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-            sessionService.setLogin.mockRejectedValue(failure);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toMatchObject({ rawError: failure });
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-thistle',
-                affected[0]!.sessions
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-clover',
-                affected[1]!.sessions
-            );
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('revokes nothing when the login cache write succeeds', async () => {
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(sessionService.revokeIfActive).not.toHaveBeenCalled();
-        });
-
-        it('fails the login before the transaction when the recipient read rejects', async () => {
-            const failure = new Error('recipient-unavailable');
-            notificationService.getRecipient.mockRejectedValue(failure);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toBe(failure);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws RequestContextMissingException before any write when the store has no request log', async () => {
-            sessionService.getRequestLog.mockImplementation(() => {
-                throw new RequestContextMissingException(RequestLogStoreKey);
-            });
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('signs nothing and writes no cache key when the transaction fails', async () => {
-            const failure = new Error('tx failed');
-            databaseService.withTransaction.mockRejectedValue(failure);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toBe(failure);
-            expect(authJwtService.createTokens).not.toHaveBeenCalled();
-            expect(sessionService.setLogin).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-        });
-
-        it("reads the other users' ownerships of the device and revokes their sessions on the login transaction for a new ownership", async () => {
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(
-                deviceService.getOtherOwnershipIdsByDeviceInTx
-            ).toHaveBeenCalledWith(tx, 'device-bramble', 'user-bramble');
-            expect(
-                sessionService.revokeByDeviceOwnershipIdsInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                ['device-ownership-thistle', 'device-ownership-clover'],
-                'user-bramble',
-                now
-            );
-            expect(
-                sessionService.revokeByDeviceOwnershipInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('signs other users out for a repeat ownership too', async () => {
-            deviceService.upsertForLoginInTx.mockResolvedValue({
-                ...upsert,
-                isNewDevice: false,
-            });
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(
-                deviceService.getOtherOwnershipIdsByDeviceInTx
-            ).toHaveBeenCalledWith(tx, 'device-bramble', 'user-bramble');
-            expect(
-                sessionService.revokeByDeviceOwnershipIdsInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                ['device-ownership-thistle', 'device-ownership-clover'],
-                'user-bramble',
-                now
-            );
-            expect(
-                sessionService.revokeByDeviceOwnershipInTx
-            ).toHaveBeenCalled();
-        });
-
-        it('runs no session revoke when no other user owns the device', async () => {
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(
-                sessionService.revokeByDeviceOwnershipIdsInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                []
-            );
-        });
-
-        it('enqueues one purge per affected user after the commit and stages one activity row each', async () => {
+        it('stages the revoke rows after the enqueues only when revokeStages is not empty', async () => {
             const callOrder: string[] = [];
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-            sessionUtil.mapActivityLogRevokeAllTargetMetadata.mockReturnValue(
-                revokeMetadata
-            );
-            activityLogService.prepare
-                .mockReturnValueOnce(thistleLog)
-                .mockReturnValueOnce(cloverLog);
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
+            await useCase['startSession'](...startArgs);
 
-                return result as never;
+            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+
+            userAuthService.createTokenAndSession.mockResolvedValue({
+                ...session,
+                affected,
+                revokeStages: [thistleStage, cloverStage],
             });
             sessionQueue.purgeLogins.mockImplementation(async userId => {
                 callOrder.push(`purge:${userId}`);
             });
+            activityLogService.prepare
+                .mockReturnValueOnce({ ...activityLog, userId: 'user-thistle' })
+                .mockReturnValueOnce({ ...activityLog, userId: 'user-clover' });
             activityLogService.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
 
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
+            await useCase['startSession'](...startArgs);
 
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-thistle',
-                affected[0]!.sessions
+            expect(activityLogService.prepare).toHaveBeenCalledWith(
+                thistleStage
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-clover',
-                affected[1]!.sessions
+            expect(activityLogService.prepare).toHaveBeenCalledWith(
+                cloverStage
             );
             expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).toHaveBeenCalledWith('user-bramble', 2);
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).toHaveBeenCalledWith('user-bramble', 1);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-                userId: 'user-thistle',
-                createdBy: 'user-bramble',
-                metadata: revokeMetadata,
-            });
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-                userId: 'user-clover',
-                createdBy: 'user-bramble',
-                metadata: revokeMetadata,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(1);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                thistleLog,
-                cloverLog,
+                activityLogService.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([
+                { ...activityLog, userId: 'user-thistle' },
+                { ...activityLog, userId: 'user-clover' },
             ]);
             expect(callOrder).toEqual([
-                'committed',
                 'purge:user-bramble',
                 'purge:user-thistle',
                 'purge:user-clover',
                 'stagePrepared',
             ]);
+        });
+
+        it('returns the session tokens', async () => {
+            await expect(useCase['startSession'](...startArgs)).resolves.toBe(
+                tokens
+            );
+        });
+
+        it('enqueues nothing when createTokenAndSession rejects', async () => {
+            const failure = new Error('tx failed');
+            userAuthService.createTokenAndSession.mockRejectedValue(failure);
+
+            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
+                failure
+            );
+
+            expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
+            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('fails before the service call when the recipient read rejects', async () => {
+            const failure = new Error('recipient-unavailable');
+            notificationService.getRecipient.mockRejectedValue(failure);
+
+            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
+                failure
+            );
+
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rejects with the login cache failure from setLoginOrRevoke', async () => {
+            const failure = new RedisUnavailableException();
+            sessionService.setLoginOrRevoke.mockRejectedValue(failure);
+
+            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
+                failure
+            );
         });
     });
 });

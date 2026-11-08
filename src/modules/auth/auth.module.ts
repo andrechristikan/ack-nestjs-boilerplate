@@ -13,7 +13,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { JwtModuleOptions } from '@nestjs/jwt';
 
-/** Shared module: AuthService for the JWT and social guards; AuthJwtService, AuthTwoFactorService, and AuthUtil for the user use cases; AuthPasswordUtil for the user and password-history modules and the user seed; AuthTwoFactorUtil for the user module. */
+/** Shared module: AuthService for the JWT and social guards; AuthJwtService and AuthTwoFactorService for the user module and use cases; AuthUtil for the user module; AuthPasswordUtil for the user and password-history modules and the user seed; AuthTwoFactorUtil for the user module. */
 @Global()
 @Module({
     controllers: [],

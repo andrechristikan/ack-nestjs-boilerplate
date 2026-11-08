@@ -15,7 +15,11 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumNotificationChannel,
     EnumProjectMemberRole,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
@@ -32,6 +36,11 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { UserService } from '@modules/user/services/user.service';
+import type { User } from '@generated/prisma-client/client';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
@@ -47,6 +56,7 @@ import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/excepti
 import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import type {
     IWorkspaceInviteCreate,
+    IWorkspaceInviteInviter,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
@@ -62,6 +72,9 @@ describe('WorkspaceInviteService', () => {
         mock<WorkspaceMemberService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -175,6 +188,8 @@ describe('WorkspaceInviteService', () => {
                     useValue: workspaceMemberService,
                 },
                 { provide: FeatureFlagService, useValue: featureFlagService },
+                { provide: UserService, useValue: userService },
+                { provide: NotificationService, useValue: notificationService },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -185,6 +200,84 @@ describe('WorkspaceInviteService', () => {
         }).compile();
 
         service = module.get(WorkspaceInviteService);
+    });
+
+    describe('getInviterName', () => {
+        it("resolves the inviter's name against the workspace", async () => {
+            const inviter: IWorkspaceInviteInviter = {
+                name: 'Bramble',
+                username: 'bramble',
+            };
+            userService.getNameById.mockResolvedValue(inviter);
+            workspaceUtil.resolveInviterName.mockReturnValue('Bramble');
+
+            await expect(
+                service.getInviterName(workspace, 'user-1')
+            ).resolves.toBe('Bramble');
+            expect(userService.getNameById).toHaveBeenCalledWith('user-1');
+            expect(workspaceUtil.resolveInviterName).toHaveBeenCalledWith(
+                inviter,
+                workspace
+            );
+        });
+    });
+
+    describe('getInviteeRecipient', () => {
+        it('returns null for no account', async () => {
+            await expect(service.getInviteeRecipient(null)).resolves.toBeNull();
+            expect(notificationService.getRecipient).not.toHaveBeenCalled();
+        });
+
+        it('returns the workspaceInvite recipient of the account', async () => {
+            const user: User = {
+                id: 'user-2',
+                name: null,
+                username: 'user-2',
+                isVerified: false,
+                verifiedAt: null,
+                email: 'user-2@example.com',
+                roleId: 'role-1',
+                password: null,
+                passwordExpired: null,
+                passwordCreated: null,
+                passwordAttempt: null,
+                signUpAt: new Date('2026-01-01T00:00:00.000Z'),
+                signUpFrom: EnumUserSignUpFrom.website,
+                signUpWith: EnumUserSignUpWith.credential,
+                status: EnumUserStatus.active,
+                gender: null,
+                countryId: 'country-1',
+                lastLoginAt: null,
+                lastIPAddress: null,
+                lastLoginFrom: null,
+                lastLoginWith: null,
+                lastWorkspaceId: null,
+                lastWorkspaceChangedAt: null,
+                photo: null,
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                updatedBy: null,
+                deletedAt: null,
+                deletedBy: null,
+            };
+            const recipient: INotificationRecipient = {
+                userId: 'user-2',
+                email: 'user-2@example.com',
+                username: 'user-2',
+                notificationTokens: [],
+                channels: [EnumNotificationChannel.email],
+            };
+            notificationService.getRecipient.mockResolvedValue(recipient);
+
+            await expect(service.getInviteeRecipient(user)).resolves.toBe(
+                recipient
+            );
+            expect(notificationService.getRecipient).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.workspaceInvite
+            );
+        });
     });
 
     describe('validateInviteToken', () => {

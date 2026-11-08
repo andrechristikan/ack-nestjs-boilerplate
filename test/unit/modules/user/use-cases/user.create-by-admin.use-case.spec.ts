@@ -3,11 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
@@ -26,20 +21,15 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
-import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
-import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -52,6 +42,14 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
+import { UserRegistrationService } from '@modules/user/services/user.registration.service';
+import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
@@ -61,30 +59,28 @@ import { UserCreateByAdminUseCase } from '@modules/user/use-cases/user.create-by
 describe('UserCreateByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
-    const passwordHistoryService: MockProxy<PasswordHistoryService> =
-        mock<PasswordHistoryService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
     const notificationUtil: MockProxy<NotificationUtil> =
         mock<NotificationUtil>();
-    const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
-        mock<TermPolicyAcceptanceService>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const tx = {} as IDatabaseTransactionClient;
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
+    const userRegistrationService: MockProxy<UserRegistrationService> =
+        mock<UserRegistrationService>();
+    const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
+        mock<TermPolicyAcceptanceService>();
     let useCase: UserCreateByAdminUseCase;
 
-    const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
     const configValues: Record<string, unknown> = {
         'user.default.role': 'user',
@@ -217,19 +213,6 @@ describe('UserCreateByAdminUseCase', () => {
         workspaceContext: personalContext,
         createdBy: 'user-bramble',
     };
-    const historyEntry: IPasswordHistoryCreate = {
-        userId: 'user-bramble',
-        password: 'hashed',
-        type: EnumPasswordHistoryType.signUp,
-        expiredAt: password.passwordPeriodExpired,
-        createdAt: password.passwordCreated,
-        createdBy: 'user-bramble',
-    };
-    const acceptanceEntry: ITermPolicyAcceptanceCreate = {
-        userId: 'user-bramble',
-        types: [EnumTermPolicyType.termsOfService],
-        createdBy: 'user-bramble',
-    };
     const stageInput = {
         action: EnumActivityLogAction.userSignedUp,
         userId: 'user-bramble',
@@ -251,9 +234,6 @@ describe('UserCreateByAdminUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        databaseService.withTransaction.mockImplementation(
-            async fn => fn(tx) as never
-        );
         helperDateService.create.mockReturnValue(now);
         helperDateService.forward.mockImplementation(date => date);
         helperDateService.formatToIso.mockReturnValue(
@@ -261,15 +241,12 @@ describe('UserCreateByAdminUseCase', () => {
         );
         activityLogService.prepare.mockReturnValue(activityLog);
         notificationUtil.mapRecipient.mockReturnValue(recipient);
-        userService.createManyInTx.mockResolvedValue([committedUser]);
-        userCreateUtil.buildPasswordHistoryEntries.mockReturnValue([
-            historyEntry,
-        ]);
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        userRegistrationService.createInTx.mockResolvedValue([committedUser]);
         userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
-            acceptanceEntry,
+            { userId: 'user-bramble', types: [], createdBy: 'user-bramble' },
         ]);
-        userCreateUtil.buildUserIds.mockReturnValue(['user-bramble']);
-        workspaceUtil.countSlugAttempts.mockReturnValue(2);
+        workspaceUtil.countSlugAttempts.mockReturnValue(1);
         workspaceUtil.buildOwnedUsers.mockReturnValue([]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
@@ -278,25 +255,24 @@ describe('UserCreateByAdminUseCase', () => {
             providers: [
                 UserCreateByAdminUseCase,
                 { provide: UserService, useValue: userService },
+                { provide: WorkspaceService, useValue: workspaceService },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: WorkspaceUtil, useValue: workspaceUtil },
                 {
-                    provide: PasswordHistoryService,
-                    useValue: passwordHistoryService,
+                    provide: UserRegistrationService,
+                    useValue: userRegistrationService,
                 },
-                { provide: NotificationService, useValue: notificationService },
                 {
                     provide: TermPolicyAcceptanceService,
                     useValue: termPolicyAcceptanceService,
                 },
-                { provide: WorkspaceService, useValue: workspaceService },
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
-                { provide: DatabaseService, useValue: databaseService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: ConfigService,
@@ -359,9 +335,10 @@ describe('UserCreateByAdminUseCase', () => {
                 expect.any(Function),
                 { timeout: 5000 }
             );
-            expect(
-                termPolicyAcceptanceService.assertRequiredPublishedInTx
-            ).not.toHaveBeenCalled();
+            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
+                tx,
+                [input]
+            );
             expect(
                 userCreateUtil.buildCreateByAdminStages
             ).toHaveBeenCalledWith(input, committedUser);
@@ -460,36 +437,35 @@ describe('UserCreateByAdminUseCase', () => {
     });
 
     describe('createAdminUsers', () => {
-        it('runs the writes on one transaction in order without the published assertion', async () => {
-            const owned = {
-                userId: 'user-bramble',
-                workspaceId: 'workspace-bramble',
-                name: 'Bramble',
-                slug: 'w-bramble',
-            };
-            workspaceUtil.buildOwnedUsers.mockReturnValue([owned]);
+        const acceptanceEntry = {
+            userId: 'user-bramble',
+            types: [],
+            createdBy: 'user-bramble',
+        };
+        const owned = {
+            userId: 'user-bramble',
+            workspaceId: 'workspace-bramble',
+            name: 'Bramble',
+            slug: 'w-bramble',
+        };
 
+        beforeEach(() => {
+            userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
+                acceptanceEntry,
+            ]);
+            workspaceUtil.countSlugAttempts.mockReturnValue(2);
+            workspaceUtil.buildOwnedUsers.mockReturnValue([owned]);
+        });
+
+        it('creates the users, their owned workspaces, and the term-policy acceptances on one tx, in that order', async () => {
             const users = await useCase['createAdminUsers']([input], 7000);
 
             expect(users).toEqual([committedUser]);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
-                expect.any(Function),
-                { timeout: 7000 }
-            );
-            expect(
-                termPolicyAcceptanceService.assertRequiredPublishedInTx
-            ).not.toHaveBeenCalled();
-            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
-                input,
-            ]);
-            expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
+            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
-                [historyEntry]
+                [input]
             );
-            expect(
-                notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, ['user-bramble']);
             expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
                 [input],
                 0
@@ -500,17 +476,9 @@ describe('UserCreateByAdminUseCase', () => {
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                passwordHistoryService.createManyInTx
+            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
+                workspaceService.createOwnedForUsersInTx
             );
-            expect(
-                passwordHistoryService.createManyInTx
-            ).toHaveBeenCalledBefore(
-                notificationService.createDefaultsManyInTx
-            );
-            expect(
-                notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledBefore(workspaceService.createOwnedForUsersInTx);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledBefore(
@@ -518,11 +486,20 @@ describe('UserCreateByAdminUseCase', () => {
             );
         });
 
-        it('retries with the next slug candidate after a slug collision and commits', async () => {
+        it('passes timeoutInMs to withTransaction', async () => {
+            await useCase['createAdminUsers']([input], 7000);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+                expect.any(Function),
+                { timeout: 7000 }
+            );
+        });
+
+        it('retries with the next attempt after a slug collision', async () => {
             const collision = new Error('slug collision');
             databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
-                .mockImplementationOnce(async fn => fn(tx) as never);
+                .mockImplementationOnce(async fn => fn(tx));
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const users = await useCase['createAdminUsers']([input], 5000);
@@ -539,28 +516,11 @@ describe('UserCreateByAdminUseCase', () => {
             );
         });
 
-        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                new Error('slug collision')
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
-
-            await expect(
-                useCase['createAdminUsers']([input], 5000)
-            ).rejects.toMatchObject({
-                module: 'database',
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
-                messagePath: 'database.error.uniqueValueGenerationFailed',
-            });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
-        });
-
-        it('throws the exception the create util maps a non-slug collision to', async () => {
+        it('throws the mapped AppBaseException of mapCreateCollision', async () => {
             const otherError = new Error('duplicate email');
             databaseService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
-            const mapped = new UserEmailExistException();
+            const mapped = new WorkspaceNotFoundException();
             userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
 
             await expect(
@@ -571,7 +531,7 @@ describe('UserCreateByAdminUseCase', () => {
             );
         });
 
-        it('wraps a non-collision error the create util leaves unmapped in the unknown exception', async () => {
+        it('wraps an unmapped error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
             databaseService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
@@ -580,10 +540,23 @@ describe('UserCreateByAdminUseCase', () => {
             await expect(
                 useCase['createAdminUsers']([input], 5000)
             ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
+                constructor: AppUnknownException,
                 rawError: otherError,
             });
+        });
+
+        it('throws DatabaseUniqueValueGenerationFailedException after the last attempt', async () => {
+            databaseService.withTransaction.mockRejectedValue(
+                new Error('slug collision')
+            );
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await expect(
+                useCase['createAdminUsers']([input], 5000)
+            ).rejects.toBeInstanceOf(
+                DatabaseUniqueValueGenerationFailedException
+            );
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
     });
 });

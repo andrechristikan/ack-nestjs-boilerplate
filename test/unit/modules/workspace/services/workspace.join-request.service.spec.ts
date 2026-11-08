@@ -16,6 +16,10 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumNotificationChannel,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
     EnumWorkspaceMemberRole,
@@ -26,6 +30,17 @@ import type {
     WorkspaceJoinRequest,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import { UserService } from '@modules/user/services/user.service';
+import type { User } from '@generated/prisma-client/client';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -50,6 +65,11 @@ describe('WorkspaceJoinRequestService', () => {
         mock<WorkspaceRepository>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
+    const featureFlagService: MockProxy<FeatureFlagService> =
+        mock<FeatureFlagService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -143,6 +163,9 @@ describe('WorkspaceJoinRequestService', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
+                { provide: UserService, useValue: userService },
+                { provide: NotificationService, useValue: notificationService },
+                { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -153,6 +176,99 @@ describe('WorkspaceJoinRequestService', () => {
         }).compile();
 
         service = module.get(WorkspaceJoinRequestService);
+    });
+
+    describe('assertJoinRequestAllowed', () => {
+        it('validates workspace.joinRequestAllowed', async () => {
+            await service.assertJoinRequestAllowed();
+
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.joinRequestAllowed
+            );
+        });
+
+        it('propagates the flag exception', async () => {
+            featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
+                new FeatureFlagDisabledException()
+            );
+
+            await expect(
+                service.assertJoinRequestAllowed()
+            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
+        });
+    });
+
+    describe('getRequesterRecipient', () => {
+        it('returns null without a recipient read when the requester is not active', async () => {
+            userService.getOneActive.mockResolvedValue(null);
+
+            await expect(
+                service.getRequesterRecipient(
+                    'user-2',
+                    EnumNotificationKind.workspaceJoinAccepted
+                )
+            ).resolves.toBeNull();
+            expect(notificationService.getRecipient).not.toHaveBeenCalled();
+        });
+
+        it("returns the requester's recipient for the kind", async () => {
+            const user: User = {
+                id: 'user-2',
+                name: null,
+                username: 'user-2',
+                isVerified: false,
+                verifiedAt: null,
+                email: 'user-2@example.com',
+                roleId: 'role-1',
+                password: null,
+                passwordExpired: null,
+                passwordCreated: null,
+                passwordAttempt: null,
+                signUpAt: new Date('2026-01-01T00:00:00.000Z'),
+                signUpFrom: EnumUserSignUpFrom.website,
+                signUpWith: EnumUserSignUpWith.credential,
+                status: EnumUserStatus.active,
+                gender: null,
+                countryId: 'country-1',
+                lastLoginAt: null,
+                lastIPAddress: null,
+                lastLoginFrom: null,
+                lastLoginWith: null,
+                lastWorkspaceId: null,
+                lastWorkspaceChangedAt: null,
+                photo: null,
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                updatedBy: null,
+                deletedAt: null,
+                deletedBy: null,
+            };
+            const recipient: INotificationRecipient = {
+                userId: 'user-2',
+                email: 'user-2@example.com',
+                username: 'user-2',
+                notificationTokens: [],
+                channels: [EnumNotificationChannel.email],
+            };
+            userService.getOneActive.mockResolvedValue(user);
+            notificationService.getRecipient.mockResolvedValue(recipient);
+
+            await expect(
+                service.getRequesterRecipient(
+                    'user-2',
+                    EnumNotificationKind.workspaceJoinRejected
+                )
+            ).resolves.toBe(recipient);
+            expect(userService.getOneActive).toHaveBeenCalledWith('user-2');
+            expect(notificationService.getRecipient).toHaveBeenCalledWith(
+                user,
+                EnumNotificationKind.workspaceJoinRejected
+            );
+        });
     });
 
     describe('getJoinableWorkspace', () => {

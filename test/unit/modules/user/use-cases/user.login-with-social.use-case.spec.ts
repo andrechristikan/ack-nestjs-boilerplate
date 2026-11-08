@@ -9,11 +9,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
@@ -32,42 +28,27 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Country,
-    DeviceOwnership,
     TwoFactor,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type {
-    IActivityLogMetadata,
+    IActivityLogStageInput,
     IActivityLogStaged,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import type {
     IAuthPassword,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { DeviceService } from '@modules/device/services/device.service';
-import type {
-    IDeviceIdentity,
-    IDeviceLoginUpsert,
-} from '@modules/device/interfaces/device.interface';
+import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import {
-    EnumFeatureFlagKey,
-    EnumFeatureFlagMetadataKey,
-} from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
-import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -79,13 +60,12 @@ import type {
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
+import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserService } from '@modules/user/services/user.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
@@ -96,9 +76,12 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserLoginOutcome,
     IUserLoginSocial,
+    IUserLoginTwoFactorChallenge,
     IUserSignUpWorkspaceInvite,
     IUserSignUpWorkspacePersonal,
+    IUserTwoFactorEnabled,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -115,12 +98,10 @@ import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-w
 describe('UserLoginWithSocialUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const userTwoFactorService: MockProxy<UserTwoFactorService> =
-        mock<UserTwoFactorService>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const passwordHistoryService: MockProxy<PasswordHistoryService> =
-        mock<PasswordHistoryService>();
+    const userRegistrationService: MockProxy<UserRegistrationService> =
+        mock<UserRegistrationService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const notificationQueue: MockProxy<NotificationQueue> =
@@ -140,17 +121,9 @@ describe('UserLoginWithSocialUseCase', () => {
         mock<ProjectMemberService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const featureFlagService: MockProxy<FeatureFlagService> =
-        mock<FeatureFlagService>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
-    const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
-    const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
-    const authTwoFactorService: MockProxy<AuthTwoFactorService> =
-        mock<AuthTwoFactorService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
@@ -275,41 +248,31 @@ describe('UserLoginWithSocialUseCase', () => {
         twoFactor: null,
     };
     const committedUser: IUser = { ...baseUser, twoFactor };
-    const ownership: DeviceOwnership = {
-        id: 'device-ownership-bramble',
-        deviceId: 'device-bramble',
-        userId: 'user-bramble',
-        revokedAt: null,
-        isRevoked: false,
-        revokedById: null,
-        lastActiveAt: now,
-        notificationToken: 'token-bramble',
-        notificationProvider: null,
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
+    const verifyChallenge: IUserLoginTwoFactorChallenge = {
+        isRequiredSetup: false,
+        challengeToken: 'challenge-token',
+        challengeExpiresInMs: 60000,
+        backupCodesRemaining: 1,
     };
-    const upsert: IDeviceLoginUpsert = {
-        device: {
-            id: 'device-bramble',
-            fingerprint: 'device-bramble',
-            name: null,
-            platform: EnumDevicePlatform.android,
-            lastActiveAt: now,
-            createdAt: now,
-            createdBy: null,
-            updatedAt: now,
-            updatedBy: null,
-        },
-        deviceOwnership: ownership,
-        isNewDevice: true,
+    const setupChallenge: IUserLoginTwoFactorChallenge = {
+        isRequiredSetup: true,
+        challengeToken: 'challenge-token',
+        challengeExpiresInMs: 60000,
+        backupCodesRemaining: 1,
+        otpauthUrl: 'otpauth://totp/secret',
+        secret: 'secret',
     };
     const revokedRef: ISessionRef[] = [{ id: 'session-bramble' }];
+    const session: IUserLoginSession = {
+        tokens,
+        sessionId: 'session-bramble',
+        jti: 'jti-bramble',
+        requestLog,
+        isNewDevice: true,
+        revoked: [],
+        affected: [],
+        revokeStages: [],
+    };
     const country: Country = {
         id: 'country-bramble',
         name: 'Indonesia',
@@ -374,14 +337,6 @@ describe('UserLoginWithSocialUseCase', () => {
         ...input,
         workspaceContext: inviteContext,
     };
-    const historyEntry: IPasswordHistoryCreate = {
-        userId: 'user-bramble',
-        password: 'hashed',
-        type: EnumPasswordHistoryType.signUp,
-        expiredAt: password.passwordPeriodExpired,
-        createdAt: password.passwordCreated,
-        createdBy: 'user-bramble',
-    };
     const acceptanceEntry: ITermPolicyAcceptanceCreate = {
         userId: 'user-bramble',
         types: [EnumTermPolicyType.termsOfService],
@@ -431,11 +386,9 @@ describe('UserLoginWithSocialUseCase', () => {
             async fn => fn(tx) as never
         );
         helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(date => date);
         helperDateService.formatToIso.mockReturnValue(
             '2026-03-05T00:00:00.000Z'
         );
-        sessionService.getRequestLog.mockReturnValue(requestLog);
         activityLogService.prepare.mockReturnValue(activityLog);
         notificationUtil.mapRecipient.mockReturnValue(recipient);
         userUtil.resolveLoginActivityLogAction.mockReturnValue(
@@ -445,27 +398,12 @@ describe('UserLoginWithSocialUseCase', () => {
         userUtil.isTwoFactorEnabled.mockReturnValue(false);
         userUtil.requiresTwoFactorSetup.mockReturnValue(false);
         notificationService.getRecipient.mockResolvedValue(recipient);
-        deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
-        deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue([]);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
-        authUtil.createLoginIdentifiers.mockReturnValue({
-            sessionId: 'session-bramble',
-            jti: 'jti-bramble',
-        });
-        authJwtService.createTokens.mockReturnValue(tokens);
-        Object.defineProperty(
-            authJwtService,
-            'jwtRefreshTokenExpirationTimeInSeconds',
-            { value: 2592000, configurable: true }
-        );
-        userService.createManyInTx.mockResolvedValue([committedUser]);
-        userCreateUtil.buildPasswordHistoryEntries.mockReturnValue([
-            historyEntry,
-        ]);
+        userAuthService.createTokenAndSession.mockResolvedValue(session);
+        userRegistrationService.createInTx.mockResolvedValue([committedUser]);
         userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
             acceptanceEntry,
         ]);
-        userCreateUtil.buildUserIds.mockReturnValue(['user-bramble']);
         workspaceUtil.countSlugAttempts.mockReturnValue(2);
         workspaceUtil.buildOwnedUsers.mockReturnValue([]);
         roleService.getByName.mockResolvedValue(role);
@@ -478,12 +416,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: UserService, useValue: userService },
                 {
-                    provide: UserTwoFactorService,
-                    useValue: userTwoFactorService,
-                },
-                {
-                    provide: PasswordHistoryService,
-                    useValue: passwordHistoryService,
+                    provide: UserRegistrationService,
+                    useValue: userRegistrationService,
                 },
                 { provide: NotificationService, useValue: notificationService },
                 {
@@ -505,18 +439,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
-                { provide: FeatureFlagService, useValue: featureFlagService },
-                { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: AuthJwtService, useValue: authJwtService },
-                {
-                    provide: AuthTwoFactorService,
-                    useValue: authTwoFactorService,
-                },
-                { provide: AuthUtil, useValue: authUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: SessionUtil, useValue: sessionUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
@@ -561,10 +486,9 @@ describe('UserLoginWithSocialUseCase', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 personalContext
             );
-            featureFlagService.getMetadataByKey.mockResolvedValue({
-                [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
-            });
-            userAuthService.getOneByEmail.mockResolvedValue(null);
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                true
+            );
             userCreateUtil.buildSocialCreate.mockReturnValue(input);
             userService.checkUsername.mockResolvedValue(clearUsername);
             userAuthService.getOneForSocialLogin.mockResolvedValue(baseUser);
@@ -572,9 +496,6 @@ describe('UserLoginWithSocialUseCase', () => {
                 EnumActivityLogAction.userLoginGoogle
             );
             userCreateUtil.buildStages.mockReturnValue([stageInput]);
-            userCreateUtil.resolveSocialFeatureFlagKey.mockReturnValue(
-                EnumFeatureFlagKey.loginWithGoogle
-            );
         });
 
         it('commits the new user, stages the created rows, logs in, and sends the social welcome after the login', async () => {
@@ -582,12 +503,16 @@ describe('UserLoginWithSocialUseCase', () => {
             userAuthService.getOneForSocialLogin.mockResolvedValue(
                 committedUser
             );
-            userService.createManyInTx.mockResolvedValue([committedUser]);
-            userService.updateLoginInTx.mockImplementation(async () => {
-                callOrder.push('login');
+            userRegistrationService.createInTx.mockResolvedValue([
+                committedUser,
+            ]);
+            userAuthService.createTokenAndSession.mockImplementation(
+                async () => {
+                    callOrder.push('login');
 
-                return baseUser;
-            });
+                    return session;
+                }
+            );
             notificationQueue.sendWelcomeSocial.mockImplementation(async () => {
                 callOrder.push('sendWelcomeSocial');
             });
@@ -600,8 +525,11 @@ describe('UserLoginWithSocialUseCase', () => {
                 )
             ).resolves.toEqual({ data: tokenOutcome });
 
-            expect(featureFlagService.getMetadataByKey).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.loginWithGoogle
+            expect(
+                userRegistrationService.isSocialSignUpAllowed
+            ).toHaveBeenCalledWith(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGoogle
             );
             expect(deviceUtil.toIdentity).toHaveBeenCalledWith(device);
             expect(userCreateUtil.buildSocialCreate).toHaveBeenCalledWith(
@@ -634,7 +562,9 @@ describe('UserLoginWithSocialUseCase', () => {
         });
 
         it('logs an existing user in without creating one or sending a welcome', async () => {
-            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
 
             await expect(
                 useCase.execute(
@@ -654,23 +584,24 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(userAuthService.verifyEmailBySocial).not.toHaveBeenCalled();
             expect(userAuthService.assertVerified).not.toHaveBeenCalled();
             expect(notificationQueue.sendWelcomeSocial).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('creates a challenge and issues nothing for an already set-up two-factor user', async () => {
-            const twoFactorUser: IUser = {
+            const twoFactorUser: IUserTwoFactorEnabled = {
                 ...baseUser,
                 twoFactor: { ...twoFactor, enabled: true },
             };
-            userAuthService.getOneByEmail.mockResolvedValue(twoFactorUser);
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
             userAuthService.getOneForSocialLogin.mockResolvedValue(
                 twoFactorUser
             );
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            authTwoFactorService.createChallenge.mockResolvedValue({
-                challengeToken: 'challenge-token',
-                expiresInMs: 60000,
-            });
+            userAuthService.createTwoFactorChallenge.mockResolvedValue(
+                verifyChallenge
+            );
 
             await expect(
                 useCase.execute(
@@ -683,44 +614,41 @@ describe('UserLoginWithSocialUseCase', () => {
                     isTwoFactorEnable: true,
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt: null,
-                    twoFactor: {
-                        isRequiredSetup: false,
-                        challengeToken: 'challenge-token',
-                        challengeExpiresInMs: 60000,
-                        backupCodesRemaining: 1,
-                    },
+                    twoFactor: verifyChallenge,
                 },
             });
 
-            expect(authTwoFactorService.createChallenge).toHaveBeenCalledWith({
-                userId: 'user-bramble',
-                device: deviceIdentity,
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.socialGoogle,
-            });
-            expect(sessionService.createInTx).not.toHaveBeenCalled();
+            expect(
+                workspaceMemberService.resolveLastWorkspaceId
+            ).toHaveBeenCalledBefore(userAuthService.createTwoFactorChallenge);
+            expect(
+                userAuthService.createTwoFactorChallenge
+            ).toHaveBeenCalledWith(
+                twoFactorUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.socialGoogle
+            );
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
         });
 
-        it('creates a challenge and a fresh setup, stores the secret, and stages the setup row when two-factor requires setup', async () => {
-            const requiresSetup: IUser = {
+        it('stages the setup row when the challenge requires setup', async () => {
+            const requiresSetup: IUserTwoFactorEnabled = {
                 ...baseUser,
                 twoFactor: { ...twoFactor, enabled: true, requiredSetup: true },
             };
-            userAuthService.getOneByEmail.mockResolvedValue(requiresSetup);
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
             userAuthService.getOneForSocialLogin.mockResolvedValue(
                 requiresSetup
             );
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            userUtil.requiresTwoFactorSetup.mockReturnValue(true);
-            authTwoFactorService.createChallenge.mockResolvedValue({
-                challengeToken: 'challenge-token',
-                expiresInMs: 60000,
-            });
-            userTwoFactorService.setup.mockResolvedValue({
-                encryptedSecret: 'encrypted-secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                secret: 'secret',
-            });
+            userAuthService.createTwoFactorChallenge.mockResolvedValue(
+                setupChallenge
+            );
 
             await expect(
                 useCase.execute(
@@ -733,24 +661,10 @@ describe('UserLoginWithSocialUseCase', () => {
                     isTwoFactorEnable: true,
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt: null,
-                    twoFactor: {
-                        isRequiredSetup: true,
-                        challengeToken: 'challenge-token',
-                        challengeExpiresInMs: 60000,
-                        backupCodesRemaining: 1,
-                        otpauthUrl: 'otpauth://totp/secret',
-                        secret: 'secret',
-                    },
+                    twoFactor: setupChallenge,
                 },
             });
 
-            expect(userTwoFactorService.setup).toHaveBeenCalledWith(
-                requiresSetup
-            );
-            expect(userTwoFactorService.saveSetup).toHaveBeenCalledWith(
-                'user-bramble',
-                'encrypted-secret'
-            );
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userSetupTwoFactor,
                 userId: 'user-bramble',
@@ -758,11 +672,7 @@ describe('UserLoginWithSocialUseCase', () => {
             });
         });
 
-        it('reads the apple flag for an apple sign-in', async () => {
-            userCreateUtil.resolveSocialFeatureFlagKey.mockReturnValue(
-                EnumFeatureFlagKey.loginWithApple
-            );
-
+        it('checks the sign-up gate with the apple provider for an apple sign-in', async () => {
             await useCase.execute(
                 'bramble@example.com',
                 EnumUserLoginWith.socialApple,
@@ -770,10 +680,10 @@ describe('UserLoginWithSocialUseCase', () => {
             );
 
             expect(
-                userCreateUtil.resolveSocialFeatureFlagKey
-            ).toHaveBeenCalledWith(EnumUserLoginWith.socialApple);
-            expect(featureFlagService.getMetadataByKey).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.loginWithApple
+                userRegistrationService.isSocialSignUpAllowed
+            ).toHaveBeenCalledWith(
+                'bramble@example.com',
+                EnumUserLoginWith.socialApple
             );
         });
 
@@ -806,10 +716,12 @@ describe('UserLoginWithSocialUseCase', () => {
                 'user-bramble'
             );
             expect(projectMemberService.createInTx).toHaveBeenCalledBefore(
-                userService.updateLoginInTx
+                userAuthService.createTokenAndSession
             );
-            expect(sessionService.createInTx).toHaveBeenCalledTimes(1);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(userAuthService.createTokenAndSession).toHaveBeenCalledTimes(
+                1
+            );
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('leaves no user row when the workspace join fails', async () => {
@@ -834,14 +746,17 @@ describe('UserLoginWithSocialUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
-                inviteInput,
-            ]);
+            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
+                tx,
+                [inviteInput]
+            );
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).not.toHaveBeenCalled();
             expect(userAuthService.getOneForSocialLogin).not.toHaveBeenCalled();
-            expect(sessionService.createInTx).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
             expect(notificationQueue.sendWelcomeSocial).not.toHaveBeenCalled();
         });
 
@@ -881,7 +796,9 @@ describe('UserLoginWithSocialUseCase', () => {
             workspaceInviteService.getSignUpInvite.mockRejectedValue(
                 new WorkspaceInviteInvalidException()
             );
-            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
 
             await expect(
                 useCase.execute(
@@ -920,12 +837,9 @@ describe('UserLoginWithSocialUseCase', () => {
                     ],
                 messagePath: 'workspace.error.inviteInvalid',
             });
-            expect(featureFlagService.getMetadataByKey).toHaveBeenCalledBefore(
-                workspaceInviteService.getSignUpInvite
-            );
-            expect(userAuthService.getOneByEmail).toHaveBeenCalledBefore(
-                workspaceInviteService.getSignUpInvite
-            );
+            expect(
+                userRegistrationService.isSocialSignUpAllowed
+            ).toHaveBeenCalledBefore(workspaceInviteService.getSignUpInvite);
         });
 
         it('validates the invite against the trimmed lowercase email', async () => {
@@ -949,24 +863,21 @@ describe('UserLoginWithSocialUseCase', () => {
             ).toHaveBeenCalledWith(invite, dto.username);
         });
 
-        it.each([null, { [EnumFeatureFlagMetadataKey.signUpAllowed]: false }])(
-            'creates no user when the flag metadata is %j',
-            async metadata => {
-                featureFlagService.getMetadataByKey.mockResolvedValue(metadata);
+        it('creates no user when sign-up is not allowed', async () => {
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
 
-                await useCase.execute(
-                    'bramble@example.com',
-                    EnumUserLoginWith.socialGoogle,
-                    dto
-                );
+            await useCase.execute(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGoogle,
+                dto
+            );
 
-                expect(roleService.getByName).not.toHaveBeenCalled();
-                expect(userCreateUtil.buildSocialCreate).not.toHaveBeenCalled();
-                expect(
-                    notificationQueue.sendWelcomeSocial
-                ).not.toHaveBeenCalled();
-            }
-        );
+            expect(roleService.getByName).not.toHaveBeenCalled();
+            expect(userCreateUtil.buildSocialCreate).not.toHaveBeenCalled();
+            expect(notificationQueue.sendWelcomeSocial).not.toHaveBeenCalled();
+        });
 
         it('answers the country gate before the username gate', async () => {
             countryService.getOne.mockRejectedValue(
@@ -1007,7 +918,9 @@ describe('UserLoginWithSocialUseCase', () => {
         it('marks an unverified user verified and stages the row before logging in', async () => {
             userUtil.isUnverified.mockReturnValueOnce(true);
             const unverified = { ...baseUser, isVerified: false };
-            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
             userAuthService.getOneForSocialLogin.mockResolvedValue(unverified);
             userAuthService.verifyEmailBySocial.mockResolvedValue(baseUser);
 
@@ -1026,12 +939,11 @@ describe('UserLoginWithSocialUseCase', () => {
                 unverified
             );
             expect(userAuthService.assertVerified).not.toHaveBeenCalled();
-            expect(userService.updateLoginInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
+            expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
+                baseUser,
+                deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                requestLog.ipAddress,
                 now
             );
         });
@@ -1068,13 +980,9 @@ describe('UserLoginWithSocialUseCase', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
-            userCreateUtil.resolveSocialFeatureFlagKey.mockReturnValue(
-                EnumFeatureFlagKey.loginWithGoogle
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                true
             );
-            featureFlagService.getMetadataByKey.mockResolvedValue({
-                [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
-            });
-            userAuthService.getOneByEmail.mockResolvedValue(null);
             userCreateUtil.buildSocialCreate.mockReturnValue(inviteInput);
             userService.checkUsername.mockResolvedValue(clearUsername);
         });
@@ -1104,16 +1012,10 @@ describe('UserLoginWithSocialUseCase', () => {
                 EnumTermPolicyType.termsOfService,
                 EnumTermPolicyType.privacy,
             ]);
-            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
-                inviteInput,
-            ]);
-            expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
+            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
-                [historyEntry]
+                [inviteInput]
             );
-            expect(
-                notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, ['user-bramble']);
             expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
                 [inviteInput],
                 0
@@ -1137,18 +1039,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             expect(
                 termPolicyAcceptanceService.assertRequiredPublishedInTx
-            ).toHaveBeenCalledBefore(userService.createManyInTx);
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                passwordHistoryService.createManyInTx
+            ).toHaveBeenCalledBefore(userRegistrationService.createInTx);
+            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
+                workspaceService.createOwnedForUsersInTx
             );
-            expect(
-                passwordHistoryService.createManyInTx
-            ).toHaveBeenCalledBefore(
-                notificationService.createDefaultsManyInTx
-            );
-            expect(
-                notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledBefore(workspaceService.createOwnedForUsersInTx);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledBefore(workspaceInviteService.acceptOnSignUpInTx);
@@ -1227,7 +1121,7 @@ describe('UserLoginWithSocialUseCase', () => {
                     social
                 )
             ).rejects.toBe(failure);
-            expect(userService.createManyInTx).not.toHaveBeenCalled();
+            expect(userRegistrationService.createInTx).not.toHaveBeenCalled();
         });
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {
@@ -1318,11 +1212,7 @@ describe('UserLoginWithSocialUseCase', () => {
         });
     });
 
-    describe('createTokenAndSession', () => {
-        const otherOwnershipIds = [
-            'device-ownership-thistle',
-            'device-ownership-clover',
-        ];
+    describe('startSession', () => {
         const affected: ISessionPurgeLoginsPayload[] = [
             {
                 userId: 'user-thistle',
@@ -1333,442 +1223,183 @@ describe('UserLoginWithSocialUseCase', () => {
             },
             { userId: 'user-clover', sessions: [{ id: 'session-clover' }] },
         ];
-        const revokeMetadata: IActivityLogMetadata = {
-            actorUserId: 'user-bramble',
-            sessionCount: 2,
-        };
-        const thistleLog: IActivityLogStaged = {
+        const thistleStage: IActivityLogStageInput<EnumActivityLogAction> = {
             action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-            metadata: revokeMetadata,
             userId: 'user-thistle',
             createdBy: 'user-bramble',
-            workspaceId: null,
+            metadata: { actorUserId: 'user-bramble', sessionCount: 2 },
         };
-        const cloverLog: IActivityLogStaged = {
-            ...thistleLog,
+        const cloverStage: IActivityLogStageInput<EnumActivityLogAction> = {
+            ...thistleStage,
             userId: 'user-clover',
         };
+        const startArgs = [
+            baseUser,
+            deviceIdentity,
+            EnumUserLoginFrom.website,
+            EnumUserLoginWith.socialGoogle,
+            loginAt,
+        ] as const;
 
-        it('reads the recipient, creates the session on the transaction, stamps the login, caches the entry, and enqueues the purge and the new-device notice', async () => {
-            const callOrder: string[] = [];
-            notificationService.getRecipient.mockImplementation(async () => {
-                callOrder.push('getRecipient');
+        it('reads the recipient before createTokenAndSession', async () => {
+            await useCase['startSession'](...startArgs);
 
-                return recipient;
-            });
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
-
-                return result as never;
-            });
-            authJwtService.createTokens.mockImplementation(() => {
-                callOrder.push('createTokens');
-
-                return tokens;
-            });
-            sessionService.setLogin.mockImplementation(async () => {
-                callOrder.push('setLogin');
-            });
-
-            const result = await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(result).toBe(tokens);
             expect(notificationService.getRecipient).toHaveBeenCalledWith(
                 baseUser,
                 EnumNotificationKind.newDeviceLogin
             );
-            expect(
-                sessionService.revokeByDeviceOwnershipInTx
-            ).not.toHaveBeenCalled();
-            expect(sessionService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'session-bramble',
-                'device-ownership-bramble',
-                'jti-bramble',
-                loginAt,
-                requestLog
+            expect(notificationService.getRecipient).toHaveBeenCalledBefore(
+                userAuthService.createTokenAndSession
             );
-            expect(userService.updateLoginInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                requestLog.ipAddress,
-                now
-            );
-            expect(authJwtService.createTokens).toHaveBeenCalledWith(
+            expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
                 baseUser,
-                {
-                    sessionId: 'session-bramble',
-                    jti: 'jti-bramble',
-                    deviceOwnershipId: 'device-ownership-bramble',
-                    loginAt,
-                },
+                deviceIdentity,
                 EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential
+                EnumUserLoginWith.socialGoogle,
+                loginAt
             );
-            expect(sessionService.setLogin).toHaveBeenCalledWith(
+        });
+
+        it('sets the login and purges the revoked sessions after the service call', async () => {
+            userAuthService.createTokenAndSession.mockResolvedValue({
+                ...session,
+                revoked: revokedRef,
+            });
+
+            await useCase['startSession'](...startArgs);
+
+            expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
                 'user-bramble',
                 'session-bramble',
                 'jti-bramble'
             );
             expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
                 'user-bramble',
-                []
+                revokedRef
             );
+            expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
+                userAuthService.createTokenAndSession
+            );
+        });
+
+        it('purges once per affected user', async () => {
+            userAuthService.createTokenAndSession.mockResolvedValue({
+                ...session,
+                affected,
+            });
+
+            await useCase['startSession'](...startArgs);
+
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(3);
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-thistle',
+                affected[0]!.sessions
+            );
+            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
+                'user-clover',
+                affected[1]!.sessions
+            );
+        });
+
+        it('sends the new-device notification only for a new device', async () => {
+            await useCase['startSession'](...startArgs);
+
             expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledWith(
                 recipient,
                 {
                     requestLog,
                     loginFrom: EnumUserLoginFrom.website,
-                    loginWith: EnumUserLoginWith.credential,
+                    loginWith: EnumUserLoginWith.socialGoogle,
                     loginAt: '2026-03-05T00:00:00.000Z',
                 },
                 'session-bramble'
             );
-            expect(callOrder).toEqual([
-                'getRecipient',
-                'committed',
-                'createTokens',
-                'setLogin',
-            ]);
-        });
 
-        it('announces no new device for an existing one', async () => {
-            deviceService.upsertForLoginInTx.mockResolvedValue({
-                ...upsert,
+            notificationQueue.sendNewDeviceLogin.mockClear();
+            userAuthService.createTokenAndSession.mockResolvedValue({
+                ...session,
                 isNewDevice: false,
             });
 
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
+            await useCase['startSession'](...startArgs);
 
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
         });
 
-        it('revokes the new session, purges it, and rethrows when the login cache write rejects, still enqueueing the repeat-device purge and the new-device notice', async () => {
-            const failure = new Error('cache down');
-            sessionService.setLogin.mockRejectedValue(failure);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toMatchObject({ rawError: failure });
-            expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
-                'user-bramble',
-                'session-bramble'
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                []
-            );
-            expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledTimes(
-                1
-            );
-        });
-
-        it('rethrows a typed login cache failure unwrapped after the compensating revoke', async () => {
-            const failure = new RedisUnavailableException();
-            sessionService.setLogin.mockRejectedValue(failure);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toBe(failure);
-            expect(sessionService.revokeIfActive).toHaveBeenCalledTimes(1);
-        });
-
-        it("still enqueues the affected users' purges and stages no activity row when the login cache write rejects", async () => {
-            const failure = new Error('cache down');
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-            sessionService.setLogin.mockRejectedValue(failure);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toMatchObject({ rawError: failure });
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-thistle',
-                affected[0]!.sessions
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-clover',
-                affected[1]!.sessions
-            );
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('revokes nothing when the login cache write succeeds', async () => {
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(sessionService.revokeIfActive).not.toHaveBeenCalled();
-        });
-
-        it('fails the login before the transaction when the recipient read rejects', async () => {
-            const failure = new Error('recipient-unavailable');
-            notificationService.getRecipient.mockRejectedValue(failure);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toBe(failure);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws RequestContextMissingException before any write when the store has no request log', async () => {
-            sessionService.getRequestLog.mockImplementation(() => {
-                throw new RequestContextMissingException(RequestLogStoreKey);
-            });
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('signs nothing and writes no cache key when the transaction fails', async () => {
-            const failure = new Error('tx failed');
-            databaseService.withTransaction.mockRejectedValue(failure);
-
-            await expect(
-                useCase['createTokenAndSession'](
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toBe(failure);
-            expect(authJwtService.createTokens).not.toHaveBeenCalled();
-            expect(sessionService.setLogin).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-        });
-
-        it("reads the other users' ownerships of the device and revokes their sessions on the login transaction for a new ownership", async () => {
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(
-                deviceService.getOtherOwnershipIdsByDeviceInTx
-            ).toHaveBeenCalledWith(tx, 'device-bramble', 'user-bramble');
-            expect(
-                sessionService.revokeByDeviceOwnershipIdsInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                ['device-ownership-thistle', 'device-ownership-clover'],
-                'user-bramble',
-                now
-            );
-            expect(
-                sessionService.revokeByDeviceOwnershipInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('signs other users out for a repeat ownership too', async () => {
-            deviceService.upsertForLoginInTx.mockResolvedValue({
-                ...upsert,
-                isNewDevice: false,
-            });
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(
-                deviceService.getOtherOwnershipIdsByDeviceInTx
-            ).toHaveBeenCalledWith(tx, 'device-bramble', 'user-bramble');
-            expect(
-                sessionService.revokeByDeviceOwnershipIdsInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                ['device-ownership-thistle', 'device-ownership-clover'],
-                'user-bramble',
-                now
-            );
-            expect(
-                sessionService.revokeByDeviceOwnershipInTx
-            ).toHaveBeenCalled();
-        });
-
-        it('runs no session revoke when no other user owns the device', async () => {
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(
-                sessionService.revokeByDeviceOwnershipIdsInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                []
-            );
-        });
-
-        it('enqueues one purge per affected user after the commit and stages one activity row each', async () => {
+        it('stages the revoke rows after the enqueues only when revokeStages is not empty', async () => {
             const callOrder: string[] = [];
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-            sessionUtil.mapActivityLogRevokeAllTargetMetadata.mockReturnValue(
-                revokeMetadata
-            );
-            activityLogService.prepare
-                .mockReturnValueOnce(thistleLog)
-                .mockReturnValueOnce(cloverLog);
-            databaseService.withTransaction.mockImplementation(async fn => {
-                const result = await fn(tx);
-                callOrder.push('committed');
+            await useCase['startSession'](...startArgs);
 
-                return result as never;
+            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+
+            userAuthService.createTokenAndSession.mockResolvedValue({
+                ...session,
+                affected,
+                revokeStages: [thistleStage, cloverStage],
             });
             sessionQueue.purgeLogins.mockImplementation(async userId => {
                 callOrder.push(`purge:${userId}`);
             });
+            activityLogService.prepare
+                .mockReturnValueOnce({ ...activityLog, userId: 'user-thistle' })
+                .mockReturnValueOnce({ ...activityLog, userId: 'user-clover' });
             activityLogService.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
 
-            await useCase['createTokenAndSession'](
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
+            await useCase['startSession'](...startArgs);
 
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-thistle',
-                affected[0]!.sessions
+            expect(activityLogService.prepare).toHaveBeenCalledWith(
+                thistleStage
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-clover',
-                affected[1]!.sessions
+            expect(activityLogService.prepare).toHaveBeenCalledWith(
+                cloverStage
             );
             expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).toHaveBeenCalledWith('user-bramble', 2);
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).toHaveBeenCalledWith('user-bramble', 1);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-                userId: 'user-thistle',
-                createdBy: 'user-bramble',
-                metadata: revokeMetadata,
-            });
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-                userId: 'user-clover',
-                createdBy: 'user-bramble',
-                metadata: revokeMetadata,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(1);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                thistleLog,
-                cloverLog,
+                activityLogService.stagePrepared
+            ).toHaveBeenCalledExactlyOnceWith([
+                { ...activityLog, userId: 'user-thistle' },
+                { ...activityLog, userId: 'user-clover' },
             ]);
             expect(callOrder).toEqual([
-                'committed',
                 'purge:user-bramble',
                 'purge:user-thistle',
                 'purge:user-clover',
                 'stagePrepared',
             ]);
+        });
+
+        it('returns the session tokens', async () => {
+            await expect(useCase['startSession'](...startArgs)).resolves.toBe(
+                tokens
+            );
+        });
+
+        it('enqueues nothing when createTokenAndSession rejects', async () => {
+            const failure = new Error('tx failed');
+            userAuthService.createTokenAndSession.mockRejectedValue(failure);
+
+            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
+                failure
+            );
+
+            expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
+            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
+            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('fails before the service call when the recipient read rejects', async () => {
+            const failure = new Error('recipient-unavailable');
+            notificationService.getRecipient.mockRejectedValue(failure);
+
+            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
+                failure
+            );
+
+            expect(
+                userAuthService.createTokenAndSession
+            ).not.toHaveBeenCalled();
         });
     });
 });

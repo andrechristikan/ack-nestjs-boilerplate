@@ -98,6 +98,11 @@ export interface IUserForgotPasswordCreate {
     link: string;
 }
 
+export interface IUserSignUpPrepared {
+    input: IUserCreateWithWorkspaceInput;
+    emailVerification: IUserVerificationEmailCreate;
+}
+
 export interface IUserVerificationEmailCreate {
     type: 'email';
     expiredAt: Date;
