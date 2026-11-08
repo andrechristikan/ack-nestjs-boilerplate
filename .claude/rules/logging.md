@@ -5,6 +5,8 @@ paths:
     - 'src/configure.ts'
     - 'src/instrument.ts'
     - 'src/common/logger/**'
+    - 'src/common/cache/**'
+    - 'src/common/request/services/request.throttle-storage.service.ts'
     - 'src/common/sentry/**'
 ---
 
@@ -12,7 +14,7 @@ paths:
 
 - Pino behind `Logger` via `LoggerModule.forRoot()`.
 - The pino `mixin` logs `RequestIdStoreKey` and `RequestCorrelationIdStoreKey` top-level from `RequestStoreService` (`null` outside a request), never a header or `req.id`. Each id is its inbound header (`x-request-id`, `x-correlation-id`) when it matches `RequestIdRegex`, else a new UUID v7.
-- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level; `error` is object-first (`this.logger.error(error, 'context')`, the reverse drops the stack), the rest message-first.
+- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level; `error`, and a `warn` that carries a caught error, are object-first (`this.logger.error(error, 'context')`, `this.logger.warn({ key, err: error }, 'context')`; the reverse drops the stack and the object), the rest message-first.
 - `EnumLoggerLevel` is the Pino level (`logger.level`), `EnumLoggerSeverity` the `severity` field (`LoggerUtil.mapLevelToSeverity`, `src/common/logger/utils/logger.util.ts`). By who must act: `fatal` process cannot continue, `error` someone must look, `warn` degraded but handled, `info` a lifecycle fact, `debug`/`trace` detail.
 - `LoggerSensitiveFields` (`src/common/logger/constants/logger.constant.ts`) is the one list of sensitive keys, new credential keys included; `LoggerUtil.redactValue` (`src/common/logger/utils/logger.util.ts`) masks them at any depth, a request log carries a masked `route` and never a body, and the `src/instrument.ts` hooks from `beforeSend` (`:81`) on scrub Sentry from the same constants.
 - `SentryService` is the one way to report outside `bootstrap().catch`. Callers: the `APP_FILTER` chain at 5xx, `QueueProcessorBase.onFailed` once when fatal, `QueueBase.addSideEffect` and `addBulkSideEffect` for a failed post-commit enqueue (`exceptions.md`, Side effects), a service reporting an operator fault the client receives as a non-5xx (`UserTwoFactorService.readSecret`), and `ActivityLogService.flushStaged` for each invalid staged row. Only `QueueProcessorBase.process` logs-and-rethrows: BullMQ needs the throw, no filter sees a job.

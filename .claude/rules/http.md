@@ -21,7 +21,7 @@ Everything in the controller's `path:` is its own resource: `/<action>[/:<id>[/<
 
 ## Responses and OpenAPI
 
-A `@Response*` argument is an i18n path; `@ResponsePagination` takes one item's schema. `IResponseOptions` carries `schema` and `cache` only; status comes from `@HttpCode` or the default, overridable through `metadata` on the return.
+A `@Response*` argument is an i18n path; `@ResponsePagination` takes one item's schema. `IResponseOptions` carries `schema` only; status comes from `@HttpCode` or the default, overridable through `metadata` on the return.
 
 OpenAPI rides on the runtime decorators: no `*.doc.ts` factory, no bare `@ApiOperation`. OpenAPI error responses come only from defaults:
 
