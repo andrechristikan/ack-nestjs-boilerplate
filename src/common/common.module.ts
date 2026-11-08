@@ -11,7 +11,7 @@ import { PaginationModule } from '@common/pagination/pagination.module';
 import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { RedisCacheModule } from '@common/redis/redis.module';
 import { ConfigModule } from '@nestjs/config';
-import { CacheMainModule } from '@common/cache/cache.module';
+import { CacheModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
 import { QueueModule } from '@queues/queue.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
@@ -42,7 +42,7 @@ import { AppEnvSchema } from '@app/dtos/app.env.dto';
         SentryModule.forRoot(),
         RedisCacheModule.forRoot(),
         QueueModule.forRoot(),
-        CacheMainModule.forRoot(),
+        CacheModule.forRoot(),
         DatabaseModule.forRoot(),
         RequestModule.forRoot(),
         ResponseModule.forRoot(),

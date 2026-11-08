@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -19,6 +20,28 @@ import {
 import type { UserAgent } from '@generated/prisma-client/client';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import {
+    AnalyticApiKeyActiveExpiredCacheSchema,
+    AnalyticApiKeyLifecycleCacheSchema,
+    AnalyticBlockedUsersCacheSchema,
+    AnalyticBucketsResultCacheSchema,
+    AnalyticForgotPasswordConversionCacheSchema,
+    AnalyticLockoutMetricsCacheSchema,
+    AnalyticMetricCountCacheSchema,
+    AnalyticMetricRateCacheSchema,
+    AnalyticMobileChurnCacheSchema,
+    AnalyticPasswordExpiryCacheSchema,
+    AnalyticProjectCountPageCacheSchema,
+    AnalyticProjectCreationCacheSchema,
+    AnalyticSessionDeviceRatioCacheSchema,
+    AnalyticStatusCountsCacheSchema,
+    AnalyticTermPolicyAcceptanceRateCacheSchema,
+    AnalyticTermPolicyTimeToAcceptCacheSchema,
+    AnalyticTwoFactorAdoptionCacheSchema,
+    AnalyticTwoFactorAttemptSnapshotCacheSchema,
+    AnalyticVerificationFunnelsCacheSchema,
+    AnalyticWorkspaceCountPageCacheSchema,
+} from '@modules/analytic/constants/analytic.constant';
 import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
@@ -46,7 +69,11 @@ import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('AnalyticDashboardService', () => {
-    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
+    const dashboardTtlInMs = 1800000;
+    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>({
+        dashboardTtlInMs,
+    });
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
     const analyticBucketUtil: MockProxy<AnalyticBucketUtil> =
@@ -94,6 +121,8 @@ describe('AnalyticDashboardService', () => {
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
+    const startToken = '2026-01-01T00:00:00.000Z';
+    const endToken = '2026-02-01T00:00:00.000Z';
     const now: Date = new Date('2026-03-01T00:00:00.000Z');
     const pagination = {
         skip: 0,
@@ -128,7 +157,12 @@ describe('AnalyticDashboardService', () => {
         analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
             date ? date.toISOString() : '_'
         );
-        analyticCache.getDashboard.mockResolvedValue(null);
+        analyticCache.buildDashboardKey.mockImplementation(
+            (metric, start, end) => `${metric}:${start}:${end}`
+        );
+        cacheService.readThrough.mockImplementation(
+            async (_key, _schema, _ttlInMs, loader) => loader()
+        );
         helperStringService.fillPattern.mockReturnValue('paged-token');
         helperDateService.create.mockReturnValue(now);
 
@@ -136,6 +170,7 @@ describe('AnalyticDashboardService', () => {
             providers: [
                 AnalyticDashboardService,
                 { provide: AnalyticCache, useValue: analyticCache },
+                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: AnalyticBucketUtil, useValue: analyticBucketUtil },
@@ -226,16 +261,10 @@ describe('AnalyticDashboardService', () => {
             expect(
                 userAnalyticService.getCountRegistrations
             ).toHaveBeenCalledWith(startDate, endDate);
-            expect(analyticCache.setDashboard).toHaveBeenCalledWith(
-                'users.registrations',
-                startDate.toISOString(),
-                endDate.toISOString(),
-                { count: 12 }
-            );
         });
 
-        it('returns the cached value without computing or storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue({ count: 99 });
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue({ count: 99 });
 
             const result = await service.usersRegistrations(startDate, endDate);
 
@@ -243,7 +272,12 @@ describe('AnalyticDashboardService', () => {
             expect(
                 userAnalyticService.getCountRegistrations
             ).not.toHaveBeenCalled();
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersRegistrations}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -261,13 +295,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricRateCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersChurn(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersChurn}:${startToken}:${endToken}`,
+                AnalyticMetricRateCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -293,13 +332,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBlockedUsersCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersBlocked(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersBlocked}:${startToken}:${endToken}`,
+                AnalyticBlockedUsersCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -319,13 +363,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersSignUpWith(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersSignUpWith}:${startToken}:${endToken}`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -345,13 +394,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersSignUpFrom(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersSignUpFrom}:${startToken}:${endToken}`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -373,8 +427,8 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(startDate, endDate);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricRateCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersEmailVerification(
                 startDate,
@@ -382,7 +436,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersEmailVerification}:${startToken}:${endToken}`,
+                AnalyticMetricRateCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -404,8 +463,8 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(startDate, endDate);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricRateCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersMobileVerification(
                 startDate,
@@ -413,7 +472,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersMobileVerification}:${startToken}:${endToken}`,
+                AnalyticMetricRateCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -433,13 +497,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersStatusDistribution();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersStatus}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -453,13 +522,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ buckets: rows });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersCountryDistribution();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersCountry}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -473,13 +547,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ buckets: rows });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersRoleDistribution();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersRole}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -501,13 +580,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersSelfDelete(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersSelfDelete}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -529,13 +613,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersClaimUsername(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersClaimUsername}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -575,13 +664,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMobileChurnCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.usersMobileChurn(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersMobileChurn}:${startToken}:${endToken}`,
+                AnalyticMobileChurnCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -603,13 +697,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authLoginFrequency(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authLoginFrequency}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -655,13 +754,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authLoginMethod(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authLoginMethod}:${startToken}:${endToken}`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -685,21 +789,25 @@ describe('AnalyticDashboardService', () => {
             expect(
                 activityLogAnalyticService.getGroupByActionInRange
             ).not.toHaveBeenCalled();
-            expect(analyticCache.setDashboard).toHaveBeenCalledWith(
+            expect(analyticCache.buildDashboardKey).toHaveBeenCalledWith(
                 EnumAnalyticDashboardMetric.authLoginSource,
-                startDate.toISOString(),
-                endDate.toISOString(),
-                result
+                startToken,
+                endToken
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authLoginSource(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authLoginSource}:${startToken}:${endToken}`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -733,13 +841,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticLockoutMetricsCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authLockout(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authLockout}:${startToken}:${endToken}`,
+                AnalyticLockoutMetricsCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -767,13 +880,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authSessionRevoke(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authSessionRevoke}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -796,13 +914,18 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(now);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authConcurrentSessions();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authConcurrent}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -819,13 +942,18 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(startDate, endDate, now);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authSessionsGeo(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authSessionsGeo}:${startToken}:${endToken}`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -872,8 +1000,8 @@ describe('AnalyticDashboardService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authSessionsUserAgent(
                 startDate,
@@ -881,7 +1009,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authSessionsUa}:${startToken}:${endToken}`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -906,8 +1039,8 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authRefreshTokenVolume(
                 startDate,
@@ -915,7 +1048,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authRefresh}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -937,13 +1075,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authLogoutRate(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authLogout}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -979,8 +1122,8 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticVerificationFunnelsCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authVerificationFunnel(
                 startDate,
@@ -988,7 +1131,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authVerificationFunnel}:${startToken}:${endToken}`,
+                AnalyticVerificationFunnelsCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1023,13 +1171,18 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(2, 10);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticPasswordExpiryCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authPasswordExpiry();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authPasswordExpiry}:_:_`,
+                AnalyticPasswordExpiryCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1051,13 +1204,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authPasswordChange(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authPasswordChange}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1076,8 +1234,8 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual(conversion);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticForgotPasswordConversionCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authForgotPasswordConversion(
                 startDate,
@@ -1085,7 +1243,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authForgotConversion}:${startToken}:${endToken}`,
+                AnalyticForgotPasswordConversionCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1110,8 +1273,8 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authAdminForcePassword(
                 startDate,
@@ -1119,7 +1282,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authAdminForcePassword}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1147,13 +1315,18 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(3, 9);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticTwoFactorAdoptionCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authTwoFactorAdoption();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authTwoFactorAdoption}:_:_`,
+                AnalyticTwoFactorAdoptionCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1178,8 +1351,8 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authTwoFactorAdminReset(
                 startDate,
@@ -1187,7 +1360,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authTwoFactorAdminReset}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1212,8 +1390,8 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authTwoFactorVerifySuccess(
                 startDate,
@@ -1221,7 +1399,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authTwoFactorVerify}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1246,8 +1429,8 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authBackupCodeRegeneration(
                 startDate,
@@ -1255,7 +1438,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authBackupCodeRegeneration}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1271,13 +1459,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual(snapshot);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticTwoFactorAttemptSnapshotCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.authTwoFactorAttempt();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.authTwoFactorAttempt}:_:_`,
+                AnalyticTwoFactorAttemptSnapshotCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1293,8 +1486,8 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ count: 9 });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.devicesRegistration(
                 startDate,
@@ -1302,7 +1495,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.devicesRegistration}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1316,13 +1514,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ buckets: rows });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.devicesPlatform();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.devicesPlatform}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1336,13 +1539,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual(rate);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricRateCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.devicesPushToken();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.devicesPushToken}:_:_`,
+                AnalyticMetricRateCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1364,13 +1572,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.devicesInfoRefresh(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.devicesInfoRefresh}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1396,13 +1609,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ sessions: 10, devices: 0, ratio: 0 });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticSessionDeviceRatioCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.devicesSessionRatio();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.devicesSessionRatio}:_:_`,
+                AnalyticSessionDeviceRatioCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1422,13 +1640,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ buckets });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.devicesPerUser();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.devicesPerUser}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1452,13 +1675,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.devicesInactivity();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.devicesInactivity}:_:_`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1516,13 +1744,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticApiKeyLifecycleCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.apiKeysLifecycle(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.apiKeysLifecycle}:${startToken}:${endToken}`,
+                AnalyticApiKeyLifecycleCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1539,13 +1772,18 @@ describe('AnalyticDashboardService', () => {
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticApiKeyActiveExpiredCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.apiKeysActiveExpired();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.apiKeysActiveExpired}:_:_`,
+                AnalyticApiKeyActiveExpiredCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1559,13 +1797,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ buckets: rows });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.apiKeysTypeMix();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.apiKeysTypeMix}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1603,8 +1846,8 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(3, startDate, endDate);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticTermPolicyAcceptanceRateCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.termPoliciesAcceptanceRate(
                 startDate,
@@ -1612,7 +1855,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.termPoliciesAcceptance}:${startToken}:${endToken}`,
+                AnalyticTermPolicyAcceptanceRateCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1631,8 +1879,8 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(null, null);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticTermPolicyTimeToAcceptCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.termPoliciesTimeToAccept(
                 startDate,
@@ -1640,7 +1888,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.termPoliciesTimeToAccept}:${startToken}:${endToken}`,
+                AnalyticTermPolicyTimeToAcceptCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1653,13 +1906,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ count: 4 });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.workspacesCreation(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.workspacesCreation}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1675,13 +1933,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual({ buckets: rows });
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.workspacesVisibility();
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.workspacesVisibility}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1701,8 +1964,8 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(startDate, endDate, null);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticStatusCountsCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.workspacesInviteFunnel(
                 startDate,
@@ -1710,7 +1973,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.workspacesInviteFunnel}:${startToken}:${endToken}`,
+                AnalyticStatusCountsCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1732,8 +2000,8 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(startDate, endDate, null);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticStatusCountsCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.workspacesJoinOutcomes(
                 startDate,
@@ -1741,7 +2009,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.workspacesJoinOutcomes}:${startToken}:${endToken}`,
+                AnalyticStatusCountsCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1762,20 +2035,25 @@ describe('AnalyticDashboardService', () => {
                     perPage: '20',
                 }
             );
-            expect(analyticCache.getDashboard).toHaveBeenCalledWith(
+            expect(analyticCache.buildDashboardKey).toHaveBeenCalledWith(
                 'paged-token',
                 '_',
                 '_'
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticWorkspaceCountPageCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.workspacesMembership(pagination);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'paged-token:_:_',
+                AnalyticWorkspaceCountPageCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1797,8 +2075,8 @@ describe('AnalyticDashboardService', () => {
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticWorkspaceCountPageCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.workspacesActivityVolume(
                 startDate,
@@ -1807,7 +2085,12 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `paged-token:${startToken}:${endToken}`,
+                AnalyticWorkspaceCountPageCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1824,13 +2107,18 @@ describe('AnalyticDashboardService', () => {
             expect(result).toEqual(creation);
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticProjectCreationCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.projectsCreation(startDate, endDate);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.projectsCreation}:${startToken}:${endToken}`,
+                AnalyticProjectCreationCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
         });
     });
 
@@ -1855,67 +2143,24 @@ describe('AnalyticDashboardService', () => {
                     perPage: '20',
                 }
             );
-            expect(analyticCache.getDashboard).toHaveBeenCalledWith(
+            expect(analyticCache.buildDashboardKey).toHaveBeenCalledWith(
                 'paged-token',
                 '_',
                 '_'
             );
         });
 
-        it('returns the cached value without storing on a cache hit', async () => {
-            analyticCache.getDashboard.mockResolvedValue(cachedValue);
+        it('reads through with the dashboard key, AnalyticProjectCountPageCacheSchema, and the dashboard TTL', async () => {
+            cacheService.readThrough.mockResolvedValue(cachedValue);
 
             const result = await service.projectsMembership(pagination);
 
             expect(result).toBe(cachedValue);
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('readCache', () => {
-        it('returns the stored value read under the date tokens', async () => {
-            const stored = { count: 99 };
-            analyticCache.getDashboard.mockResolvedValue(stored);
-
-            const result = await service['readCache'](
-                'users.registrations',
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual(stored);
-            expect(analyticCache.getDashboard).toHaveBeenCalledWith(
-                'users.registrations',
-                startDate.toISOString(),
-                endDate.toISOString()
-            );
-        });
-
-        it('returns null on a cache miss', async () => {
-            const result = await service['readCache'](
-                'users.registrations',
-                startDate,
-                endDate
-            );
-
-            expect(result).toBeNull();
-        });
-    });
-
-    describe('writeCache', () => {
-        it('stores the value under the date tokens', async () => {
-            await service['writeCache'](
-                'users.registrations',
-                startDate,
-                endDate,
-                { count: 1 }
-            );
-
-            expect(analyticCache.setDashboard).toHaveBeenCalledWith(
-                'users.registrations',
-                startDate.toISOString(),
-                endDate.toISOString(),
-                { count: 1 }
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'paged-token:_:_',
+                AnalyticProjectCountPageCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
             );
         });
     });
@@ -2025,6 +2270,40 @@ describe('AnalyticDashboardService', () => {
                 { key: '3-5', count: 0 },
                 { key: '6+', count: 0 },
             ]);
+        });
+    });
+
+    describe('dashboardKey', () => {
+        it('builds the dashboard key from the metric and both date tokens', () => {
+            const result = service['dashboardKey'](
+                EnumAnalyticDashboardMetric.usersRegistrations,
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(
+                `${EnumAnalyticDashboardMetric.usersRegistrations}:${startToken}:${endToken}`
+            );
+            expect(analyticDateUtil.cacheToken).toHaveBeenCalledWith(startDate);
+            expect(analyticDateUtil.cacheToken).toHaveBeenCalledWith(endDate);
+            expect(analyticCache.buildDashboardKey).toHaveBeenCalledWith(
+                EnumAnalyticDashboardMetric.usersRegistrations,
+                startToken,
+                endToken
+            );
+        });
+
+        it('builds the empty tokens for null dates', () => {
+            const result = service['dashboardKey'](
+                EnumAnalyticDashboardMetric.usersStatus,
+                null,
+                null
+            );
+
+            expect(result).toBe(
+                `${EnumAnalyticDashboardMetric.usersStatus}:_:_`
+            );
+            expect(analyticDateUtil.cacheToken).toHaveBeenCalledWith(null);
         });
     });
 });

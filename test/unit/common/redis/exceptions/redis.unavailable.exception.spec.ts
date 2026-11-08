@@ -20,5 +20,16 @@ describe('RedisUnavailableException', () => {
                 messagePath: 'redis.error.unavailable',
             });
         });
+
+        it('carries the caught error as rawError and cause', () => {
+            const error = new Error('The client is offline');
+
+            const exception = new RedisUnavailableException(error);
+
+            expect(exception).toMatchObject({
+                rawError: error,
+                cause: error,
+            });
+        });
     });
 });

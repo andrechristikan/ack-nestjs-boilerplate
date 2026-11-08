@@ -15,6 +15,7 @@ export interface IStubRedisClient {
     ) => Promise<string | null>;
     eval: (script: string, options: unknown) => Promise<unknown>;
     getDel: (key: string) => Promise<string | null>;
+    ping: () => Promise<string>;
 }
 
 export interface ICacheStoreDoubles {

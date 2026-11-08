@@ -1,4 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationApiKeyData } from '@migration/data/migration.api-key.data';
@@ -31,6 +32,7 @@ export class MigrationApiKeySeed
         private readonly databaseService: DatabaseService,
         private readonly apiKeyCredentialUtil: ApiKeyCredentialUtil,
         private readonly apiKeyCache: ApiKeyCache,
+        private readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
         super();
@@ -102,14 +104,12 @@ export class MigrationApiKeySeed
             // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.client.apiKey.deleteMany({});
 
-            const deletions = this.apiKeys.map(apiKey => {
-                const cacheKey = this.apiKeyCredentialUtil.createKey(
-                    apiKey.key
-                );
+            const keys = this.apiKeys.flatMap(apiKey => {
+                const key = this.apiKeyCredentialUtil.createKey(apiKey.key);
 
-                return this.apiKeyCache.deleteApiKey(cacheKey);
+                return this.apiKeyCache.buildApiKeyKeys(key);
             });
-            await Promise.all(deletions);
+            await this.cacheService.invalidate(keys);
         } catch (error: unknown) {
             throw new AppUnknownException(error, 'Removing API keys failed');
         }

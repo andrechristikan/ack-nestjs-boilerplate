@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -6,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { AnalyticWorkspaceSummaryCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { ProjectAnalyticService } from '@modules/project/services/project.analytic.service';
@@ -14,7 +16,10 @@ import { WorkspaceJoinRequestAnalyticService } from '@modules/workspace/services
 import { WorkspaceMemberAnalyticService } from '@modules/workspace/services/workspace.member.analytic.service';
 
 describe('AnalyticWorkspaceUserService', () => {
-    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
+    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>({
+        dashboardTtlInMs: 1800000,
+    });
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
     const configGet = vi.fn<(key: string) => string | undefined>();
@@ -51,12 +56,18 @@ describe('AnalyticWorkspaceUserService', () => {
             date ? date.toISOString() : '_'
         );
         helperStringService.fillPattern.mockReturnValue('workspace-window');
-        analyticCache.getDashboard.mockResolvedValue(null);
+        analyticCache.buildDashboardKey.mockImplementation(
+            (metric, start, end) => `${metric}:${start}:${end}`
+        );
+        cacheService.readThrough.mockImplementation(
+            async (_key, _schema, _ttlInMs, loader) => loader()
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticWorkspaceUserService,
                 { provide: AnalyticCache, useValue: analyticCache },
+                { provide: CacheService, useValue: cacheService },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
@@ -87,13 +98,13 @@ describe('AnalyticWorkspaceUserService', () => {
     });
 
     describe('summary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the workspace dashboard key, AnalyticWorkspaceSummaryCacheSchema, and the dashboard TTL', async () => {
             const cached = {
                 memberCount: 9,
                 projectCount: 4,
                 activityCount: 12,
             };
-            analyticCache.getDashboard.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.summary(
                 'workspace-1',
@@ -101,11 +112,21 @@ describe('AnalyticWorkspaceUserService', () => {
                 endDate
             );
 
-            expect(result).toEqual(cached);
+            expect(result).toBe(cached);
+            expect(analyticCache.buildDashboardKey).toHaveBeenCalledWith(
+                'workspace.summary',
+                'workspace-window',
+                '_'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'workspace.summary:workspace-window:_',
+                AnalyticWorkspaceSummaryCacheSchema,
+                1800000,
+                expect.any(Function)
+            );
             expect(
                 workspaceMemberAnalyticService.getCountByWorkspace
             ).not.toHaveBeenCalled();
-            expect(analyticCache.setDashboard).not.toHaveBeenCalled();
         });
 
         it('counts all-time workspace activity when dates are omitted', async () => {
@@ -127,16 +148,12 @@ describe('AnalyticWorkspaceUserService', () => {
             expect(
                 activityLogAnalyticService.getCountByWorkspaceInRange
             ).toHaveBeenCalledWith('workspace-1', null, null);
-            expect(analyticCache.setDashboard).toHaveBeenCalledWith(
-                'workspace.summary',
-                'workspace-window',
-                '_',
-                {
-                    memberCount: 3,
-                    projectCount: 2,
-                    activityCount: 21,
-                }
-            );
+            expect(
+                workspaceMemberAnalyticService.getCountByWorkspace
+            ).toHaveBeenCalledWith('workspace-1');
+            expect(
+                projectAnalyticService.getCountByWorkspace
+            ).toHaveBeenCalledWith('workspace-1');
         });
 
         it('counts workspace activity when both dates are present', async () => {

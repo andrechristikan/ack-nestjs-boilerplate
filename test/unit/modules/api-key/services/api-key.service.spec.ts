@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -16,6 +17,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey, Prisma } from '@generated/prisma-client/client';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
+import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import type {
@@ -34,9 +36,12 @@ describe('ApiKeyService', () => {
         mock<HelperHashService>();
     const apiKeyCredentialUtil: MockProxy<ApiKeyCredentialUtil> =
         mock<ApiKeyCredentialUtil>();
-    const apiKeyCache: MockProxy<ApiKeyCache> = mock<ApiKeyCache>();
+    const apiKeyCache: MockProxy<ApiKeyCache> = mock<ApiKeyCache>({
+        apiKeyTtlInMs: 4000,
+    });
     const apiKeyRepository: MockProxy<ApiKeyRepository> =
         mock<ApiKeyRepository>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
 
     const now = new Date('2026-01-15T00:00:00.000Z');
     const apiKey: ApiKey = {
@@ -72,6 +77,7 @@ describe('ApiKeyService', () => {
                 { provide: ApiKeyRepository, useValue: apiKeyRepository },
                 { provide: HelperStringService, useValue: helperStringService },
                 { provide: HelperHashService, useValue: helperHashService },
+                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
 
@@ -628,6 +634,13 @@ describe('ApiKeyService', () => {
     });
 
     describe('validateXApiKey', () => {
+        const lease = { key: 'ApiKey:Lease:local_abc123', ttlInMs: 10000 };
+
+        beforeEach(() => {
+            apiKeyCache.buildApiKeyKey.mockReturnValue('ApiKey:local_abc123');
+            apiKeyCache.buildApiKeyLease.mockReturnValue(lease);
+        });
+
         it('throws ApiKeyXApiKeyRequiredException when the header is null', async () => {
             await expect(service.validateXApiKey(null)).rejects.toMatchObject({
                 module: 'apiKey',
@@ -667,12 +680,49 @@ describe('ApiKeyService', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
                 messagePath: 'apiKey.error.xApiKey.invalid',
             });
-            expect(apiKeyCache.getApiKey).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).not.toHaveBeenCalled();
+        });
+
+        it('reads through with the entry key, ApiKeyCacheSchema, the TTL, and the lease', async () => {
+            cacheService.readThrough.mockResolvedValue(apiKey);
+            helperHashService.sha256Compare.mockReturnValue(true);
+
+            await service.validateXApiKey('local_abc123:secret-1');
+
+            expect(apiKeyCache.buildApiKeyKey).toHaveBeenCalledWith(
+                'local_abc123'
+            );
+            expect(apiKeyCache.buildApiKeyLease).toHaveBeenCalledWith(
+                'local_abc123'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'ApiKey:local_abc123',
+                ApiKeyCacheSchema,
+                4000,
+                expect.any(Function),
+                { lease }
+            );
+        });
+
+        it('passes a loader that reads the repository by key', async () => {
+            cacheService.readThrough.mockImplementation(
+                async (_key, _schema, _ttlInMs, loader) => loader()
+            );
+            apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
+            helperHashService.sha256Compare.mockReturnValue(true);
+
+            const result = await service.validateXApiKey(
+                'local_abc123:secret-1'
+            );
+
+            expect(result).toBe(apiKey);
+            expect(apiKeyRepository.findOneByKey).toHaveBeenCalledWith(
+                'local_abc123'
+            );
         });
 
         it('throws ApiKeyXApiKeyInvalidException when no api key matches the key half', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(null);
-            apiKeyRepository.findOneByKey.mockResolvedValue(null);
+            cacheService.readThrough.mockResolvedValue(null);
 
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
@@ -689,7 +739,7 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the credential does not match', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
+            cacheService.readThrough.mockResolvedValue(apiKey);
             helperHashService.sha256Compare.mockReturnValue(false);
 
             await expect(
@@ -704,11 +754,10 @@ describe('ApiKeyService', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
                 messagePath: 'apiKey.error.xApiKey.invalid',
             });
-            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the key is inactive', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...apiKey,
                 isActive: false,
             });
@@ -722,7 +771,7 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the key is not yet active', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...apiKey,
                 startAt: new Date('2026-02-01T00:00:00.000Z'),
             });
@@ -735,13 +784,13 @@ describe('ApiKeyService', () => {
             });
         });
 
-        it('throws ApiKeyExpiredException on a cache hit whose endAt is past', async () => {
+        it('throws ApiKeyExpiredException when the endAt is past', async () => {
             const expiredApiKey: ApiKey = {
                 ...apiKey,
                 startAt: new Date('2026-01-01T00:00:00.000Z'),
                 endAt: new Date('2026-01-10T00:00:00.000Z'),
             };
-            apiKeyCache.getApiKey.mockResolvedValue(expiredApiKey);
+            cacheService.readThrough.mockResolvedValue(expiredApiKey);
             helperHashService.sha256Compare.mockReturnValue(true);
 
             await expect(
@@ -756,29 +805,10 @@ describe('ApiKeyService', () => {
                 httpStatus: HttpStatus.BAD_REQUEST,
                 messagePath: 'apiKey.error.expired',
             });
-            expect(apiKeyRepository.findOneByKey).not.toHaveBeenCalled();
         });
 
-        it('throws ApiKeyExpiredException on a cache miss with a past endAt without caching', async () => {
-            const expiredApiKey: ApiKey = {
-                ...apiKey,
-                startAt: new Date('2026-01-01T00:00:00.000Z'),
-                endAt: new Date('2026-01-10T00:00:00.000Z'),
-            };
-            apiKeyCache.getApiKey.mockResolvedValue(null);
-            apiKeyRepository.findOneByKey.mockResolvedValue(expiredApiKey);
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            await expect(
-                service.validateXApiKey('local_abc123:secret-1')
-            ).rejects.toMatchObject({
-                statusCode: EnumApiKeyStatusCodeError.expired,
-            });
-            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
-        });
-
-        it('returns the cached api key without reading the repository on a cache hit', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
+        it('returns the api key read through when the credential matches', async () => {
+            cacheService.readThrough.mockResolvedValue(apiKey);
             apiKeyCredentialUtil.createHash.mockReturnValue('hashed-secret');
             helperHashService.sha256Compare.mockReturnValue(true);
 
@@ -795,54 +825,6 @@ describe('ApiKeyService', () => {
                 'hashed-secret',
                 apiKey.hash
             );
-            expect(apiKeyRepository.findOneByKey).not.toHaveBeenCalled();
-            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
-        });
-
-        it('takes the lease, reads the repository, and caches the validated key with the lease token on a cache miss', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(null);
-            apiKeyCache.takeApiKeyLease.mockResolvedValue('lease-token');
-            apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            const result = await service.validateXApiKey(
-                'local_abc123:secret-1'
-            );
-
-            expect(result).toBe(apiKey);
-            expect(apiKeyCache.takeApiKeyLease).toHaveBeenCalledWith(
-                'local_abc123'
-            );
-            expect(apiKeyCache.takeApiKeyLease).toHaveBeenCalledBefore(
-                apiKeyRepository.findOneByKey
-            );
-            expect(apiKeyCache.setApiKey).toHaveBeenCalledWith(
-                apiKey,
-                'lease-token'
-            );
-        });
-
-        it('serves the repository row without caching when another reader holds the lease', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(null);
-            apiKeyCache.takeApiKeyLease.mockResolvedValue(null);
-            apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            const result = await service.validateXApiKey(
-                'local_abc123:secret-1'
-            );
-
-            expect(result).toBe(apiKey);
-            expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
-        });
-
-        it('takes no lease on a cache hit', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            await service.validateXApiKey('local_abc123:secret-1');
-
-            expect(apiKeyCache.takeApiKeyLease).not.toHaveBeenCalled();
         });
     });
 

@@ -3,13 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Cache } from 'cache-manager';
 import type Keyv from 'keyv';
 import type KeyvRedis from '@keyv/redis';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumDevicePlatform,
@@ -21,14 +19,19 @@ import type { IAuthTwoFactorChallengeCache } from '@modules/auth/interfaces/auth
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 
 describe('AuthCache', () => {
-    const cacheManager: MockProxy<Cache> = mock<Cache>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
-    const keyv: MockProxy<Keyv> = mock<Keyv>();
+    const keyvGet =
+        vi.fn<
+            (key: string) => Promise<IAuthTwoFactorChallengeCache | undefined>
+        >();
+    const keyv: MockProxy<Keyv> = mock<Keyv>({
+        get: keyvGet as unknown as Keyv['get'],
+    });
     const store: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
 
     let cache: AuthCache;
@@ -56,7 +59,6 @@ describe('AuthCache', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthCache,
-                { provide: CacheMainProvider, useValue: cacheManager },
                 { provide: RedisClientCachedProvider, useValue: keyv },
                 { provide: ConfigService, useValue: configService },
                 {
@@ -85,7 +87,7 @@ describe('AuthCache', () => {
                 challengeToken: 'random-token',
                 expiresInMs: 300000,
             });
-            expect(cacheManager.set).toHaveBeenCalledWith(
+            expect(keyv.set).toHaveBeenCalledWith(
                 'TwoFactorChallenge:random-token',
                 cachePayload,
                 300000
@@ -101,22 +103,31 @@ describe('AuthCache', () => {
                 loginFrom: EnumUserLoginFrom.website,
                 loginWith: EnumUserLoginWith.credential,
             };
-            cacheManager.get.mockResolvedValue(cachePayload);
+            keyvGet.mockResolvedValue(cachePayload);
 
             const result = await cache.getTwoFactorChallenge('token-value');
 
             expect(result).toEqual(cachePayload);
-            expect(cacheManager.get).toHaveBeenCalledWith(
+            expect(keyvGet).toHaveBeenCalledWith(
                 'TwoFactorChallenge:token-value'
             );
         });
 
         it('returns null when the challenge is not cached', async () => {
-            cacheManager.get.mockResolvedValue(undefined);
+            keyvGet.mockResolvedValue(undefined);
 
             const result = await cache.getTwoFactorChallenge('token-value');
 
             expect(result).toBeNull();
+        });
+
+        it('rethrows a store error', async () => {
+            const failure = new Error('redis down');
+            keyvGet.mockRejectedValue(failure);
+
+            await expect(
+                cache.getTwoFactorChallenge('token-value')
+            ).rejects.toBe(failure);
         });
     });
 

@@ -5,12 +5,14 @@ export interface IConfigRedis {
     cache: {
         url: string;
         namespace: string;
-        ttlInMs: number;
     };
     queue: {
         url: string;
         namespace: string;
     };
+    commandTimeoutInMs: number;
+    connectTimeoutInMs: number;
+    warnWindowInMs: number;
 }
 
 export default registerAs('redis', (): IConfigRedis => {
@@ -18,11 +20,13 @@ export default registerAs('redis', (): IConfigRedis => {
         cache: {
             url: process.env.CACHE_REDIS_URL!,
             namespace: 'Cache',
-            ttlInMs: ms('5m'),
         },
         queue: {
             url: process.env.QUEUE_REDIS_URL!,
             namespace: 'Queue',
         },
+        commandTimeoutInMs: ms('2s'),
+        connectTimeoutInMs: ms('5s'),
+        warnWindowInMs: ms('1m'),
     };
 });

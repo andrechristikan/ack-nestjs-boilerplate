@@ -4,8 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type Keyv from 'keyv';
+import { CacheService } from '@common/cache/services/cache.service';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { RequestThrottleResponseInvalidException } from '@common/request/exceptions/request.throttle-response-invalid.exception';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
 
 describe('RequestThrottleStorageService', () => {
@@ -15,6 +18,13 @@ describe('RequestThrottleStorageService', () => {
     });
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    const failOpenRecord = {
+        totalHits: 0,
+        timeToExpire: 0,
+        isBlocked: false,
+        timeToBlockExpire: 0,
+    };
     const redisClient = { eval: vi.fn() };
     const keyv = { store: { getClient: vi.fn() } } as unknown as Keyv;
 
@@ -39,6 +49,7 @@ describe('RequestThrottleStorageService', () => {
         (
             keyv.store as unknown as { getClient: ReturnType<typeof vi.fn> }
         ).getClient.mockResolvedValue(redisClient);
+        cacheService.isConnectionError.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -49,6 +60,7 @@ describe('RequestThrottleStorageService', () => {
                     provide: HelperStringService,
                     useValue: helperStringService,
                 },
+                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
 
@@ -121,7 +133,7 @@ describe('RequestThrottleStorageService', () => {
             });
         });
 
-        it('fails open when the script result is not an array', async () => {
+        it('fails open and warns once per throttler when the script result is not an array', async () => {
             redisClient.eval.mockResolvedValue('not-an-array');
 
             const result = await service.increment(
@@ -132,15 +144,15 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
-            expect(result).toEqual({
-                totalHits: 0,
-                timeToExpire: 0,
-                isBlocked: false,
-                timeToBlockExpire: 0,
-            });
+            expect(result).toEqual(failOpenRecord);
+            expect(cacheService.warnOnce).toHaveBeenCalledWith(
+                'default',
+                new RequestThrottleResponseInvalidException('not-an-array'),
+                'Throttler got an invalid response, allowing request'
+            );
         });
 
-        it('fails open when the script result is too short', async () => {
+        it('fails open and warns once per throttler when the script result is too short', async () => {
             redisClient.eval.mockResolvedValue([1, 2, 0]);
 
             const result = await service.increment(
@@ -151,15 +163,15 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
-            expect(result).toEqual({
-                totalHits: 0,
-                timeToExpire: 0,
-                isBlocked: false,
-                timeToBlockExpire: 0,
-            });
+            expect(result).toEqual(failOpenRecord);
+            expect(cacheService.warnOnce).toHaveBeenCalledWith(
+                'default',
+                new RequestThrottleResponseInvalidException([1, 2, 0]),
+                'Throttler got an invalid response, allowing request'
+            );
         });
 
-        it('fails open when a script result value is non-numeric', async () => {
+        it('fails open and warns once per throttler when a script result value is non-numeric', async () => {
             redisClient.eval.mockResolvedValue([1, 'nope', 0, 0]);
 
             const result = await service.increment(
@@ -170,16 +182,38 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
-            expect(result).toEqual({
-                totalHits: 0,
-                timeToExpire: 0,
-                isBlocked: false,
-                timeToBlockExpire: 0,
-            });
+            expect(result).toEqual(failOpenRecord);
+            expect(cacheService.warnOnce).toHaveBeenCalledWith(
+                'default',
+                new RequestThrottleResponseInvalidException([1, 'nope', 0, 0]),
+                'Throttler got a non-numeric value, allowing request'
+            );
         });
 
-        it('fails open when the redis client rejects with an Error', async () => {
-            redisClient.eval.mockRejectedValue(new Error('connection lost'));
+        it('throws RedisUnavailableException carrying the caught error as rawError when the client rejects with a connection error', async () => {
+            const error = new Error('connection lost');
+            redisClient.eval.mockRejectedValue(error);
+            cacheService.isConnectionError.mockReturnValue(true);
+
+            await expect(
+                service.increment('tracker-1', 1000, 5, 2000, 'default')
+            ).rejects.toMatchObject({
+                module: 'redis',
+                statusCode: EnumRedisStatusCodeError.unavailable,
+                statusCodeKey:
+                    EnumRedisStatusCodeError[
+                        EnumRedisStatusCodeError.unavailable
+                    ],
+                messagePath: 'redis.error.unavailable',
+                rawError: error,
+            });
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(cacheService.warnOnce).not.toHaveBeenCalled();
+        });
+
+        it('fails open and warns once per throttler when the client rejects with any other error', async () => {
+            const error = new Error('ERR Error running script');
+            redisClient.eval.mockRejectedValue(error);
 
             const result = await service.increment(
                 'tracker-1',
@@ -189,16 +223,17 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
-            expect(result).toEqual({
-                totalHits: 0,
-                timeToExpire: 0,
-                isBlocked: false,
-                timeToBlockExpire: 0,
-            });
+            expect(result).toEqual(failOpenRecord);
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(cacheService.warnOnce).toHaveBeenCalledWith(
+                'default',
+                error,
+                'Throttler storage failed, allowing request'
+            );
         });
 
-        it('fails open when the redis client rejects with a non-Error value', async () => {
-            redisClient.eval.mockRejectedValue('connection lost');
+        it('fails open and warns once per throttler when the client rejects with a non-Error value', async () => {
+            redisClient.eval.mockRejectedValue('script failed');
 
             const result = await service.increment(
                 'tracker-1',
@@ -208,12 +243,15 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
-            expect(result).toEqual({
-                totalHits: 0,
-                timeToExpire: 0,
-                isBlocked: false,
-                timeToBlockExpire: 0,
-            });
+            expect(result).toEqual(failOpenRecord);
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(
+                'script failed'
+            );
+            expect(cacheService.warnOnce).toHaveBeenCalledWith(
+                'default',
+                'script failed',
+                'Throttler storage failed, allowing request'
+            );
         });
     });
 

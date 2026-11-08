@@ -5,7 +5,8 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
-import { RedisUtil } from '@common/redis/utils/redis.util';
+import { CacheService } from '@common/cache/services/cache.service';
+import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
@@ -20,12 +21,15 @@ export class AppGeneralFilter implements ExceptionFilter {
         private readonly responseMetadataService: ResponseMetadataService,
         private readonly sentryService: SentryService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly redisUtil: RedisUtil
+        private readonly cacheService: CacheService
     ) {}
 
     private map(error: unknown): AppBaseException | null {
         const databaseException = this.databaseUtil.toException(error);
-        const redisException = this.redisUtil.toException(error);
+        const isConnectionError = this.cacheService.isConnectionError(error);
+        const redisException = isConnectionError
+            ? new RedisUnavailableException(error)
+            : null;
 
         return databaseException ?? redisException;
     }
@@ -64,6 +68,15 @@ export class AppGeneralFilter implements ExceptionFilter {
     private sendToSentry(exception: unknown, resolved: AppBaseException): void {
         if (resolved.httpStatus < 500) {
             return;
+        }
+
+        if (resolved instanceof RedisUnavailableException) {
+            const isFirst = this.cacheService.isFirstInWindow(
+                RedisUnavailableException.name
+            );
+            if (!isFirst) {
+                return;
+            }
         }
 
         const reported = this.getReported(exception);

@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -13,6 +14,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
+import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -32,7 +34,10 @@ describe('FeatureFlagService', () => {
     const featureFlagRepository: MockProxy<FeatureFlagRepository> =
         mock<FeatureFlagRepository>();
     const featureFlagCache: MockProxy<FeatureFlagCache> =
-        mock<FeatureFlagCache>();
+        mock<FeatureFlagCache>({
+            featureFlagTtlInMs: 3600000,
+        });
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
     let service: FeatureFlagService;
@@ -64,6 +69,7 @@ describe('FeatureFlagService', () => {
                     useValue: featureFlagRepository,
                 },
                 { provide: FeatureFlagCache, useValue: featureFlagCache },
+                { provide: CacheService, useValue: cacheService },
                 { provide: HelperHashService, useValue: helperHashService },
             ],
         }).compile();
@@ -71,21 +77,44 @@ describe('FeatureFlagService', () => {
     });
 
     describe('getByKey', () => {
-        it('returns the cached flag without reading the repository', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
+        const lease = {
+            key: 'FeatureFlag:Lease:loginWithGoogle',
+            ttlInMs: 10000,
+        };
+
+        beforeEach(() => {
+            featureFlagCache.buildFeatureFlagKey.mockReturnValue(
+                'FeatureFlag:loginWithGoogle'
+            );
+            featureFlagCache.buildFeatureFlagLease.mockReturnValue(lease);
+        });
+
+        it('reads through with the entry key, FeatureFlagCacheSchema, the TTL, and the lease', async () => {
+            cacheService.readThrough.mockResolvedValue(baseFlag);
 
             const result = await service.getByKey(
                 EnumFeatureFlagKey.loginWithGoogle
             );
 
-            expect(result).toEqual(baseFlag);
-            expect(featureFlagRepository.findOneByKey).not.toHaveBeenCalled();
+            expect(result).toBe(baseFlag);
+            expect(featureFlagCache.buildFeatureFlagKey).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.loginWithGoogle
+            );
+            expect(featureFlagCache.buildFeatureFlagLease).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.loginWithGoogle
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'FeatureFlag:loginWithGoogle',
+                FeatureFlagCacheSchema,
+                3600000,
+                expect.any(Function),
+                { lease }
+            );
         });
 
-        it('takes the lease, loads from the repository, and caches it with the lease token on a cache miss', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
-            featureFlagCache.takeFeatureFlagLease.mockResolvedValue(
-                'lease-token'
+        it('passes a loader that reads the repository by key', async () => {
+            cacheService.readThrough.mockImplementation(
+                async (_key, _schema, _ttlInMs, loader) => loader()
             );
             featureFlagRepository.findOneByKey.mockResolvedValue(baseFlag);
 
@@ -93,65 +122,26 @@ describe('FeatureFlagService', () => {
                 EnumFeatureFlagKey.loginWithGoogle
             );
 
-            expect(result).toEqual(baseFlag);
+            expect(result).toBe(baseFlag);
             expect(featureFlagRepository.findOneByKey).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.loginWithGoogle
             );
-            expect(featureFlagCache.takeFeatureFlagLease).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.loginWithGoogle
-            );
-            expect(
-                featureFlagCache.takeFeatureFlagLease
-            ).toHaveBeenCalledBefore(featureFlagRepository.findOneByKey);
-            expect(featureFlagCache.setFeatureFlag).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.loginWithGoogle,
-                baseFlag,
-                'lease-token'
-            );
         });
 
-        it('serves the repository row without caching when another reader holds the lease', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
-            featureFlagCache.takeFeatureFlagLease.mockResolvedValue(null);
-            featureFlagRepository.findOneByKey.mockResolvedValue(baseFlag);
-
-            const result = await service.getByKey(
-                EnumFeatureFlagKey.loginWithGoogle
-            );
-
-            expect(result).toEqual(baseFlag);
-            expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
-        });
-
-        it('takes no lease on a cache hit', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
-
-            await service.getByKey(EnumFeatureFlagKey.loginWithGoogle);
-
-            expect(
-                featureFlagCache.takeFeatureFlagLease
-            ).not.toHaveBeenCalled();
-        });
-
-        it('returns null with no cache write when the repository finds nothing', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
-            featureFlagCache.takeFeatureFlagLease.mockResolvedValue(
-                'lease-token'
-            );
-            featureFlagRepository.findOneByKey.mockResolvedValue(null);
+        it('returns null when the read-through answers null', async () => {
+            cacheService.readThrough.mockResolvedValue(null);
 
             const result = await service.getByKey(
                 EnumFeatureFlagKey.loginWithGoogle
             );
 
             expect(result).toBeNull();
-            expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
         });
     });
 
     describe('getMetadataByKey', () => {
         it('returns the metadata of the flag', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 metadata: { newFeature: true },
             });
@@ -164,8 +154,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('returns null when no flag is found', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
-            featureFlagRepository.findOneByKey.mockResolvedValue(null);
+            cacheService.readThrough.mockResolvedValue(null);
 
             const result = await service.getMetadataByKey(
                 EnumFeatureFlagKey.loginWithGoogle
@@ -175,7 +164,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('returns null when the flag carries no metadata', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(baseFlag);
+            cacheService.readThrough.mockResolvedValue(baseFlag);
 
             const result = await service.getMetadataByKey(
                 EnumFeatureFlagKey.loginWithGoogle
@@ -187,7 +176,7 @@ describe('FeatureFlagService', () => {
 
     describe('validateFeatureFlag', () => {
         it('throws FeatureFlagNotConfiguredException (500) when the flag is unregistered', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
+            cacheService.readThrough.mockResolvedValue(null);
 
             await expect(
                 service.validateFeatureFlag(
@@ -210,13 +199,13 @@ describe('FeatureFlagService', () => {
                         'FeatureFlagNotConfiguredException: no feature flag row for "workspace"',
                 }),
             });
-            expect(featureFlagCache.getFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagCache.buildFeatureFlagKey).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.workspace
             );
         });
 
         it('throws FeatureFlagDisabledException when the flag is disabled', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 isEnable: false,
             });
@@ -240,7 +229,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('resolves for a targeted user, bypassing rollout entirely', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 0,
                 targetUserIds: ['user-1'],
@@ -257,7 +246,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('resolves for an authenticated caller whose bucket is under rollout', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 50,
                 targetUserIds: [],
@@ -277,7 +266,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException for an authenticated caller whose bucket misses rollout', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 10,
                 targetUserIds: [],
@@ -303,7 +292,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('resolves with no user when the rollout is 100%, ignoring any anonymous header', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 100,
             });
@@ -319,7 +308,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException with no user, rollout under 100%, and no anonymous id', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 50,
             });
@@ -343,7 +332,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('resolves with no user, rollout under 100%, and an anonymous id under rollout', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 50,
             });
@@ -362,7 +351,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException with no user, rollout under 100%, and an anonymous id missing rollout', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 rolloutPercent: 10,
             });
@@ -389,7 +378,7 @@ describe('FeatureFlagService', () => {
 
     describe('validateFeatureFlagMetadata', () => {
         it('throws FeatureFlagNotConfiguredException (500) when the flag is unregistered', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue(null);
+            cacheService.readThrough.mockResolvedValue(null);
 
             await expect(
                 service.validateFeatureFlagMetadata(
@@ -414,7 +403,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException when the flag is disabled', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 isEnable: false,
             });
@@ -437,7 +426,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('resolves when the metadata sub-key holds true', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: true },
             });
@@ -451,7 +440,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException when the metadata sub-key holds false', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: false },
             });
@@ -474,7 +463,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException (404) when the metadata sub-key is not boolean', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: 'yes' },
             });
@@ -498,7 +487,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException (404) when metadata carries no such sub-key', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 metadata: {},
             });
@@ -522,7 +511,7 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException (404) when the flag carries no metadata at all', async () => {
-            featureFlagCache.getFeatureFlag.mockResolvedValue({
+            cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
                 metadata: null,
             });
@@ -656,7 +645,7 @@ describe('FeatureFlagService', () => {
             expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
                 updated.key
             );
-            expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
     });
 
@@ -741,7 +730,7 @@ describe('FeatureFlagService', () => {
             expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
                 updated.key
             );
-            expect(featureFlagCache.setFeatureFlag).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
     });
 

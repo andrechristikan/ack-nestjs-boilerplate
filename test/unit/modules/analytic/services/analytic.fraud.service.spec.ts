@@ -1,5 +1,6 @@
 import { chunk } from 'lodash-es';
 import { Duration } from 'luxon';
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -21,6 +22,12 @@ import {
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
+    AnalyticCacheEmptyToken,
+    AnalyticFraudCredentialStuffingSummaryCacheSchema,
+    AnalyticFraudRiskScoreCacheSchema,
+    AnalyticFraudSummaryCacheSchema,
+} from '@modules/analytic/constants/analytic.constant';
+import {
     AnalyticAccountTakeoverAvailableOrderBy,
     AnalyticBackupCodeNewDeviceAvailableOrderBy,
     AnalyticCredentialStuffingAvailableOrderBy,
@@ -37,6 +44,7 @@ import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.
 import {
     EnumAnalyticFraudBand,
     EnumAnalyticFraudContributingSignal,
+    EnumAnalyticFraudSignal,
 } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticFraudSignalRows,
@@ -55,7 +63,13 @@ import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.f
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 describe('AnalyticFraudService', () => {
-    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
+    const fraudSummaryTtlInMs = 900000;
+    const riskScoreTtlInMs = 600000;
+    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>({
+        fraudSummaryTtlInMs,
+        riskScoreTtlInMs,
+    });
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
@@ -171,11 +185,18 @@ describe('AnalyticFraudService', () => {
             chunk(rows, size)
         );
         configGet.mockImplementation((key: string) => configValues[key]);
-        analyticCache.getFraudSummary.mockResolvedValue(null);
+        analyticCache.buildFraudSummaryKey.mockImplementation(
+            (signal, window) => `${signal}:${window}`
+        );
+        analyticCache.buildRiskScoreKey.mockImplementation(
+            userId => `RiskScore:${userId}`
+        );
+        cacheService.readThrough.mockImplementation(
+            async (_key, _schema, _ttlInMs, loader) => loader()
+        );
         analyticDateService.resolveWindow.mockImplementation(
             (windowMs, defaultInMs) => windowMs ?? defaultInMs
         );
-        analyticCache.getRiskScore.mockResolvedValue(null);
         analyticDateUtil.windowToken.mockReturnValue('window-token');
         helperDateService.create.mockReturnValue(now);
         helperDateService.backward.mockReturnValue(startDate);
@@ -214,6 +235,7 @@ describe('AnalyticFraudService', () => {
             providers: [
                 AnalyticFraudService,
                 { provide: AnalyticCache, useValue: analyticCache },
+                { provide: CacheService, useValue: cacheService },
                 {
                     provide: AnalyticDateService,
                     useValue: analyticDateService,
@@ -261,16 +283,30 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('credentialStuffingSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 2, window: '86400000' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+        it('reads through with the credential-stuffing key, AnalyticFraudCredentialStuffingSummaryCacheSchema, and the fraud summary TTL', async () => {
+            const cached = {
+                count: 2,
+                window: '86400000',
+                meta: { minUniqueAccounts: 2 },
+            };
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.credentialStuffingSummary(null);
 
             expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.credentialStuffing,
+                '86400000'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'credential-stuffing:86400000',
+                AnalyticFraudCredentialStuffingSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
+            );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             const result = await service.credentialStuffingSummary(600000);
 
             expect(result).toEqual({
@@ -329,9 +365,9 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('accountTakeoverSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the account-takeover key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: 'window-token' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.accountTakeoverSummary(
                 startDate,
@@ -339,9 +375,19 @@ describe('AnalyticFraudService', () => {
             );
 
             expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.accountTakeover,
+                'window-token'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'account-takeover:window-token',
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
+            );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             passwordHistoryAnalyticService.getByTypeInRange.mockResolvedValue(
                 []
             );
@@ -425,14 +471,26 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('massRegistrationSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the mass-registration key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: '86400000' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
-            expect(await service.massRegistrationSummary(null)).toEqual(cached);
+            const result = await service.massRegistrationSummary(null);
+
+            expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.massRegistration,
+                '86400000'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'mass-registration:86400000',
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
+            );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             activityLogAnalyticService.getGroupIpByActions.mockResolvedValue(
                 []
             );
@@ -491,16 +549,26 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('passwordResetEnumerationSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the password-reset-enumeration key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: '86400000' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
-            expect(await service.passwordResetEnumerationSummary(null)).toEqual(
-                cached
+            const result = await service.passwordResetEnumerationSummary(null);
+
+            expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.passwordResetEnumeration,
+                '86400000'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'password-reset-enumeration:86400000',
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
             );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             activityLogAnalyticService.getGroupIpByActions.mockResolvedValue(
                 []
             );
@@ -559,14 +627,26 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('sharedFingerprintSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the shared-fingerprint key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: null };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
-            expect(await service.sharedFingerprintSummary()).toEqual(cached);
+            const result = await service.sharedFingerprintSummary();
+
+            expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.sharedFingerprint,
+                AnalyticCacheEmptyToken
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `shared-fingerprint:${AnalyticCacheEmptyToken}`,
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
+            );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             deviceAnalyticService.getSharedFingerprints.mockResolvedValue([]);
 
             const result = await service.sharedFingerprintSummary();
@@ -660,16 +740,29 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('sessionAfterAdminSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the session-after-admin key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: 'window-token' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
-            expect(
-                await service.sessionAfterAdminSummary(startDate, endDate)
-            ).toEqual(cached);
+            const result = await service.sessionAfterAdminSummary(
+                startDate,
+                endDate
+            );
+
+            expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.sessionAfterAdmin,
+                'window-token'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'session-after-admin:window-token',
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
+            );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             const result = await service.sessionAfterAdminSummary(
                 startDate,
                 endDate
@@ -738,16 +831,26 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('forgotPasswordTokenAbuseSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the forgot-password-token-abuse key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: '86400000' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
-            expect(await service.forgotPasswordTokenAbuseSummary(null)).toEqual(
-                cached
+            const result = await service.forgotPasswordTokenAbuseSummary(null);
+
+            expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
+                '86400000'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'forgot-password-token-abuse:86400000',
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
             );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             userForgotPasswordAnalyticService.getUnusedTokenCountsByUser.mockResolvedValue(
                 []
             );
@@ -806,14 +909,26 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('refreshSpikeSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the refresh-spike key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: '86400000' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
-            expect(await service.refreshSpikeSummary(null)).toEqual(cached);
+            const result = await service.refreshSpikeSummary(null);
+
+            expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.refreshSpike,
+                '86400000'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'refresh-spike:86400000',
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
+            );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             const result = await service.refreshSpikeSummary(null);
 
             expect(result).toEqual({ count: 0, window: '86400000' });
@@ -861,16 +976,26 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('backupCodeNewDeviceSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the backup-code-new-device key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: '86400000' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
-            expect(await service.backupCodeNewDeviceSummary(null)).toEqual(
-                cached
+            const result = await service.backupCodeNewDeviceSummary(null);
+
+            expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.backupCodeNewDevice,
+                '86400000'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'backup-code-new-device:86400000',
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
             );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             const result = await service.backupCodeNewDeviceSummary(null);
 
             expect(result).toEqual({ count: 0, window: '86400000' });
@@ -924,14 +1049,26 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('apiKeyBurstSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
+        it('reads through with the api-key-burst key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, window: '86400000' };
-            analyticCache.getFraudSummary.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
-            expect(await service.apiKeyBurstSummary(null)).toEqual(cached);
+            const result = await service.apiKeyBurstSummary(null);
+
+            expect(result).toEqual(cached);
+            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticFraudSignal.apiKeyBurst,
+                '86400000'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'api-key-burst:86400000',
+                AnalyticFraudSummaryCacheSchema,
+                fraudSummaryTtlInMs,
+                expect.any(Function)
+            );
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             const result = await service.apiKeyBurstSummary(null);
 
             expect(result).toEqual({ count: 0, window: '86400000' });
@@ -995,7 +1132,7 @@ describe('AnalyticFraudService', () => {
             ],
         };
 
-        it('returns the cached score on a cache hit', async () => {
+        it('reads through with the risk score key, AnalyticFraudRiskScoreCacheSchema, and the risk score TTL', async () => {
             const cached = {
                 userId: 'user-1',
                 score: 10,
@@ -1004,32 +1141,24 @@ describe('AnalyticFraudService', () => {
                     EnumAnalyticFraudContributingSignal.nearLockout,
                 ],
             };
-            analyticCache.getRiskScore.mockResolvedValue(cached);
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.riskScore('user-1');
 
             expect(result).toEqual(cached);
+            expect(analyticCache.buildRiskScoreKey).toHaveBeenCalledWith(
+                'user-1'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'RiskScore:user-1',
+                AnalyticFraudRiskScoreCacheSchema,
+                riskScoreTtlInMs,
+                expect.any(Function)
+            );
             expect(userAnalyticService.getOneById).not.toHaveBeenCalled();
         });
 
-        it('throws UserNotFoundException when the user is missing', async () => {
-            userAnalyticService.getOneById.mockResolvedValue(null);
-
-            await expect(service.riskScore('missing')).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'user.error.notFound',
-            });
-            expect(
-                deviceAnalyticService.getSharedFingerprints
-            ).not.toHaveBeenCalled();
-            expect(analyticCache.setRiskScore).not.toHaveBeenCalled();
-        });
-
-        it('collects the signal users over the lookback window, scores the user, and caches the score', async () => {
+        it('collects the signal users over the lookback window and scores the user in the loader', async () => {
             const shared = [
                 {
                     fingerprint: 'fp-1',
@@ -1052,10 +1181,6 @@ describe('AnalyticFraudService', () => {
             expect(
                 analyticAnomalyService.getImpossibleTravelUserIds
             ).toHaveBeenCalledWith(startDate, now);
-            expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
-                'user-1',
-                scored
-            );
         });
     });
 
@@ -1138,27 +1263,33 @@ describe('AnalyticFraudService', () => {
                 [low, high],
                 10
             );
-            expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
-                'user-low',
-                lowScore
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'RiskScore:user-low',
+                AnalyticFraudRiskScoreCacheSchema,
+                riskScoreTtlInMs,
+                expect.any(Function)
             );
-            expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
-                'user-high',
-                highScore
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'RiskScore:user-high',
+                AnalyticFraudRiskScoreCacheSchema,
+                riskScoreTtlInMs,
+                expect.any(Function)
             );
         });
 
         it('uses a cached score instead of scoring the candidate again', async () => {
-            analyticCache.getRiskScore.mockImplementation(async userId =>
-                userId === 'user-high' ? highScore : null
+            const cachedHigh = { ...highScore, score: 99 };
+            cacheService.readThrough.mockImplementation(
+                async (key, _schema, _ttlInMs, loader) =>
+                    key === 'RiskScore:user-high' ? cachedHigh : loader()
             );
 
             await service.riskScores(null, pagination);
 
-            expect(analyticCache.setRiskScore).toHaveBeenCalledTimes(1);
-            expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
-                'user-low',
-                lowScore
+            expect(analyticSortUtil.sortPage).toHaveBeenCalledWith(
+                [cachedHigh, lowScore],
+                pagination,
+                AnalyticFraudRiskScoreAvailableOrderBy
             );
         });
 
@@ -1663,6 +1794,67 @@ describe('AnalyticFraudService', () => {
                 now,
                 2
             );
+        });
+    });
+
+    describe('scoreCached', () => {
+        it('throws UserNotFoundException from the loader when the user is missing', async () => {
+            userAnalyticService.getOneById.mockResolvedValue(null);
+
+            await expect(
+                service['scoreCached']('missing')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'user.error.notFound',
+            });
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'RiskScore:missing',
+                AnalyticFraudRiskScoreCacheSchema,
+                riskScoreTtlInMs,
+                expect.any(Function)
+            );
+            expect(
+                deviceAnalyticService.getSharedFingerprints
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('scoreListed', () => {
+        it('scores the listed user in the loader', async () => {
+            const user = {
+                id: 'user-1',
+                email: 'user@example.com',
+                passwordAttempt: 0,
+            };
+            const signals: IAnalyticFraudSignalUsers = {
+                ...emptySignals,
+                impossibleTravel: new Set(['user-1']),
+            };
+
+            const result = await service['scoreListed'](user, signals);
+
+            expect(result).toEqual({
+                userId: 'user-1',
+                score: 2,
+                band: EnumAnalyticFraudBand.monitor,
+                contributingSignalCodes: [
+                    EnumAnalyticFraudContributingSignal.impossibleTravel,
+                ],
+            });
+            expect(analyticCache.buildRiskScoreKey).toHaveBeenCalledWith(
+                'user-1'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'RiskScore:user-1',
+                AnalyticFraudRiskScoreCacheSchema,
+                riskScoreTtlInMs,
+                expect.any(Function)
+            );
+            expect(userAnalyticService.getOneById).not.toHaveBeenCalled();
         });
     });
 

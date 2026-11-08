@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type {
     IPaginationQueryCursorParams,
@@ -6,6 +7,7 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
+import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
@@ -29,6 +31,7 @@ export class FeatureFlagService {
     constructor(
         private readonly featureFlagRepository: FeatureFlagRepository,
         private readonly featureFlagCache: FeatureFlagCache,
+        private readonly cacheService: CacheService,
         private readonly helperHashService: HelperHashService
     ) {}
 
@@ -100,26 +103,18 @@ export class FeatureFlagService {
         }
     }
 
-    /** Read-through: the cached flag, else the database row, cached only while this reader holds the lease; null when no row exists. */
+    /** Read-through over the flag row; null when no row exists. */
     async getByKey(key: EnumFeatureFlagKey): Promise<FeatureFlag | null> {
-        const cached = await this.featureFlagCache.getFeatureFlag(key);
-        if (cached) {
-            return cached;
-        }
+        const cacheKey = this.featureFlagCache.buildFeatureFlagKey(key);
+        const lease = this.featureFlagCache.buildFeatureFlagLease(key);
 
-        // Sequential by design: side effects whose order is part of the contract (the lease is taken before the read it guards)
-        const leaseToken =
-            await this.featureFlagCache.takeFeatureFlagLease(key);
-        const featureFlag = await this.featureFlagRepository.findOneByKey(key);
-        if (featureFlag && leaseToken !== null) {
-            await this.featureFlagCache.setFeatureFlag(
-                key,
-                featureFlag,
-                leaseToken
-            );
-        }
-
-        return featureFlag;
+        return this.cacheService.readThrough(
+            cacheKey,
+            FeatureFlagCacheSchema,
+            this.featureFlagCache.featureFlagTtlInMs,
+            () => this.featureFlagRepository.findOneByKey(key),
+            { lease }
+        );
     }
 
     async getMetadataByKey<T>(key: EnumFeatureFlagKey): Promise<T | null> {

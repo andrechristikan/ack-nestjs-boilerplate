@@ -5,15 +5,15 @@ import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { RedisErrorMessages } from '@keyv/redis';
 import { Prisma } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
-import { RedisUtil } from '@common/redis/utils/redis.util';
+import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
@@ -29,6 +29,7 @@ describe('AppGeneralFilter', () => {
     const responseMetadataService: MockProxy<ResponseMetadataService> =
         mock<ResponseMetadataService>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const response: MockProxy<Response> = mock<Response>();
     const httpArgumentsHost: MockProxy<
         ReturnType<ArgumentsHost['switchToHttp']>
@@ -58,6 +59,7 @@ describe('AppGeneralFilter', () => {
         response.status.mockReturnValue(response);
         responseMetadataService.create.mockReturnValue(metadata);
         messageService.setMessage.mockReturnValue('Internal Server Error');
+        cacheService.isConnectionError.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -69,7 +71,7 @@ describe('AppGeneralFilter', () => {
                 },
                 { provide: SentryService, useValue: sentryService },
                 DatabaseUtil,
-                RedisUtil,
+                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
 
@@ -115,22 +117,85 @@ describe('AppGeneralFilter', () => {
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
 
-        it('answers 503 with the redis unavailable code for a keyv not-connected error and reports it', async () => {
-            const error = new Error(
-                RedisErrorMessages.RedisClientNotConnectedThrown
-            );
+        it('renders RedisUnavailableException (503, 52400) carrying the raw error as rawError when the raw error is a connection error', async () => {
+            const error = new Error('connection lost');
+            cacheService.isConnectionError.mockReturnValue(true);
+            cacheService.isFirstInWindow.mockReturnValue(true);
 
             await filter.catch(error, argumentsHost);
 
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
             expect(response.status).toHaveBeenCalledWith(
                 HttpStatus.SERVICE_UNAVAILABLE
             );
             expect(response.json).toHaveBeenCalledWith(
                 expect.objectContaining({
                     statusCode: EnumRedisStatusCodeError.unavailable,
+                    statusCodeKey:
+                        EnumRedisStatusCodeError[
+                            EnumRedisStatusCodeError.unavailable
+                        ],
                     module: 'redis',
                 })
             );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'redis.error.unavailable',
+                { customLanguage: EnumMessageLanguage.en }
+            );
+            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+        });
+
+        it('logs and reports the first RedisUnavailableException in a window', async () => {
+            const rawError = new Error('connection lost');
+            cacheService.isFirstInWindow.mockReturnValue(true);
+
+            await filter.catch(
+                new RedisUnavailableException(rawError),
+                argumentsHost
+            );
+
+            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
+                RedisUnavailableException.name
+            );
+            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                rawError
+            );
+        });
+
+        it('answers 503 without a report for a RedisUnavailableException inside the window', async () => {
+            cacheService.isFirstInWindow.mockReturnValue(false);
+
+            await filter.catch(
+                new RedisUnavailableException(new Error('connection lost')),
+                argumentsHost
+            );
+
+            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
+                RedisUnavailableException.name
+            );
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.SERVICE_UNAVAILABLE
+            );
+            expect(response.json).toHaveBeenCalledWith({
+                statusCode: EnumRedisStatusCodeError.unavailable,
+                statusCodeKey:
+                    EnumRedisStatusCodeError[
+                        EnumRedisStatusCodeError.unavailable
+                    ],
+                module: 'redis',
+                message: 'Internal Server Error',
+                metadata,
+            });
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+
+        it('reports every other 5xx without consulting the window', async () => {
+            const error = new Error('boom');
+
+            await filter.catch(error, argumentsHost);
+
+            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
             expect(sentryService.captureException).toHaveBeenCalledWith(error);
         });
 
@@ -294,10 +359,10 @@ describe('AppGeneralFilter', () => {
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
 
-        it('answers 503 with the redis unavailable code for an AppUnknownException wrapping a keyv not-connected error and reports the raw error', async () => {
-            const rawError = new Error(
-                RedisErrorMessages.RedisClientNotConnectedThrown
-            );
+        it('renders the mapped RedisUnavailableException for an AppUnknownException whose rawError is a connection error', async () => {
+            const rawError = new Error('connection lost');
+            cacheService.isConnectionError.mockReturnValue(true);
+            cacheService.isFirstInWindow.mockReturnValue(true);
 
             await filter.catch(
                 new AppUnknownException(rawError),

@@ -4,20 +4,17 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Cache } from 'cache-manager';
 import type Keyv from 'keyv';
 import type KeyvRedis from '@keyv/redis';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import type { ISessionCache } from '@modules/session/interfaces/session.interface';
 import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
 
 describe('SessionCache', () => {
-    const cacheManager: MockProxy<Cache> = mock<Cache>();
     const keyvGet =
         vi.fn<(key: string) => Promise<ISessionCache | undefined>>();
     const keyv: MockProxy<Keyv> = mock<Keyv>({
@@ -55,7 +52,6 @@ describe('SessionCache', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionCache,
-                { provide: CacheMainProvider, useValue: cacheManager },
                 { provide: RedisClientCachedProvider, useValue: keyv },
                 { provide: ConfigService, useValue: configService },
                 {
@@ -86,7 +82,6 @@ describe('SessionCache', () => {
 
             expect(result).toEqual(session);
             expect(keyvGet).toHaveBeenCalledWith('user-1:session-1');
-            expect(cacheManager.get).not.toHaveBeenCalled();
         });
 
         it('returns null when no login is cached', async () => {
@@ -118,7 +113,7 @@ describe('SessionCache', () => {
             expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
                 'jti-value'
             );
-            expect(cacheManager.set).toHaveBeenCalledWith(
+            expect(keyv.set).toHaveBeenCalledWith(
                 'user-1:session-1',
                 {
                     userId: 'user-1',
@@ -224,7 +219,7 @@ describe('SessionCache', () => {
                 { id: 'session-2' },
             ]);
 
-            expect(cacheManager.mdel).toHaveBeenCalledWith([
+            expect(keyv.deleteMany).toHaveBeenCalledWith([
                 'user-1:session-1',
                 'user-1:session-2',
             ]);
@@ -233,7 +228,7 @@ describe('SessionCache', () => {
         it('does nothing for an empty session list', async () => {
             await cache.deleteLogins('user-1', []);
 
-            expect(cacheManager.mdel).not.toHaveBeenCalled();
+            expect(keyv.deleteMany).not.toHaveBeenCalled();
         });
     });
 

@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { HTTP_CODE_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
 import { ApiProduces, ApiResponse } from '@nestjs/swagger';
-import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { z } from 'zod';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { DocErrors } from '@common/doc/decorators/doc.decorator';
@@ -20,7 +19,6 @@ import {
     ResponsePaginationDocErrors,
     ResponseSchemaMetaKey,
 } from '@common/response/constants/response.constant';
-import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
 import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponsePaginationInterceptor } from '@common/response/interceptors/response.pagination.interceptor';
@@ -76,20 +74,6 @@ export function Response(
             decorators.push(SetMetadata(ResponseSchemaMetaKey, options.schema));
         }
 
-        if (options?.cache) {
-            decorators.push(UseInterceptors(ResponseCacheInterceptor));
-
-            if (typeof options.cache !== 'boolean') {
-                if (options.cache.key) {
-                    decorators.push(CacheKey(options.cache.key));
-                }
-
-                if (options.cache.ttl) {
-                    decorators.push(CacheTTL(options.cache.ttl));
-                }
-            }
-        }
-
         applyDecorators(...decorators)(target, propertyKey, descriptor);
     };
 }
@@ -97,10 +81,7 @@ export function Response(
 /** @public */
 export function ResponsePagination(
     messagePath: string,
-    options: {
-        schema: StandardSchemaV1;
-        cache?: IResponseOptions['cache'];
-    }
+    options: { schema: StandardSchemaV1 }
 ): MethodDecorator {
     const decorators: Array<
         ClassDecorator | MethodDecorator | PropertyDecorator
@@ -123,20 +104,6 @@ export function ResponsePagination(
             ...ResponsePaginationDocErrors
         ),
     ];
-
-    if (options.cache) {
-        decorators.push(UseInterceptors(ResponseCacheInterceptor));
-
-        if (typeof options.cache !== 'boolean') {
-            if (options.cache.key) {
-                decorators.push(CacheKey(options.cache.key));
-            }
-
-            if (options.cache.ttl) {
-                decorators.push(CacheTTL(options.cache.ttl));
-            }
-        }
-    }
 
     return applyDecorators(...decorators);
 }

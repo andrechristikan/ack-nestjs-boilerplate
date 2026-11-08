@@ -1,4 +1,3 @@
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -6,7 +5,6 @@ import type {
     IAuthTwoFactorChallenge,
     IAuthTwoFactorChallengeCache,
 } from '@modules/auth/interfaces/auth.interface';
-import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type KeyvRedis from '@keyv/redis';
@@ -19,7 +17,6 @@ export class AuthCache {
     private readonly twoFactorChallengeTtlInMs: number;
 
     constructor(
-        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService
@@ -49,7 +46,7 @@ export class AuthCache {
     ): Promise<IAuthTwoFactorChallenge> {
         const challengeToken = this.helperStringService.random(48);
         const key = this.buildTwoFactorChallengeKey(challengeToken);
-        await this.cacheManager.set<IAuthTwoFactorChallengeCache>(
+        await this.keyv.set<IAuthTwoFactorChallengeCache>(
             key,
             cachePayload,
             this.twoFactorChallengeTtlInMs
@@ -62,8 +59,7 @@ export class AuthCache {
         token: string
     ): Promise<IAuthTwoFactorChallengeCache | null> {
         const key = this.buildTwoFactorChallengeKey(token);
-        const cached =
-            await this.cacheManager.get<IAuthTwoFactorChallengeCache>(key);
+        const cached = await this.keyv.get<IAuthTwoFactorChallengeCache>(key);
 
         return cached ?? null;
     }

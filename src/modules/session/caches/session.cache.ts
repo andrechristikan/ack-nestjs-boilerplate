@@ -1,7 +1,6 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import type KeyvRedis from '@keyv/redis';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
@@ -9,7 +8,6 @@ import type {
     ISessionCache,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
-import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Keyv from 'keyv';
@@ -20,7 +18,6 @@ export class SessionCache {
     private readonly loginTtlInMs: number;
 
     constructor(
-        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
@@ -45,7 +42,7 @@ export class SessionCache {
         return this.keyv.store as KeyvRedis<string>;
     }
 
-    /** Reads the login entry through the Keyv client so a store failure throws; the cache manager would report it as a miss. */
+    /** Reads the login entry through the Keyv client; a store failure throws. */
     async getLogin(
         userId: string,
         sessionId: string
@@ -64,7 +61,7 @@ export class SessionCache {
     ): Promise<void> {
         const key = this.buildLoginKey(userId, sessionId);
         const jtiDigest = this.helperHashService.sha256Hash(jti);
-        await this.cacheManager.set<ISessionCache>(
+        await this.keyv.set<ISessionCache>(
             key,
             {
                 userId,
@@ -132,7 +129,7 @@ return 'updated'
             return;
         }
 
-        await this.cacheManager.mdel(
+        await this.keyv.deleteMany(
             sessions.map(session => this.buildLoginKey(userId, session.id))
         );
     }

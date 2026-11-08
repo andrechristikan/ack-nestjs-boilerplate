@@ -3,8 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Cache } from 'cache-manager';
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumAnalyticAnomalySignal,
@@ -13,7 +11,6 @@ import {
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 
 describe('AnalyticCache', () => {
-    const cacheManager: MockProxy<Cache> = mock<Cache>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -49,7 +46,6 @@ describe('AnalyticCache', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticCache,
-                { provide: CacheMainProvider, useValue: cacheManager },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
             ],
@@ -58,17 +54,51 @@ describe('AnalyticCache', () => {
         cache = module.get(AnalyticCache);
     });
 
-    describe('getDashboard', () => {
-        it('returns the cached dashboard value', async () => {
-            cacheManager.get.mockResolvedValue({ count: 4 });
+    describe('dashboardTtlInMs', () => {
+        it('reads dashboardTtlInMs from analytic.cache.dashboardTtlInMs', () => {
+            expect(cache.dashboardTtlInMs).toBe(1000);
+            expect(configGet).toHaveBeenCalledWith(
+                'analytic.cache.dashboardTtlInMs'
+            );
+        });
+    });
 
-            const result = await cache.getDashboard<{ count: number }>(
+    describe('anomalySummaryTtlInMs', () => {
+        it('reads anomalySummaryTtlInMs from analytic.cache.anomalySummaryTtlInMs', () => {
+            expect(cache.anomalySummaryTtlInMs).toBe(2000);
+            expect(configGet).toHaveBeenCalledWith(
+                'analytic.cache.anomalySummaryTtlInMs'
+            );
+        });
+    });
+
+    describe('fraudSummaryTtlInMs', () => {
+        it('reads fraudSummaryTtlInMs from analytic.cache.fraudSummaryTtlInMs', () => {
+            expect(cache.fraudSummaryTtlInMs).toBe(3000);
+            expect(configGet).toHaveBeenCalledWith(
+                'analytic.cache.fraudSummaryTtlInMs'
+            );
+        });
+    });
+
+    describe('riskScoreTtlInMs', () => {
+        it('reads riskScoreTtlInMs from analytic.cache.riskScoreTtlInMs', () => {
+            expect(cache.riskScoreTtlInMs).toBe(4000);
+            expect(configGet).toHaveBeenCalledWith(
+                'analytic.cache.riskScoreTtlInMs'
+            );
+        });
+    });
+
+    describe('buildDashboardKey', () => {
+        it('builds the dashboard key from the pattern', () => {
+            const result = cache.buildDashboardKey(
                 'users.registrations',
                 'start',
                 'end'
             );
 
-            expect(result).toEqual({ count: 4 });
+            expect(result).toBe('users.registrations:start:end');
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 'Dashboard:{metric}:{start}:{end}',
                 {
@@ -78,40 +108,16 @@ describe('AnalyticCache', () => {
                 }
             );
         });
-
-        it('returns null when the store has no value', async () => {
-            cacheManager.get.mockResolvedValue(undefined);
-
-            const result = await cache.getDashboard('metric', 'start', 'end');
-
-            expect(result).toBeNull();
-        });
     });
 
-    describe('setDashboard', () => {
-        it('writes the dashboard value with the dashboard ttl', async () => {
-            await cache.setDashboard('users.registrations', 'start', 'end', {
-                count: 4,
-            });
-
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'users.registrations:start:end',
-                { count: 4 },
-                1000
-            );
-        });
-    });
-
-    describe('getAnomalySummary', () => {
-        it('returns the cached anomaly summary', async () => {
-            cacheManager.get.mockResolvedValue({ count: 2 });
-
-            const result = await cache.getAnomalySummary<{ count: number }>(
+    describe('buildAnomalySummaryKey', () => {
+        it('builds the anomaly summary key from the pattern', () => {
+            const result = cache.buildAnomalySummaryKey(
                 EnumAnalyticAnomalySignal.impossibleTravel,
                 '3600000'
             );
 
-            expect(result).toEqual({ count: 2 });
+            expect(result).toBe('impossible-travel:3600000');
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 'Anomaly:{signal}:{window}',
                 {
@@ -120,47 +126,16 @@ describe('AnalyticCache', () => {
                 }
             );
         });
-
-        it('returns null when the store has no value', async () => {
-            cacheManager.get.mockResolvedValue(undefined);
-
-            const result = await cache.getAnomalySummary(
-                EnumAnalyticAnomalySignal.impossibleTravel,
-                '3600000'
-            );
-
-            expect(result).toBeNull();
-        });
     });
 
-    describe('setAnomalySummary', () => {
-        it('writes the anomaly summary with the anomaly ttl', async () => {
-            await cache.setAnomalySummary(
-                EnumAnalyticAnomalySignal.impossibleTravel,
-                '3600000',
-                {
-                    count: 2,
-                }
-            );
-
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'impossible-travel:3600000',
-                { count: 2 },
-                2000
-            );
-        });
-    });
-
-    describe('getFraudSummary', () => {
-        it('returns the cached fraud summary', async () => {
-            cacheManager.get.mockResolvedValue({ count: 6 });
-
-            const result = await cache.getFraudSummary<{ count: number }>(
+    describe('buildFraudSummaryKey', () => {
+        it('builds the fraud summary key from the pattern', () => {
+            const result = cache.buildFraudSummaryKey(
                 EnumAnalyticFraudSignal.credentialStuffing,
                 '86400000'
             );
 
-            expect(result).toEqual({ count: 6 });
+            expect(result).toBe('credential-stuffing:86400000');
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 'Fraud:{signal}:{window}',
                 {
@@ -169,174 +144,14 @@ describe('AnalyticCache', () => {
                 }
             );
         });
-
-        it('returns null when the store has no value', async () => {
-            cacheManager.get.mockResolvedValue(undefined);
-
-            const result = await cache.getFraudSummary(
-                EnumAnalyticFraudSignal.credentialStuffing,
-                '86400000'
-            );
-
-            expect(result).toBeNull();
-        });
     });
 
-    describe('setFraudSummary', () => {
-        it('writes the fraud summary with the fraud ttl', async () => {
-            await cache.setFraudSummary(
-                EnumAnalyticFraudSignal.credentialStuffing,
-                '86400000',
-                {
-                    count: 6,
-                }
-            );
+    describe('buildRiskScoreKey', () => {
+        it('builds the risk score key from the pattern', () => {
+            const result = cache.buildRiskScoreKey('user-$&');
 
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'credential-stuffing:86400000',
-                { count: 6 },
-                3000
-            );
-        });
-    });
-
-    describe('getRiskScore', () => {
-        it('returns the cached risk score', async () => {
-            cacheManager.get.mockResolvedValue({ score: 42 });
-
-            const result = await cache.getRiskScore<{ score: number }>(
-                'user-1'
-            );
-
-            expect(result).toEqual({ score: 42 });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'RiskScore:{userId}',
-                { userId: 'user-1' }
-            );
-        });
-
-        it('returns null when the store has no value', async () => {
-            cacheManager.get.mockResolvedValue(undefined);
-
-            const result = await cache.getRiskScore('user-1');
-
-            expect(result).toBeNull();
-        });
-    });
-
-    describe('setRiskScore', () => {
-        it('writes the risk score with the risk-score ttl', async () => {
-            await cache.setRiskScore('user-1', { score: 42 });
-
-            expect(cacheManager.set).toHaveBeenCalledWith(
-                'user-1',
-                { score: 42 },
-                4000
-            );
-        });
-    });
-
-    describe('read failures', () => {
-        it('getDashboard returns null when the store read throws', async () => {
-            helperStringService.fillPattern.mockReturnValue('cache-key');
-            cacheManager.get.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(
-                cache.getDashboard('metric', 'a', 'b')
-            ).resolves.toBeNull();
-        });
-
-        it('getAnomalySummary returns null when the store read throws', async () => {
-            helperStringService.fillPattern.mockReturnValue('cache-key');
-            cacheManager.get.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(
-                cache.getAnomalySummary(
-                    EnumAnalyticAnomalySignal.impossibleTravel,
-                    'window'
-                )
-            ).resolves.toBeNull();
-        });
-
-        it('getFraudSummary returns null when the store read throws', async () => {
-            helperStringService.fillPattern.mockReturnValue('cache-key');
-            cacheManager.get.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(
-                cache.getFraudSummary(
-                    EnumAnalyticFraudSignal.credentialStuffing,
-                    'window'
-                )
-            ).resolves.toBeNull();
-        });
-
-        it('getRiskScore returns null when the store read throws', async () => {
-            helperStringService.fillPattern.mockReturnValue('cache-key');
-            cacheManager.get.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(cache.getRiskScore('user-1')).resolves.toBeNull();
-        });
-    });
-
-    describe('write failures', () => {
-        it('setDashboard swallows a thrown store write', async () => {
-            helperStringService.fillPattern.mockReturnValue('cache-key');
-            cacheManager.set.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(
-                cache.setDashboard('metric', 'a', 'b', 1)
-            ).resolves.toBeUndefined();
-        });
-
-        it('setAnomalySummary swallows a thrown store write', async () => {
-            helperStringService.fillPattern.mockReturnValue('cache-key');
-            cacheManager.set.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(
-                cache.setAnomalySummary(
-                    EnumAnalyticAnomalySignal.impossibleTravel,
-                    'window',
-                    1
-                )
-            ).resolves.toBeUndefined();
-        });
-
-        it('setFraudSummary swallows a thrown store write', async () => {
-            helperStringService.fillPattern.mockReturnValue('cache-key');
-            cacheManager.set.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(
-                cache.setFraudSummary(
-                    EnumAnalyticFraudSignal.credentialStuffing,
-                    'window',
-                    1
-                )
-            ).resolves.toBeUndefined();
-        });
-
-        it('setRiskScore swallows a thrown store write', async () => {
-            helperStringService.fillPattern.mockReturnValue('cache-key');
-            cacheManager.set.mockImplementation(() => {
-                throw new Error('redis down');
-            });
-
-            await expect(
-                cache.setRiskScore('user-1', 1)
-            ).resolves.toBeUndefined();
+            expect(result).toBe('RiskScore:user-$&');
+            expect(helperStringService.fillPattern).not.toHaveBeenCalled();
         });
     });
 });

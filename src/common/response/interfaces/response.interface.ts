@@ -14,13 +14,7 @@ export interface IResponseMetadata {
     messageProperties?: IMessageProperties;
 }
 
-export interface IResponseCacheOptions {
-    key?: string;
-    ttl?: number;
-}
-
 export interface IResponseOptions {
-    cache?: IResponseCacheOptions | boolean;
     schema?: StandardSchemaV1;
 }
 

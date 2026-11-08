@@ -6,14 +6,12 @@ import {
     INTERCEPTORS_METADATA,
 } from '@nestjs/common/constants';
 import { DECORATORS } from '@nestjs/swagger';
-import { CACHE_KEY_METADATA, CACHE_TTL_METADATA } from '@nestjs/cache-manager';
 import { z } from 'zod';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import {
     ResponseMessagePathMetaKey,
     ResponseSchemaMetaKey,
 } from '@common/response/constants/response.constant';
-import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponsePaginationInterceptor } from '@common/response/interceptors/response.pagination.interceptor';
 import {
@@ -131,76 +129,6 @@ describe('response.decorator', () => {
             const entries = getDocResponseEntries(handler);
             expect(entries[0]!.schema).toBe(schema);
         });
-
-        it('does not attach the cache interceptor when no cache option is given', () => {
-            const handler = vi.fn();
-            const { target, propertyKey, descriptor } =
-                buildDecoratorTarget(handler);
-
-            Response('response.no-cache.path')(target, propertyKey, descriptor);
-
-            expect(Reflect.getMetadata(INTERCEPTORS_METADATA, handler)).toEqual(
-                [ResponseInterceptor]
-            );
-            expect(
-                Reflect.getMetadata(CACHE_KEY_METADATA, handler)
-            ).toBeUndefined();
-            expect(
-                Reflect.getMetadata(CACHE_TTL_METADATA, handler)
-            ).toBeUndefined();
-        });
-
-        it('attaches the cache interceptor with no key or ttl for a boolean cache flag', () => {
-            const handler = vi.fn();
-            const { target, propertyKey, descriptor } =
-                buildDecoratorTarget(handler);
-
-            Response('response.cache-boolean.path', { cache: true })(
-                target,
-                propertyKey,
-                descriptor
-            );
-
-            expect(Reflect.getMetadata(INTERCEPTORS_METADATA, handler)).toEqual(
-                [ResponseInterceptor, ResponseCacheInterceptor]
-            );
-            expect(
-                Reflect.getMetadata(CACHE_KEY_METADATA, handler)
-            ).toBeUndefined();
-            expect(
-                Reflect.getMetadata(CACHE_TTL_METADATA, handler)
-            ).toBeUndefined();
-        });
-
-        it.each([
-            [{ key: 'user-list' }, 'user-list', undefined],
-            [{ ttl: 60 }, undefined, 60],
-            [{ key: 'user-list', ttl: 60 }, 'user-list', 60],
-            [{}, undefined, undefined],
-        ])(
-            'applies cache option %j onto CacheKey/CacheTTL metadata',
-            (cache, expectedKey, expectedTtl) => {
-                const handler = vi.fn();
-                const { target, propertyKey, descriptor } =
-                    buildDecoratorTarget(handler);
-
-                Response('response.cache-object.path', { cache })(
-                    target,
-                    propertyKey,
-                    descriptor
-                );
-
-                expect(
-                    Reflect.getMetadata(INTERCEPTORS_METADATA, handler)
-                ).toEqual([ResponseInterceptor, ResponseCacheInterceptor]);
-                expect(Reflect.getMetadata(CACHE_KEY_METADATA, handler)).toBe(
-                    expectedKey
-                );
-                expect(Reflect.getMetadata(CACHE_TTL_METADATA, handler)).toBe(
-                    expectedTtl
-                );
-            }
-        );
     });
 
     describe('ResponsePagination', () => {
@@ -238,69 +166,6 @@ describe('response.decorator', () => {
                 baseSchema: expect.anything(),
             });
         });
-
-        it('does not attach the cache interceptor when no cache option is given', () => {
-            const handler = vi.fn();
-            const { target, propertyKey, descriptor } =
-                buildDecoratorTarget(handler);
-
-            ResponsePagination('response.pagination.no-cache.path', { schema })(
-                target,
-                propertyKey,
-                descriptor
-            );
-
-            expect(Reflect.getMetadata(INTERCEPTORS_METADATA, handler)).toEqual(
-                [ResponsePaginationInterceptor]
-            );
-        });
-
-        it('attaches the cache interceptor with no key or ttl for a boolean cache flag', () => {
-            const handler = vi.fn();
-            const { target, propertyKey, descriptor } =
-                buildDecoratorTarget(handler);
-
-            ResponsePagination('response.pagination.cache-boolean.path', {
-                schema,
-                cache: true,
-            })(target, propertyKey, descriptor);
-
-            expect(Reflect.getMetadata(INTERCEPTORS_METADATA, handler)).toEqual(
-                [ResponsePaginationInterceptor, ResponseCacheInterceptor]
-            );
-            expect(
-                Reflect.getMetadata(CACHE_KEY_METADATA, handler)
-            ).toBeUndefined();
-            expect(
-                Reflect.getMetadata(CACHE_TTL_METADATA, handler)
-            ).toBeUndefined();
-        });
-
-        it.each([
-            [{ key: 'user-list' }, 'user-list', undefined],
-            [{ ttl: 60 }, undefined, 60],
-            [{ key: 'user-list', ttl: 60 }, 'user-list', 60],
-            [{}, undefined, undefined],
-        ])(
-            'applies cache option %j onto CacheKey/CacheTTL metadata',
-            (cache, expectedKey, expectedTtl) => {
-                const handler = vi.fn();
-                const { target, propertyKey, descriptor } =
-                    buildDecoratorTarget(handler);
-
-                ResponsePagination('response.pagination.cache-object.path', {
-                    schema,
-                    cache,
-                })(target, propertyKey, descriptor);
-
-                expect(Reflect.getMetadata(CACHE_KEY_METADATA, handler)).toBe(
-                    expectedKey
-                );
-                expect(Reflect.getMetadata(CACHE_TTL_METADATA, handler)).toBe(
-                    expectedTtl
-                );
-            }
-        );
     });
 
     describe('ResponseFile', () => {

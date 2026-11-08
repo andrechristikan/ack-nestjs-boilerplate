@@ -1,4 +1,5 @@
 import { chunk } from 'lodash-es';
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -16,6 +17,14 @@ import { Duration } from 'luxon';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
+    AnalyticAnomalyDeviceProliferationSummaryCacheSchema,
+    AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
+    AnalyticAnomalyImpossibleTravelSummaryCacheSchema,
+    AnalyticAnomalyLoginSpikeIpSummaryCacheSchema,
+    AnalyticAnomalySummaryCacheSchema,
+    AnalyticCacheEmptyToken,
+} from '@modules/analytic/constants/analytic.constant';
+import {
     AnalyticDeviceProliferationAvailableOrderBy,
     AnalyticImpossibleTravelAvailableOrderBy,
     AnalyticLoginSpikeIpAvailableOrderBy,
@@ -27,6 +36,7 @@ import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
+import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum';
 import { DeviceAnalyticService } from '@modules/device/services/device.analytic.service';
 import { SessionAnalyticService } from '@modules/session/services/session.analytic.service';
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
@@ -38,7 +48,11 @@ import {
 import type { IAnalyticAnomalyServiceDoubles } from '@test/unit/helpers/test.unit.analytic.helper';
 
 describe('AnalyticAnomalyService', () => {
-    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
+    const anomalySummaryTtlInMs = 900000;
+    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>({
+        anomalySummaryTtlInMs,
+    });
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
@@ -114,6 +128,7 @@ describe('AnalyticAnomalyService', () => {
 
     const doubles: IAnalyticAnomalyServiceDoubles = {
         analyticCache,
+        cacheService,
         analyticDateService,
         analyticDateUtil,
         analyticAnomalyUtil,
@@ -150,7 +165,12 @@ describe('AnalyticAnomalyService', () => {
             return values[key];
         });
         analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
-        analyticCache.getAnomalySummary.mockResolvedValue(null);
+        analyticCache.buildAnomalySummaryKey.mockImplementation(
+            (signal, window) => `${signal}:${window}`
+        );
+        cacheService.readThrough.mockImplementation(
+            async (_key, _schema, _ttlInMs, loader) => loader()
+        );
         analyticDateService.resolveWindow.mockImplementation(
             (windowMs, defaultInMs) => windowMs ?? defaultInMs
         );
@@ -182,9 +202,13 @@ describe('AnalyticAnomalyService', () => {
     });
 
     describe('impossibleTravelSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 9, window: 'window-token' };
-            analyticCache.getAnomalySummary.mockResolvedValue(cached);
+        it('reads through with the impossible-travel key, AnalyticAnomalyImpossibleTravelSummaryCacheSchema, and the anomaly summary TTL', async () => {
+            const cached = {
+                count: 9,
+                window: 'window-token',
+                meta: { minDistanceKm: 500, maxDeltaInMs: 3600000 },
+            };
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.impossibleTravelSummary(
                 startDate,
@@ -192,12 +216,22 @@ describe('AnalyticAnomalyService', () => {
             );
 
             expect(result).toEqual(cached);
+            expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticAnomalySignal.impossibleTravel,
+                'window-token'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'impossible-travel:window-token',
+                AnalyticAnomalyImpossibleTravelSummaryCacheSchema,
+                anomalySummaryTtlInMs,
+                expect.any(Function)
+            );
             expect(
                 sessionAnalyticService.getActiveWithGeoInRange
             ).not.toHaveBeenCalled();
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             sessionAnalyticService.getActiveWithGeoInRange.mockResolvedValue(
                 []
             );
@@ -212,11 +246,6 @@ describe('AnalyticAnomalyService', () => {
                 window: 'window-token',
                 meta: { minDistanceKm: 500, maxDeltaInMs: 3600000 },
             });
-            expect(analyticCache.setAnomalySummary).toHaveBeenCalledWith(
-                'impossible-travel',
-                'window-token',
-                result
-            );
         });
     });
 
@@ -293,13 +322,27 @@ describe('AnalyticAnomalyService', () => {
     });
 
     describe('loginSpikeIpSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 2, window: '3600000' };
-            analyticCache.getAnomalySummary.mockResolvedValue(cached);
+        it('reads through with the login-spike-ip key, AnalyticAnomalyLoginSpikeIpSummaryCacheSchema, and the anomaly summary TTL', async () => {
+            const cached = {
+                count: 2,
+                window: '3600000',
+                meta: { minUniqueAccounts: 2 },
+            };
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.loginSpikeIpSummary(null);
 
             expect(result).toEqual(cached);
+            expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticAnomalySignal.loginSpikeIp,
+                '3600000'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'login-spike-ip:3600000',
+                AnalyticAnomalyLoginSpikeIpSummaryCacheSchema,
+                anomalySummaryTtlInMs,
+                expect.any(Function)
+            );
             expect(
                 activityLogAnalyticService.getGroupIpUserByActions
             ).not.toHaveBeenCalled();
@@ -318,15 +361,18 @@ describe('AnalyticAnomalyService', () => {
         it('uses the supplied windowMs when present', async () => {
             const result = await service.loginSpikeIpSummary(600000);
 
-            expect(result.window).toBe('600000');
+            expect(result).toEqual({
+                count: 0,
+                window: '600000',
+                meta: { minUniqueAccounts: 2 },
+            });
             expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
                 600000,
                 3600000
             );
-            expect(analyticCache.setAnomalySummary).toHaveBeenCalledWith(
-                'login-spike-ip',
-                '600000',
-                result
+            expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticAnomalySignal.loginSpikeIp,
+                '600000'
             );
         });
     });
@@ -381,19 +427,33 @@ describe('AnalyticAnomalyService', () => {
     });
 
     describe('failedLoginSpikeSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 1, window: null };
-            analyticCache.getAnomalySummary.mockResolvedValue(cached);
+        it('reads through with the failed-login-spike key, AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema, and the anomaly summary TTL', async () => {
+            const cached = {
+                count: 1,
+                window: null,
+                meta: { nearLockoutMinAttempt: 4, bucketCount: 1 },
+            };
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.failedLoginSpikeSummary();
 
             expect(result).toEqual(cached);
+            expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticAnomalySignal.failedLoginSpike,
+                AnalyticCacheEmptyToken
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `failed-login-spike:${AnalyticCacheEmptyToken}`,
+                AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
+                anomalySummaryTtlInMs,
+                expect.any(Function)
+            );
             expect(
                 userAnalyticService.getCountNearLockout
             ).not.toHaveBeenCalled();
         });
 
-        it('caches the near-lockout count with a floor of one attempt', async () => {
+        it('computes the near-lockout count in the loader on a cache miss', async () => {
             userAnalyticService.getGroupPasswordAttemptBuckets.mockResolvedValue(
                 [{ key: '3', count: 2 }]
             );
@@ -445,19 +505,33 @@ describe('AnalyticAnomalyService', () => {
     });
 
     describe('deviceProliferationSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 2, window: null };
-            analyticCache.getAnomalySummary.mockResolvedValue(cached);
+        it('reads through with the device-proliferation key, AnalyticAnomalyDeviceProliferationSummaryCacheSchema, and the anomaly summary TTL', async () => {
+            const cached = {
+                count: 2,
+                window: null,
+                meta: { avg: 2, stdDev: 0.5, zScoreThreshold: 3 },
+            };
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.deviceProliferationSummary();
 
             expect(result).toEqual(cached);
+            expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticAnomalySignal.deviceProliferation,
+                AnalyticCacheEmptyToken
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `device-proliferation:${AnalyticCacheEmptyToken}`,
+                AnalyticAnomalyDeviceProliferationSummaryCacheSchema,
+                anomalySummaryTtlInMs,
+                expect.any(Function)
+            );
             expect(
                 deviceAnalyticService.getProliferationOutliers
             ).not.toHaveBeenCalled();
         });
 
-        it('caches outlier statistics on a cache miss', async () => {
+        it('computes the outlier statistics in the loader on a cache miss', async () => {
             deviceAnalyticService.getProliferationOutliers.mockResolvedValue({
                 count: 1,
                 avg: 2,
@@ -555,24 +629,32 @@ describe('AnalyticAnomalyService', () => {
     });
 
     describe('loginTimeSummary', () => {
-        it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 0, window: 'window-token' };
-            analyticCache.getAnomalySummary.mockResolvedValue(cached);
+        it('reads through with the login-time key, AnalyticAnomalySummaryCacheSchema, and the anomaly summary TTL', async () => {
+            const cached = { count: 3, window: 'window-token' };
+            cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.loginTimeSummary(startDate, endDate);
 
             expect(result).toEqual(cached);
+            expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
+                EnumAnalyticAnomalySignal.loginTime,
+                'window-token'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'login-time:window-token',
+                AnalyticAnomalySummaryCacheSchema,
+                anomalySummaryTtlInMs,
+                expect.any(Function)
+            );
+            expect(
+                activityLogAnalyticService.getGroupUserByActions
+            ).not.toHaveBeenCalled();
         });
 
-        it('computes and caches the summary on a cache miss', async () => {
+        it('computes the summary in the loader on a cache miss', async () => {
             const result = await service.loginTimeSummary(startDate, endDate);
 
             expect(result).toEqual({ count: 0, window: 'window-token' });
-            expect(analyticCache.setAnomalySummary).toHaveBeenCalledWith(
-                'login-time',
-                'window-token',
-                result
-            );
         });
     });
 

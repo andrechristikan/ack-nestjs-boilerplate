@@ -1,7 +1,11 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
+import {
+    AnalyticCacheEmptyToken,
+    AnalyticWorkspaceSummaryCacheSchema,
+} from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticMetricCount,
@@ -23,6 +27,7 @@ export class AnalyticWorkspaceUserService {
 
     constructor(
         private readonly analyticCache: AnalyticCache,
+        private readonly cacheService: CacheService,
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
@@ -60,41 +65,40 @@ export class AnalyticWorkspaceUserService {
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticWorkspaceSummary> {
-        const key = this.workspaceWindowToken(workspaceId, startDate, endDate);
-        const cached =
-            await this.analyticCache.getDashboard<IAnalyticWorkspaceSummary>(
-                EnumAnalyticDashboardMetric.workspaceSummary,
-                key,
-                AnalyticCacheEmptyToken
-            );
-        if (cached) {
-            return cached;
-        }
-
-        const [memberCount, projectCount, activityCount] = await Promise.all([
-            this.workspaceMemberAnalyticService.getCountByWorkspace(
-                workspaceId
-            ),
-            this.projectAnalyticService.getCountByWorkspace(workspaceId),
-            this.activityLogAnalyticService.getCountByWorkspaceInRange(
-                workspaceId,
-                startDate,
-                endDate
-            ),
-        ]);
-
-        const value: IAnalyticWorkspaceSummary = {
-            memberCount,
-            projectCount,
-            activityCount,
-        };
-        await this.analyticCache.setDashboard(
-            EnumAnalyticDashboardMetric.workspaceSummary,
-            key,
-            AnalyticCacheEmptyToken,
-            value
+        const windowToken = this.workspaceWindowToken(
+            workspaceId,
+            startDate,
+            endDate
         );
-        return value;
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.workspaceSummary,
+            windowToken,
+            AnalyticCacheEmptyToken
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticWorkspaceSummaryCacheSchema,
+            this.analyticCache.dashboardTtlInMs,
+            async () => {
+                const [memberCount, projectCount, activityCount] =
+                    await Promise.all([
+                        this.workspaceMemberAnalyticService.getCountByWorkspace(
+                            workspaceId
+                        ),
+                        this.projectAnalyticService.getCountByWorkspace(
+                            workspaceId
+                        ),
+                        this.activityLogAnalyticService.getCountByWorkspaceInRange(
+                            workspaceId,
+                            startDate,
+                            endDate
+                        ),
+                    ]);
+
+                return { memberCount, projectCount, activityCount };
+            }
+        );
     }
 
     async inviteFunnel(

@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -10,6 +11,7 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumApiKeyType, Prisma } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
+import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
@@ -37,7 +39,8 @@ export class ApiKeyService {
         private readonly apiKeyCache: ApiKeyCache,
         private readonly apiKeyRepository: ApiKeyRepository,
         private readonly helperStringService: HelperStringService,
-        private readonly helperHashService: HelperHashService
+        private readonly helperHashService: HelperHashService,
+        private readonly cacheService: CacheService
     ) {}
 
     private isActive(apiKey: IApiKey): boolean {
@@ -287,16 +290,15 @@ export class ApiKeyService {
 
         const { key, secret } = header;
         const today = this.helperDateService.create();
-        const cached = await this.apiKeyCache.getApiKey(key);
-        let apiKey = cached;
-        let leaseToken: string | null = null;
-        if (!apiKey) {
-            // Sequential by design: side effects whose order is part of the contract (the lease is taken before the read it guards)
-            leaseToken = await this.apiKeyCache.takeApiKeyLease(key);
-            const found = await this.apiKeyRepository.findOneByKey(key);
-            apiKey = found;
-        }
-
+        const cacheKey = this.apiKeyCache.buildApiKeyKey(key);
+        const lease = this.apiKeyCache.buildApiKeyLease(key);
+        const apiKey = await this.cacheService.readThrough(
+            cacheKey,
+            ApiKeyCacheSchema,
+            this.apiKeyCache.apiKeyTtlInMs,
+            () => this.apiKeyRepository.findOneByKey(key),
+            { lease }
+        );
         if (!apiKey) {
             throw new ApiKeyXApiKeyInvalidException();
         }
@@ -311,10 +313,6 @@ export class ApiKeyService {
         const isExpired = this.isExpired(apiKey.endAt, today);
         if (isExpired) {
             throw new ApiKeyExpiredException();
-        }
-
-        if (leaseToken !== null) {
-            await this.apiKeyCache.setApiKey(apiKey, leaseToken);
         }
 
         return apiKey;

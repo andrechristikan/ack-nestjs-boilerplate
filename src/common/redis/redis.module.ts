@@ -1,5 +1,4 @@
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
-import { RedisUtil } from '@common/redis/utils/redis.util';
 import { createKeyv } from '@keyv/redis';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
@@ -15,9 +14,17 @@ export class RedisCacheModule {
                 return createKeyv(
                     {
                         url: configService.get<string>('redis.cache.url')!,
+                        disableOfflineQueue: true,
+                        commandOptions: {
+                            timeout: configService.get<number>(
+                                'redis.commandTimeoutInMs'
+                            )!,
+                        },
                     },
                     {
-                        connectionTimeout: 30000,
+                        connectionTimeout: configService.get<number>(
+                            'redis.connectTimeoutInMs'
+                        )!,
                         namespace: configService.get<string>(
                             'redis.cache.namespace'
                         )!,
@@ -33,8 +40,8 @@ export class RedisCacheModule {
             module: RedisCacheModule,
             global: true,
             imports: [],
-            providers: [redisCacheProvider, RedisUtil],
-            exports: [redisCacheProvider, RedisUtil],
+            providers: [redisCacheProvider],
+            exports: [redisCacheProvider],
         };
     }
 }

@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
@@ -6,7 +7,14 @@ import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
+import {
+    AnalyticAnomalyDeviceProliferationSummaryCacheSchema,
+    AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
+    AnalyticAnomalyImpossibleTravelSummaryCacheSchema,
+    AnalyticAnomalyLoginSpikeIpSummaryCacheSchema,
+    AnalyticAnomalySummaryCacheSchema,
+    AnalyticCacheEmptyToken,
+} from '@modules/analytic/constants/analytic.constant';
 import {
     AnalyticDeviceProliferationAvailableOrderBy,
     AnalyticImpossibleTravelAvailableOrderBy,
@@ -57,6 +65,7 @@ export class AnalyticAnomalyService {
 
     constructor(
         private readonly analyticCache: AnalyticCache,
+        private readonly cacheService: CacheService,
         private readonly analyticDateService: AnalyticDateService,
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticAnomalyUtil: AnalyticAnomalyUtil,
@@ -303,30 +312,31 @@ export class AnalyticAnomalyService {
         endDate: Date | null
     ): Promise<IAnalyticAnomalyImpossibleTravelSummary> {
         const window = this.analyticDateUtil.windowToken(startDate, endDate);
-        const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalyImpossibleTravelSummary>(
-                EnumAnalyticAnomalySignal.impossibleTravel,
-                window
-            );
-        if (cached) {
-            return cached;
-        }
-
-        const rows = await this.computeImpossibleTravel(startDate, endDate);
-        const summary: IAnalyticAnomalyImpossibleTravelSummary = {
-            count: rows.length,
-            window,
-            meta: {
-                minDistanceKm: this.impossibleTravelMinDistanceKm,
-                maxDeltaInMs: this.impossibleTravelMaxDeltaInMs,
-            },
-        };
-        await this.analyticCache.setAnomalySummary(
+        const key = this.analyticCache.buildAnomalySummaryKey(
             EnumAnalyticAnomalySignal.impossibleTravel,
-            window,
-            summary
+            window
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalyImpossibleTravelSummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const rows = await this.computeImpossibleTravel(
+                    startDate,
+                    endDate
+                );
+
+                return {
+                    count: rows.length,
+                    window,
+                    meta: {
+                        minDistanceKm: this.impossibleTravelMinDistanceKm,
+                        maxDeltaInMs: this.impossibleTravelMaxDeltaInMs,
+                    },
+                };
+            }
+        );
     }
 
     async impossibleTravelList(
@@ -354,29 +364,27 @@ export class AnalyticAnomalyService {
             windowMs,
             this.loginSpikeIpWindowInMs
         );
-        const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalyLoginSpikeIpSummary>(
-                EnumAnalyticAnomalySignal.loginSpikeIp,
-                String(window)
-            );
-        if (cached) {
-            return cached;
-        }
-
-        const rows = await this.computeLoginSpikeIp(window);
-        const summary: IAnalyticAnomalyLoginSpikeIpSummary = {
-            count: rows.length,
-            window: String(window),
-            meta: {
-                minUniqueAccounts: this.loginSpikeIpMinUniqueAccounts,
-            },
-        };
-        await this.analyticCache.setAnomalySummary(
+        const key = this.analyticCache.buildAnomalySummaryKey(
             EnumAnalyticAnomalySignal.loginSpikeIp,
-            String(window),
-            summary
+            String(window)
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalyLoginSpikeIpSummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const rows = await this.computeLoginSpikeIp(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                    meta: {
+                        minUniqueAccounts: this.loginSpikeIpMinUniqueAccounts,
+                    },
+                };
+            }
+        );
     }
 
     async loginSpikeIpList(
@@ -401,35 +409,33 @@ export class AnalyticAnomalyService {
     }
 
     async failedLoginSpikeSummary(): Promise<IAnalyticAnomalyFailedLoginSpikeSummary> {
-        const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalyFailedLoginSpikeSummary>(
-                EnumAnalyticAnomalySignal.failedLoginSpike,
-                AnalyticCacheEmptyToken
-            );
-        if (cached) {
-            return cached;
-        }
-
-        const [buckets, nearCount] = await Promise.all([
-            this.userAnalyticService.getGroupPasswordAttemptBuckets(),
-            this.userAnalyticService.getCountNearLockout(
-                this.nearLockoutMinAttempt
-            ),
-        ]);
-        const summary: IAnalyticAnomalyFailedLoginSpikeSummary = {
-            count: nearCount,
-            window: null,
-            meta: {
-                nearLockoutMinAttempt: this.nearLockoutMinAttempt,
-                bucketCount: buckets.length,
-            },
-        };
-        await this.analyticCache.setAnomalySummary(
+        const key = this.analyticCache.buildAnomalySummaryKey(
             EnumAnalyticAnomalySignal.failedLoginSpike,
-            AnalyticCacheEmptyToken,
-            summary
+            AnalyticCacheEmptyToken
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const [buckets, nearCount] = await Promise.all([
+                    this.userAnalyticService.getGroupPasswordAttemptBuckets(),
+                    this.userAnalyticService.getCountNearLockout(
+                        this.nearLockoutMinAttempt
+                    ),
+                ]);
+
+                return {
+                    count: nearCount,
+                    window: null,
+                    meta: {
+                        nearLockoutMinAttempt: this.nearLockoutMinAttempt,
+                        bucketCount: buckets.length,
+                    },
+                };
+            }
+        );
     }
 
     async failedLoginSpikeList(
@@ -442,34 +448,33 @@ export class AnalyticAnomalyService {
     }
 
     async deviceProliferationSummary(): Promise<IAnalyticAnomalyDeviceProliferationSummary> {
-        const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalyDeviceProliferationSummary>(
-                EnumAnalyticAnomalySignal.deviceProliferation,
-                AnalyticCacheEmptyToken
-            );
-        if (cached) {
-            return cached;
-        }
-
-        const result =
-            await this.deviceAnalyticService.getProliferationOutliers(
-                this.deviceProliferationZScoreThreshold
-            );
-        const summary: IAnalyticAnomalyDeviceProliferationSummary = {
-            count: result.count,
-            window: null,
-            meta: {
-                avg: result.avg,
-                stdDev: result.stdDev,
-                zScoreThreshold: this.deviceProliferationZScoreThreshold,
-            },
-        };
-        await this.analyticCache.setAnomalySummary(
+        const key = this.analyticCache.buildAnomalySummaryKey(
             EnumAnalyticAnomalySignal.deviceProliferation,
-            AnalyticCacheEmptyToken,
-            summary
+            AnalyticCacheEmptyToken
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalyDeviceProliferationSummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const result =
+                    await this.deviceAnalyticService.getProliferationOutliers(
+                        this.deviceProliferationZScoreThreshold
+                    );
+
+                return {
+                    count: result.count,
+                    window: null,
+                    meta: {
+                        avg: result.avg,
+                        stdDev: result.stdDev,
+                        zScoreThreshold:
+                            this.deviceProliferationZScoreThreshold,
+                    },
+                };
+            }
+        );
     }
 
     async deviceProliferationList(
@@ -496,26 +501,24 @@ export class AnalyticAnomalyService {
         endDate: Date | null
     ): Promise<IAnalyticAnomalySummary> {
         const window = this.analyticDateUtil.windowToken(startDate, endDate);
-        const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
-                EnumAnalyticAnomalySignal.loginTime,
-                window
-            );
-        if (cached) {
-            return cached;
-        }
-
-        const rows = await this.computeLoginTimeAnomalies(startDate, endDate);
-        const summary: IAnalyticAnomalySummary = {
-            count: rows.length,
-            window,
-        };
-        await this.analyticCache.setAnomalySummary(
+        const key = this.analyticCache.buildAnomalySummaryKey(
             EnumAnalyticAnomalySignal.loginTime,
-            window,
-            summary
+            window
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalySummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const rows = await this.computeLoginTimeAnomalies(
+                    startDate,
+                    endDate
+                );
+
+                return { count: rows.length, window };
+            }
+        );
     }
 
     async loginTimeList(

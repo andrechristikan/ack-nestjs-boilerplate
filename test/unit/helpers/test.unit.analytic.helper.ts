@@ -7,6 +7,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { ISessionAnalyticSession } from '@modules/session/interfaces/session.interface';
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
@@ -25,6 +26,7 @@ import { UserAnalyticService } from '@modules/user/services/user.analytic.servic
 
 export interface IAnalyticAnomalyServiceDoubles {
     analyticCache: MockProxy<AnalyticCache>;
+    cacheService: MockProxy<CacheService>;
     analyticDateService: MockProxy<AnalyticDateService>;
     analyticDateUtil: MockProxy<AnalyticDateUtil>;
     analyticAnomalyUtil: MockProxy<AnalyticAnomalyUtil>;
@@ -51,6 +53,7 @@ export async function createAnalyticAnomalyService(
         providers: [
             AnalyticAnomalyServiceClass,
             { provide: AnalyticCache, useValue: doubles.analyticCache },
+            { provide: CacheService, useValue: doubles.cacheService },
             {
                 provide: AnalyticDateService,
                 useValue: doubles.analyticDateService,

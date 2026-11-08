@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -9,6 +10,9 @@ import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anom
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import {
     AnalyticCacheEmptyToken,
+    AnalyticFraudCredentialStuffingSummaryCacheSchema,
+    AnalyticFraudRiskScoreCacheSchema,
+    AnalyticFraudSummaryCacheSchema,
     AnalyticMassRegistrationActions,
 } from '@modules/analytic/constants/analytic.constant';
 import {
@@ -104,6 +108,7 @@ export class AnalyticFraudService {
 
     constructor(
         private readonly analyticCache: AnalyticCache,
+        private readonly cacheService: CacheService,
         private readonly analyticDateService: AnalyticDateService,
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticSortUtil: AnalyticSortUtil,
@@ -676,46 +681,38 @@ export class AnalyticFraudService {
     private async scoreCached(
         userId: string
     ): Promise<IAnalyticFraudRiskScore> {
-        const cached =
-            await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
-                userId
-            );
-        if (cached) {
-            return cached;
-        }
+        const key = this.analyticCache.buildRiskScoreKey(userId);
 
-        // Sequential by design: gate before the work it guards
-        const user = await this.userAnalyticService.getOneById(userId);
-        if (!user) {
-            throw new UserNotFoundException();
-        }
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudRiskScoreCacheSchema,
+            this.analyticCache.riskScoreTtlInMs,
+            async () => {
+                // Sequential by design: gate before the work it guards
+                const user = await this.userAnalyticService.getOneById(userId);
+                if (!user) {
+                    throw new UserNotFoundException();
+                }
 
-        const signals = await this.collectSignalUsers();
-        return this.scoreUser(user, signals);
+                const signals = await this.collectSignalUsers();
+
+                return this.score(user, signals);
+            }
+        );
     }
 
     private async scoreListed(
         user: IUserAnalyticRef,
         signals: IAnalyticFraudSignalUsers
     ): Promise<IAnalyticFraudRiskScore> {
-        const cached =
-            await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
-                user.id
-            );
-        if (cached) {
-            return cached;
-        }
+        const key = this.analyticCache.buildRiskScoreKey(user.id);
 
-        return this.scoreUser(user, signals);
-    }
-
-    private async scoreUser(
-        user: IUserAnalyticRef,
-        signals: IAnalyticFraudSignalUsers
-    ): Promise<IAnalyticFraudRiskScore> {
-        const result = this.score(user, signals);
-        await this.analyticCache.setRiskScore(user.id, result);
-        return result;
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudRiskScoreCacheSchema,
+            this.analyticCache.riskScoreTtlInMs,
+            async () => this.score(user, signals)
+        );
     }
 
     async credentialStuffingSummary(
@@ -725,28 +722,28 @@ export class AnalyticFraudService {
             windowMs,
             this.credentialStuffingWindowInMs
         );
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudCredentialStuffingSummary>(
-                EnumAnalyticFraudSignal.credentialStuffing,
-                String(window)
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computeCredentialStuffing(window);
-        const summary: IAnalyticFraudCredentialStuffingSummary = {
-            count: rows.length,
-            window: String(window),
-            meta: {
-                minUniqueAccounts: this.credentialStuffingMinUniqueAccounts,
-            },
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.credentialStuffing,
-            String(window),
-            summary
+            String(window)
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudCredentialStuffingSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computeCredentialStuffing(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                    meta: {
+                        minUniqueAccounts:
+                            this.credentialStuffingMinUniqueAccounts,
+                    },
+                };
+            }
+        );
     }
 
     async credentialStuffingList(
@@ -776,25 +773,27 @@ export class AnalyticFraudService {
         endDate: Date
     ): Promise<IAnalyticFraudSummary> {
         const window = this.analyticDateUtil.windowToken(startDate, endDate);
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.accountTakeover,
-                window
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computeAccountTakeover(startDate, endDate);
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window,
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.accountTakeover,
-            window,
-            summary
+            window
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computeAccountTakeover(
+                    startDate,
+                    endDate
+                );
+
+                return {
+                    count: rows.length,
+                    window,
+                };
+            }
+        );
     }
 
     async accountTakeoverList(
@@ -823,25 +822,24 @@ export class AnalyticFraudService {
             windowMs,
             this.massRegistrationWindowInMs
         );
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.massRegistration,
-                String(window)
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computeMassRegistration(window);
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window: String(window),
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.massRegistration,
-            String(window),
-            summary
+            String(window)
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computeMassRegistration(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                };
+            }
+        );
     }
 
     async massRegistrationList(
@@ -873,25 +871,24 @@ export class AnalyticFraudService {
             windowMs,
             this.passwordResetEnumerationWindowInMs
         );
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.passwordResetEnumeration,
-                String(window)
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computePasswordResetEnumeration(window);
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window: String(window),
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.passwordResetEnumeration,
-            String(window),
-            summary
+            String(window)
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computePasswordResetEnumeration(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                };
+            }
+        );
     }
 
     async passwordResetEnumerationList(
@@ -917,27 +914,27 @@ export class AnalyticFraudService {
     }
 
     async sharedFingerprintSummary(): Promise<IAnalyticFraudSummary> {
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.sharedFingerprint,
-                AnalyticCacheEmptyToken
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.deviceAnalyticService.getSharedFingerprints(
-            this.sharedFingerprintMinUsersPerFingerprint
-        );
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window: null,
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.sharedFingerprint,
-            AnalyticCacheEmptyToken,
-            summary
+            AnalyticCacheEmptyToken
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows =
+                    await this.deviceAnalyticService.getSharedFingerprints(
+                        this.sharedFingerprintMinUsersPerFingerprint
+                    );
+
+                return {
+                    count: rows.length,
+                    window: null,
+                };
+            }
+        );
     }
 
     async sharedFingerprintList(
@@ -963,25 +960,27 @@ export class AnalyticFraudService {
         endDate: Date
     ): Promise<IAnalyticFraudSummary> {
         const window = this.analyticDateUtil.windowToken(startDate, endDate);
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.sessionAfterAdmin,
-                window
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computeSessionAfterAdmin(startDate, endDate);
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window,
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.sessionAfterAdmin,
-            window,
-            summary
+            window
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computeSessionAfterAdmin(
+                    startDate,
+                    endDate
+                );
+
+                return {
+                    count: rows.length,
+                    window,
+                };
+            }
+        );
     }
 
     async sessionAfterAdminList(
@@ -1010,25 +1009,24 @@ export class AnalyticFraudService {
             windowMs,
             this.forgotPasswordTokenAbuseWindowInMs
         );
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
-                String(window)
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computeForgotPasswordAbuse(window);
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window: String(window),
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
-            String(window),
-            summary
+            String(window)
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computeForgotPasswordAbuse(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                };
+            }
+        );
     }
 
     async forgotPasswordTokenAbuseList(
@@ -1060,25 +1058,24 @@ export class AnalyticFraudService {
             windowMs,
             this.refreshSpikeWindowInMs
         );
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.refreshSpike,
-                String(window)
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computeRefreshSpike(window);
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window: String(window),
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.refreshSpike,
-            String(window),
-            summary
+            String(window)
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computeRefreshSpike(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                };
+            }
+        );
     }
 
     async refreshSpikeList(
@@ -1110,25 +1107,24 @@ export class AnalyticFraudService {
             windowMs,
             this.backupCodeNewDeviceWindowInMs
         );
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.backupCodeNewDevice,
-                String(window)
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computeBackupCodeNewDevice(window);
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window: String(window),
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.backupCodeNewDevice,
-            String(window),
-            summary
+            String(window)
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computeBackupCodeNewDevice(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                };
+            }
+        );
     }
 
     async backupCodeNewDeviceList(
@@ -1160,25 +1156,24 @@ export class AnalyticFraudService {
             windowMs,
             this.apiKeyBurstWindowInMs
         );
-        const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                EnumAnalyticFraudSignal.apiKeyBurst,
-                String(window)
-            );
-        if (cached) {
-            return cached;
-        }
-        const rows = await this.computeApiKeyBurst(window);
-        const summary: IAnalyticFraudSummary = {
-            count: rows.length,
-            window: String(window),
-        };
-        await this.analyticCache.setFraudSummary(
+        const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.apiKeyBurst,
-            String(window),
-            summary
+            String(window)
         );
-        return summary;
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticFraudSummaryCacheSchema,
+            this.analyticCache.fraudSummaryTtlInMs,
+            async () => {
+                const rows = await this.computeApiKeyBurst(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                };
+            }
+        );
     }
 
     async apiKeyBurstList(

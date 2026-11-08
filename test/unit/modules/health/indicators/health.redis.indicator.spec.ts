@@ -1,16 +1,18 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HealthRedisProbeKey } from '@modules/health/constants/health.constant';
+import type Keyv from 'keyv';
+import type KeyvRedis from '@keyv/redis';
+import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
-import type { Cache } from 'cache-manager';
 import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
+import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
 
 describe('HealthRedisIndicator', () => {
-    const cacheManager: MockProxy<Cache> = mock<Cache>();
+    const keyv: MockProxy<Keyv> = mock<Keyv>();
+    const store: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
     const healthIndicatorService: MockProxy<HealthIndicatorService> =
         mock<HealthIndicatorService>();
     const session = { up: vi.fn(), down: vi.fn() };
@@ -20,12 +22,13 @@ describe('HealthRedisIndicator', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
+        (keyv as unknown as { store: KeyvRedis<string> }).store = store;
         healthIndicatorService.check.mockReturnValue(session as never);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 HealthRedisIndicator,
-                { provide: CacheMainProvider, useValue: cacheManager },
+                { provide: RedisClientCachedProvider, useValue: keyv },
                 {
                     provide: HealthIndicatorService,
                     useValue: healthIndicatorService,
@@ -37,8 +40,9 @@ describe('HealthRedisIndicator', () => {
     });
 
     describe('isHealthy', () => {
-        it('reports up when the probe read resolves', async () => {
-            cacheManager.get.mockResolvedValue(undefined);
+        it('reports up when PING answers', async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.ping.mockResolvedValue('PONG');
             session.up.mockReturnValue({ redis: { status: 'up' } });
 
             const result = await indicator.isHealthy(
@@ -47,12 +51,13 @@ describe('HealthRedisIndicator', () => {
 
             expect(result).toEqual({ redis: { status: 'up' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith('redis');
-            expect(cacheManager.get).toHaveBeenCalledWith(HealthRedisProbeKey);
+            expect(client.ping).toHaveBeenCalledWith();
             expect(session.up).toHaveBeenCalledWith();
         });
 
-        it('reports down with a fixed message when the probe read throws an Error', async () => {
-            cacheManager.get.mockRejectedValue(new Error('redis down'));
+        it("reports down with 'Redis is unreachable' when PING rejects", async () => {
+            const client = stubStoreClient({ keyv, store });
+            client.ping.mockRejectedValue(new Error('redis down'));
             session.down.mockReturnValue({ redis: { status: 'down' } });
 
             const result = await indicator.isHealthy(
@@ -61,10 +66,11 @@ describe('HealthRedisIndicator', () => {
 
             expect(result).toEqual({ redis: { status: 'down' } });
             expect(session.down).toHaveBeenCalledWith('Redis is unreachable');
+            expect(session.up).not.toHaveBeenCalled();
         });
 
-        it('reports down with the same fixed message when a non-Error is thrown', async () => {
-            cacheManager.get.mockRejectedValue('not-an-error');
+        it('reports down when the store client cannot connect', async () => {
+            store.getClient.mockRejectedValue(new Error('connect timeout'));
             session.down.mockReturnValue({ redis: { status: 'down' } });
 
             const result = await indicator.isHealthy(
